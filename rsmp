@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+#note: the shebang above expects ruby to be intalled through rbenv
+
+# executable wrapper for starting an rsmp server
+#
+# expect a settings file to be present
+
+require_relative 'server'
+
+# load settings
+dir = File.dirname(__FILE__)
+path = File.expand_path File.join(dir,'rsmp.yml')
+settings = YAML.load_file(path)
+
+# run until stopped
+RSMP::Server.new(settings).run
