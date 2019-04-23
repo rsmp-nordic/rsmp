@@ -66,18 +66,18 @@ module RSMP
     end
 
     def connect client, info
-      log "#{Server.now_utc} #{info[:id].to_s.rjust(3)} --- Connected #{info[:hostname]}"
+      log "#{Server.now_utc} #{info[:id].to_s.rjust(3)} Connected #{info[:hostname]}"
       remote_client = RemoteClient.new client, info
       @remote_clients << remote_client
       remote_client.run
     end
 
     def reject client, info
-      log "#{Server.now_utc} #{info[:id].to_s.rjust(3)} -x- Rejected #{info[:hostname]}"
+      log "#{Server.now_utc} #{info[:id].to_s.rjust(3)} Rejected #{info[:hostname]}"
     end
 
     def close client, info
-      log "#{Server.now_utc} #{info[:id].to_s.rjust(3)} -x- Closed #{info[:hostname]}"
+      log "#{Server.now_utc} #{info[:id].to_s.rjust(3)} Closed #{info[:hostname]}"
       client.close
     end
 

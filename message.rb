@@ -1,6 +1,7 @@
 # rsmp messages
 
 require 'json'
+require 'securerandom'
 
 module RSMP  
   class Message
@@ -21,17 +22,33 @@ module RSMP
         Unknown.new attributes                
       end
     rescue JSON::ParserError
-      throw InvalidPacket
+      raise InvalidPacket, bin_to_chars(packet)
+    end
+
+    def self.bin_to_chars(s)
+      if s.size == 0
+        ""
+      elsif s.size == 1
+        "#{s.bytes.first}"
+      elsif s.size == 2 
+        "#{s.bytes.first},#{s.bytes.last}"
+      elsif s.size >= 3
+        "#{s.bytes.first},...,#{s.bytes.last}"
+      end
     end
 
     def self.validate_message attributes
-      attributes["mType"] == "rSMsg" &&
-      attributes["type"] &&
-      attributes
+      raise InvalidJSON unless attributes.is_a?(Hash)
+      raise InvalidMessage unless attributes["mType"] == "rSMsg" &&
+                                  attributes["type"] &&
+                                  attributes
     end
 
     def initialize attributes = {}
       @attributes = { "mType"=> "rSMsg" }.merge attributes
+
+      # if message is empty, generate a new one
+      @attributes["mId"] ||= SecureRandom.uuid()
     end
 
     def valid?
@@ -57,7 +74,7 @@ module RSMP
   class Version < Message
   end
 
-  class AggregatedStatus < Message
+  class AggregatedStatus < Message 
   end
 
   class Watchdog < Message
@@ -69,6 +86,13 @@ module RSMP
   end
 
   class Acknowledged < Message
+
+    def self.build_from message
+      return new({
+        "oMId" => message.attributes["mId"]
+      })
+    end
+
     def initialize attributes = {}
       super({
         "type" => "MessageAck",
