@@ -20,7 +20,7 @@ module RSMP
 
       # wait for all thread to complete
       @reader.join
-      @watchdog.kill
+      @watchdog.kill if @watchdog
     end
 
     def start_reading      
@@ -68,14 +68,12 @@ module RSMP
       case message
         when Version
           process_version message
-        when Watchdog, AggregatedStatus
+        when Watchdog, AggregatedStatus, Alarm
           puts "#{prefix} Received #{message.attributes["type"]}: #{message.attributes.inspect}"
           acknowledged message
-          true
         else
           puts "#{prefix} Received unknown (#{message.attributes["type"]}): #{message.attributes.inspect}"
-          not_acknowledged message, reason
-          false
+          not_acknowledged message, "Unknown message"
       end
     rescue InvalidPacket => e
       puts "#{prefix} Received invalid package, size=#{packet.size}, content=#{e.message}"

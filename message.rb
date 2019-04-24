@@ -10,17 +10,23 @@ module RSMP
 
     def self.parse packet
       attributes = JSON.parse packet
-      validate_message attributes
-      return case attributes["type"]
+      validate_message_type attributes
+      message = nil
+
+      case attributes["type"]
       when "Version"
-        Version.new attributes
+        message = Version.new attributes
       when "AggregatedStatus"
-        AggregatedStatus.new attributes
+        message = AggregatedStatus.new attributes
       when "Watchdog"
-        Watchdog.new attributes  
+        message = Watchdog.new attributes
+      when "Alarm"
+        message = Alarm.new attributes
       else
-        Unknown.new attributes                
+        message = Unknown.new attributes        
       end
+      message.validate
+      return message
     rescue JSON::ParserError
       raise InvalidPacket, bin_to_chars(packet)
     end
@@ -37,7 +43,7 @@ module RSMP
       end
     end
 
-    def self.validate_message attributes
+    def self.validate_message_type attributes
       raise InvalidJSON unless attributes.is_a?(Hash)
       raise InvalidMessage unless attributes["mType"] == "rSMsg" &&
                                   attributes["type"] &&
@@ -51,12 +57,28 @@ module RSMP
       @attributes["mId"] ||= SecureRandom.uuid()
     end
 
+    def validate
+      validate_type &&
+      validate_id
+    end
+
+    def validate_type
+      @attributes["mType"] == "rSMsg"
+    end
+
+    def validate_id
+       @attributes["mId"] =~ /[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}/i
+    end
+
     def valid?
       true
     end
 
     def generate_json
       @json = JSON.generate @attributes
+
+      # wrap json with a form feed to create an rsmp packet,
+      #as required by the rsmp specification
       @out = "#{@json}\f"
     end
 
@@ -72,9 +94,16 @@ module RSMP
   end
 
   class Version < Message
+    def validate
+      super &&
+      @attributes["RSMP"].is_a?(Array) && @attributes["RSMP"].size >= 1
+    end
   end
 
   class AggregatedStatus < Message 
+  end
+
+  class Alarm < Message
   end
 
   class Watchdog < Message
