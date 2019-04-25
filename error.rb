@@ -8,8 +8,13 @@ module RSMP
 
 	class InvalidJSON < Error
 	end
-	
+
 	class InvalidMessage < Error
 	end
 
+	class UnknownMessageType < Error
+	end
+
+	class MissingAcknowledgment < Error
+	end
 end

@@ -9,11 +9,20 @@ module RSMP
     attr_reader :now, :attributes, :out, :json, :id, :type
 
     def self.parse packet
-      attributes = JSON.parse packet
+      begin
+        attributes = JSON.parse packet
+      rescue JSON::ParserError
+        raise InvalidPacket, bin_to_chars(packet)
+      end
+
       validate_message_type attributes
       message = nil
 
       case attributes["type"]
+      when "MessageAck"
+        message = MessageAck.new attributes
+      when "MessageNotAck"
+        message = MessageNotAck.new attributes
       when "Version"
         message = Version.new attributes
       when "AggregatedStatus"
@@ -23,12 +32,10 @@ module RSMP
       when "Alarm"
         message = Alarm.new attributes
       else
-        message = Unknown.new attributes        
+        message = Unknown.new attributes
       end
       message.validate
-      return message
-    rescue JSON::ParserError
-      raise InvalidPacket, bin_to_chars(packet)
+      message
     end
 
     def self.bin_to_chars(s)
@@ -94,16 +101,36 @@ module RSMP
   end
 
   class Version < Message
+    def initialize attributes = {}
+      super({
+        "type" => "Version",
+      }.merge attributes)
+    end
+
     def validate
       super &&
       @attributes["RSMP"].is_a?(Array) && @attributes["RSMP"].size >= 1
     end
+
+    def versions
+      @attributes["RSMP"].map{ |item| item["vers"] }
+    end
   end
 
   class AggregatedStatus < Message 
+    def initialize attributes = {}
+      super({
+        "type" => "AggregatedStatus",
+      }.merge attributes)
+    end
   end
 
   class Alarm < Message
+    def initialize attributes = {}
+      super({
+        "type" => "Alarm",
+      }.merge attributes)
+    end
   end
 
   class Watchdog < Message
@@ -114,7 +141,7 @@ module RSMP
     end
   end
 
-  class Acknowledged < Message
+  class MessageAck < Message
 
     def self.build_from message
       return new({
@@ -129,7 +156,7 @@ module RSMP
     end
   end
 
-  class NotAcknowledged < Message
+  class MessageNotAck < Message
     def initialize attributes = {}
       super({
         "type" => "MessageNotAck",

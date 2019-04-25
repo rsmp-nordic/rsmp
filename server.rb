@@ -15,15 +15,26 @@ module RSMP
   class Server
     WRAPPING_DELIMITER = "\f"
 
+    attr_reader :rsmp_versions, :site_id, :settings
     include Logger
     
     def initialize settings
       raise "Settings is empty" unless settings
       @settings = settings
 
-      raise "Port settings is missing" unless @settings["port"]
+      raise "Settings file: port is missing" unless @settings["port"]
       @port = settings["port"]
       
+      raise "Settings file: rsmp_version is missing" unless @settings["rsmp_versions"]
+      @rsmp_versions = settings["rsmp_versions"]
+
+      raise "Settings file: siteId is missing" unless @settings["siteId"]
+      @site_id = settings["siteId"]
+
+      raise "Settings file: watchdog_interval is missing" unless @settings["watchdog_interval"]
+      raise "Settings file: watchdog_timeout is missing" unless @settings["watchdog_timeout"]
+      raise "Settings file: acknowledgement_timeout is missing" unless @settings["acknowledgement_timeout"]
+
       @remote_clients = []
       @client_counter = 0
     end
@@ -46,7 +57,7 @@ module RSMP
 
     def handle_connection client
       sock_domain, remote_port, remote_hostname, remote_ip = client.peeraddr
-      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:Time.now, id:get_new_client_id}
+      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:Server.now_string(), id:get_new_client_id}
 
       if accept? client, info
         connect client, info
@@ -58,7 +69,7 @@ module RSMP
     end
 
     def starting
-      log "#{Server.now_utc} Starting on port #{@port}"
+      log "#{Server.now_string} Starting site id #{@site_id} on port #{@port}"
     end
 
     def accept? client, info
@@ -66,29 +77,34 @@ module RSMP
     end
 
     def connect client, info
-      log "#{Server.now_utc} #{info[:id].to_s.rjust(3)} Connected #{info[:hostname]}"
-      remote_client = RemoteClient.new client, info
+      log "#{Server.now_string} #{info[:id].to_s.rjust(3)} Connected #{info[:hostname]}"
+      remote_client = RemoteClient.new self, client, info
       @remote_clients << remote_client
       remote_client.run
     end
 
     def reject client, info
-      log "#{Server.now_utc} #{info[:id].to_s.rjust(3)} Rejected #{info[:hostname]}"
+      log "#{Server.now_string} #{info[:id].to_s.rjust(3)} Rejected #{info[:hostname]}"
     end
 
     def close client, info
-      log "#{Server.now_utc} #{info[:id].to_s.rjust(3)} Closed #{info[:hostname]}"
+      log "#{Server.now_string} #{info[:id].to_s.rjust(3)} Closed #{info[:hostname]}"
       client.close
     end
 
     def exiting
-      log "#{Server.now_utc} Exiting"
+      log "#{Server.now_string} Exiting"
     end
 
-    def self.now_utc
+    def self.now_object
+      # date using UTC time zone
+      Time.now.utc
+    end
+
+    def self.now_string
       # date in the format required by rsmp, using UTC time zone
       # example: 2015-06-08T12:01:39.654Z
-      DateTime.now.new_offset(0).strftime("%FT%T.%3NZ")
+      Time.now.utc.strftime("%FT%T.%3NZ")
     end
   end
 end
