@@ -20,10 +20,7 @@ module RSMP
     end
 
     def run
-      @reader = start_reading
-
-      # wait for reader to complete, either because the client disconnects,
-      # or we close the connection and stop all thread
+      start_reader
       @reader.join
       kill_threads
     end
@@ -33,17 +30,19 @@ module RSMP
     end
 
     def kill_threads
-      Thread.new(@threads) do |threads|
-        puts "#{prefix} Stopping timers"
+      reaper = Thread.new(@threads) do |threads|
         threads.each do |thread|
+          puts "#{prefix} Stopping #{thread[:name]}"
           thread.kill
         end
       end
-      @threads = []
+      reaper.join
+      @threads.clear
     end
 
-    def start_reading      
-      Thread.new(@client) do |socket|
+    def start_reader    
+      @reader = Thread.new(@client) do |socket|
+        Thread.current[:name] = "reader"
         # rsmp messages are json terminatd with a form-feed. so red. until a form-feed
         while packet = socket.gets(Server::WRAPPING_DELIMITER)
           if packet
@@ -51,7 +50,7 @@ module RSMP
             begin
               process packet
             rescue StandardError => e
-              puts "#{Server.now_string} #{@info[:id].to_s.rjust(3)} Error: #{e}"
+              puts "#{prefix} Read error: #{e}"
               puts e.backtrace
             end
           end
@@ -61,20 +60,29 @@ module RSMP
 
     def start_watchdog
       interval = @server.settings["watchdog_interval"]
-      puts "#{prefix} Started watchdog with interval of #{interval} seconds"
-      @threads << @watchdog = Thread.new(@client) do |socket|
+      name = "watchdog sender"
+      puts "#{prefix} Starting #{name} with interval of #{interval} seconds"
+      @threads << Thread.new(@client) do |socket|
+        Thread.current[:name] = name
         loop do
-          message = Watchdog.new( {"wTs" => Server.now_string})
-          send message
-          sleep interval
+          begin
+            message = Watchdog.new( {"wTs" => Server.now_string})
+            send message
+          rescue StandardError => e
+            puts "#{prefix} Watchdog error: #{e}"
+          ensure
+            sleep interval
+          end
         end
       end
     end
 
     def start_ack_timer
       timeout = @server.settings["acknowledgement_timeout"]
-      puts "#{prefix} Started acknowledgement timer with timeout of #{timeout} seconds"
-      @threads << @ack_timer = Thread.new(@client) do |socket|
+      name = "acknowledgement checker"
+      puts "#{prefix} Started #{name} with timeout of #{timeout} seconds"
+      @threads << Thread.new(@client) do |socket|
+        Thread.current[:name] = name
         loop do
           now = Server.now_object
           @awaiting_acknowledgement.each_pair do |mId, data|
@@ -91,9 +99,11 @@ module RSMP
 
     def start_watchdog_timer
       timeout = @server.settings["watchdog_timeout"]
-      puts "#{prefix} Started watchdog timer with timeout of #{timeout} seconds"
+      name = "watchdog checker"
+      puts "#{prefix} Started #{name} with timeout of #{timeout} seconds"
       @latest_watchdog_received = Server.now_object
-      @threads << @watchdog_timer = Thread.new(@client) do |socket|
+      @threads << Thread.new(@client) do |socket|
+        Thread.current[:name] = name
         loop do
           sleep 1
           now = Server.now_object
@@ -145,7 +155,7 @@ module RSMP
         return
       end
 
-      puts "#{prefix} Received #{message.type}: #{message.attributes.inspect}"
+      puts "#{prefix} Received Version: #{message.attributes.inspect}"
 
       # check siteid
 
@@ -206,10 +216,8 @@ module RSMP
       end
     end
 
-
     def process packet
       message = Message.parse packet
-
       expect_version_message(message) unless @version_determined
 
       case message
@@ -236,12 +244,6 @@ module RSMP
       puts "#{prefix} Received invalid message"
     end
 
-    def process_when_connecting message
-    end
-
-    def process_when_connected message
-    end
-
     def acknowledged message
       message = MessageAck.build_from(message)
       send message
@@ -258,7 +260,5 @@ module RSMP
     def prefix
       "#{Server.now_string} #{@info[:id].to_s.rjust(3)}"
     end
-
   end
-
 end
