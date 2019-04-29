@@ -6,7 +6,7 @@ require 'securerandom'
 module RSMP  
   class Message
 
-    attr_reader :now, :attributes, :out, :json, :id, :type
+    attr_reader :now, :attributes, :out, :json
 
     def self.parse packet
       begin
@@ -36,6 +36,14 @@ module RSMP
       end
       message.validate
       message
+    end
+
+    def type
+      @attributes["type"]
+    end
+
+    def mId
+      @attributes["mId"]
     end
 
     def self.bin_to_chars(s)

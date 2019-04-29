@@ -7,3 +7,5 @@ The version message should contain an identifier of the SXL to use, e.g. "traffi
 It's not specified whether the first watchdog message is send immediately by both sides, or first by the connecting device, and then the supervisor system.
 
 Should we reply to a version message with an ack + version messages, or only with a version message?
+
+No timeout for receiving Version after connecting? There's no watchdog yet.

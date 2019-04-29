@@ -5,4 +5,4 @@ rsmp_versions:
   - 3.1.2
 watchdog_interval: 10
 watchdog_timeout: 15
-acknowledgement_timeout: 1
+acknowledgement_timeout: 5

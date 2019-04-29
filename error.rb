@@ -17,4 +17,13 @@ module RSMP
 
 	class MissingAcknowledgment < Error
 	end
+
+	class BadConnectionSequence < Error
+	end
+
+	class MissingWatchdog < Error
+	end
+
+	class MissingAcknowledgment < Error
+	end
 end
