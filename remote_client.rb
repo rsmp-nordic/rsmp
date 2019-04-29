@@ -15,7 +15,6 @@ module RSMP
       @awaiting_acknowledgement = {}
       @latest_watchdog_received = nil
       @version_determined = false
-      @version_message_id = nil
       @threads = []
     end
 
@@ -43,7 +42,8 @@ module RSMP
     def start_reader    
       @reader = Thread.new(@client) do |socket|
         Thread.current[:name] = "reader"
-        # rsmp messages are json terminatd with a form-feed. so red. until a form-feed
+        # rsmp messages are json terminated with a form-feed,
+        # so read until we get a form-feed
         while packet = socket.gets(Server::WRAPPING_DELIMITER)
           if packet
             packet.chomp!(Server::WRAPPING_DELIMITER)
@@ -59,8 +59,8 @@ module RSMP
     end
 
     def start_watchdog
+      name = "watchdog"
       interval = @server.settings["watchdog_interval"]
-      name = "watchdog sender"
       puts "#{prefix} Starting #{name} with interval of #{interval} seconds"
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
@@ -69,7 +69,8 @@ module RSMP
             message = Watchdog.new( {"wTs" => Server.now_string})
             send message
           rescue StandardError => e
-            puts "#{prefix} Watchdog error: #{e}"
+            puts "#{prefix} #{name} error: #{e}"
+            puts e.backtrace
           ensure
             sleep interval
           end
@@ -77,53 +78,50 @@ module RSMP
       end
     end
 
-    def start_ack_timer
-      timeout = @server.settings["acknowledgement_timeout"]
-      name = "acknowledgement checker"
-      puts "#{prefix} Started #{name} with timeout of #{timeout} seconds"
-      @threads << Thread.new(@client) do |socket|
-        Thread.current[:name] = name
-        loop do
-          now = Server.now_object
-          @awaiting_acknowledgement.each_pair do |mId, data|
-            latest = data["timestamp"] + timeout
-            if now > latest
-              missing_acknowledgement mId, data["type"]
-              break
-            end
-          end
-          sleep 1
-        end
-      end
-    end
-
-    def start_watchdog_timer
-      timeout = @server.settings["watchdog_timeout"]
-      name = "watchdog checker"
-      puts "#{prefix} Started #{name} with timeout of #{timeout} seconds"
+    def start_timeout
+      name = "timeout checker"
+      interval = 1
+      puts "#{prefix} Starting #{name} with interval #{interval}"
       @latest_watchdog_received = Server.now_object
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
         loop do
-          sleep 1
-          now = Server.now_object
-          latest = @latest_watchdog_received + timeout
-          if now > latest
-            missing_watchdog latest
-            break
+          begin
+            now = Server.now_object
+            break if check_ack_timeout now
+            break if check_watchdog_timeout now
+          rescue StandardError => e
+            puts "#{prefix} #{name}: #{e}"
+            puts e.backtrace
+          ensure
+            sleep 1
           end
         end
       end
     end
 
-    def missing_watchdog latest
-      puts "#{prefix} Did not receive Watchdog within #{@server.settings["watchdog_timeout"]} seconds, closing connection"
-      terminate
+    def check_ack_timeout now
+      timeout = @server.settings["acknowledgement_timeout"]
+      @awaiting_acknowledgement.each_pair do |mId, data|
+        latest = data["timestamp"] + timeout
+        if now > latest
+          puts "#{prefix} Did not receive acknowledgements for #{data["type"]} messsage #{mId} within #{timeout} seconds, closing connection"
+          terminate
+          true
+        end
+      end
+      false
     end
 
-    def missing_acknowledgement mId, type
-      puts "#{prefix} Did not receive acknowledgements for #{type} messsage #{mId} within #{@server.settings["acknowledgement_timeout"]} seconds, closing connection"
-      terminate
+    def check_watchdog_timeout now
+      timeout = @server.settings["watchdog_timeout"]
+      latest = @latest_watchdog_received + timeout
+      if now > latest
+        puts "#{prefix} Did not receive Watchdog within #{timeout} seconds, closing connection"
+        terminate
+        true
+      end
+      false
     end
 
     def send message
@@ -147,7 +145,6 @@ module RSMP
       @awaiting_acknowledgement.delete message.attributes["oMId"]
     end
 
-
     def process_version message
       if @version_determined
         puts "#{prefix} Received Version message out of place"
@@ -155,30 +152,34 @@ module RSMP
         return
       end
 
-      puts "#{prefix} Received Version: #{message.attributes.inspect}"
+      # check_site_id
+      rsmp_version = check_rsmp_version message
+      #check_sxl_version
 
-      # check siteid
+      version_accepted message, rsmp_version
+    end
 
+    def check_rsmp_version message
       # find versions that both we and the client support
       candidates = message.versions & @server.rsmp_versions
       if candidates.any?
         # pick latest version
-        rsmp_version = candidates.sort.last
+        version = candidates.sort.last
+        puts "#{prefix} Received Version, using #{version}: #{message.attributes.inspect}"
+        return version
       else
         reason = "RSMP versions [#{message.versions.join(',')}] were requested, but we only support [#{@server.rsmp_versions.join(',')}]."
         not_acknowledged message, reason
+        terminate
+        return nil
       end
+    end
 
-      # check sxl version
-
-      # all checks succeeded
-      start_ack_timer
+    def version_accepted message, rsmp_version
+      start_timeout
       acknowledged message
       send_version rsmp_version
-
-      start_watchdog_timer
       start_watchdog
-
       @version_determined = true
     end
 
@@ -188,8 +189,6 @@ module RSMP
         "siteId"=>[{"sId"=>@server.site_id}],
         "SXL"=>"1.9"
       })
-      @version_message_id = send version_response
-      p @version_message_id
     end
 
     def process_ack message
