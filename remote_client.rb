@@ -108,7 +108,7 @@ module RSMP
       @awaiting_acknowledgement.each_pair do |mId, data|
         latest = data["timestamp"] + timeout
         if now > latest
-          log "Did not receive acknowledgements for #{data["type"]} messsage #{mId} within #{timeout} seconds"
+          log "No acknowledgements for #{data["type"]} within #{timeout} seconds"
           terminate
           true
         end
@@ -248,7 +248,7 @@ module RSMP
       unless message.is_a? Version
         reason = "Version must be received first, but got #{message.type}"
         log "#{reason}", message
-        dont_acknowledge message, reasons
+        dont_acknowledge message, reason
         terminate
       end
     end
@@ -296,12 +296,12 @@ module RSMP
 
     def prefix
       site_id = @site_ids.first
-      "#{Server.now_string} #{@info[:ip].ljust(20)} #{site_id.to_s.ljust(12)}"
+      "#{Server.log_prefix(@info[:ip])} #{site_id.to_s.ljust(12)}"
     end
 
     def log str, message=nil
       if @verbose && message
-        puts "#{prefix} #{str.ljust(40)} #{message.json.to_str}"
+        puts "#{prefix} #{str} #{message.json.to_str}"
       else
         puts "#{prefix} #{str}"
       end

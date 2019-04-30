@@ -77,18 +77,18 @@ module RSMP
     end
 
     def connect client, info
-      log "#{Server.now_string} #{info[:id].to_s.rjust(15)} Connected #{info[:ip]}"
+      log "#{Server.log_prefix(info[:ip])} Connected"
       remote_client = RemoteClient.new self, client, info
       @remote_clients << remote_client
       remote_client.run
     end
 
     def reject client, info
-      log "#{Server.now_string} #{info[:id].to_s.rjust(15)} Rejected #{info[:ip]}"
+      log "#{Server.log_prefix(info[:ip])} Rejected"
     end
 
     def close client, info
-      log "#{Server.now_string} #{info[:id].to_s.rjust(15)} Closed #{info[:ip]}"
+      log "#{Server.log_prefix(info[:ip])} Closed "
       client.close
     end
 
@@ -105,6 +105,10 @@ module RSMP
       # date in the format required by rsmp, using UTC time zone
       # example: 2015-06-08T12:01:39.654Z
       Time.now.utc.strftime("%FT%T.%3NZ")
+    end
+
+    def self.log_prefix ip
+      "#{now_string} #{ip.ljust(20)}"
     end
   end
 end

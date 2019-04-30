@@ -6,4 +6,4 @@ rsmp_versions:
 watchdog_interval: 10
 watchdog_timeout: 15
 acknowledgement_timeout: 5
-verbose: true
+verbose: false
