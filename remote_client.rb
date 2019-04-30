@@ -16,6 +16,8 @@ module RSMP
       @latest_watchdog_received = nil
       @version_determined = false
       @threads = []
+      @verbose = server.settings["verbose"] == true
+      @site_ids = []
     end
 
     def run
@@ -25,13 +27,14 @@ module RSMP
     end
 
     def terminate
+      log "Closing connection"
       @reader.kill
     end
 
     def kill_threads
       reaper = Thread.new(@threads) do |threads|
         threads.each do |thread|
-          puts "#{prefix} Stopping #{thread[:name]}"
+          log "Stopping #{thread[:name]}"
           thread.kill
         end
       end
@@ -50,7 +53,7 @@ module RSMP
             begin
               process packet
             rescue StandardError => e
-              puts "#{prefix} Read error: #{e}"
+              log "Read error: #{e}"
               puts e.backtrace
             end
           end
@@ -61,7 +64,7 @@ module RSMP
     def start_watchdog
       name = "watchdog"
       interval = @server.settings["watchdog_interval"]
-      puts "#{prefix} Starting #{name} with interval of #{interval} seconds"
+      log "Starting #{name} with interval of #{interval} seconds"
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
         loop do
@@ -69,7 +72,7 @@ module RSMP
             message = Watchdog.new( {"wTs" => Server.now_string})
             send message
           rescue StandardError => e
-            puts "#{prefix} #{name} error: #{e}"
+            log "#{name} error: #{e}"
             puts e.backtrace
           ensure
             sleep interval
@@ -81,7 +84,7 @@ module RSMP
     def start_timeout
       name = "timeout checker"
       interval = 1
-      puts "#{prefix} Starting #{name} with interval #{interval}"
+      log "Starting #{name} with interval #{interval}"
       @latest_watchdog_received = Server.now_object
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
@@ -91,7 +94,7 @@ module RSMP
             break if check_ack_timeout now
             break if check_watchdog_timeout now
           rescue StandardError => e
-            puts "#{prefix} #{name}: #{e}"
+            log "#{name}: #{e}"
             puts e.backtrace
           ensure
             sleep 1
@@ -105,7 +108,7 @@ module RSMP
       @awaiting_acknowledgement.each_pair do |mId, data|
         latest = data["timestamp"] + timeout
         if now > latest
-          puts "#{prefix} Did not receive acknowledgements for #{data["type"]} messsage #{mId} within #{timeout} seconds, closing connection"
+          log "Did not receive acknowledgements for #{data["type"]} messsage #{mId} within #{timeout} seconds"
           terminate
           true
         end
@@ -117,16 +120,20 @@ module RSMP
       timeout = @server.settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       if now > latest
-        puts "#{prefix} Did not receive Watchdog within #{timeout} seconds, closing connection"
+        log "Did not receive Watchdog within #{timeout} seconds"
         terminate
         true
       end
       false
     end
 
-    def send message
+    def send message, reason=nil
       message.generate_json
-      puts "#{prefix} Sent #{message.type}: #{message.attributes.inspect}"
+      if reason
+        log "Sent #{message.type} #{reason}", message
+      else
+        log "Sent #{message.type}", message
+      end
       @client.puts message.out
       expect_acknowledgement message
       message.mId
@@ -147,16 +154,41 @@ module RSMP
 
     def process_version message
       if @version_determined
-        puts "#{prefix} Received Version message out of place"
-        not_acknowledged message, "Version already received"
+        reason = "Received extraneous Version message"
+        log "#{reason}", message
+        dont_acknowledge message, reason
         return
       end
 
-      # check_site_id
+      check_site_ids message
       rsmp_version = check_rsmp_version message
       #check_sxl_version
-
       version_accepted message, rsmp_version
+    end
+
+    def check_site_ids message
+      message.attributes["siteId"].map { |item| item["sId"] }.each do |site_id|
+        if check_site_id site_id
+          @site_ids << site_id
+          log "Site id #{site_id} accepted"
+        else
+          reason = "Site id #{site_id} rejected"
+          log reason
+          dont_acknowledge message, reason
+          terminate
+          return nil
+        end
+      end
+    rescue StandardError => e
+      reason = "Bad site id #{e.inspect}"
+      log reason
+      dont_acknowledge message, reason
+      terminate
+      return nil
+    end
+
+    def check_site_id site_id
+      true
     end
 
     def check_rsmp_version message
@@ -165,11 +197,11 @@ module RSMP
       if candidates.any?
         # pick latest version
         version = candidates.sort.last
-        puts "#{prefix} Received Version, using #{version}: #{message.attributes.inspect}"
+        log "Received Version, using #{version}", message
         return version
       else
         reason = "RSMP versions [#{message.versions.join(',')}] were requested, but we only support [#{@server.rsmp_versions.join(',')}]."
-        not_acknowledged message, reason
+        dont_acknowledge message, reason
         terminate
         return nil
       end
@@ -177,7 +209,7 @@ module RSMP
 
     def version_accepted message, rsmp_version
       start_timeout
-      acknowledged message
+      acknowledge message
       send_version rsmp_version
       start_watchdog
       @version_determined = true
@@ -192,25 +224,31 @@ module RSMP
     end
 
     def process_ack message
-      puts "#{prefix} Received #{message.type}: #{message.attributes.inspect}"
+      past_item = @awaiting_acknowledgement[ message.attributes["oMId"] ]
+      if past_item
+        log "Received #{message.type} for #{past_item["type"]}", message
+      else
+        log "Received #{message.type}", message
+      end
       got_acknowledgement message
     end
 
     def process_not_ack message
-      puts "#{prefix} Received #{message.type}: #{message.attributes.inspect}"
+      log "Received #{message.type}", message
       got_acknowledgement message
     end
 
     def process_watchdog message
-      puts "#{prefix} Received #{message.type}: #{message.attributes.inspect}"
+      log "Received #{message.type}", message
       @latest_watchdog_received = Server.now_object
-      acknowledged message
+      acknowledge message
     end
 
     def expect_version_message message
       unless message.is_a? Version
-        puts "#{prefix} Version must be received first, but got #{message.type}, closing connection: #{message.attributes.inspect}"
-        not_acknowledged message, "Version must be received first, but got #{message.type}"
+        reason = "Version must be received first, but got #{message.type}"
+        log "#{reason}", message
+        dont_acknowledge message, reasons
         terminate
       end
     end
@@ -218,7 +256,6 @@ module RSMP
     def process packet
       message = Message.parse packet
       expect_version_message(message) unless @version_determined
-
       case message
         when MessageAck
           process_ack message
@@ -229,35 +266,45 @@ module RSMP
         when Watchdog
           process_watchdog message
         when AggregatedStatus, Alarm
-          puts "#{prefix} Received #{message.type}: #{message.attributes.inspect}"
-          acknowledged message
+          log "Received #{message.type}", message
+          acknowledge message
         else
-          puts "#{prefix} Received unknown message (#{message.type}): #{message.attributes.inspect}"
-          not_acknowledged message, "Unknown message"
+          reason = "Received unknown message (#{message.type})"
+          log "#{reason}", message
+          dont_acknowledge message, reason
       end
     rescue InvalidPacket => e
-      puts "#{prefix} Received invalid package, size=#{packet.size}, content=#{e.message}"
+      log "Received invalid package, size=#{packet.size}, content=#{e.message}"
     rescue InvalidJSON => e
-      puts "#{prefix} Received invalid JSON"
+      log "Received invalid JSON"
     rescue InvalidMessage => e
-      puts "#{prefix} Received invalid message"
+      log "Received invalid message"
     end
 
-    def acknowledged message
-      message = MessageAck.build_from(message)
-      send message
+    def acknowledge message
+      ack = MessageAck.build_from(message)
+      send ack, "for #{message.attributes["type"]}"
     end
 
-    def not_acknowledged message, reason=nil
+    def dont_acknowledge message, reason=nil
       message = MessageNotAck.new({
         "oMId" => message.mId,
         "rea" => reason || "Unknown reason"
       })
-      send message
+      send message, "for #{message.attributes["type"]}, #{reason}"
     end
 
     def prefix
-      "#{Server.now_string} #{@info[:id].to_s.rjust(3)}"
+      site_id = @site_ids.first
+      "#{Server.now_string} #{@info[:ip].ljust(20)} #{site_id.to_s.ljust(12)}"
+    end
+
+    def log str, message=nil
+      if @verbose && message
+        puts "#{prefix} #{str.ljust(40)} #{message.json.to_str}"
+      else
+        puts "#{prefix} #{str}"
+      end
     end
   end
 end

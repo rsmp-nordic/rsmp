@@ -6,7 +6,8 @@ require 'securerandom'
 module RSMP  
   class Message
 
-    attr_reader :now, :attributes, :out, :json
+    attr_reader :now, :attributes, :out
+    attr_accessor :json
 
     def self.parse packet
       begin
@@ -35,6 +36,7 @@ module RSMP
         message = Unknown.new attributes
       end
       message.validate
+      message.json = packet
       message
     end
 
