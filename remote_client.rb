@@ -45,8 +45,7 @@ module RSMP
     def start_reader    
       @reader = Thread.new(@client) do |socket|
         Thread.current[:name] = "reader"
-        # rsmp messages are json terminated with a form-feed,
-        # so read until we get a form-feed
+        # an rsmp message is json terminated with a form-feed
         while packet = socket.gets(Server::WRAPPING_DELIMITER)
           if packet
             packet.chomp!(Server::WRAPPING_DELIMITER)
@@ -58,13 +57,14 @@ module RSMP
             end
           end
         end
+        log "Client closed connection"
       end
     end
 
     def start_watchdog
       name = "watchdog"
       interval = @server.settings["watchdog_interval"]
-      log "Starting #{name} with interval of #{interval} seconds"
+      log "Starting #{name} with interval #{interval} seconds"
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
         loop do
@@ -84,7 +84,7 @@ module RSMP
     def start_timeout
       name = "timeout checker"
       interval = 1
-      log "Starting #{name} with interval #{interval}"
+      log "Starting #{name} with interval #{interval} seconds"
       @latest_watchdog_received = Server.now_object
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
@@ -94,7 +94,7 @@ module RSMP
             break if check_ack_timeout now
             break if check_watchdog_timeout now
           rescue StandardError => e
-            log "#{name}: #{e}"
+            log "#{name} error: #{e}"
             puts e.backtrace
           ensure
             sleep 1
@@ -120,7 +120,7 @@ module RSMP
       timeout = @server.settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       if now > latest
-        log "Did not receive Watchdog within #{timeout} seconds"
+        log "No Watchdog within #{timeout} seconds"
         terminate
         true
       end
@@ -152,14 +152,14 @@ module RSMP
       @awaiting_acknowledgement.delete message.attributes["oMId"]
     end
 
-    def process_version message
-      if @version_determined
-        reason = "Received extraneous Version message"
-        log "#{reason}", message
-        dont_acknowledge message, reason
-        return
-      end
+    def extraneous_version message
+      reason = "Received extraneous Version message"
+      log "#{reason}", message
+      dont_acknowledge message, reason
+    end
 
+    def process_version message
+      return extraneous_version if @version_determined
       check_site_ids message
       rsmp_version = check_rsmp_version message
       #check_sxl_version
@@ -168,16 +168,7 @@ module RSMP
 
     def check_site_ids message
       message.attributes["siteId"].map { |item| item["sId"] }.each do |site_id|
-        if check_site_id site_id
-          @site_ids << site_id
-          log "Site id #{site_id} accepted"
-        else
-          reason = "Site id #{site_id} rejected"
-          log reason
-          dont_acknowledge message, reason
-          terminate
-          return nil
-        end
+        break if check_site_id(site_id) == false
       end
     rescue StandardError => e
       reason = "Bad site id #{e.inspect}"
@@ -188,6 +179,19 @@ module RSMP
     end
 
     def check_site_id site_id
+      if site_id_accetable? site_id   
+        @site_ids << site_id
+        log "Site id #{site_id} accepted"
+      else
+        reason = "Site id #{site_id} rejected"
+        log reason
+        dont_acknowledge message, reason
+        terminate
+        return false
+      end
+    end
+
+    def site_id_accetable? site_id
       true
     end
 
@@ -246,8 +250,7 @@ module RSMP
 
     def expect_version_message message
       unless message.is_a? Version
-        reason = "Version must be received first, but got #{message.type}"
-        log "#{reason}", message
+        reason = "Version must be received first"
         dont_acknowledge message, reason
         terminate
       end
@@ -286,12 +289,12 @@ module RSMP
       send ack, "for #{message.attributes["type"]}"
     end
 
-    def dont_acknowledge message, reason=nil
+    def dont_acknowledge not_acknowledged_message, reason=nil
       message = MessageNotAck.new({
-        "oMId" => message.mId,
+        "oMId" => not_acknowledged_message.mId,
         "rea" => reason || "Unknown reason"
       })
-      send message, "for #{message.attributes["type"]}, #{reason}"
+      send message, "for #{not_acknowledged_message.attributes["type"]}, #{reason}"
     end
 
     def prefix
