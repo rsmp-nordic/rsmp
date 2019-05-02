@@ -9,3 +9,9 @@ It's not specified whether the first watchdog message is send immediately by bot
 Should we reply to a version message with an ack + version messages, or only with a version message?
 
 No timeout for receiving Version after connecting? There's no watchdog yet.
+
+RSMP message for reading/writing reconnect interval?
+RSMP message for reading/writing which status messages that will be buffered during communication outage?
+
+
+aggregated status: "alarm" og "fault"? simulatar and dokumentation does not agree

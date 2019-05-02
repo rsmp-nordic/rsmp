@@ -16,8 +16,8 @@ module RSMP
       @latest_watchdog_received = nil
       @version_determined = false
       @threads = []
-      @verbose = server.settings["verbose"] == true
       @site_ids = []
+      @aggregated_status = {}
     end
 
     def run
@@ -269,8 +269,9 @@ module RSMP
         when Watchdog
           process_watchdog message
         when AggregatedStatus, Alarm
-          log "Received #{message.type}", message
-          acknowledge message
+          process_aggregated_status message
+        when AggregatedStatus, Alarm
+          process_alarnm message
         else
           reason = "Received unknown message (#{message.type})"
           log "#{reason}", message
@@ -282,6 +283,47 @@ module RSMP
       log "Received invalid JSON"
     rescue InvalidMessage => e
       log "Received invalid message"
+    end
+
+    def validate_aggregated_status se
+      unless se && se.is_a?(Array) && se.size == 8
+        reason = "Received invalid #{message.type}"
+        log "#{reason}", message
+        dont_acknowledge message, reason
+        return false
+      end
+    end
+
+    def set_aggregated_status se
+      keys = [ :local_control,
+               :communication_distruption,
+               :high_priority_alarm,
+               :medium_priority_alarm,
+               :low_priority_alarm,
+               :normal,
+               :rest,
+               :not_connected ]
+
+      on = []
+      keys.each_with_index do |key,index|
+        @aggregated_status[key] = se[index]
+        on << key if se[index] == true
+      end
+      on
+    end
+
+    def process_aggregated_status message
+      se = message.attributes["se"]
+      return if validate_aggregated_status(se) == false
+      on = set_aggregated_status se
+      log "Received #{message.type}", message
+      log "Aggregated status: #{on.join(', ')}"
+      acknowledge message
+    end
+
+    def process_alarm message
+      log "Received #{message.type}", message
+      acknowledge message
     end
 
     def acknowledge message
@@ -303,7 +345,7 @@ module RSMP
     end
 
     def log str, message=nil
-      if @verbose && message
+      if @server.settings["verbose"]==true && message
         puts "#{prefix} #{str} #{message.json.to_str}"
       else
         puts "#{prefix} #{str}"
