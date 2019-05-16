@@ -6,7 +6,9 @@ require_relative 'error'
 module RSMP  
   class RemoteClient
 
-    attr_reader :site_id
+    attr_reader :site_ids
+    attr_accessor :store_messages
+    attr_reader :stored_messages
 
     def initialize server, client, info
       @server = server
@@ -18,6 +20,11 @@ module RSMP
       @threads = []
       @site_ids = []
       @aggregated_status = {}
+      @stored_messages = []
+    end
+
+    def clear_messages_log
+      @stored_messages = []
     end
 
     def run
@@ -53,7 +60,7 @@ module RSMP
               process packet
             rescue StandardError => e
               log "Uncaught exception: #{e}"
-              puts e.backtrace
+              log e.backtrace
             end
           end
         end
@@ -73,7 +80,7 @@ module RSMP
             send message
           rescue StandardError => e
             log "#{name} error: #{e}"
-            puts e.backtrace
+            log e.backtrace
           ensure
             sleep interval
           end
@@ -95,7 +102,7 @@ module RSMP
             break if check_watchdog_timeout now
           rescue StandardError => e
             log "#{name} error: #{e}"
-            puts e.backtrace
+            log e.backtrace
           ensure
             sleep 1
           end
@@ -132,6 +139,7 @@ module RSMP
       message.generate_json
       log_send message, reason
       @client.puts message.out
+      store_message message.clone
       expect_acknowledgement message
       message.mId
     end
@@ -216,7 +224,7 @@ module RSMP
     end
 
     def version_accepted message, rsmp_version
-      log "Received Version message for sites [#{@site_ids.join(',')}]"
+      log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}"
       start_timeout
       acknowledge message
       send_version rsmp_version
@@ -230,7 +238,7 @@ module RSMP
         "siteId"=>[{"sId"=>@server.site_id}],
         "SXL"=>"1.1"
       })
-      send version_response, "using RSMP #{rsmp_version}"
+      send version_response
     end
 
     def process_ack message
@@ -265,11 +273,18 @@ module RSMP
       end
     end
 
+    def store_message message
+      if @server.settings["store_messages"]
+        @stored_messages << message
+      end
+    end
+
     def process packet
       attributes = Message.parse_attributes packet
       message = Message.build attributes, packet
       expect_version_message(message) unless @version_determined
 
+      store_message message.clone
       case message
         when MessageAck
           process_ack message
@@ -361,10 +376,10 @@ module RSMP
     end
 
     def log str, message=nil
-      if @server.settings["verbose"]==true && message
-        puts "#{prefix} #{str.ljust(60)} #{message.json.to_s}"
+      if @server.settings["logging"]=="verbose" && message
+        @server.log "#{prefix} #{str.ljust(60)} #{message.json.to_s}"
       else
-        puts "#{prefix} #{str}"
+        @server.log "#{prefix} #{str}"
       end
     end
   end

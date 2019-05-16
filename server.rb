@@ -15,25 +15,25 @@ module RSMP
   class Server
     WRAPPING_DELIMITER = "\f"
 
-    attr_reader :rsmp_versions, :site_id, :settings
-    include Logger
+    attr_reader :rsmp_versions, :site_id, :settings, :remote_clients
     
     def initialize settings
       raise "Settings is empty" unless settings
       @settings = settings
 
-      raise "Settings file: port is missing" unless @settings["port"]
+      raise "Settings: port is missing" unless @settings["port"]
       @port = settings["port"]
       
-      raise "Settings file: rsmp_version is missing" unless @settings["rsmp_versions"]
+      raise "Settings: rsmp_version is missing" unless @settings["rsmp_versions"]
       @rsmp_versions = settings["rsmp_versions"]
 
-      raise "Settings file: siteId is missing" unless @settings["siteId"]
+      raise "Settings: siteId is missing" unless @settings["siteId"]
       @site_id = settings["siteId"]
 
-      raise "Settings file: watchdog_interval is missing" unless @settings["watchdog_interval"]
-      raise "Settings file: watchdog_timeout is missing" unless @settings["watchdog_timeout"]
-      raise "Settings file: acknowledgement_timeout is missing" unless @settings["acknowledgement_timeout"]
+      raise "Settings: watchdog_interval is missing" if @settings["watchdog_interval"] == nil
+      raise "Settings: watchdog_timeout is missing" if @settings["watchdog_timeout"] == nil
+      raise "Settings: acknowledgement_timeout is missing" if @settings["acknowledgement_timeout"] == nil
+      raise "Settings: store_messages is missing" if @settings["store_messages"] == nil
 
       @remote_clients = []
       @client_counter = 0
@@ -74,6 +74,10 @@ module RSMP
 
     def accept? client, info
       true
+    end
+
+    def log str
+       Logger.log str if @settings["logging"]
     end
 
     def connect client, info

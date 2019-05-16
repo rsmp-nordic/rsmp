@@ -13,3 +13,9 @@ The script reads settigns from the file ./rsmp.yml, including the port to listen
 
 
 
+
+
+
+# 
+If you're running the RSMP simulator in Virtualbox, you need to use NAT to connect them.
+The simulator should connect to 10.202.182.252:12111

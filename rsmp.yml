@@ -6,6 +6,7 @@ rsmp_versions:
 watchdog_interval: 1
 watchdog_timeout: 2
 acknowledgement_timeout: 2
-verbose: false
+logging: false
 log_acknowledgements: false
-log_watchdogs: false
+log_watchdogs: true
+store_messages: false
