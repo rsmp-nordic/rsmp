@@ -9,16 +9,14 @@ module RSMP
     attr_reader :now, :attributes, :out
     attr_accessor :json
 
-    def self.parse packet
-      begin
-        attributes = JSON.parse packet
-      rescue JSON::ParserError
-        raise InvalidPacket, bin_to_chars(packet)
-      end
+    def self.parse_attributes packet
+      JSON.parse packet
+    rescue JSON::ParserError
+      raise InvalidPacket, bin_to_chars(packet)
+    end
 
+    def self.build attributes, packet
       validate_message_type attributes
-      message = nil
-
       case attributes["type"]
       when "MessageAck"
         message = MessageAck.new attributes
@@ -40,12 +38,20 @@ module RSMP
       message
     end
 
+    def validate
+    end
+
     def type
       @attributes["type"]
     end
 
     def mId
       @attributes["mId"]
+    end
+
+    def attribute key
+      raise MissingAttribute.new("missing attribute '#{key}'") unless @attributes[key]
+      @attributes[key]
     end
 
     def self.bin_to_chars(s)
@@ -61,10 +67,11 @@ module RSMP
     end
 
     def self.validate_message_type attributes
-      raise InvalidJSON unless attributes.is_a?(Hash)
-      raise InvalidMessage unless attributes["mType"] == "rSMsg" &&
-                                  attributes["type"] &&
-                                  attributes
+      raise MalformedMessage.new("JSON must be a Hash, got #{attributes.class} ") unless attributes.is_a?(Hash)
+      raise MalformedMessage.new("mType is missing") unless attributes["mType"]
+      raise MalformedMessage.new("mType must be 'rSMsg', got '#{attributes["mType"]}'") unless attributes["mType"] == "rSMsg"
+      raise MalformedMessage.new("'type' is missing") unless attributes["type"]
+      raise MalformedMessage.new("'type' must be a String, got #{attributes["type"].class}") unless attributes["type"].is_a? String
     end
 
     def initialize attributes = {}
@@ -101,13 +108,11 @@ module RSMP
 
   end
 
-  class Invalid < Message
-    def valid?
-      false
+  class Malformed < Message
+    def initialize attributes = {}
+      # don't call super, just copy (potentially invalid) attributes
+      @attributes = attributes
     end
-  end
-
-  class Unknown < Invalid
   end
 
   class Version < Message
@@ -123,8 +128,11 @@ module RSMP
     end
 
     def versions
-      @attributes["RSMP"].map{ |item| item["vers"] }
+      attribute("RSMP").map{ |item| item["vers"] }
     end
+  end
+
+  class Unknown < Message
   end
 
   class AggregatedStatus < Message 

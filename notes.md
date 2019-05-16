@@ -14,4 +14,13 @@ RSMP message for reading/writing reconnect interval?
 RSMP message for reading/writing which status messages that will be buffered during communication outage?
 
 
-aggregated status: "alarm" og "fault"? simulatar and dokumentation does not agree
+aggregated status: "alarm" or "fault"? simulatar and documentation does not agree
+aggregated status: "rest" or "idle"? simulatar and documentation does not agree
+
+reemove references to NTS (national trafik system)
+
+"Description of the alarm. Defined in SXL but is never actually sent." Why not?
+
+
+Remove references to SUL (signautbytningsliste), use SXL instead
+
