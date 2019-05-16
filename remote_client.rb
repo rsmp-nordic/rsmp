@@ -194,7 +194,6 @@ module RSMP
     def check_site_id site_id
       if site_id_accetable? site_id   
         @site_ids << site_id
-        log "Site id #{site_id} accepted"
       else
         raise FatalError.new "Site id #{site_id} rejected"
       end
@@ -210,14 +209,14 @@ module RSMP
       if candidates.any?
         # pick latest version
         version = candidates.sort.last
-        log "Received Version, using #{version}", message
         return version
       else
-        raise FatalError.new "Received Version  requesting RSMP versions [#{message.versions.join(',')}] but we only support [#{@server.rsmp_versions.join(',')}]."
+        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but we only support [#{@server.rsmp_versions.join(',')}]."
       end
     end
 
     def version_accepted message, rsmp_version
+      log "Received Version message for sites [#{@site_ids.join(',')}]"
       start_timeout
       acknowledge message
       send_version rsmp_version
@@ -231,7 +230,7 @@ module RSMP
         "siteId"=>[{"sId"=>@server.site_id}],
         "SXL"=>"1.1"
       })
-      send version_response
+      send version_response, "using RSMP #{rsmp_version}"
     end
 
     def process_ack message
