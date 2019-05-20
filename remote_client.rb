@@ -2,6 +2,7 @@
 
 require_relative 'message'
 require_relative 'error'
+require 'timeout'
 
 module RSMP  
   class RemoteClient
@@ -382,5 +383,6 @@ module RSMP
         @server.log "#{prefix} #{str}"
       end
     end
+
   end
 end

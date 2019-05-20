@@ -5,6 +5,7 @@
 require 'rubygems'
 require 'yaml'
 require 'socket'
+require 'monitor.rb'
 require_relative 'logger'
 require_relative 'remote_client'
 
@@ -37,6 +38,10 @@ module RSMP
 
       @remote_clients = []
       @client_counter = 0
+
+      @remote_clients.extend(MonitorMixin)
+      @new_clients_connected
+      @empty_cond = @remote_clients.new_cond
     end
 
     def run
@@ -83,7 +88,11 @@ module RSMP
     def connect client, info
       log "#{Server.log_prefix(info[:ip])} Connected"
       remote_client = RemoteClient.new self, client, info
-      @remote_clients << remote_client
+
+      @remote_clients.synchronize do
+        @remote_clients.push remote_client
+        @empty_cond.broadcast
+      end
       remote_client.run
     end
 
@@ -114,5 +123,22 @@ module RSMP
     def self.log_prefix ip
       "#{now_string} #{ip.ljust(20)}"
     end
+
+    def site_connected? site_id
+       @remote_clients.each do |client|
+        return true if client.site_ids.include? site_id
+      end
+      false
+    end
+
+    def wait_for_site site_id, timeout
+      @remote_clients.synchronize do
+        @empty_cond.wait_while { !site_connected?(site_id) }
+      end
+      client = @remote_clients.first
+      p client.site_ids
+      client
+    end
+
   end
 end
