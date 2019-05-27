@@ -21,21 +21,19 @@ When("we start listening on port {int}") do |int|
   end
 end
 
-Then("the site {string} should connect within {int} seconds") do |site_id,timeout|
-	@client = @server.wait_for_site @site_id, timeout
-	#expect(@client).not_to be_nil
-	#expect(@client.site_ids).not_to be_empty
-	#expect(@client.site_ids.first).to eq(@site_id)
-end
+Then("the site should connect within {int} seconds") do |timeout|
+	sleep timeout	#TODO should use call back to continue as soon as connection is established
 
-Then("the connection sequence should complete within {int} seconds") do |int|
-	sleep 1
+	@client = @server.remote_clients.first
+	expect(@client).not_to be_nil
+
+	expect(@client.site_ids).not_to be_empty
+	expect(@client.site_ids.first).to eq(@site_id)
+
   @messages = @client.stored_messages.clone
 end
 
-Then("we should see the following sequence of messages:") do |expected_table|
-  actual_table = @messages.reject { |message| message.type == "MessageAck"}.map { |message| [message.type] }
-  actual_table = actual_table[0,expected_table.rows.size]
-  actual_table.unshift ['message']		# prepend column headers
+Then("we should have the following sequence of messages:") do |expected_table|
+  actual_table = @messages.reject { |message| message.type == "MessageAck"}.map { |message| [message.type] }.slice(0,expected_table.rows.size+1)
   expected_table.diff!(actual_table)
 end

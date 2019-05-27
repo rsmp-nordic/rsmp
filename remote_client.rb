@@ -76,14 +76,13 @@ module RSMP
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
         loop do
+          sleep interval
           begin
             message = Watchdog.new( {"wTs" => Server.now_string})
             send message
           rescue StandardError => e
             log "#{name} error: #{e}"
             log e.backtrace
-          ensure
-            sleep interval
           end
         end
       end
@@ -225,7 +224,7 @@ module RSMP
     end
 
     def version_accepted message, rsmp_version
-      log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}"
+      log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message
       start_timeout
       acknowledge message
       send_version rsmp_version
