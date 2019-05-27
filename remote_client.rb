@@ -36,6 +36,13 @@ module RSMP
 
     def terminate
       log "Closing connection"
+
+      @server.mutex.syncronize do
+        @site_ids.each do |site_id|
+          @server.site_id_map.delete site_id
+        end
+      end
+
       @reader.kill
     end
 
@@ -200,10 +207,23 @@ module RSMP
     end
 
     def check_site_id site_id
-      if site_id_accetable? site_id   
-        @site_ids << site_id
+      if site_id_accetable? site_id
+        add_site_id site_id
       else
         raise FatalError.new "Site id #{site_id} rejected"
+      end
+    end
+
+    def add_site_id site_id
+      @site_ids << site_id
+    end
+
+    def connection_complete
+      @server.mutex.synchronize do
+        @site_ids.each do |site_id|
+          @server.site_id_map[site_id] = self
+        end
+        @server.condition_variable.broadcast
       end
     end
 
@@ -247,6 +267,9 @@ module RSMP
       if @server.settings["log_acknowledgements"]==true
         if past_item
           log "Received #{message.type} for #{past_item["type"]}", message
+          if past_item["type"] == "Version"
+            connection_complete
+          end
         else
           log "Received #{message.type}", message
         end

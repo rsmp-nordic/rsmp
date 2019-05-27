@@ -5,19 +5,20 @@
 require 'rubygems'
 require 'yaml'
 require 'socket'
-require 'monitor.rb'
 require_relative 'logger'
 require_relative 'remote_client'
 
 # Handle connections to multiple clients.
 # Uses bidirectional pure TCP sockets
 
+
 module RSMP
   class Server
     WRAPPING_DELIMITER = "\f"
 
     attr_reader :rsmp_versions, :site_id, :settings, :remote_clients
-    
+    attr_accessor :site_id_map, :got, :mutex, :condition_variable
+
     def initialize settings
       raise "Settings is empty" unless settings
       @settings = settings
@@ -39,9 +40,11 @@ module RSMP
       @remote_clients = []
       @client_counter = 0
 
-      @remote_clients.extend(MonitorMixin)
-      @new_clients_connected
-      @empty_cond = @remote_clients.new_cond
+      @site_id_map = {}
+
+      @mutex = Mutex.new
+      @condition_variable = ConditionVariable.new
+      @got = false
     end
 
     def run
@@ -88,11 +91,7 @@ module RSMP
     def connect client, info
       log "#{Server.log_prefix(info[:ip])} Connected"
       remote_client = RemoteClient.new self, client, info
-
-      @remote_clients.synchronize do
-        @remote_clients.push remote_client
-        @empty_cond.broadcast
-      end
+      @remote_clients.push remote_client
       remote_client.run
     end
 
@@ -125,19 +124,20 @@ module RSMP
     end
 
     def site_connected? site_id
-       @remote_clients.each do |client|
+       @site_id_map.each_pair do |site_id,client|
         return true if client.site_ids.include? site_id
       end
       false
     end
 
     def wait_for_site site_id, timeout
-      @remote_clients.synchronize do
-        @empty_cond.wait_while { !site_connected?(site_id) }
+      @mutex.synchronize do
+        unless site_connected? site_id
+          @condition_variable.wait(@mutex,timeout)
+        end
+        return 
       end
-      client = @remote_clients.first
-      p client.site_ids
-      client
+
     end
 
   end

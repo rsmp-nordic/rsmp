@@ -7,6 +7,6 @@ watchdog_interval: 1
 watchdog_timeout: 2
 acknowledgement_timeout: 2
 logging: true
-log_acknowledgements: false
+log_acknowledgements: true
 log_watchdogs: true
 store_messages: false

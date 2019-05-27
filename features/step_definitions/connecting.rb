@@ -10,7 +10,7 @@ When("we start listening on port {int}") do |int|
   	"watchdog_interval"=>1, "watchdog_timeout"=>2,
   	"acknowledgement_timeout"=>2,
   	"logging"=>false,
-  	"log_acknowledgements"=>false,
+    "log_acknowledgements"=>true,
   	"log_watchdogs"=>true,
   	"store_messages"=>true
 	}
@@ -22,7 +22,7 @@ When("we start listening on port {int}") do |int|
 end
 
 Then("the site should connect within {int} seconds") do |timeout|
-	sleep timeout	#TODO should use call back to continue as soon as connection is established
+	@server.wait_for_site @site_id, timeout
 
 	@client = @server.remote_clients.first
 	expect(@client).not_to be_nil
