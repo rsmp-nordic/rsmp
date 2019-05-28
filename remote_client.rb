@@ -144,6 +144,7 @@ module RSMP
 
     def send message, reason=nil
       message.generate_json
+      message.direction = :out
       log_send message, reason
       @client.puts message.out
       store_message message.clone
@@ -307,7 +308,6 @@ module RSMP
       message = Message.build attributes, packet
       expect_version_message(message) unless @version_determined
 
-      store_message message.clone
       case message
         when MessageAck
           process_ack message
@@ -379,6 +379,7 @@ module RSMP
     end
 
     def acknowledge message
+      store_message message.clone
       ack = MessageAck.build_from(message)
       send ack, "for #{message.type}"
     end

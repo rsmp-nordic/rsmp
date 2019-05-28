@@ -17,6 +17,8 @@ Feature: Connection sequence
     When we start the server
     Then the site "AA+BBCCC=DDD" should connect within 5 seconds
     And we should see the message sequence
-      | Version          |
-      | Version          |
-      | AggregatedStatus |
+      | in  | Version          |
+      | out | MessageAck       |
+      | out | Version          |
+      | in  | AggregatedStatus |
+      | out | MessageAck       |

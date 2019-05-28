@@ -7,7 +7,7 @@ module RSMP
   class Message
 
     attr_reader :now, :attributes, :out
-    attr_accessor :json
+    attr_accessor :json, :direction
 
     def self.parse_attributes packet
       JSON.parse packet
@@ -35,6 +35,7 @@ module RSMP
       end
       message.validate
       message.json = packet
+      message.direction = :in
       message
     end
 
