@@ -1,4 +1,4 @@
-siteId: RN+RS0001
+site_id: RN+RS0001
 port: 12111
 rsmp_versions:
   - 3.1.4
@@ -7,6 +7,6 @@ watchdog_interval: 1
 watchdog_timeout: 2
 acknowledgement_timeout: 2
 logging: true
-log_acknowledgements: true
-log_watchdogs: true
+log_acknowledgements: false
+log_watchdogs: false
 store_messages: false
