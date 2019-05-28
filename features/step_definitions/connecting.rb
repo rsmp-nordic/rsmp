@@ -1,39 +1,43 @@
-Given("we're the supervisor accepting communication from {string}") do |string|
-	@site_id = string
+def parse_settings_table table
+  table.rows_hash.map do |key,value|
+    if value == "true"
+      [key,true]
+    elsif value == "false"
+      [key,false]
+    elsif value.match /^\d+$/
+      [key,value.to_i]
+    elsif value.include? ','
+      [key,value.split(',').map {|s| s.strip }.flatten]
+    else
+      [key,value]
+    end
+  end.to_h
 end
 
-When("we start listening on port {int}") do |int|
-	settings = {
-  	"siteId"=>"RN+RS0001",
-  	"port"=>int,
-  	"rsmp_versions"=>["3.1.4"],
-  	"watchdog_interval"=>1, "watchdog_timeout"=>2,
-  	"acknowledgement_timeout"=>2,
-  	"logging"=>false,
-    "log_acknowledgements"=>true,
-  	"log_watchdogs"=>true,
-  	"store_messages"=>true
-	}
-  
-  @server = RSMP::Server.new(settings)
+Given("the supervisor settings") do |table|
+  @settings = parse_settings_table table
+end
+
+When("we start the server") do
+  @server = RSMP::Server.new(@settings)
   Thread.new do
   	@server.run
   end
 end
 
-Then("the site should connect within {int} seconds") do |timeout|
-	@server.wait_for_site @site_id, timeout
+Then("the site {string} should connect within {int} seconds") do |site_id, timeout|
+	@server.wait_for_site site_id, timeout
 
 	@client = @server.remote_clients.first
 	expect(@client).not_to be_nil
 
 	expect(@client.site_ids).not_to be_empty
-	expect(@client.site_ids.first).to eq(@site_id)
+	expect(@client.site_ids.first).to eq(site_id)
 
   @messages = @client.stored_messages.clone
 end
 
-Then("we should have the following sequence of messages:") do |expected_table|
+Then("we should see the message sequence") do |expected_table|
   actual_table = @messages.reject { |message| message.type == "MessageAck"}.map { |message| [message.type] }.slice(0,expected_table.rows.size+1)
   expected_table.diff!(actual_table)
 end

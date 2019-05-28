@@ -29,8 +29,8 @@ module RSMP
       raise "Settings: rsmp_version is missing" unless @settings["rsmp_versions"]
       @rsmp_versions = settings["rsmp_versions"]
 
-      raise "Settings: siteId is missing" unless @settings["siteId"]
-      @site_id = settings["siteId"]
+      raise "Settings: siteId is missing" unless @settings["site_id"]
+      @site_id = settings["site_id"]
 
       raise "Settings: watchdog_interval is missing" if @settings["watchdog_interval"] == nil
       raise "Settings: watchdog_timeout is missing" if @settings["watchdog_timeout"] == nil
