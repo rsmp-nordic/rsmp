@@ -3,7 +3,8 @@ module RSMP
 
     attr_reader :archive
 
-    def initialize settings
+    def initialize server, settings
+      @server = server
       @settings = settings
       @archive = []
     end
@@ -47,8 +48,12 @@ module RSMP
 
     def log item
       @archive << item
-      return unless output? item
-      output item[:level], build_output(item)
+      @server.archive_changed
+      output item[:level], build_output(item) if output? item
+    end
+
+    def only_message
+      @archive.select { |item| item[:direction] != nil }
     end
   end
 end

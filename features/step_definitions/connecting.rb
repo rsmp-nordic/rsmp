@@ -18,8 +18,7 @@ Then("the site {string} should connect within {int} seconds") do |site_id, timeo
 end
 
 Then("we should exchange these messages within {int} seconds") do |timeout, expected_table|
-  sleep 1
-  archive = @client.server.logger.archive
+  archive = @server.wait_for_messages expected_table.rows.size, timeout
   messages = archive.map { |item| message = item[:message] }.compact
   actual_table = messages.map { |message| [message.direction.to_s, message.type] }
   actual_table = actual_table.slice(0,expected_table.rows.size+1)

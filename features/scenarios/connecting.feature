@@ -7,7 +7,7 @@ Feature: Connection sequence
   Scenario: Connecting to a site
     When we start the server
     Then the site "AA+BBCCC=DDD" should connect within 2 seconds
-    And we should exchange these messages within 2 seconds
+    And we should exchange these messages within 5 seconds
       | in  | Version          |
       | out | MessageAck       |
       | out | Version          |

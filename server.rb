@@ -38,13 +38,16 @@ module RSMP
       raise "Settings: store_messages is missing" if @settings["store_messages"] == nil
 
       raise "Settings: log is missing" if @settings["log"] == nil
-      @logger = Logger.new @settings["log"]
+      @logger = Logger.new self, @settings["log"]
 
       @remote_clients = []
       @client_counter = 0
 
       @site_id_mutex = Mutex.new
       @site_id_condition_variable = ConditionVariable.new
+
+      @archive_mutex = Mutex.new
+      @archive_condition_variable = ConditionVariable.new
     end
 
     def run
@@ -149,6 +152,12 @@ module RSMP
       end
     end
 
+    def archive_changed
+      @archive_mutex.synchronize do
+        @archive_condition_variable.broadcast
+      end
+    end
+
     def wait_for_site site_id, timeout
       @site_id_mutex.synchronize do
         @site_id_condition_variable.wait(@site_id_mutex,timeout) unless site_connected? site_id
@@ -156,5 +165,16 @@ module RSMP
       end
     end
 
+    def wait_for_messages num, timeout
+      start = Time.now
+      @archive_mutex.synchronize do
+        while @logger.only_message.size < num
+          left = timeout + (start - Time.now)
+          return nil if left < 0
+          @archive_condition_variable.wait(@archive_mutex,left)
+        end
+      end
+      @logger.archive
+    end
   end
 end
