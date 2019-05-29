@@ -16,8 +16,8 @@ module RSMP
   class Server
     WRAPPING_DELIMITER = "\f"
 
-    attr_reader :rsmp_versions, :site_id, :settings, :remote_clients
-    attr_accessor :site_id_map, :got, :mutex, :condition_variable
+    attr_reader :rsmp_versions, :site_id, :settings, :remote_clients, :logger
+    attr_accessor :site_id_mutex, :site_id_condition_variable
 
     def initialize settings
       raise "Settings is empty" unless settings
@@ -37,14 +37,14 @@ module RSMP
       raise "Settings: acknowledgement_timeout is missing" if @settings["acknowledgement_timeout"] == nil
       raise "Settings: store_messages is missing" if @settings["store_messages"] == nil
 
+      raise "Settings: log is missing" if @settings["log"] == nil
+      @logger = Logger.new @settings["log"]
+
       @remote_clients = []
       @client_counter = 0
 
-      @site_id_map = {}
-
-      @mutex = Mutex.new
-      @condition_variable = ConditionVariable.new
-      @got = false
+      @site_id_mutex = Mutex.new
+      @site_id_condition_variable = ConditionVariable.new
     end
 
     def run
@@ -77,35 +77,43 @@ module RSMP
     end
 
     def starting
-      log "#{Server.now_string} Starting site id #{@site_id} on port #{@port}"
+      log str: "Starting site id #{@site_id} on port #{@port}", level: :info
     end
 
     def accept? client, info
       true
     end
 
-    def log str
-       Logger.log str if @settings["logging"]
+    def log item
+      raise ArgumentError unless item.is_a? Hash
+      now_obj = Server.now_object
+      now_str = Server.now_string(now_obj)
+
+      cleaned = item.select { |k,v| [:level,:ip,:site_id,:str,:message].include? k }
+      cleaned[:timestamp] = now_obj
+      cleaned[:direction] = item[:message].direction if item[:message]
+
+      @logger.log cleaned
     end
 
     def connect client, info
-      log "#{Server.log_prefix(info[:ip])} Connected"
+      log ip: info[:ip], str: "Site connected", level: :log
       remote_client = RemoteClient.new self, client, info
       @remote_clients.push remote_client
       remote_client.run
     end
 
     def reject client, info
-      log "#{Server.log_prefix(info[:ip])} Rejected"
+      log ip: info[:ip], str: "Site rejected", level: :log
     end
 
     def close client, info
-      log "#{Server.log_prefix(info[:ip])} Closed "
+      log ip: info[:ip], str: "Site disconnected", level: :log
       client.close
     end
 
     def exiting
-      log "#{Server.now_string} Exiting"
+      log str: "Exiting", level: :info
     end
 
     def self.now_object
@@ -113,10 +121,11 @@ module RSMP
       Time.now.utc
     end
 
-    def self.now_string
+    def self.now_string time=nil
       # date in the format required by rsmp, using UTC time zone
       # example: 2015-06-08T12:01:39.654Z
-      Time.now.utc.strftime("%FT%T.%3NZ")
+      time ||= Time.now.utc
+      time.strftime("%FT%T.%3NZ")
     end
 
     def self.log_prefix ip
@@ -124,20 +133,27 @@ module RSMP
     end
 
     def site_connected? site_id
-       @site_id_map.each_pair do |site_id,client|
-        return true if client.site_ids.include? site_id
+      return find_client(site_id) != nil
+    end
+
+    def find_client site_id
+      @remote_clients.each do |client|
+        return client if client.site_ids.include? site_id
       end
-      false
+      nil
+    end
+
+    def site_ids_changed
+      @site_id_mutex.synchronize do
+        @site_id_condition_variable.broadcast
+      end
     end
 
     def wait_for_site site_id, timeout
-      @mutex.synchronize do
-        unless site_connected? site_id
-          @condition_variable.wait(@mutex,timeout)
-        end
-        return 
+      @site_id_mutex.synchronize do
+        @site_id_condition_variable.wait(@site_id_mutex,timeout) unless site_connected? site_id
+        find_client site_id 
       end
-
     end
 
   end

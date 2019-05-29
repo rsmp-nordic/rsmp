@@ -2,6 +2,9 @@
 # RSMP simulator issues
 The simulator ignores if we send a no_ack response to the initital version message
 
+When invalid messages are send during connection sequence, the simulator stalls and does not send anything more, nor does it disconnect.
+
+
 # RSMP specification issues
 The version message should contain an identifier of the SXL to use, e.g. "traffic_lights" or "variable_message_sign".
 It's not specified whether the first watchdog message is send immediately by both sides, or first by the connecting device, and then the supervisor system.

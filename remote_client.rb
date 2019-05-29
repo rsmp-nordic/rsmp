@@ -7,7 +7,7 @@ require 'timeout'
 module RSMP  
   class RemoteClient
 
-    attr_reader :site_ids
+    attr_reader :site_ids, :server
     attr_accessor :store_messages
     attr_reader :stored_messages
 
@@ -35,21 +35,15 @@ module RSMP
     end
 
     def terminate
-      log "Closing connection"
-
-      @server.mutex.syncronize do
-        @site_ids.each do |site_id|
-          @server.site_id_map.delete site_id
-        end
-      end
-
+      info "Closing connection"
+      remove_from_site_id_map
       @reader.kill
     end
 
     def kill_threads
       reaper = Thread.new(@threads) do |threads|
         threads.each do |thread|
-          log "Stopping #{thread[:name]}"
+          info "Stopping #{thread[:name]}"
           thread.kill
         end
       end
@@ -67,19 +61,18 @@ module RSMP
             begin
               process packet
             rescue StandardError => e
-              log "Uncaught exception: #{e}"
-              log e.backtrace
+              error ["Uncaught exception: #{e}",e.backtrace].flatten.join("\n")
             end
           end
         end
-        log "Client closed connection"
+        warning "Client closed connection"
       end
     end
 
     def start_watchdog
       name = "watchdog"
       interval = @server.settings["watchdog_interval"]
-      log "Starting #{name} with interval #{interval} seconds"
+      info "Starting #{name} with interval #{interval} seconds"
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
         loop do
@@ -88,8 +81,7 @@ module RSMP
             message = Watchdog.new( {"wTs" => Server.now_string})
             send message
           rescue StandardError => e
-            log "#{name} error: #{e}"
-            log e.backtrace
+            error ["#{name} error: #{e}",e.backtrace].flatten.join("\n")
           end
         end
       end
@@ -98,7 +90,7 @@ module RSMP
     def start_timeout
       name = "timeout checker"
       interval = 1
-      log "Starting #{name} with interval #{interval} seconds"
+      info "Starting #{name} with interval #{interval} seconds"
       @latest_watchdog_received = Server.now_object
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
@@ -108,8 +100,7 @@ module RSMP
             break if check_ack_timeout now
             break if check_watchdog_timeout now
           rescue StandardError => e
-            log "#{name} error: #{e}"
-            log e.backtrace
+            error ["#{name} error: #{e}",e.backtrace].flatten.join("\n")
           ensure
             sleep 1
           end
@@ -123,7 +114,7 @@ module RSMP
       @awaiting_acknowledgement.clone.each_pair do |mId, data|
         latest = data["timestamp"] + timeout
         if now > latest
-          log "No acknowledgements for #{data["type"]} within #{timeout} seconds"
+          error "No acknowledgements for #{data["type"]} within #{timeout} seconds"
           terminate
           return true
         end
@@ -135,7 +126,7 @@ module RSMP
       timeout = @server.settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       if now > latest
-        log "No Watchdog within #{timeout} seconds"
+        error "No Watchdog within #{timeout} seconds"
         terminate
         return true
       end
@@ -153,25 +144,11 @@ module RSMP
     end
 
     def log_send message, reason=nil
-      return unless should_log_event? message
       if reason
         log "Sent #{message.type} #{reason}", message
       else
         log "Sent #{message.type}", message
       end
-    end
-
-    def log_receive message
-      return unless should_log_event? message
-    end
-
-    def should_log_event? message
-      return false if @server.settings["log_acknowledgements"]==false &&
-                (message.type == "MessageAck" || message.type == "MessageNotAck")
-
-      return false if @server.settings["log_watchdogs"]==false && message.type == "Watchdog" 
-
-      true
     end
 
     def expect_acknowledgement message
@@ -203,6 +180,7 @@ module RSMP
       message.attribute("siteId").map { |item| item["sId"] }.each do |site_id|
         check_site_id(site_id)
       end
+      @server.site_ids_changed
     rescue StandardError => e
       raise FatalError.new e.message
     end
@@ -220,12 +198,6 @@ module RSMP
     end
 
     def connection_complete
-      @server.mutex.synchronize do
-        @site_ids.each do |site_id|
-          @server.site_id_map[site_id] = self
-        end
-        @server.condition_variable.broadcast
-      end
     end
 
     def site_id_accetable? site_id
@@ -264,17 +236,16 @@ module RSMP
 
     def process_ack message
       past_item = @awaiting_acknowledgement[ message.attribute("oMId") ]
-      
-      if @server.settings["log_acknowledgements"]==true
-        if past_item
-          log "Received #{message.type} for #{past_item["type"]}", message
-          if past_item["type"] == "Version"
-            connection_complete
-          end
-        else
-          log "Received #{message.type}", message
+
+      if past_item
+        log "Received #{message.type} for #{past_item["type"]}", message
+        if past_item["type"] == "Version"
+          connection_complete
         end
+      else
+        log "Received #{message.type}", message
       end
+
       got_acknowledgement message
     end
 
@@ -325,9 +296,9 @@ module RSMP
           dont_acknowledge message, "Received", "unknown message (#{message.type})"
       end
     rescue InvalidPacket => e
-      log "Received invalid package, size=#{packet.size}, content=#{e.message}"
+      warning "Received invalid package, must be valid JSON but got #{packet.size} bytes: #{e.message}"
     rescue MalformedMessage => e
-      log "Received invalid message, #{e.message}", Malformed.new(attributes)
+      warning "Received invalid message, #{e.message}", Malformed.new(attributes)
       # cannot acknowledge a malformed message, just ignore it
     rescue InvalidMessage => e
       dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
@@ -378,20 +349,21 @@ module RSMP
       acknowledge message
     end
 
-    def acknowledge message
-      store_message message.clone
-      ack = MessageAck.build_from(message)
-      send ack, "for #{message.type}"
+    def acknowledge original
+      ack = MessageAck.build_from(original)
+      ack.original = original.clone
+      send ack, "for #{original.type}"
     end
 
-    def dont_acknowledge not_acknowledged_message, prefix=nil, reason=nil
+    def dont_acknowledge original, prefix=nil, reason=nil
       str = [prefix,reason].join(' ')
-      log str, not_acknowledged_message if reason
+      warning str, original if reason
       message = MessageNotAck.new({
-        "oMId" => not_acknowledged_message.mId,
+        "oMId" => original.mId,
         "rea" => reason || "Unknown reason"
       })
-      send message, "for #{not_acknowledged_message.type}"
+      message.original = original.clone
+     send message, "for #{original.type}"
     end
 
     def prefix
@@ -399,12 +371,30 @@ module RSMP
       "#{Server.log_prefix(@info[:ip])} #{site_id.to_s.ljust(12)}"
     end
 
+    def error str, message=nil
+      output str, :error, message
+    end
+
+    def warning str, message=nil
+      output str, :warning, message
+    end
+
     def log str, message=nil
-      if @server.settings["logging"]=="verbose" && message
-        @server.log "#{prefix} #{str.ljust(60)} #{message.json.to_s}"
-      else
-        @server.log "#{prefix} #{str}"
-      end
+      output str, :log, message
+    end
+
+    def info str, message=nil
+      output str, :info, message
+    end
+
+    def output str, level, message=nil
+      @server.log({
+        level: level,
+        ip: @info[:ip],
+        site_id: @site_ids.first,
+        str: str,
+        message: message
+      })
     end
 
   end

@@ -51,26 +51,34 @@ module RSMP
     end
 
     def attribute key
-      raise MissingAttribute.new("missing attribute '#{key}'") unless @attributes[key]
+      unless @attributes[key]
+        maybe = @attributes.find { |k,v| k.downcase == key.downcase }
+        if maybe
+          raise MissingAttribute.new "attribute '#{maybe.first}' should be named '#{key}'"
+        else
+          raise MissingAttribute.new "missing attribute '#{key}'"
+        end
+      end
       @attributes[key]
     end
 
     def self.bin_to_chars(s)
-      if s.size == 0
-        ""
-      elsif s.size == 1
-        "#{s.bytes.first}"
-      elsif s.size == 2 
-        "#{s.bytes.first},#{s.bytes.last}"
-      elsif s.size >= 3
-        "#{s.bytes.first},...,#{s.bytes.last}"
+      out = s.gsub(/[^[:print:]]/i, '.')
+      max = 120
+      if out.size <= max
+        out
+      else
+        mid = " ... "
+        length = (max-mid.size)/2 - 1
+        "#{out[0..length]} ... #{out[-length-1..-1]}"
       end
     end
 
     def self.validate_message_type attributes
       raise MalformedMessage.new("JSON must be a Hash, got #{attributes.class} ") unless attributes.is_a?(Hash)
-      raise MalformedMessage.new("mType is missing") unless attributes["mType"]
-      raise MalformedMessage.new("mType must be 'rSMsg', got '#{attributes["mType"]}'") unless attributes["mType"] == "rSMsg"
+      raise MalformedMessage.new("'mType' is missing") unless attributes["mType"]
+      raise MalformedMessage.new("'mType' must be a String, got #{attributes["mType"].class}") unless attributes["mType"].is_a? String
+      raise MalformedMessage.new("'mType' must be 'rSMsg', got '#{attributes["mType"]}'") unless attributes["mType"] == "rSMsg"
       raise MalformedMessage.new("'type' is missing") unless attributes["type"]
       raise MalformedMessage.new("'type' must be a String, got #{attributes["type"].class}") unless attributes["type"].is_a? String
     end
@@ -112,7 +120,8 @@ module RSMP
   class Malformed < Message
     def initialize attributes = {}
       # don't call super, just copy (potentially invalid) attributes
-      @attributes = attributes
+      @attributes = {}
+      @invalid_attributes = attributes
     end
   end
 
@@ -161,6 +170,7 @@ module RSMP
   end
 
   class MessageAck < Message
+    attr_accessor :original
 
     def self.build_from message
       return new({
@@ -176,6 +186,8 @@ module RSMP
   end
 
   class MessageNotAck < Message
+    attr_accessor :original
+
     def initialize attributes = {}
       super({
         "type" => "MessageNotAck",
