@@ -35,7 +35,6 @@ module RSMP
       raise "Settings: watchdog_interval is missing" if @settings["watchdog_interval"] == nil
       raise "Settings: watchdog_timeout is missing" if @settings["watchdog_timeout"] == nil
       raise "Settings: acknowledgement_timeout is missing" if @settings["acknowledgement_timeout"] == nil
-      raise "Settings: store_messages is missing" if @settings["store_messages"] == nil
 
       raise "Settings: log is missing" if @settings["log"] == nil
       @logger = Logger.new self, @settings["log"]
@@ -46,20 +45,50 @@ module RSMP
       @site_id_mutex = Mutex.new
       @site_id_condition_variable = ConditionVariable.new
 
-      @archive_mutex = Mutex.new
-      @archive_condition_variable = ConditionVariable.new
+      @socket_threads = []
+      @run = false
     end
 
-    def run
+    def start
+      #return if @socket_thread
+      @run = true
       starting
-      socket = TCPServer.new @port  # server on specific port
-      loop do
-        Thread.start(socket.accept) do |client|    # wait for a client to connect
-          handle_connection(client)
+      @socket = TCPServer.new @port  # server on specific port
+      @socket_thread = Thread.new do
+        while @run
+          begin
+            @socket_threads << Thread.start(@socket.accept) do |client|    # wait for a client to connect
+              handle_connection(client)
+            end
+          rescue Errno::EBADF => e
+            break
+          end
         end
       end
+    end
+
+    def join
+      @socket_thread.join if @socket_thread
+    end
+
+    def stop
+      log str: "Stopping site id #{@site_id}", level: :info
+      @run = false
+      @remote_clients.each { |client| client.terminate }
+      @remote_clients.clear
+
+      @socket.close if @socket
+      @socket = nil
+
+      @socket_thread.join if @socket_thread
+      @socket_thread = nil
     ensure
       exiting
+    end
+
+    def restart
+      stop
+      start
     end
 
     def get_new_client_id
@@ -152,12 +181,6 @@ module RSMP
       end
     end
 
-    def archive_changed
-      @archive_mutex.synchronize do
-        @archive_condition_variable.broadcast
-      end
-    end
-
     def wait_for_site site_id, timeout
       @site_id_mutex.synchronize do
         @site_id_condition_variable.wait(@site_id_mutex,timeout) unless site_connected? site_id
@@ -165,16 +188,5 @@ module RSMP
       end
     end
 
-    def wait_for_messages num, timeout
-      start = Time.now
-      @archive_mutex.synchronize do
-        while @logger.only_message.size < num
-          left = timeout + (start - Time.now)
-          return nil if left < 0
-          @archive_condition_variable.wait(@archive_mutex,left)
-        end
-      end
-      @logger.archive
-    end
   end
 end

@@ -6,8 +6,8 @@ require 'securerandom'
 module RSMP  
   class Message
 
-    attr_reader :now, :attributes, :out
-    attr_accessor :json, :direction
+    attr_reader :now, :attributes, :out, :timestamp
+    attr_accessor :json, :direction,
 
     def self.parse_attributes packet
       JSON.parse packet
@@ -46,7 +46,7 @@ module RSMP
       @attributes["type"]
     end
 
-    def mId
+    def m_id
       @attributes["mId"]
     end
 
@@ -84,6 +84,7 @@ module RSMP
     end
 
     def initialize attributes = {}
+      @timestamp = Server.now_object
       @attributes = { "mType"=> "rSMsg" }.merge attributes
 
       # if message is empty, generate a new one

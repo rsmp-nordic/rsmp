@@ -8,8 +8,6 @@ module RSMP
   class RemoteClient
 
     attr_reader :site_ids, :server
-    attr_accessor :store_messages
-    attr_reader :stored_messages
 
     def initialize server, client, info
       @server = server
@@ -21,11 +19,7 @@ module RSMP
       @threads = []
       @site_ids = []
       @aggregated_status = {}
-      @stored_messages = []
-    end
-
-    def clear_messages_log
-      @stored_messages = []
+      @watchdog_started = false
     end
 
     def run
@@ -34,9 +28,12 @@ module RSMP
       kill_threads
     end
 
+    def close
+      @client.close
+    end
+
     def terminate
       info "Closing connection"
-      remove_from_site_id_map
       @reader.kill
     end
 
@@ -76,15 +73,16 @@ module RSMP
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
         loop do
-          sleep interval
           begin
             message = Watchdog.new( {"wTs" => Server.now_string})
             send message
           rescue StandardError => e
             error ["#{name} error: #{e}",e.backtrace].flatten.join("\n")
           end
+          sleep interval
         end
       end
+      @watchdog_started = true
     end
 
     def start_timeout
@@ -111,10 +109,10 @@ module RSMP
     def check_ack_timeout now
       timeout = @server.settings["acknowledgement_timeout"]
       # hash cannot be modify during iteration, so clone it
-      @awaiting_acknowledgement.clone.each_pair do |mId, data|
-        latest = data["timestamp"] + timeout
+      @awaiting_acknowledgement.clone.each_pair do |m_id, message|
+        latest = message.timestamp + timeout
         if now > latest
-          error "No acknowledgements for #{data["type"]} within #{timeout} seconds"
+          error "No acknowledgements for #{message.type} within #{timeout} seconds"
           terminate
           return true
         end
@@ -138,9 +136,8 @@ module RSMP
       message.direction = :out
       log_send message, reason
       @client.puts message.out
-      store_message message.clone
       expect_acknowledgement message
-      message.mId
+      message.m_id
     end
 
     def log_send message, reason=nil
@@ -153,10 +150,7 @@ module RSMP
 
     def expect_acknowledgement message
       unless message.is_a?(MessageAck) || message.is_a?(MessageNotAck)
-        @awaiting_acknowledgement[message.mId] = {
-          "type" => message.type,  
-          "timestamp" => Server.now_object
-        }
+        @awaiting_acknowledgement[message.m_id] = message
       end
     end
 
@@ -197,7 +191,7 @@ module RSMP
       @site_ids << site_id
     end
 
-    def connection_complete
+    def connection_complete 
     end
 
     def site_id_accetable? site_id
@@ -221,7 +215,6 @@ module RSMP
       start_timeout
       acknowledge message
       send_version rsmp_version
-      start_watchdog
       @version_determined = true
     end
 
@@ -235,14 +228,15 @@ module RSMP
     end
 
     def process_ack message
-      past_item = @awaiting_acknowledgement[ message.attribute("oMId") ]
-
-      if past_item
-        log "Received #{message.type} for #{past_item["type"]}", message
-        if past_item["type"] == "Version"
+      original = @awaiting_acknowledgement[ message.attribute("oMId") ]
+      if original
+        message.original = original
+        log "Received #{message.type} for #{original.type} #{message.attribute("oMId")[0..3]}", message
+        if original.type == "Version"
           connection_complete
         end
       else
+        raise
         log "Received #{message.type}", message
       end
 
@@ -255,11 +249,12 @@ module RSMP
     end
 
     def process_watchdog message
-      if @server.settings["log_watchdogs"] == true
-        log "Received #{message.type}", message
-      end
+      log "Received #{message.type}", message
       @latest_watchdog_received = Server.now_object
       acknowledge message
+      if @watchdog_started == false
+        start_watchdog
+      end
     end
 
     def expect_version_message message
@@ -268,17 +263,10 @@ module RSMP
       end
     end
 
-    def store_message message
-      if @server.settings["store_messages"]
-        @stored_messages << message
-      end
-    end
-
     def process packet
       attributes = Message.parse_attributes packet
       message = Message.build attributes, packet
       expect_version_message(message) unless @version_determined
-
       case message
         when MessageAck
           process_ack message
@@ -350,16 +338,18 @@ module RSMP
     end
 
     def acknowledge original
+      raise InvalidArgument unless original
       ack = MessageAck.build_from(original)
       ack.original = original.clone
-      send ack, "for #{original.type}"
+      send ack, "for #{original.type} #{original.m_id[0..3]}"
     end
 
     def dont_acknowledge original, prefix=nil, reason=nil
+      raise InvalidArgument unless original
       str = [prefix,reason].join(' ')
       warning str, original if reason
       message = MessageNotAck.new({
-        "oMId" => original.mId,
+        "oMId" => original.m_id,
         "rea" => reason || "Unknown reason"
       })
       message.original = original.clone

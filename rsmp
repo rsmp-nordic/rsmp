@@ -13,4 +13,6 @@ path = File.expand_path File.join(dir,'rsmp.yml')
 settings = YAML.load_file(path)
 
 # run until stopped
-RSMP::Server.new(settings).run
+server = RSMP::Server.new(settings)
+server.start
+server.join

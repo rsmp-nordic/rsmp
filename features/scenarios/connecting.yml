@@ -3,10 +3,9 @@ port: 12111
 rsmp_versions:
   - 3.1.4
 
-watchdog_interval: 1
+watchdog_interval: 2
 watchdog_timeout: 2
 acknowledgement_timeout: 2
-store_messages: false
 
 log:
   active: false
@@ -15,7 +14,7 @@ log:
   site_id: true
   text: true
   direction: true
-  json: false
-  acknowledgements: false
-  watchdogs: false
+  json: true
+  acknowledgements: true
+  watchdogs: true
 

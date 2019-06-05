@@ -11,11 +11,11 @@ store_messages: false
 log:
   active: true
   timestamp: true
-  ip: true
+  ip: false
   site_id: false
   text: true
   direction: true
   json: false
-  acknowledgements: true
+  acknowledgements: false
   watchdogs: false
 
