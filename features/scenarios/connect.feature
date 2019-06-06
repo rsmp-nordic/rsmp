@@ -2,13 +2,14 @@
 Feature: Connection sequence
   
   Background: We're connected to a site
-    Given the settings file "connecting.yml"
+    Given the supervisor settings "supervisor.yml"
+    Given the site settings "site.yml"
 
   @3.1.1
   Scenario: Connecting to a site using RSMP 3.1.1
-    When the setting 'rsmp_versions' is set to '["3.1.1"]'
+    When the supervisor setting 'rsmp_versions' is set to '["3.1.1"]'
     And we start the server
-    Then the site "AA+BBCCC=DDD" should connect within 2 seconds
+    Then the site should connect within 2 seconds
     And we should exchange these messages within 1 second
       | direction | message    |
       | in        | Version    |
@@ -22,9 +23,9 @@ Feature: Connection sequence
 
   @3.1.2
   Scenario: Connecting to a site using RSMP 3.1.2
-    When the setting 'rsmp_versions' is set to '["3.1.2"]'
+    When the supervisor setting 'rsmp_versions' is set to '["3.1.2"]'
     And we start the server
-    Then the site "AA+BBCCC=DDD" should connect within 2 seconds
+    Then the site should connect within 2 seconds
     And we should exchange these messages within 1 second
       | direction | message    |
       | in        | Version    |
@@ -38,9 +39,9 @@ Feature: Connection sequence
 
   @3.1.3
   Scenario: Connecting to a site using RSMP 3.1.3
-    When the setting 'rsmp_versions' is set to '["3.1.3"]'
+    When the supervisor setting 'rsmp_versions' is set to '["3.1.3"]'
     And we start the server
-    Then the site "AA+BBCCC=DDD" should connect within 2 seconds
+    Then the site should connect within 2 seconds
     And we should exchange these messages within 1 second
       | direction | message          |
       | in        | Version          |
@@ -56,9 +57,9 @@ Feature: Connection sequence
 
   @3.1.4
   Scenario: Connecting to a site using RSMP 3.1.4
-    When the setting 'rsmp_versions' is set to '["3.1.4"]'
+    When the supervisor setting 'rsmp_versions' is set to '["3.1.4"]'
     And we start the server
-    Then the site "AA+BBCCC=DDD" should connect within 2 seconds
+    Then the site should connect within 2 seconds
     And we should exchange these messages within 1 second
       | direction | message          |
       | in        | Version          |

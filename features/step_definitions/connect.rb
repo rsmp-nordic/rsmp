@@ -1,19 +1,30 @@
-Given("the settings file {string}") do |filename|
+Given("the supervisor settings {string}") do |filename|
   dir = File.dirname(__FILE__)
   path = File.expand_path File.join(dir,'../scenarios',filename)
-  @settings = YAML.load_file(path)
+  @supervisor_settings = YAML.load_file(path)
 end
 
-Given("the setting {string} is set to {string}") do |key, value|
-  @settings[key] = JSON.parse(value)
+Given("the site settings {string}") do |filename|
+  dir = File.dirname(__FILE__)
+  path = File.expand_path File.join(dir,'../scenarios',filename)
+  @site_settings = YAML.load_file(path)
+end
+
+Given("the supervisor setting {string} is set to {string}") do |key, value|
+  @supervisor_settings[key] = JSON.parse(value)
+end
+
+Given("the site setting {string} is set to {string}") do |key, value|
+  @site_settings[key] = JSON.parse(value)
 end
 
 When("we start the server") do
-  $server = RSMP::Server.new(@settings)
+  $server = RSMP::Server.new(@supervisor_settings)
   $server.start
 end
 
-Then("the site {string} should connect within {int} seconds") do |site_id, timeout|
+Then("the site should connect within {int} seconds") do |timeout|
+  site_id = @site_settings["site_id"]
 	@client = $server.wait_for_site site_id, timeout
 	expect(@client).not_to be_nil
 	expect(@client.site_ids.include? site_id).to eq(true)

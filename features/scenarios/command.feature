@@ -2,9 +2,10 @@
 Feature: Sending commands
   
   Background: We're connected to a site
-    Given the settings file "connecting.yml"
-    And we start the server
-    Then the site "AA+BBCCC=DDD" should connect within 2 seconds
+    Given the supervisor settings "supervisor.yml"
+    And the site settings "site.yml"
+    When we start the server
+    Then the site should connect within 2 seconds
     And the connection sequence should be complete within 1 seconds
 
   Scenario: Sending a command
