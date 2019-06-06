@@ -10,14 +10,15 @@ Feature: Connection sequence
     And we start the server
     Then the site "AA+BBCCC=DDD" should connect within 2 seconds
     And we should exchange these messages within 1 second
-      | in  | Version          |
-      | out | MessageAck       |
-      | out | Version          |
-      | in  | MessageAck       |
-      | in  | Watchdog         |
-      | out | MessageAck       |
-      | out | Watchdog         |
-      | in  | MessageAck       |
+      | direction | message    |
+      | in        | Version    |
+      | out       | MessageAck |
+      | out       | Version    |
+      | in        | MessageAck |
+      | in        | Watchdog   |
+      | out       | MessageAck |
+      | out       | Watchdog   |
+      | in        | MessageAck |
 
   @3.1.2
   Scenario: Connecting to a site using RSMP 3.1.2
@@ -25,14 +26,15 @@ Feature: Connection sequence
     And we start the server
     Then the site "AA+BBCCC=DDD" should connect within 2 seconds
     And we should exchange these messages within 1 second
-      | in  | Version          |
-      | out | MessageAck       |
-      | out | Version          |
-      | in  | MessageAck       |
-      | in  | Watchdog         |
-      | out | MessageAck       |
-      | out | Watchdog         |
-      | in  | MessageAck       |
+      | direction | message    |
+      | in        | Version    |
+      | out       | MessageAck |
+      | out       | Version    |
+      | in        | MessageAck |
+      | in        | Watchdog   |
+      | out       | MessageAck |
+      | out       | Watchdog   |
+      | in        | MessageAck |
 
   @3.1.3
   Scenario: Connecting to a site using RSMP 3.1.3
@@ -40,16 +42,17 @@ Feature: Connection sequence
     And we start the server
     Then the site "AA+BBCCC=DDD" should connect within 2 seconds
     And we should exchange these messages within 1 second
-      | in  | Version          |
-      | out | MessageAck       |
-      | out | Version          |
-      | in  | MessageAck       |
-      | in  | Watchdog         |
-      | out | MessageAck       |
-      | out | Watchdog         |
-      | in  | MessageAck       |
-      | in  | AggregatedStatus |
-      | out | MessageAck       |
+      | direction | message          |
+      | in        | Version          |
+      | out       | MessageAck       |
+      | out       | Version          |
+      | in        | MessageAck       |
+      | in        | Watchdog         |
+      | out       | MessageAck       |
+      | out       | Watchdog         |
+      | in        | MessageAck       |
+      | in        | AggregatedStatus |
+      | out       | MessageAck       |
 
   @3.1.4
   Scenario: Connecting to a site using RSMP 3.1.4
@@ -57,13 +60,14 @@ Feature: Connection sequence
     And we start the server
     Then the site "AA+BBCCC=DDD" should connect within 2 seconds
     And we should exchange these messages within 1 second
-      | in  | Version          |
-      | out | MessageAck       |
-      | out | Version          |
-      | in  | MessageAck       |
-      | in  | Watchdog         |
-      | out | MessageAck       |
-      | out | Watchdog         |
-      | in  | MessageAck       |
-      | in  | AggregatedStatus |
-      | out | MessageAck       |
+      | direction | message          |
+      | in        | Version          |
+      | out       | MessageAck       |
+      | out       | Version          |
+      | in        | MessageAck       |
+      | in        | Watchdog         |
+      | out       | MessageAck       |
+      | out       | Watchdog         |
+      | in        | MessageAck       |
+      | in        | AggregatedStatus |
+      | out       | MessageAck       |

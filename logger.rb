@@ -20,6 +20,7 @@ module RSMP
 
     def output? item
       return false if @settings["active"] == false
+      return false if @settings["info"] == false && item[:level] == :info
       if item[:message]
         type = item[:message].type
         ack = type == "MessageAck" || type == "MessageNotAck"
@@ -72,15 +73,24 @@ module RSMP
       output item[:level], build_output(item) if output? item
     end
 
-    def messages
-      @archive.select { |item| item[:direction] && item[:message] }.map { |item| item[:message]}
+    def find options={}
+      @archive.select do |item|
+        # note: next(false) means we move to the next iteration, returning true for this item
+        next(false) if options[:earliest] && item[:timestamp] < options[:earliest]
+        next(false) if options[:with_message] && !(item[:direction] && item[:message])
+        true
+      end
     end
 
-    def wait_for_messages num, timeout
+    def wait_for_messages options
+      earliest = options[:earliest]
+      num = options[:num]
+      timeout = options[:timeout]
+
       start = Time.now
       @archive_mutex.synchronize do
         loop do
-          m = messages
+          m = find(earliest: earliest, with_message: true).map { |item| item[:message]}
           left = timeout + (start - Time.now)
           return m, m.size if m.size >=num or left <= 0
           @archive_condition_variable.wait(@archive_mutex,left)

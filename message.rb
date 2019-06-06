@@ -30,6 +30,10 @@ module RSMP
         message = Watchdog.new attributes
       when "Alarm"
         message = Alarm.new attributes
+      when "CommandRequest"
+        message = CommandRequest.new attributes
+      when "CommandResponse"
+        message = CommandResponse.new attributes
       else
         message = Unknown.new attributes
       end
@@ -171,7 +175,7 @@ module RSMP
   end
 
   class MessageAck < Message
-    attr_accessor :original
+    attr_reader :original
 
     def self.build_from message
       return new({
@@ -184,10 +188,15 @@ module RSMP
         "type" => "MessageAck",
       }.merge attributes)
     end
+
+    def original= message
+      raise InvalidArgument unless message
+      @original = message
+    end
   end
 
   class MessageNotAck < Message
-    attr_accessor :original
+    attr_reader :original
 
     def initialize attributes = {}
       super({
@@ -195,6 +204,26 @@ module RSMP
         "rea" => "Unknown reason"
       }.merge attributes)
     end
+
+    def original= message
+      raise InvalidArgument unless message
+      @original = message
+    end
   end
 
+  class CommandRequest < Message
+    def initialize attributes = {}
+      super({
+        "type" => "CommandRequest",
+      }.merge attributes)
+    end
+  end
+
+  class CommandResponse < Message
+    def initialize attributes = {}
+      super({
+        "type" => "CommandResponse",
+      }.merge attributes)
+    end
+  end
 end

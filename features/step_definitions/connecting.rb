@@ -19,11 +19,20 @@ Then("the site {string} should connect within {int} seconds") do |site_id, timeo
 	expect(@client.site_ids.include? site_id).to eq(true)
 end
 
-Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout, expected_table|
-  expected_num = expected_table.rows.size+1 # add 1 because we use the header row for data
-  messages, num = $server.logger.wait_for_messages expected_num, timeout
+Then(/the connection sequence should be complete within (\d+) second(?:s)?/) do |timeout|
+  ready = @client.wait_for_state :ready, timeout
+  expect(ready).to be(true)
+end
 
-  actual_table = messages.map { |message| [message.direction.to_s, message.type] }
-  actual_table = actual_table.slice(0,expected_table.rows.size+1)
+When("we start collecting message") do
+  @log_start = Time.now
+end
+
+Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout, expected_table|
+  expected_num = expected_table.rows.size
+  @messages, num = $server.logger.wait_for_messages num: expected_num, timeout: timeout, earliest: @log_start
+  actual_table = @messages.map { |message| [message.direction.to_s, message.type] }
+  actual_table = actual_table.slice(0,expected_table.rows.size)
+  actual_table.unshift expected_table.headers
   expected_table.diff!(actual_table)
 end

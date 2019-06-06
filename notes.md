@@ -4,11 +4,11 @@ The simulator ignores if we send a no_ack response to the initital version messa
 
 When invalid messages are send during connection sequence, the simulator stalls and does not send anything more, nor does it disconnect.
 
-If "Send and expect Watchdog packet when connecting" is turned on, connection fails with these errors:
- - Intitial sequence is out of order, got a 'MessageAck' package?
- - Got ack for unknown packet, mId: xxxxxxxxx-xxxxxx-xxxxxxxxxxxx
-The unknown packet id in fact matches the first watchdog message sent by the simulator.
+Notes in .INI settings file is in swedish
 
+System log should not auto-scroll to bottom when new message are received, unless it's already at the bottom
+
+When sending invalid commands to the simulator, it response with NotAcknowledged with empty "rea".
 
 # RSMP specification issues
 ## Clarify

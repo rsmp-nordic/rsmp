@@ -9,6 +9,7 @@ acknowledgement_timeout: 2
 
 log:
   active: false
+  info: false
   timestamp: true
   ip: true
   site_id: true
@@ -16,5 +17,5 @@ log:
   direction: true
   json: true
   acknowledgements: true
-  watchdogs: true
+  watchdogs: false
 

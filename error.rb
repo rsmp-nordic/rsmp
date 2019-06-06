@@ -29,4 +29,8 @@ module RSMP
 
 	class FatalError < Error
 	end
+
+	class NotReady < Error
+	end
+	
 end

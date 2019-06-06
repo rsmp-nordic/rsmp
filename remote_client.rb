@@ -20,6 +20,9 @@ module RSMP
       @site_ids = []
       @aggregated_status = {}
       @watchdog_started = false
+      @state = :starting
+      @state_mutex = Mutex.new
+      @state_condition_variable = ConditionVariable.new
     end
 
     def run
@@ -33,6 +36,7 @@ module RSMP
     end
 
     def terminate
+      @state = :stopping
       info "Closing connection"
       @reader.kill
     end
@@ -154,7 +158,7 @@ module RSMP
       end
     end
 
-    def got_acknowledgement message
+    def dont_expect_acknowledgement message
       @awaiting_acknowledgement.delete message.attribute("oMId")
     end
 
@@ -166,6 +170,7 @@ module RSMP
       return extraneous_version if @version_determined
       check_site_ids message
       rsmp_version = check_rsmp_version message
+      @phase = :version_determined
       #check_sxl_version
       version_accepted message, rsmp_version
     end
@@ -174,6 +179,7 @@ module RSMP
       message.attribute("siteId").map { |item| item["sId"] }.each do |site_id|
         check_site_id(site_id)
       end
+      @phase = :site_id_accepted
       @server.site_ids_changed
     rescue StandardError => e
       raise FatalError.new e.message
@@ -191,7 +197,8 @@ module RSMP
       @site_ids << site_id
     end
 
-    def connection_complete 
+    def connection_complete
+      @state = :ready
     end
 
     def site_id_accetable? site_id
@@ -227,25 +234,41 @@ module RSMP
       send version_response
     end
 
+    def find_original_for_message message
+       @awaiting_acknowledgement[ message.attribute("oMId") ]
+    end
+
     def process_ack message
-      original = @awaiting_acknowledgement[ message.attribute("oMId") ]
+      original = find_original_for_message message
       if original
+        dont_expect_acknowledgement message
         message.original = original
-        log "Received #{message.type} for #{original.type} #{message.attribute("oMId")[0..3]}", message
+        log_acknowledgement_for_original message, original
         if original.type == "Version"
           connection_complete
         end
       else
-        raise
-        log "Received #{message.type}", message
+        log_acknowledgement_for_unknown message
       end
-
-      got_acknowledgement message
     end
 
     def process_not_ack message
-      log "Received #{message.type}", message
-      got_acknowledgement message
+      original = find_original_for_message message
+      if original
+        dont_expect_acknowledgement message
+        message.original = original
+        log_acknowledgement_for_original message, original
+      else
+        log_acknowledgement_for_unknown message
+      end
+    end
+
+    def log_acknowledgement_for_original message, original
+      log "Received #{message.type} for #{original.type} #{message.attribute("oMId")[0..3]}", message
+    end
+
+    def log_acknowledgement_for_unknown message
+      warning "Received #{message.type} for unknown message #{message.attribute("oMId")[0..3]}", message
     end
 
     def process_watchdog message
@@ -280,6 +303,10 @@ module RSMP
           process_aggregated_status message
         when Alarm
           process_alarm message
+        when CommandRequest
+          process_command_request message
+        when CommandResponse
+          process_command_response message
         else
           dont_acknowledge message, "Received", "unknown message (#{message.type})"
       end
@@ -341,7 +368,7 @@ module RSMP
       raise InvalidArgument unless original
       ack = MessageAck.build_from(original)
       ack.original = original.clone
-      send ack, "for #{original.type} #{original.m_id[0..3]}"
+      send ack, "for #{ack.original.type} #{original.m_id[0..3]}"
     end
 
     def dont_acknowledge original, prefix=nil, reason=nil
@@ -385,6 +412,45 @@ module RSMP
         str: str,
         message: message
       })
+    end
+
+    def send_command component, args
+      raise NotReady unless @state == :ready
+      message = RSMP::CommandRequest.new({
+          "ntsOId" => '',
+          "xNId" => '',
+          "cId" => component,
+          "arg" => args
+      })
+      send message
+    end
+
+    def state= state
+      @state_mutex.synchronize do
+        @state_condition_variable.broadcast
+      end
+    end
+
+    def wait_for_state state, timeout
+      start = Time.now
+      @state_mutex.synchronize do
+        loop do
+          left = timeout + (start - Time.now)
+          return true if @state == state
+          return @state if left <= 0
+          @state_condition_variable.wait(@state_mutex,left)
+        end
+      end
+    end
+
+    def process_command_request message
+      warning "Ignoring #{message.type}, since we're a supervisor", message
+      dont_acknowledge message
+    end
+
+    def process_command_response message
+      log "Received #{message.type}", message
+      acknowledge message
     end
 
   end
