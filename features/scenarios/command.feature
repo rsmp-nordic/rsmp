@@ -22,3 +22,6 @@ Feature: Sending commands
     And the "CommandResponse" message should contain the return values
       | cCI   | n       | v          | age    |
       | MA104 | message | Rainbbows! | recent |
+    And the received return values for component "AA+BBCCC=DDDEE002" should be
+      | cCI   | n       | v          | age    |
+      | MA104 | message | Rainbbows! | recent |

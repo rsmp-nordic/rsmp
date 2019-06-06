@@ -23,6 +23,7 @@ module RSMP
       @state = :starting
       @state_mutex = Mutex.new
       @state_condition_variable = ConditionVariable.new
+      @components = {}
     end
 
     def run
@@ -451,6 +452,13 @@ module RSMP
     def process_command_response message
       log "Received #{message.type}", message
       acknowledge message
+      component = message.attributes["cId"]
+      rvs = message.attributes["rvs"]
+      @components[component] = rvs
+    end
+
+    def component id
+      @components[id]
     end
 
   end

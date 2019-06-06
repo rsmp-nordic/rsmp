@@ -19,3 +19,16 @@ Then("the {string} message should contain the return values") do |message_type, 
 	# and compare with expected table
 	expected_table.diff!(actual_table)
 end
+
+Then("the received return values for component {string} should be") do |component, expected_table|
+	# build table from received rvs values
+	rvs = @client.component(component)
+	actual_table = [expected_table.headers]
+	rvs.each_with_index do |rv|
+		actual_row = expected_table.headers.map { |key| rv[key] }
+		actual_table << actual_row
+	end
+
+	# and compare with expected table
+	expected_table.diff!(actual_table)
+end
