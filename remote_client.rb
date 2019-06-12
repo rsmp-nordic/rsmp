@@ -172,8 +172,11 @@ module RSMP
       check_site_ids message
       rsmp_version = check_rsmp_version message
       @phase = :version_determined
-      #check_sxl_version
+      check_sxl_version
       version_accepted message, rsmp_version
+    end
+
+    def check_sxl_version
     end
 
     def check_site_ids message
@@ -452,14 +455,17 @@ module RSMP
     def process_command_response message
       log "Received #{message.type}", message
       acknowledge message
-      component = message.attributes["cId"]
+      id = message.attributes["cId"]
       rvs = message.attributes["rvs"]
-      @components[component] = rvs
+      component(id)['rvs'] = rvs
     end
 
     def component id
-      @components[id]
+      @components[id] ||= {}
     end
 
+    def clear_component_data
+       @components = {}
+    end
   end
 end

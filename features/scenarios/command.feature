@@ -9,8 +9,11 @@ Feature: Sending commands
     And the connection sequence should be complete within 1 seconds
 
   Scenario: Sending a command
-    When we start collecting message
-    And we send the command to component "AA+BBCCC=DDDEE002"
+    When we start collecting messages
+    And we clear component data
+    Then the received return values for component "AA+BBCCC=DDDEE002" should be empty
+
+    When we send the command to component "AA+BBCCC=DDDEE002"
       | cCI   | n       | cO | v          |
       | MA104 | message |    | Rainbbows! |
     Then we should exchange these messages within 1 second

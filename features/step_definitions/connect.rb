@@ -35,7 +35,7 @@ Then(/the connection sequence should be complete within (\d+) second(?:s)?/) do 
   expect(ready).to be(true)
 end
 
-When("we start collecting message") do
+When("we start collecting messages") do
   @log_start = Time.now
 end
 
