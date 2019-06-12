@@ -22,8 +22,16 @@ module RSMP
       @watchdog_started = false
       @state = :starting
       @state_mutex = Mutex.new
-      @state_condition_variable = ConditionVariable.new
-      @components = {}
+      @state_condition = ConditionVariable.new
+
+      @command_responses = {}
+      @commmand_response_mutex = Mutex.new
+      @command_response_condition = ConditionVariable.new
+
+      @acknowledgements = {}
+      @not_acknowledgements = {}
+      @acknowledgement_mutex = Mutex.new
+      @acknowledgement_condition = ConditionVariable.new
     end
 
     def run
@@ -251,6 +259,10 @@ module RSMP
         if original.type == "Version"
           connection_complete
         end
+        @acknowledgement_mutex.synchronize do
+          @acknowledgements[ original.m_id ] = message
+          @acknowledgement_condition.broadcast
+        end
       else
         log_acknowledgement_for_unknown message
       end
@@ -262,6 +274,10 @@ module RSMP
         dont_expect_acknowledgement message
         message.original = original
         log_acknowledgement_for_original message, original
+        @acknowledgement_mutex.synchronize do
+          @not_acknowledgements[ original.m_id ] = message
+          @acknowledgement_condition.broadcast
+        end
       else
         log_acknowledgement_for_unknown message
       end
@@ -418,7 +434,7 @@ module RSMP
       })
     end
 
-    def send_command component, args
+    def send_command component, args, timeout=nil
       raise NotReady unless @state == :ready
       message = RSMP::CommandRequest.new({
           "ntsOId" => '',
@@ -427,11 +443,12 @@ module RSMP
           "arg" => args
       })
       send message
+      return message, wait_for_command_response(component, timeout)
     end
 
     def state= state
       @state_mutex.synchronize do
-        @state_condition_variable.broadcast
+        @state_condition.broadcast
       end
     end
 
@@ -442,7 +459,7 @@ module RSMP
           left = timeout + (start - Time.now)
           return true if @state == state
           return @state if left <= 0
-          @state_condition_variable.wait(@state_mutex,left)
+          @state_condition.wait(@state_mutex,left)
         end
       end
     end
@@ -455,17 +472,46 @@ module RSMP
     def process_command_response message
       log "Received #{message.type}", message
       acknowledge message
-      id = message.attributes["cId"]
-      rvs = message.attributes["rvs"]
-      component(id)['rvs'] = rvs
+      @commmand_response_mutex.synchronize do
+        c_id = message.attributes["cId"]
+        @command_responses[c_id] = message
+        @command_response_condition.broadcast
+      end
     end
 
-    def component id
-      @components[id] ||= {}
+    def wait_for_command_response component_id, timeout
+      start = Time.now
+      @commmand_response_mutex.synchronize do
+        loop do
+          left = timeout + (start - Time.now)
+          message = @command_responses.delete(component_id)
+          return message if message
+          return if left <= 0
+          @command_response_condition.wait(@commmand_response_mutex,left)
+        end
+      end
     end
 
-    def clear_component_data
-       @components = {}
+    def wait_for_acknowledgement message, timeout, options={}
+      start = Time.now
+      @acknowledgement_mutex.synchronize do
+        loop do
+          left = timeout + (start - Time.now)
+          unless options[:not_acknowledged]
+            message = @acknowledgements.delete(message.m_id)
+          else
+            message = @not_acknowledgements.delete(message.m_id)
+          end  
+          return message if message
+          return if left <= 0
+          @acknowledgement_condition.wait(@acknowledgement_mutex,left)
+        end
+      end
     end
+
+    def wait_for_not_acknowledged message, timeout
+      wait_for_acknowledgement message, timeout, not_acknowledged: true
+    end
+
   end
 end

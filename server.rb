@@ -36,6 +36,8 @@ module RSMP
       raise "Settings: watchdog_timeout is missing" if @settings["watchdog_timeout"] == nil
       raise "Settings: acknowledgement_timeout is missing" if @settings["acknowledgement_timeout"] == nil
 
+      raise "Settings: command_response_timeout is missing" if @settings["command_response_timeout"] == nil
+
       raise "Settings: log is missing" if @settings["log"] == nil
       @logger = Logger.new self, @settings["log"]
 
