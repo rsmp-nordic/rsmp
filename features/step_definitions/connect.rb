@@ -19,6 +19,9 @@ Given("the site setting {string} is set to {string}") do |key, value|
 end
 
 When("we start the server") do
+  if $server
+    $server.stop
+  end
   $server = RSMP::Server.new(@supervisor_settings)
   $server.start
 end

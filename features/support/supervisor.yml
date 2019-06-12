@@ -6,8 +6,9 @@ rsmp_versions:
 watchdog_interval: 2
 watchdog_timeout: 2
 acknowledgement_timeout: 2
-
 command_response_timeout: 1
+site_connect_timeout: 2
+site_ready_timeout: 1
 
 log:
   active: false

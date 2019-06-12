@@ -1,10 +1,6 @@
-@connect
+@connect @manual_connection
 Feature: Connection sequence
   
-  Background: We're connected to a site
-    Given the supervisor settings "supervisor.yml"
-    Given the site settings "site.yml"
-
   @3.1.1
   Scenario: Connecting to a site using RSMP 3.1.1
     When the supervisor setting 'rsmp_versions' is set to '["3.1.1"]'

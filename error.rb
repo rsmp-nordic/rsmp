@@ -32,5 +32,8 @@ module RSMP
 
 	class NotReady < Error
 	end
+
+	class TimeoutError < Error
+	end
 	
 end

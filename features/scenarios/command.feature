@@ -2,12 +2,7 @@
 Feature: Sending commands
   
   Background: We're connected to a site
-    Given the supervisor settings "supervisor.yml"
-    And the site settings "site.yml"
-    And we focus on component "AA+BBCCC=DDDEE002"
-    When we start the server
-    Then the site should connect within 2 seconds
-    And the connection sequence should be complete within 1 seconds
+    Given we focus on component "AA+BBCCC=DDDEE002"
 
   Scenario: Sending a command
     When we send the following command request
@@ -41,7 +36,6 @@ Feature: Sending commands
     Then we should receive an acknowledgement
     Then same values should be returned in the command response
 
-@bad
   Scenario: Sending invalid commands
     When we send the following command request
       | cCI   | n        | cO | v          | bad |
