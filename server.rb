@@ -16,30 +16,16 @@ module RSMP
   class Server
     WRAPPING_DELIMITER = "\f"
 
-    attr_reader :rsmp_versions, :site_id, :settings, :remote_clients, :logger
+    attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_clients, :logger
     attr_accessor :site_id_mutex, :site_id_condition_variable
 
-    def initialize settings
-      raise "Settings is empty" unless settings
-      @settings = settings
+    def initialize options
+      handle_supervisor_settings options
+      handle_sites_sittings options
 
-      raise "Settings: port is missing" unless @settings["port"]
-      @port = settings["port"]
+      @port = @supervisor_settings["port"]
       
-      raise "Settings: rsmp_version is missing" unless @settings["rsmp_versions"]
-      @rsmp_versions = settings["rsmp_versions"]
-
-      raise "Settings: siteId is missing" unless @settings["site_id"]
-      @site_id = settings["site_id"]
-
-      raise "Settings: watchdog_interval is missing" if @settings["watchdog_interval"] == nil
-      raise "Settings: watchdog_timeout is missing" if @settings["watchdog_timeout"] == nil
-      raise "Settings: acknowledgement_timeout is missing" if @settings["acknowledgement_timeout"] == nil
-
-      raise "Settings: command_response_timeout is missing" if @settings["command_response_timeout"] == nil
-
-      raise "Settings: log is missing" if @settings["log"] == nil
-      @logger = Logger.new self, @settings["log"]
+      @logger = Logger.new self, @supervisor_settings["log"]
 
       @remote_clients = []
       @client_counter = 0
@@ -49,6 +35,48 @@ module RSMP
 
       @socket_threads = []
       @run = false
+    end
+
+    def handle_supervisor_settings options
+      if options[:supervisor_settings]
+        @supervisor_settings = options[:supervisor_settings]
+      else
+        # load settings
+        dir = File.dirname(__FILE__)
+        if options[:supervisor_settings_path]
+          @supervisor_settings = YAML.load_file(options[:supervisor_settings_path])
+        else
+          raise "supervisor_settings or supervisor_settings_path must be present"
+        end
+      end
+      raise "Supervisor settings is empty" unless @supervisor_settings
+      raise "Supervisor settings:port is missing" unless @supervisor_settings["port"]
+      @port = @supervisor_settings["port"]
+      raise "Supervisor settings:rsmp_version is missing" unless @supervisor_settings["rsmp_versions"]
+      @rsmp_versions = @supervisor_settings["rsmp_versions"]
+      raise "Supervisor settings:siteId is missing" unless @supervisor_settings["site_id"]
+      @site_id = @supervisor_settings["site_id"]
+      raise "Supervisor settings:watchdog_interval is missing" if @supervisor_settings["watchdog_interval"] == nil
+      raise "Supervisor settings:watchdog_timeout is missing" if @supervisor_settings["watchdog_timeout"] == nil
+      raise "Supervisor settings:acknowledgement_timeout is missing" if @supervisor_settings["acknowledgement_timeout"] == nil
+      raise "Supervisor settings:command_response_timeout is missing" if @supervisor_settings["command_response_timeout"] == nil
+      raise "Supervisor settings:log is missing" if @supervisor_settings["log"] == nil
+    end
+
+    def handle_sites_sittings options
+      if options[:sites_settings]
+        @sites_settings = options[:sites_settings]
+      else
+        # load settings
+        dir = File.dirname(__FILE__)
+        if options[:sites_settings_path]
+          @sites_settings = YAML.load_file(options[:sites_settings_path])
+        else
+          raise ":sites_settings or :sites_settings_path must be present"
+        end
+      end
+      raise "Sites settings is empty" unless @supervisor_settings
+      raise "Sites settings: port is missing" unless @supervisor_settings["port"]
     end
 
     def start

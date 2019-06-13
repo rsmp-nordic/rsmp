@@ -81,7 +81,7 @@ module RSMP
 
     def start_watchdog
       name = "watchdog"
-      interval = @server.settings["watchdog_interval"]
+      interval = @server.supervisor_settings["watchdog_interval"]
       info "Starting #{name} with interval #{interval} seconds"
       @threads << Thread.new(@client) do |socket|
         Thread.current[:name] = name
@@ -120,7 +120,7 @@ module RSMP
     end
 
     def check_ack_timeout now
-      timeout = @server.settings["acknowledgement_timeout"]
+      timeout = @server.supervisor_settings["acknowledgement_timeout"]
       # hash cannot be modify during iteration, so clone it
       @awaiting_acknowledgement.clone.each_pair do |m_id, message|
         latest = message.timestamp + timeout
@@ -134,7 +134,7 @@ module RSMP
     end
 
     def check_watchdog_timeout now
-      timeout = @server.settings["watchdog_timeout"]
+      timeout = @server.supervisor_settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       if now > latest
         error "No Watchdog within #{timeout} seconds"
@@ -492,15 +492,16 @@ module RSMP
       end
     end
 
-    def wait_for_acknowledgement message, timeout, options={}
+    def wait_for_acknowledgement original, timeout, options={}
+      raise InvalidArgument unless original
       start = Time.now
       @acknowledgement_mutex.synchronize do
         loop do
           left = timeout + (start - Time.now)
           unless options[:not_acknowledged]
-            message = @acknowledgements.delete(message.m_id)
+            message = @acknowledgements.delete(original.m_id)
           else
-            message = @not_acknowledgements.delete(message.m_id)
+            message = @not_acknowledgements.delete(original.m_id)
           end  
           return message if message
           return if left <= 0
@@ -509,8 +510,8 @@ module RSMP
       end
     end
 
-    def wait_for_not_acknowledged message, timeout
-      wait_for_acknowledgement message, timeout, not_acknowledged: true
+    def wait_for_not_acknowledged original, timeout
+      wait_for_acknowledgement original, timeout, not_acknowledged: true
     end
 
   end

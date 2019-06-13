@@ -1,0 +1,11 @@
+- site_id: AA+BBCCC=DDD
+  sxl_versions:
+    - 1.1
+  main_component: AA+BBCCC=DDDEE001
+  components:
+    - AA+BBCCC=DDDEE001
+    - AA+BBCCC=DDDEE002
+    - AA+BBCCC=DDDEE003
+    - AA+BBCCC=DDDEE004
+    - AA+BBCCC=DDDEE005
+

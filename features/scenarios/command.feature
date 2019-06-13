@@ -1,6 +1,6 @@
 @command
 Feature: Sending commands
-  
+
   Background: We're connected to a site
     Given we focus on component "AA+BBCCC=DDDEE002"
 
