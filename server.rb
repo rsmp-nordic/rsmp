@@ -5,6 +5,7 @@
 require 'rubygems'
 require 'yaml'
 require 'socket'
+require 'time'
 require_relative 'logger'
 require_relative 'remote_client'
 
@@ -190,6 +191,10 @@ module RSMP
       time.strftime("%FT%T.%3NZ")
     end
 
+    def self.parse_time time_str
+      Time.parse time_str
+    end
+    
     def self.log_prefix ip
       "#{now_string} #{ip.ljust(20)}"
     end

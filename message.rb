@@ -34,6 +34,10 @@ module RSMP
         message = CommandRequest.new attributes
       when "CommandResponse"
         message = CommandResponse.new attributes
+      when "StatusRequest"
+        message = StatusRequest.new attributes
+      when "StatusResponse"
+        message = StatusResponse.new attributes
       else
         message = Unknown.new attributes
       end
@@ -226,4 +230,22 @@ module RSMP
       }.merge attributes)
     end
   end
+
+  class StatusRequest < Message
+    def initialize attributes = {}
+      super({
+        "type" => "StatusRequest",
+      }.merge attributes)
+    end
+  end
+
+  class StatusResponse < Message
+    def initialize attributes = {}
+      super({
+        "type" => "StatusResponse",
+      }.merge attributes)
+    end
+  end
+
+
 end

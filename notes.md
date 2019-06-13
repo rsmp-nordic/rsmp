@@ -10,6 +10,10 @@ System log should not auto-scroll to bottom when new message are received, unles
 
 When sending invalid commands to the simulator, it response with NotAcknowledged with empty "rea".
 
+When requesting status, the sCIO and n fields seem to be ignored, we always get a StatusRespons back, even it we send invalid values.
+When requesting data, the "s" field contains null. Is null allowed?
+
+
 # RSMP specification issues
 ## Clarify
 The version message should contain an identifier of the SXL to use, e.g. "traffic_lights" or "variable_message_sign".

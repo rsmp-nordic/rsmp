@@ -8,6 +8,7 @@ watchdog_timeout: 5
 acknowledgement_timeout: 5
 store_messages: false
 command_response_timeout: 1
+status_response_timeout: 1
 
 log:
   active: true

@@ -1,3 +1,5 @@
+require 'colorize'
+
 module RSMP
   class Logger
 
@@ -41,7 +43,10 @@ module RSMP
       parts << item[:ip].to_s.ljust(22) unless @settings["ip"] == false
       parts << item[:site_id].to_s.ljust(13) unless @settings["site_id"] == false
       parts << item[:level].to_s.capitalize.ljust(7) unless @settings["level"] == false
-      parts << item[:direction].to_s.capitalize.ljust(4) unless @settings["direction"] == false
+
+      directions = {in:"-->",out:"<--"}
+      parts << directions[item[:direction]].to_s.ljust(4) unless @settings["direction"] == false
+      
       unless @settings["id"] == false
         length = 4
         if item[:message]
@@ -61,7 +66,11 @@ module RSMP
       streams = [$stdout]
       streams << $stderr if level == :error
       streams.each do |stream|
-        stream.puts str
+        if @settings["color"]
+          stream.puts str.colorize(@settings["color"])
+        else
+          stream.puts str
+        end
       end
     end
 

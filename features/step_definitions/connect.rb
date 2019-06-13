@@ -47,3 +47,7 @@ Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout,
   actual_table.unshift expected_table.headers
   expected_table.diff!(actual_table)
 end
+
+Given("we focus on component {string}") do |component|
+  @component = component
+end

@@ -41,34 +41,34 @@ Feature: Sending commands
       | cCI   | n        | cO | v          | bad |
       | MM104 | messsage |    | Rainbbows! | 1   |
     Then we should receive a not acknowledged message
-    And we should receive empty return values
+    And we should receive empty command return values
 
     When we send the following command request
       | cCI   | n        | v          |
       | MM104 | messsage | Rainbbows! |
     Then we should receive a not acknowledged message
-    And we should receive empty return values
+    And we should receive empty command return values
 
     When we send the following command request
       | cCI | n        | cO | v          |
       | bad | messsage |    | Rainbbows! |
     Then we should receive a not acknowledged message
-    And we should receive empty return values
+    And we should receive empty command return values
 
     When we send the following command request
       | cCI | n        | cO | v          |
       |     | messsage |    | Rainbbows! |
     Then we should receive a not acknowledged message
-    And we should receive empty return values
+    And we should receive empty command return values
 
     When we send the following command request
       | cCI   | n     | cO | v          |
       | MA104 | wrong |    | Rainbbows! |
     Then we should receive a not acknowledged message
-    And we should receive empty return values
+    And we should receive empty command return values
 
     When we send the following command request
       | cCI   | n       | cO  | v          |
       | MA104 | message | bad | Rainbbows! |
     Then we should receive a not acknowledged message
-    And we should receive empty return values
+    And we should receive empty command return values

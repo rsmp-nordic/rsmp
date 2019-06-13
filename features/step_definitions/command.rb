@@ -1,12 +1,9 @@
-Given("we focus on component {string}") do |component|
-  @component = component
-end
-
 When("we send the following command request") do |table|
   @send_values = table.hashes
   timeout = @supervisor_settings["command_response_timeout"]
   @sent_message, @response_message = @client.send_command @component, table.hashes, timeout
   expect(@sent_message).to_not be_nil
+  expect(@response_message).to_not be_nil
 end
 
 Then("we should received the following return values") do |expected_table|
@@ -32,7 +29,7 @@ Then("same values should be returned in the command response") do
 	expect(rvs).to eq(expected)
 end
 
-Then("we should receive empty return values") do
+Then("we should receive empty command return values") do
 	expected = []
 	@send_values.each do |sent|
 		expected << { "cCI" => nil, "n" => sent["n"], "v" => nil, "age" => "undefined"}
