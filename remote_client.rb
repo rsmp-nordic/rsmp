@@ -9,9 +9,10 @@ module RSMP
 
     attr_reader :site_ids, :server
 
-    def initialize server, client, info
+    def initialize server, socket, info
       @server = server
-      @client = client
+      @socket = socket
+      @logger = server.logger
       @info = info
       @awaiting_acknowledgement = {}
       @latest_watchdog_received = nil
@@ -49,7 +50,7 @@ module RSMP
     end
 
     def close
-      @client.close
+      @socket.close
     end
 
     def terminate
@@ -70,12 +71,14 @@ module RSMP
     end
 
     def start_reader    
-      @reader = Thread.new(@client) do |socket|
+      @reader = Thread.new(@socket) do |socket|
         Thread.current[:name] = "reader"
         # an rsmp message is json terminated with a form-feed
         while packet = socket.gets(RSMP::WRAPPING_DELIMITER)
           if packet
             packet.chomp!(RSMP::WRAPPING_DELIMITER)
+            packet.strip! # get rid of any leading/trailing spaces, line breaks, etc
+            #packet.strip!
             begin
               process packet
             rescue StandardError => e
@@ -91,7 +94,7 @@ module RSMP
       name = "watchdog"
       interval = @server.supervisor_settings["watchdog_interval"]
       info "Starting #{name} with interval #{interval} seconds"
-      @threads << Thread.new(@client) do |socket|
+      @threads << Thread.new(@socket) do |socket|
         Thread.current[:name] = name
         loop do
           begin
@@ -111,7 +114,7 @@ module RSMP
       interval = 1
       info "Starting #{name} with interval #{interval} seconds"
       @latest_watchdog_received = RSMP.now_object
-      @threads << Thread.new(@client) do |socket|
+      @threads << Thread.new(@socket) do |socket|
         Thread.current[:name] = name
         loop do
           begin
@@ -156,7 +159,7 @@ module RSMP
       message.generate_json
       message.direction = :out
       log_send message, reason
-      @client.puts message.out
+      @socket.print message.out
       expect_acknowledgement message
       message.m_id
     end
@@ -219,6 +222,7 @@ module RSMP
 
     def connection_complete
       @state = :ready
+      info "Connection to site established"
     end
 
     def site_id_accetable? site_id
@@ -425,23 +429,23 @@ module RSMP
     end
 
     def error str, message=nil
-      output str, :error, message
+      log_at_level str, :error, message
     end
 
     def warning str, message=nil
-      output str, :warning, message
+      log_at_level str, :warning, message
     end
 
     def log str, message=nil
-      output str, :log, message
+      log_at_level str, :log, message
     end
 
     def info str, message=nil
-      output str, :info, message
+      log_at_level str, :info, message
     end
 
-    def output str, level, message=nil
-      @server.log({
+    def log_at_level str, level, message=nil
+      @logger.log({
         level: level,
         ip: @info[:ip],
         site_id: @site_ids.first,

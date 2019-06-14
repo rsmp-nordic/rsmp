@@ -58,7 +58,8 @@ module RSMP
       parts << item[:str].strip unless @settings["text"] == false
       parts << item[:message].json unless @settings["json"] == false || item[:message] == nil
 
-      parts.join(' ').chomp(' ')
+      out = parts.join(' ').chomp(' ')
+      out
     end
 
     def output level, str
@@ -92,11 +93,23 @@ module RSMP
     end
 
     def log item
+      raise ArgumentError unless item.is_a? Hash
+      
+      now_obj = RSMP.now_object
+      now_str = RSMP.now_string(now_obj)
+
+      cleaned = item.select { |k,v| [:level,:ip,:site_id,:str,:message].include? k }
+      cleaned[:timestamp] = now_obj
+      cleaned[:direction] = item[:message].direction if item[:message]
+      
+      if output? cleaned
+        output cleaned[:level], build_output(cleaned) 
+      end
+
       @archive_mutex.synchronize do
-        @archive << item.clone
+        @archive << cleaned.clone
         @archive_condition_variable.broadcast
       end
-      output item[:level], build_output(item) if output? item
     end
 
     def find options={}

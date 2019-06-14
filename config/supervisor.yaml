@@ -19,7 +19,7 @@ log:
   site_id: false
   text: true
   direction: true
-  level: true
+  level: false
   json: true
   acknowledgements: true
   watchdogs: false

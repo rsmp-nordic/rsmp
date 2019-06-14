@@ -145,15 +145,7 @@ module RSMP
     end
 
     def log item
-      raise ArgumentError unless item.is_a? Hash
-      now_obj = RSMP.now_object
-      now_str = RSMP.now_string(now_obj)
-
-      cleaned = item.select { |k,v| [:level,:ip,:site_id,:str,:message].include? k }
-      cleaned[:timestamp] = now_obj
-      cleaned[:direction] = item[:message].direction if item[:message]
-
-      @logger.log cleaned
+      @logger.log item
     end
 
     def connect client, info

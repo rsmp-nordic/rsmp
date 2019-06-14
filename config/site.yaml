@@ -18,7 +18,7 @@ log:
   timestamp: false
   ip: false
   site_id: false
-  level: true
+  level: false
   text: true
   direction: true
   json: true

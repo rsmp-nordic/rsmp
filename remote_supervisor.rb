@@ -159,7 +159,7 @@ module RSMP
       message.generate_json
       message.direction = :out
       log_send message, reason
-      @socket.puts message.out
+      @socket.print message.out
       expect_acknowledgement message
       message.m_id
     end
@@ -199,6 +199,7 @@ module RSMP
 
     def connection_complete
       @state = :ready
+      info "Connection to supervisor established"
       start_watchdog
     end
 
