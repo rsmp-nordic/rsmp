@@ -1,5 +1,6 @@
-site_id: RN+RS0001
+site_id: RN+RC0001
 port: 12111
+supervisor_ip: 127.0.0.1
 rsmp_versions:
   - 3.1.4
 
@@ -17,9 +18,9 @@ log:
   timestamp: false
   ip: false
   site_id: false
+  level: true
   text: true
   direction: true
-  level: true
   json: true
   acknowledgements: true
   watchdogs: false

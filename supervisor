@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 #note: the shebang above expects ruby to be intalled through rbenv
 
-# executable wrapper for starting an rsmp server
+# executable wrapper for starting an rsmp supervisor (server)
 #
 # expect settings files to be present
 

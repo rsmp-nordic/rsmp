@@ -1,22 +1,20 @@
-# rsmp supervisor server
-# handles mulitple connection to clients (equipment)
-# the clients connect to the server
+#
+# RSMP supervisor (server)
+#
+# Handles  connections to multiple sites (clients)
+# The clients connect to us.
+# Uses bidirectional pure TCP sockets
+#
 
 require 'rubygems'
 require 'yaml'
 require 'socket'
 require 'time'
-require_relative 'logger'
+require_relative 'rsmp'
 require_relative 'remote_client'
-
-# Handle connections to multiple clients.
-# Uses bidirectional pure TCP sockets
-
 
 module RSMP
   class Server
-    WRAPPING_DELIMITER = "\f"
-
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_clients, :logger
     attr_accessor :site_id_mutex, :site_id_condition_variable
 
@@ -81,7 +79,6 @@ module RSMP
     end
 
     def start
-      #return if @socket_thread
       @run = true
       starting
       @socket = TCPServer.new @port  # server on specific port
@@ -103,7 +100,7 @@ module RSMP
     end
 
     def stop
-      log str: "Stopping site id #{@site_id}", level: :info
+      log str: "Stopping supervisor id #{@site_id}", level: :info
       @run = false
       @remote_clients.each { |client| client.terminate }
       @remote_clients.clear
@@ -128,7 +125,7 @@ module RSMP
 
     def handle_connection client
       sock_domain, remote_port, remote_hostname, remote_ip = client.peeraddr
-      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:Server.now_string(), id:get_new_client_id}
+      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:RSMP.now_string(), id:get_new_client_id}
 
       if accept? client, info
         connect client, info
@@ -140,7 +137,7 @@ module RSMP
     end
 
     def starting
-      log str: "Starting site id #{@site_id} on port #{@port}", level: :info
+      log str: "Starting supervisor id #{@site_id} on port #{@port}", level: :info
     end
 
     def accept? client, info
@@ -149,8 +146,8 @@ module RSMP
 
     def log item
       raise ArgumentError unless item.is_a? Hash
-      now_obj = Server.now_object
-      now_str = Server.now_string(now_obj)
+      now_obj = RSMP.now_object
+      now_str = RSMP.now_string(now_obj)
 
       cleaned = item.select { |k,v| [:level,:ip,:site_id,:str,:message].include? k }
       cleaned[:timestamp] = now_obj
@@ -177,26 +174,6 @@ module RSMP
 
     def exiting
       log str: "Exiting", level: :info
-    end
-
-    def self.now_object
-      # date using UTC time zone
-      Time.now.utc
-    end
-
-    def self.now_string time=nil
-      # date in the format required by rsmp, using UTC time zone
-      # example: 2015-06-08T12:01:39.654Z
-      time ||= Time.now.utc
-      time.strftime("%FT%T.%3NZ")
-    end
-
-    def self.parse_time time_str
-      Time.parse time_str
-    end
-    
-    def self.log_prefix ip
-      "#{now_string} #{ip.ljust(20)}"
     end
 
     def site_connected? site_id

@@ -65,12 +65,29 @@ module RSMP
       return if str.empty? || /^\s+$/.match(str)
       streams = [$stdout]
       streams << $stderr if level == :error
+      str = colorize level, str
       streams.each do |stream|
-        if @settings["color"]
-          stream.puts str.colorize(@settings["color"])
+        stream.puts str
+      end
+    end
+
+    def colorize level, str
+      #p String.color_samples
+      if @settings["color"] == false || @settings["color"] == nil
+        str
+      elsif @settings["color"] == true
+        case level
+        when  :error
+          str.colorize(:red)
+        when :warning
+          str.colorize(:yellow)
+        when :info
+          str.colorize(:light_black)
         else
-          stream.puts str
+          str
         end
+      else
+        str.colorize(@settings["color"])
       end
     end
 

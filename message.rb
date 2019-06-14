@@ -96,7 +96,7 @@ module RSMP
     end
 
     def initialize attributes = {}
-      @timestamp = Server.now_object
+      @timestamp = RSMP.now_object
       @attributes = { "mType"=> "rSMsg" }.merge attributes
 
       # if message is empty, generate a new one

@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+#note: the shebang above expects ruby to be intalled through rbenv
+
+# executable wrapper for starting an rsmp site
+#
+# expect settings files to be present
+
+require_relative 'site'
+
+# settings paths
+dir = File.dirname(__FILE__)
+site_settings_path = File.expand_path File.join(dir,'config/site.yaml')
+
+# start
+site = RSMP::Site.new({
+	site_settings_path: site_settings_path
+})
+site.start
+
+# keep running until stopped
+site.join
