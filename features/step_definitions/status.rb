@@ -12,15 +12,29 @@ Then("the status response should include the component id") do
 	expect(@response_message.attributes["cId"]).to eq(@component)
 end
 
-Then("values should be returned in the status response") do
+Then("the status response should include the correct status code ids") do
 	@send_values.each_with_index do |sent,index|
-		expected = { "cCI" => sent["cCI"] }
-		got = { "cCI" => @response_message.attributes["sS"][index]["cCI"] }
+		expected = {
+			"cCI" => sent["cCI"],
+			"q" => "recent"
+		}
+		sS = @response_message.attributes["sS"][index]
+		got = {
+			"cCI" => sS["cCI"],
+			"q" => sS["q"]
+		}
 		expect(got).to eq(expected)
 	end
 end
 
-Then("the timestamp should be within {float} seconds of our time") do |seconds|
+Then("the status response should include values") do
+	@send_values.each_with_index do |sent,index|
+		sS = @response_message.attributes["sS"][index]
+		expect(sS["s"]).to_not be_nil
+	end
+end
+
+Then("the status response should include a timestamp that is within {float} seconds of our time") do |seconds|
 	timestamp = RSMP::Server.parse_time(@response_message.attributes["sTs"])
 	difference = (timestamp - @response_message.timestamp).abs
 	expect(difference).to be <= seconds

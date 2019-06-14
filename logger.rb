@@ -84,7 +84,8 @@ module RSMP
 
     def find options={}
       @archive.select do |item|
-        # note: next(false) means we move to the next iteration, returning true for this item
+        # note: next(false) means we move to the next iteration, returning false for the current item
+        next(false) if options[:type] && item[:message] == nil || (item[:message].type != options[:type])
         next(false) if options[:earliest] && item[:timestamp] < options[:earliest]
         next(false) if options[:with_message] && !(item[:direction] && item[:message])
         true
@@ -93,13 +94,14 @@ module RSMP
 
     def wait_for_messages options
       earliest = options[:earliest]
+      type = options[:type]
       num = options[:num]
       timeout = options[:timeout]
 
       start = Time.now
       @archive_mutex.synchronize do
         loop do
-          m = find(earliest: earliest, with_message: true).map { |item| item[:message]}
+          m = find(type: type, earliest: earliest, with_message: true).map { |item| item[:message]}
           left = timeout + (start - Time.now)
           return m, m.size if m.size >=num or left <= 0
           @archive_condition_variable.wait(@archive_mutex,left)

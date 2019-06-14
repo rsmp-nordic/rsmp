@@ -38,6 +38,10 @@ module RSMP
         message = StatusRequest.new attributes
       when "StatusResponse"
         message = StatusResponse.new attributes
+      when "StatusSubscribe"
+        message = StatusSubscribe.new attributes
+      when "StatusUpdate"
+        message = StatusUpdate.new attributes
       else
         message = Unknown.new attributes
       end
@@ -247,5 +251,20 @@ module RSMP
     end
   end
 
+  class StatusSubscribe < Message
+    def initialize attributes = {}
+      super({
+        "type" => "StatusSubscribe",
+      }.merge attributes)
+    end
+  end
+
+  class StatusUpdate < Message
+    def initialize attributes = {}
+      super({
+        "type" => "StatusUpdate",
+      }.merge attributes)
+    end
+  end
 
 end

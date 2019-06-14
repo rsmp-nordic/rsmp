@@ -24,3 +24,22 @@ end
 Then("we should receive a not acknowledged message") do
   @not_acknowledged = @client.wait_for_not_acknowledged @sent_message, @supervisor_settings["acknowledgement_timeout"]
 end
+
+When("we start collecting messages") do
+  @log_start = Time.now
+end
+
+Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout, expected_table|
+  expected_num = expected_table.rows.size
+  @messages, num = @server.logger.wait_for_messages num: expected_num, timeout: timeout, earliest: @log_start
+  actual_table = @messages.map { |message| [message.direction.to_s, message.type] }
+  actual_table = actual_table.slice(0,expected_table.rows.size)
+  actual_table.unshift expected_table.headers
+  expected_table.diff!(actual_table)
+end
+
+Then("we should receive {int} {string} messages within {int} seconds") do |expected_num, type, timeout|
+  @messages, got_num = @server.logger.wait_for_messages type: type, num: expected_num, timeout: timeout, earliest: @log_start
+  expect(got_num).to eq(expected_num)
+end
+

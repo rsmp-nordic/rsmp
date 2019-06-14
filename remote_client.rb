@@ -32,6 +32,10 @@ module RSMP
       @status_response_mutex = Mutex.new
       @status_response_condition = ConditionVariable.new
 
+      @status_updates = {}
+      @status_update_mutex = Mutex.new
+      @status_update_condition = ConditionVariable.new
+
       @acknowledgements = {}
       @not_acknowledgements = {}
       @acknowledgement_mutex = Mutex.new
@@ -335,6 +339,10 @@ module RSMP
           process_status_request message
         when StatusResponse
           process_status_response message
+        when StatusSubscribe
+          process_status_subcribe message
+        when StatusUpdate
+          process_status_update message
         else
           dont_acknowledge message, "Received", "unknown message (#{message.type})"
       end
@@ -473,8 +481,7 @@ module RSMP
     end
 
     def process_command_request message
-      warning "Ignoring #{message.type}, since we're a supervisor", message
-      dont_acknowledge message
+      ignore message
     end
 
     def process_command_response message
@@ -522,21 +529,20 @@ module RSMP
       wait_for_acknowledgement original, timeout, not_acknowledged: true
     end
 
-    def request_status component, sS, timeout=nil
+    def request_status component, status_list, timeout=nil
       raise NotReady unless @state == :ready
       message = RSMP::StatusRequest.new({
           "ntsOId" => '',
           "xNId" => '',
           "cId" => component,
-          "sS" => sS
+          "sS" => status_list
       })
       send message
       return message, wait_for_status_response(component, timeout)
     end
 
     def process_status_request message
-      warning "Ignoring #{message.type}, since we're a supervisor", message
-      dont_acknowledge message
+      ignore message
     end
 
     def process_status_response message
@@ -558,6 +564,52 @@ module RSMP
           return message if message
           return if left <= 0
           @status_response_condition.wait(@status_response_mutex,left)
+        end
+      end
+    end
+
+    def ignore message
+      warning "Ignoring #{message.type}, since we're a supervisor", message
+      dont_acknowledge message
+    end
+
+    def subscribe_to_status component, status_list, timeout
+      raise NotReady unless @state == :ready
+      message = RSMP::StatusSubscribe.new({
+          "ntsOId" => '',
+          "xNId" => '',
+          "cId" => component,
+          "sS" => status_list
+      })
+      send message
+      return message, wait_for_status_update(component, timeout)
+    end
+
+    def process_status_subscribe message
+      ignore message
+    end
+
+    def process_status_update message
+      log "Received #{message.type}", message
+      acknowledge message
+      @status_update_mutex.synchronize do
+        c_id = message.attributes["cId"]
+        @status_updates[c_id] = message
+        @status_update_condition.broadcast
+      end
+    end
+
+    def wait_for_status_update component_id, timeout
+      raise ArgumentError unless component_id
+      raise ArgumentError unless timeout      
+      start = Time.now
+      @status_update_mutex.synchronize do
+        loop do
+          left = timeout + (start - Time.now)
+          message = @status_updates.delete(component_id)
+          return message if message
+          return if left <= 0
+          @status_update_condition.wait(@status_update_mutex,left)
         end
       end
     end
