@@ -29,6 +29,9 @@ module RSMP
         if @settings["watchdogs"] == false
           return false if type == "Watchdog"
           if ack
+            unless item[:message].original
+              raise RuntimeError.new "Log error! Expected ack item to have an original. #{item.inspect}"
+            end
             return false if item[:message].original.type == "Watchdog"
           end
         end
@@ -107,7 +110,7 @@ module RSMP
       end
 
       @archive_mutex.synchronize do
-        @archive << cleaned.clone
+        @archive << cleaned
         @archive_condition_variable.broadcast
       end
     end
@@ -115,7 +118,7 @@ module RSMP
     def find options={}
       @archive.select do |item|
         # note: next(false) means we move to the next iteration, returning false for the current item
-        next(false) if options[:type] && item[:message] == nil || (item[:message].type != options[:type])
+        next(false) if options[:type] && (item[:message] == nil || (item[:message].type != options[:type]))
         next(false) if options[:earliest] && item[:timestamp] < options[:earliest]
         next(false) if options[:with_message] && !(item[:direction] && item[:message])
         true

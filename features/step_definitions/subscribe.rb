@@ -35,7 +35,7 @@ Then("the status update should include values") do
 end
 
 Then("the status update should include a timestamp that is within {float} seconds of our time") do |seconds|
-	timestamp = RSMP::Server.parse_time(@update_message.attributes["sTs"])
+	timestamp = RSMP::parse_time(@update_message.attributes["sTs"])
 	difference = (timestamp - @update_message.timestamp).abs
 	expect(difference).to be <= seconds
 end
