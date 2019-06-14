@@ -1,8 +1,8 @@
 #
 # RSMP supervisor (server)
 #
-# Handles  connections to multiple sites (clients)
-# The clients connect to us.
+# Handles  connections to multiple sites (sites)
+# The sites connect to us.
 # Uses bidirectional pure TCP sockets
 #
 
@@ -11,11 +11,11 @@ require 'yaml'
 require 'socket'
 require 'time'
 require_relative 'rsmp'
-require_relative 'remote_client'
+require_relative 'remote_site'
 
 module RSMP
   class Server
-    attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_clients, :logger
+    attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_sites, :logger
     attr_accessor :site_id_mutex, :site_id_condition_variable
 
     def initialize options
@@ -26,8 +26,8 @@ module RSMP
       
       @logger = Logger.new self, @supervisor_settings["log"]
 
-      @remote_clients = []
-      @client_counter = 0
+      @remote_sites = []
+      @site_counter = 0
 
       @site_id_mutex = Mutex.new
       @site_id_condition_variable = ConditionVariable.new
@@ -85,8 +85,8 @@ module RSMP
       @socket_thread = Thread.new do
         while @run
           begin
-            @socket_threads << Thread.start(@socket.accept) do |client|    # wait for a client to connect
-              handle_connection(client)
+            @socket_threads << Thread.start(@socket.accept) do |socket|    # wait for a site to connect
+              handle_connection(socket)
             end
           rescue Errno::EBADF => e
             break
@@ -102,8 +102,8 @@ module RSMP
     def stop
       log str: "Stopping supervisor id #{@site_id}", level: :info
       @run = false
-      @remote_clients.each { |client| client.terminate }
-      @remote_clients.clear
+      @remote_sites.each { |site| site.terminate }
+      @remote_sites.clear
 
       @socket.close if @socket
       @socket = nil
@@ -119,28 +119,29 @@ module RSMP
       start
     end
 
-    def get_new_client_id
-      @client_counter = @client_counter + 1
+    def get_new_site_id
+      @site_counter = @site_counter + 1
     end
 
-    def handle_connection client
-      sock_domain, remote_port, remote_hostname, remote_ip = client.peeraddr
-      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:RSMP.now_string(), id:get_new_client_id}
-
-      if accept? client, info
-        connect client, info
+    def handle_connection socket
+      sock_domain, remote_port, remote_hostname, remote_ip = socket.peeraddr
+      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:RSMP.now_string(), id:get_new_site_id}
+      if accept? socket, info
+        connect socket, info
       else
-        reject client, info
+        reject socket, info
       end
+    rescue StandardError => e
+      log str: "Uncaught exception:", exception: e, level: :error
     ensure
-      close client, info
+      close socket, info
     end
 
     def starting
       log str: "Starting supervisor id #{@site_id} on port #{@port}", level: :info
     end
 
-    def accept? client, info
+    def accept? socket, info
       true
     end
 
@@ -148,20 +149,20 @@ module RSMP
       @logger.log item
     end
 
-    def connect client, info
+    def connect socket, info
       log ip: info[:ip], str: "Site connected", level: :log
-      remote_client = RemoteClient.new self, client, info
-      @remote_clients.push remote_client
-      remote_client.run
+      remote_site = RemoteSite.new server: self, socket: socket, info: info, logger: @logger
+      @remote_sites.push remote_site
+      remote_site.run
     end
 
-    def reject client, info
+    def reject socket, info
       log ip: info[:ip], str: "Site rejected", level: :log
     end
 
-    def close client, info
+    def close socket, info
       log ip: info[:ip], str: "Site disconnected", level: :log
-      client.close
+      socket.close
     end
 
     def exiting
@@ -169,12 +170,12 @@ module RSMP
     end
 
     def site_connected? site_id
-      return find_client(site_id) != nil
+      return find_site(site_id) != nil
     end
 
-    def find_client site_id
-      @remote_clients.each do |client|
-        return client if client.site_ids.include? site_id
+    def find_site site_id
+      @remote_sites.each do |site|
+        return site if site.site_ids.include? site_id
       end
       nil
     end
@@ -188,7 +189,7 @@ module RSMP
     def wait_for_site site_id, timeout
       @site_id_mutex.synchronize do
         @site_id_condition_variable.wait(@site_id_mutex,timeout) unless site_connected? site_id
-        find_client site_id 
+        find_site site_id 
       end
     end
 

@@ -60,7 +60,7 @@ module RSMP
       socket = TCPSocket.open @supervisor_ip, @port  # connect to supervisor
       info = {ip:@supervisor_ip, port:@port, now:RSMP.now_string()}
       log ip: info[:ip], str: "Connected to supervisor", level: :log
-      remote_supervisor = RemoteSupervisor.new self, socket, info
+      remote_supervisor = RemoteSupervisor.new site: self, socket: socket, info: info, logger: @logger
       @remote_supervisors.push remote_supervisor
       remote_supervisor.run
     end
@@ -72,7 +72,7 @@ module RSMP
     def stop
       log str: "Stopping site id #{@site_id}", level: :info
       @run = false
-      @remote_supervisors.each { |client| client.terminate }
+      @remote_supervisors.each { |site| site.terminate }
       @remote_supervisors.clear
 
       @socket.close if @socket
@@ -89,9 +89,9 @@ module RSMP
       start
     end
 
-    def close client, info
+    def close site, info
       log ip: info[:ip], str: "Site disconnected", level: :log
-      client.close
+      site.close
     end
 
     def starting

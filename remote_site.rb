@@ -1,24 +1,21 @@
-# handles connection to a single remote supervisor
+# handles connection to a single remote site
 
 require_relative 'remote'
 
 module RSMP  
-  class RemoteSupervisor < Remote
+  class RemoteSite < Remote
 
-    attr_reader :supervisor_id, :site
+    attr_reader :site_ids, :server
 
     def initialize options
       super options
-
-      @site = options[:site]
+      @server = options[:server]
       @awaiting_acknowledgement = {}
       @latest_watchdog_received = nil
       @version_determined = false
       @threads = []
-
       @aggregated_status = {}
       @watchdog_started = false
-
       @state_mutex = Mutex.new
       @state_condition = ConditionVariable.new
 
@@ -42,32 +39,8 @@ module RSMP
 
     def run
       start_reader
-      send_version @site.site_settings["rsmp_versions"].first
-      #start_watchdog
-
       @reader.join
       kill_threads
-    end
-
-    def close
-      @socket.close
-    end
-
-    def terminate
-      @state = :stopping
-      info "Closing connection"
-      @reader.kill
-    end
-
-    def kill_threads
-      reaper = Thread.new(@threads) do |threads|
-        threads.each do |thread|
-          info "Stopping #{thread[:name]}"
-          thread.kill
-        end
-      end
-      reaper.join
-      @threads.clear
     end
 
     def start_reader    
@@ -77,6 +50,8 @@ module RSMP
         while packet = socket.gets(RSMP::WRAPPING_DELIMITER)
           if packet
             packet.chomp!(RSMP::WRAPPING_DELIMITER)
+            packet.strip! # get rid of any leading/trailing spaces, line breaks, etc
+            #packet.strip!
             begin
               process packet
             rescue StandardError => e
@@ -90,7 +65,7 @@ module RSMP
 
     def start_watchdog
       name = "watchdog"
-      interval = @site.site_settings["watchdog_interval"]
+      interval = @server.supervisor_settings["watchdog_interval"]
       info "Starting #{name} with interval #{interval} seconds"
       @threads << Thread.new(@socket) do |socket|
         Thread.current[:name] = name
@@ -129,7 +104,7 @@ module RSMP
     end
 
     def check_ack_timeout now
-      timeout = @site.site_settings["acknowledgement_timeout"]
+      timeout = @server.supervisor_settings["acknowledgement_timeout"]
       # hash cannot be modify during iteration, so clone it
       @awaiting_acknowledgement.clone.each_pair do |m_id, message|
         latest = message.timestamp + timeout
@@ -143,7 +118,7 @@ module RSMP
     end
 
     def check_watchdog_timeout now
-      timeout = @site.site_settings["watchdog_timeout"]
+      timeout = @server.supervisor_settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       if now > latest
         error "No Watchdog within #{timeout} seconds"
@@ -168,7 +143,8 @@ module RSMP
     end
 
     def process_version message
-      return extraneous_version if @version_determined
+      return extraneous_version message if @version_determined
+      check_site_ids message
       rsmp_version = check_rsmp_version message
       @phase = :version_determined
       check_sxl_version
@@ -178,21 +154,46 @@ module RSMP
     def check_sxl_version
     end
 
+    def check_site_ids message
+      message.attribute("siteId").map { |item| item["sId"] }.each do |site_id|
+        check_site_id(site_id)
+      end
+      @phase = :site_id_accepted
+      @server.site_ids_changed
+    rescue StandardError => e
+      raise FatalError.new e.message
+    end
+
+    def check_site_id site_id
+      if site_id_accetable? site_id
+        add_site_id site_id
+      else
+        raise FatalError.new "Site id #{site_id} rejected"
+      end
+    end
+
+    def add_site_id site_id
+      @site_ids << site_id
+    end
+
     def connection_complete
       @state = :ready
-      info "Connection to supervisor established"
-      start_watchdog
+      info "Connection to site established"
+    end
+
+    def site_id_accetable? site_id
+      true
     end
 
     def check_rsmp_version message
       # find versions that both we and the site support
-      candidates = message.versions & @site.rsmp_versions
+      candidates = message.versions & @server.rsmp_versions
       if candidates.any?
         # pick latest version
         version = candidates.sort.last
         return version
       else
-        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but we only support [#{@site.rsmp_versions.join(',')}]."
+        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but we only support [#{@server.rsmp_versions.join(',')}]."
       end
     end
 
@@ -200,14 +201,14 @@ module RSMP
       log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message
       start_timeout
       acknowledge message
-      connection_complete
+      send_version rsmp_version
       @version_determined = true
     end
 
     def send_version rsmp_version
       version_response = Version.new({
         "RSMP"=>[{"vers"=>rsmp_version}],
-        "siteId"=>[{"sId"=>@site.site_id}],
+        "siteId"=>[{"sId"=>@server.site_id}],
         "SXL"=>"1.1"
       })
       send version_response
@@ -223,6 +224,9 @@ module RSMP
         dont_expect_acknowledgement message
         message.original = original
         log_acknowledgement_for_original message, original
+        if original.type == "Version"
+          connection_complete
+        end
         @acknowledgement_mutex.synchronize do
           @acknowledgements[ original.m_id ] = message
           @acknowledgement_condition.broadcast
@@ -259,10 +263,13 @@ module RSMP
       log "Received #{message.type}", message
       @latest_watchdog_received = RSMP.now_object
       acknowledge message
+      if @watchdog_started == false
+        start_watchdog
+      end
     end
 
     def expect_version_message message
-      unless message.is_a?(Version) || message.is_a?(MessageAck)
+      unless message.is_a? Version
         raise FatalError.new "Version must be received first"
       end
     end

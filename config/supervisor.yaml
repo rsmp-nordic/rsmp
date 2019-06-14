@@ -16,11 +16,11 @@ log:
   color: true
   timestamp: false
   ip: false
-  site_id: false
+  site_id: true
   text: true
   direction: true
   level: false
   json: true
   acknowledgements: true
-  watchdogs: false
+  watchdogs: true
 

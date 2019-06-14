@@ -61,6 +61,11 @@ module RSMP
       parts << item[:str].strip unless @settings["text"] == false
       parts << item[:message].json unless @settings["json"] == false || item[:message] == nil
 
+      if item[:exception]
+        parts << "#{item[:exception].name}\n"
+        parts << item[:exception].backtrace.join("\n")
+      end
+
       out = parts.join(' ').chomp(' ')
       out
     end
@@ -101,7 +106,7 @@ module RSMP
       now_obj = RSMP.now_object
       now_str = RSMP.now_string(now_obj)
 
-      cleaned = item.select { |k,v| [:level,:ip,:site_id,:str,:message].include? k }
+      cleaned = item.select { |k,v| [:level,:ip,:site_id,:str,:message,:exception].include? k }
       cleaned[:timestamp] = now_obj
       cleaned[:direction] = item[:message].direction if item[:message]
       
