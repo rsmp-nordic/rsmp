@@ -43,105 +43,6 @@ module RSMP
       kill_threads
     end
 
-    def start_reader    
-      @reader = Thread.new(@socket) do |socket|
-        Thread.current[:name] = "reader"
-        # an rsmp message is json terminated with a form-feed
-        while packet = socket.gets(RSMP::WRAPPING_DELIMITER)
-          if packet
-            packet.chomp!(RSMP::WRAPPING_DELIMITER)
-            packet.strip! # get rid of any leading/trailing spaces, line breaks, etc
-            #packet.strip!
-            begin
-              process packet
-            rescue StandardError => e
-              error ["Uncaught exception: #{e}",e.backtrace].flatten.join("\n")
-            end
-          end
-        end
-        warning "Client closed connection"
-      end
-    end
-
-    def start_watchdog
-      name = "watchdog"
-      interval = @server.supervisor_settings["watchdog_interval"]
-      info "Starting #{name} with interval #{interval} seconds"
-      @threads << Thread.new(@socket) do |socket|
-        Thread.current[:name] = name
-        loop do
-          begin
-            message = Watchdog.new( {"wTs" => RSMP.now_string})
-            send message
-          rescue StandardError => e
-            error ["#{name} error: #{e}",e.backtrace].flatten.join("\n")
-          end
-          sleep interval
-        end
-      end
-      @watchdog_started = true
-    end
-
-    def start_timeout
-      name = "timeout checker"
-      interval = 1
-      info "Starting #{name} with interval #{interval} seconds"
-      @latest_watchdog_received = RSMP.now_object
-      @threads << Thread.new(@socket) do |socket|
-        Thread.current[:name] = name
-        loop do
-          begin
-            now = RSMP.now_object
-            break if check_ack_timeout now
-            break if check_watchdog_timeout now
-          rescue StandardError => e
-            error ["#{name} error: #{e}",e.backtrace].flatten.join("\n")
-          ensure
-            sleep 1
-          end
-        end
-      end
-    end
-
-    def check_ack_timeout now
-      timeout = @server.supervisor_settings["acknowledgement_timeout"]
-      # hash cannot be modify during iteration, so clone it
-      @awaiting_acknowledgement.clone.each_pair do |m_id, message|
-        latest = message.timestamp + timeout
-        if now > latest
-          error "No acknowledgements for #{message.type} within #{timeout} seconds"
-          terminate
-          return true
-        end
-      end
-      false
-    end
-
-    def check_watchdog_timeout now
-      timeout = @server.supervisor_settings["watchdog_timeout"]
-      latest = @latest_watchdog_received + timeout
-      if now > latest
-        error "No Watchdog within #{timeout} seconds"
-        terminate
-        return true
-      end
-      false
-    end
-
-    def expect_acknowledgement message
-      unless message.is_a?(MessageAck) || message.is_a?(MessageNotAck)
-        @awaiting_acknowledgement[message.m_id] = message
-      end
-    end
-
-    def dont_expect_acknowledgement message
-      @awaiting_acknowledgement.delete message.attribute("oMId")
-    end
-
-    def extraneous_version message
-      dont_acknowledge message, "Received", "extraneous Version message"
-    end
-
     def process_version message
       return extraneous_version message if @version_determined
       check_site_ids message
@@ -183,18 +84,6 @@ module RSMP
 
     def site_id_accetable? site_id
       true
-    end
-
-    def check_rsmp_version message
-      # find versions that both we and the client support
-      candidates = message.versions & @server.rsmp_versions
-      if candidates.any?
-        # pick latest version
-        version = candidates.sort.last
-        return version
-      else
-        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but we only support [#{@server.rsmp_versions.join(',')}]."
-      end
     end
 
     def version_accepted message, rsmp_version
@@ -272,50 +161,6 @@ module RSMP
       unless message.is_a? Version
         raise FatalError.new "Version must be received first"
       end
-    end
-
-    def process packet
-      attributes = Message.parse_attributes packet
-      message = Message.build attributes, packet
-      expect_version_message(message) unless @version_determined
-      case message
-        when MessageAck
-          process_ack message
-        when MessageNotAck
-          process_not_ack message
-        when Version
-          process_version message
-        when Watchdog
-          process_watchdog message
-        when AggregatedStatus
-          process_aggregated_status message
-        when Alarm
-          process_alarm message
-        when CommandRequest
-          process_command_request message
-        when CommandResponse
-          process_command_response message
-        when StatusRequest
-          process_status_request message
-        when StatusResponse
-          process_status_response message
-        when StatusSubscribe
-          process_status_subcribe message
-        when StatusUpdate
-          process_status_update message
-        else
-          dont_acknowledge message, "Received", "unknown message (#{message.type})"
-      end
-    rescue InvalidPacket => e
-      warning "Received invalid package, must be valid JSON but got #{packet.size} bytes: #{e.message}"
-    rescue MalformedMessage => e
-      warning "Received invalid message, #{e.message}", Malformed.new(attributes)
-      # cannot acknowledge a malformed message, just ignore it
-    rescue InvalidMessage => e
-      dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
-    rescue FatalError => e
-      dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
-      terminate 
     end
 
     def validate_aggregated_status  message, se

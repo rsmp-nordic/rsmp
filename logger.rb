@@ -29,10 +29,7 @@ module RSMP
         if @settings["watchdogs"] == false
           return false if type == "Watchdog"
           if ack
-            unless item[:message].original
-              raise RuntimeError.new "Log error! Expected ack item to have an original. #{item.inspect}"
-            end
-            return false if item[:message].original.type == "Watchdog"
+            return false if item[:message].original && item[:message].original.type == "Watchdog"
           end
         end
         return false if ack && @settings["acknowledgements"] == false
@@ -62,7 +59,7 @@ module RSMP
       parts << item[:message].json unless @settings["json"] == false || item[:message] == nil
 
       if item[:exception]
-        parts << "#{item[:exception].name}\n"
+        parts << "#{item[:exception].class.to_s}\n"
         parts << item[:exception].backtrace.join("\n")
       end
 
@@ -102,7 +99,7 @@ module RSMP
 
     def log item
       raise ArgumentError unless item.is_a? Hash
-      
+    
       now_obj = RSMP.now_object
       now_str = RSMP.now_string(now_obj)
 

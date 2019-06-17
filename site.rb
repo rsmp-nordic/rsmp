@@ -38,13 +38,12 @@ module RSMP
       end
       raise "Site settings is empty" unless @site_settings
       raise "Site settings:supervisor_ip is missing" unless @site_settings["supervisor_ip"]
-      @supervisor_ip = @site_settings["supervisor_ip"]
       raise "Site settings:port is missing" unless @site_settings["port"]
-      @port = @site_settings["port"]
       raise "Site settings:rsmp_version is missing" unless @site_settings["rsmp_versions"]
-      @rsmp_versions = @site_settings["rsmp_versions"]
+
       raise "Site settings:siteId is missing" unless @site_settings["site_id"]
-      @site_id = @site_settings["site_id"]
+      #@site_settings["site_id"] = "RN+RC#{rand(9999).to_i}"
+      
       raise "Site settings:watchdog_interval is missing" if @site_settings["watchdog_interval"] == nil
       raise "Site settings:watchdog_timeout is missing" if @site_settings["watchdog_timeout"] == nil
       raise "Site settings:acknowledgement_timeout is missing" if @site_settings["acknowledgement_timeout"] == nil
@@ -57,10 +56,10 @@ module RSMP
       starting
       
       # TODO for each supervisor we want to connect to
-      socket = TCPSocket.open @supervisor_ip, @port  # connect to supervisor
-      info = {ip:@supervisor_ip, port:@port, now:RSMP.now_string()}
-      log ip: info[:ip], str: "Connected to supervisor", level: :log
-      remote_supervisor = RemoteSupervisor.new site: self, socket: socket, info: info, logger: @logger
+      socket = TCPSocket.open @site_settings["supervisor_ip"], @site_settings["port"]  # connect to supervisor
+      info = {ip:@site_settings["supervisor_ip"], port:@site_settings["port"], now:RSMP.now_string()}
+      log ip: info[:ip], str: "Connected to supervisor at #{@site_settings["supervisor_ip"]}:#{@site_settings["port"]}", level: :info
+      remote_supervisor = RemoteSupervisor.new site: self, settings: @site_settings, socket: socket, info: info, logger: @logger
       @remote_supervisors.push remote_supervisor
       remote_supervisor.run
     end
@@ -89,13 +88,13 @@ module RSMP
       start
     end
 
-    def close site, info
-      log ip: info[:ip], str: "Site disconnected", level: :log
+    def close socket, info
+      log ip: info[:ip], str: "Site disconnected", level: :info
       site.close
     end
 
     def starting
-      log str: "Starting site id #{@site_id} on port #{@port}", level: :info
+      log str: "Starting site id #{@site_settings["site_id"]} on port #{@site_settings["port"]}", level: :info
     end
 
     def exiting

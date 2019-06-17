@@ -14,7 +14,7 @@ require_relative 'rsmp'
 require_relative 'remote_site'
 
 module RSMP
-  class Server
+  class Supervisor
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_sites, :logger
     attr_accessor :site_id_mutex, :site_id_condition_variable
 
@@ -150,18 +150,20 @@ module RSMP
     end
 
     def connect socket, info
-      log ip: info[:ip], str: "Site connected", level: :log
-      remote_site = RemoteSite.new server: self, socket: socket, info: info, logger: @logger
+      log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", level: :info
+      remote_site = RemoteSite.new supervisor: self, settings: @sites_settings, socket: socket, info: info, logger: @logger
       @remote_sites.push remote_site
-      remote_site.run
+      remote_site.run # will not return untuil the site disconnects
+
+      @remote_sites.delete remote_site
     end
 
     def reject socket, info
-      log ip: info[:ip], str: "Site rejected", level: :log
+      log ip: info[:ip], str: "Site rejected", level: :info
     end
 
     def close socket, info
-      log ip: info[:ip], str: "Site disconnected", level: :log
+      log ip: info[:ip], str: "Site disconnected", level: :info
       socket.close
     end
 
@@ -191,6 +193,15 @@ module RSMP
         @site_id_condition_variable.wait(@site_id_mutex,timeout) unless site_connected? site_id
         find_site site_id 
       end
+    end
+
+    def check_site_id site_id
+      @remote_sites.each do |site|
+        if site.site_ids.include? site_id
+          raise FatalError.new "Site id #{site_id} already connected" 
+        end
+      end
+      true
     end
 
   end

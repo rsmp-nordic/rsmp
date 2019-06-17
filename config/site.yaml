@@ -5,8 +5,8 @@ rsmp_versions:
   - 3.1.4
 
 watchdog_interval: 1
-watchdog_timeout: 5
-acknowledgement_timeout: 5
+watchdog_timeout: 2
+acknowledgement_timeout: 2
 store_messages: false
 command_response_timeout: 1
 status_response_timeout: 1
@@ -17,11 +17,11 @@ log:
   color: true
   timestamp: false
   ip: false
-  site_id: false
+  site_id: true
   level: false
   text: true
   direction: true
   json: true
-  acknowledgements: true
-  watchdogs: true
+  acknowledgements: false
+  watchdogs: false
 
