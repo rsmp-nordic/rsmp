@@ -6,15 +6,11 @@
 # Uses bidirectional pure TCP sockets
 #
 
-require 'rubygems'
-require 'yaml'
-require 'socket'
-require 'time'
-require_relative 'rsmp'
+require_relative 'node'
 require_relative 'remote_site'
 
 module RSMP
-  class Supervisor
+  class Supervisor < Node
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_sites, :logger
     attr_accessor :site_id_mutex, :site_id_condition_variable
 
@@ -27,7 +23,6 @@ module RSMP
       @logger = Logger.new self, @supervisor_settings["log"]
 
       @remote_sites = []
-      @site_counter = 0
 
       @site_id_mutex = Mutex.new
       @site_id_condition_variable = ConditionVariable.new
@@ -95,37 +90,24 @@ module RSMP
       end
     end
 
-    def join
-      @socket_thread.join if @socket_thread
-    end
-
     def stop
       log str: "Stopping supervisor id #{@site_id}", level: :info
       @run = false
+
       @remote_sites.each { |site| site.terminate }
       @remote_sites.clear
 
       @socket.close if @socket
       @socket = nil
 
-      @socket_thread.join if @socket_thread
-      @socket_thread = nil
+      join
     ensure
       exiting
     end
 
-    def restart
-      stop
-      start
-    end
-
-    def get_new_site_id
-      @site_counter = @site_counter + 1
-    end
-
     def handle_connection socket
       sock_domain, remote_port, remote_hostname, remote_ip = socket.peeraddr
-      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:RSMP.now_string(), id:get_new_site_id}
+      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:RSMP.now_string()}
       if accept? socket, info
         connect socket, info
       else
@@ -145,10 +127,6 @@ module RSMP
       true
     end
 
-    def log item
-      @logger.log item
-    end
-
     def connect socket, info
       log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", level: :info
       remote_site = RemoteSite.new supervisor: self, settings: @sites_settings, socket: socket, info: info, logger: @logger
@@ -163,12 +141,8 @@ module RSMP
     end
 
     def close socket, info
-      log ip: info[:ip], str: "Site disconnected", level: :info
+      log ip: info[:ip], str: "Site #{info[:ip]}:#{info[:port]} gone", level: :info
       socket.close
-    end
-
-    def exiting
-      log str: "Exiting", level: :info
     end
 
     def site_connected? site_id
@@ -201,7 +175,6 @@ module RSMP
           raise FatalError.new "Site id #{site_id} already connected" 
         end
       end
-      true
     end
 
   end
