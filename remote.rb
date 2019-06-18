@@ -6,7 +6,7 @@ require 'timeout'
 
 module RSMP  
   class Remote
-    attr_reader :site_ids
+    attr_reader :site_ids, :state
 
     def initialize options
       @settings = options[:settings]
@@ -14,7 +14,7 @@ module RSMP
       @socket = options[:socket]
       @ip = options[:ip]
       @site_ids = []
-      @state = :starting
+      @state = :stoped
       @awaiting_acknowledgement = {}
       @latest_watchdog_received = nil
       @watchdog_started = false
@@ -40,10 +40,20 @@ module RSMP
       stop
     end
 
+    def start
+      @state = :starting
+    end
+
     def stop
+      @state = :stopping
       kill_threads
       @socket.close if @socket
+      reset
+    end
+
+    def reset
       @socket = nil
+      @state = :stopped
     end
 
     def close_socket
@@ -287,7 +297,7 @@ module RSMP
       return extraneous_version message if @version_determined
       check_site_ids message
       rsmp_version = check_rsmp_version message
-      @phase = :version_determined
+      @state = :version_determined
       check_sxl_version
       version_accepted message, rsmp_version
     end
@@ -328,6 +338,7 @@ module RSMP
 
     def state= state
       @state_mutex.synchronize do
+        @state = state
         @state_condition.broadcast
       end
     end

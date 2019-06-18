@@ -29,8 +29,9 @@ module RSMP
     end
 
     def start
+      super
       start_reader
-     end
+    end
 
     def connection_complete
       super

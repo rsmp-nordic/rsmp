@@ -1,20 +1,15 @@
 #!/usr/bin/env ruby
-#note: the shebang above expects ruby to be intalled through rbenv
-
-# executable wrapper for starting an rsmp supervisor (server)
+# Note: the shebang above expects ruby to be intalled through rbenv
 #
-# expect settings files to be present
+# Executable wrapper for starting an RSMP supervisor (server)
+# Expect a settings files to be present at config/supervisor.yaml
 
 require_relative 'supervisor'
 
-# settings paths
 dir = File.dirname(__FILE__)
 supervisor_settings_path = File.expand_path File.join(dir,'config/supervisor.yaml')
 sites_settings_path = File.expand_path File.join(dir,'config/sites.yaml')
 
-# start
-server = RSMP::Supervisor.new({
-	supervisor_settings_path: supervisor_settings_path,
-	sites_settings_path: sites_settings_path
-})
+server = RSMP::Supervisor.new supervisor_settings_path: supervisor_settings_path, 
+															sites_settings_path: sites_settings_path
 server.run

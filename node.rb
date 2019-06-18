@@ -14,20 +14,33 @@ require_relative 'logger'
 
 module RSMP
   class Node
-
     def initialize options
-      super
-      @socket_thread = nil
     end
 
     def run
       start
-      join
+      @socket_thread.join
     rescue SystemExit, SignalException, Interrupt
       exiting
       exit      #will cause all open sockets to be closed
     end
- 
+
+    def start
+      starting
+    end
+
+    def stop
+      if @socket_thread
+        @socket_thread.kill
+        @socket_thread = nil
+      end
+    end
+
+    def restart
+      stop
+      start
+    end
+
     def log item
       @logger.log item
     end
@@ -36,14 +49,11 @@ module RSMP
       log str: "Exiting", level: :info
     end
 
-    def join
-      @socket_thread.join if @socket_thread
-      @socket_thread = nil
-    end
-
-    def restart
-      stop
-      start
+    def check_required_settings settings, required
+      raise ArgumentError.new "Settings is empty" unless settings
+      required.each do |setting|
+        raise ArgumentError.new "Missing setting: #{setting}" unless settings.include? setting
+      end 
     end
 
   end

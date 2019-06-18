@@ -14,12 +14,14 @@ module RSMP
     end
 
     def start
+      super
       connect
       start_reader
       send_version @settings["rsmp_versions"].first
     rescue Errno::ECONNREFUSED
       error "No connection to supervisor at #{@settings["supervisor_ip"]}:#{@settings["port"]}"
     end
+
 
     def connect
       return if @socket

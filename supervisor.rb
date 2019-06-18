@@ -1,10 +1,7 @@
-#
 # RSMP supervisor (server)
 #
-# Handles  connections to multiple sites (sites)
-# The sites connect to us.
-# Uses bidirectional pure TCP sockets
-#
+# Handles connections to multiple sites (sites).
+# The supervisor waits for sites to connect.
 
 require_relative 'node'
 require_relative 'remote_site'
@@ -18,43 +15,32 @@ module RSMP
       handle_supervisor_settings options
       handle_sites_sittings options
 
-      @port = @supervisor_settings["port"]
-      
       @logger = options[:logger] || RSMP::Logger.new(self, @supervisor_settings["log"]) 
-
       @remote_sites = []
-
+      @socket_threads = []
+      
       @site_id_mutex = Mutex.new
       @site_id_condition_variable = ConditionVariable.new
-
-      @socket_threads = []
-      @run = false
     end
 
     def handle_supervisor_settings options
       if options[:supervisor_settings]
         @supervisor_settings = options[:supervisor_settings]
       else
-        # load settings
-        dir = File.dirname(__FILE__)
         if options[:supervisor_settings_path]
           @supervisor_settings = YAML.load_file(options[:supervisor_settings_path])
         else
           raise "supervisor_settings or supervisor_settings_path must be present"
         end
       end
-      raise "Supervisor settings is empty" unless @supervisor_settings
-      raise "Supervisor settings:port is missing" unless @supervisor_settings["port"]
+      
+      required = ["port","rsmp_versions","site_id","watchdog_interval","watchdog_timeout",
+                  "acknowledgement_timeout","command_response_timeout","log"]
+      check_required_settings @supervisor_settings, required
+
       @port = @supervisor_settings["port"]
-      raise "Supervisor settings:rsmp_version is missing" unless @supervisor_settings["rsmp_versions"]
       @rsmp_versions = @supervisor_settings["rsmp_versions"]
-      raise "Supervisor settings:siteId is missing" unless @supervisor_settings["site_id"]
       @site_id = @supervisor_settings["site_id"]
-      raise "Supervisor settings:watchdog_interval is missing" if @supervisor_settings["watchdog_interval"] == nil
-      raise "Supervisor settings:watchdog_timeout is missing" if @supervisor_settings["watchdog_timeout"] == nil
-      raise "Supervisor settings:acknowledgement_timeout is missing" if @supervisor_settings["acknowledgement_timeout"] == nil
-      raise "Supervisor settings:command_response_timeout is missing" if @supervisor_settings["command_response_timeout"] == nil
-      raise "Supervisor settings:log is missing" if @supervisor_settings["log"] == nil
     end
 
     def handle_sites_sittings options
@@ -74,39 +60,29 @@ module RSMP
     end
 
     def start
-      @run = true
-      starting
       @socket_thread = Thread.new do
         @tcp_server = TCPServer.new @port  # server on specific port
-        while @run
+        loop do
           begin
             @socket_threads << Thread.start(@tcp_server.accept) do |socket|    # wait for a site to connect
               handle_connection(socket)
             end
           rescue SystemCallError => e # all ERRNO errors
             log str: "Exception: #{e.to_s}", level: :error
-            break
           rescue StandardError => e
             log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
-            break
           end
         end
       end
     end
 
     def stop
-      log str: "Stopping supervisor id #{@site_id}", level: :info
-      @run = false
-
-      @remote_sites.each { |site| site.terminate }
+      log str: "Stopping supervisor #{@site_id}", level: :info
+      super
+      @remote_sites.each { |remote_site| remote_site.stop }
       @remote_sites.clear
-
       @tcp_server.close if @tcp_server
       @tcp_server = nil
-
-      join
-    ensure
-      exiting
     end
 
     def handle_connection socket
@@ -126,7 +102,7 @@ module RSMP
     end
 
     def starting
-      log str: "Starting supervisor id #{@site_id} on port #{@port}", level: :info
+      log str: "Starting supervisor #{@site_id} on port #{@port}", level: :info
     end
 
     def accept? socket, info
