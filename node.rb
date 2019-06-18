@@ -10,6 +10,7 @@ require 'yaml'
 require 'socket'
 require 'time'
 require_relative 'rsmp'
+require_relative 'logger'
 
 module RSMP
   class Node
@@ -19,6 +20,14 @@ module RSMP
       @socket_thread = nil
     end
 
+    def run
+      start
+      join
+    rescue SystemExit, SignalException, Interrupt
+      exiting
+      exit      #will cause all open sockets to be closed
+    end
+ 
     def log item
       @logger.log item
     end

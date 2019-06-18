@@ -14,7 +14,7 @@ module RSMP
 
     def initialize options
       handle_site_settings options
-      @logger = Logger.new self, @site_settings["log"]
+      @logger = options[:logger] || RSMP::Logger.new(self, @site_settings["log"])
       @remote_supervisors = []
     end
 
@@ -46,29 +46,36 @@ module RSMP
     end
 
     def start
+      @run = true
       starting
+
       # TODO for each supervisor we want to connect to
       # TODO when disconnected, reconnect at interval
-      begin
-        info = {ip:@site_settings["supervisor_ip"], port:@site_settings["port"], now:RSMP.now_string()}
-        socket = TCPSocket.open @site_settings["supervisor_ip"], @site_settings["port"]  # connect to supervisor
-        remote_supervisor = RemoteSupervisor.new site: self, settings: @site_settings, socket: socket, info: info, logger: @logger
+
+      @socket_thread = Thread.new do
+
+        remote_supervisor = RemoteSupervisor.new site: self, settings: @site_settings, logger: @logger
         @remote_supervisors.push remote_supervisor
-        remote_supervisor.run
-      rescue Errno::ECONNREFUSED
-        log str: "No connection to supervisor at #{@site_settings["supervisor_ip"]}:#{@site_settings["port"]}", level: :error
+
+        while @run
+          begin
+            remote_supervisor.run
+          rescue SystemCallError => e # all ERRNO errors
+            log str: "Exception: #{e.to_s}", level: :error
+            break
+          rescue StandardError => e
+            log str: ["Exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+            break
+          end
+        end
       end
+
     end
 
     def stop
       log str: "Stopping site id #{@site_id}", level: :info
-
       @remote_supervisors.each { |site| site.terminate }
       @remote_supervisors.clear
-
-      @socket.close if @socket
-      @socket = nil
-
       join
     ensure
       exiting

@@ -11,8 +11,8 @@ module RSMP
     def initialize options
       @settings = options[:settings]
       @logger = options[:logger]
-      @info = options[:info]
       @socket = options[:socket]
+      @ip = options[:ip]
       @site_ids = []
       @state = :starting
       @awaiting_acknowledgement = {}
@@ -34,8 +34,21 @@ module RSMP
       @site_ids.first   #rsmp connection can represent multiple site ids. pick the first
     end
 
-    def close
-      @socket.close
+    def run
+      start
+      @reader.join if @reader
+      stop
+    end
+
+    def stop
+      kill_threads
+      @socket.close if @socket
+      @socket = nil
+    end
+
+    def close_socket
+      @socket.close if @socket
+      @socket = nil
     end
 
     def terminate
@@ -59,16 +72,16 @@ module RSMP
       @reader = Thread.new(@socket) do |socket|
         Thread.current[:name] = "reader"
         # an rsmp message is json terminated with a form-feed
-        while packet = socket.gets(RSMP::WRAPPING_DELIMITER)
-          if packet
+        loop do
+          begin
+            packet = socket.gets(RSMP::WRAPPING_DELIMITER)
+            break unless packet
             packet.chomp!(RSMP::WRAPPING_DELIMITER)
-            begin
-              process packet
-            rescue SystemCallError => e # all ERRNO errors
-              error e.to_s
-           rescue StandardError => e
-              error ["Uncaught exception: #{e}",e.backtrace].flatten.join("\n")
-            end
+            process packet
+          rescue SystemCallError => e # all ERRNO errors
+            error "Remote exception: #{e.to_s}"
+          rescue StandardError => e
+            error ["Remote exception: #{e}",e.backtrace].flatten.join("\n")
           end
         end
         warning "Site closed connection"
@@ -107,7 +120,7 @@ module RSMP
             break if check_ack_timeout now
             break if check_watchdog_timeout now
           rescue StandardError => e
-            error ["#{name} error: #{e}",e.backtrace].flatten.join("\n")
+            error ["#{name} exception: #{e}",e.backtrace].flatten.join("\n")
           ensure
             sleep 1
           end
@@ -176,7 +189,7 @@ module RSMP
     def log_at_level str, level, message=nil
       @logger.log({
         level: level,
-        ip: @info[:ip],
+        ip: @ip,
         site_id: site_id,
         str: str,
         message: message

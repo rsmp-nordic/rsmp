@@ -11,6 +11,8 @@ module RSMP
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings
 
+      #@socket = options[:socket] # socket was created by Supervisor, when the site connected to our port
+
       @aggregated_status = {}
 
       @command_responses = {}
@@ -26,11 +28,9 @@ module RSMP
       @status_update_condition = ConditionVariable.new
     end
 
-    def run
+    def start
       start_reader
-      @reader.join
-      kill_threads
-    end
+     end
 
     def connection_complete
       super

@@ -55,7 +55,7 @@ module RSMP
           parts << " "*(length+1)
         end
       end
-      parts << item[:str].strip unless @settings["text"] == false
+      parts << item[:str].to_s.strip unless @settings["text"] == false
       parts << item[:message].json unless @settings["json"] == false || item[:message] == nil
 
       if item[:exception]

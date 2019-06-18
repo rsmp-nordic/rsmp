@@ -15,7 +15,4 @@ site_settings_path = File.expand_path File.join(dir,'config/site.yaml')
 site = RSMP::Site.new({
 	site_settings_path: site_settings_path
 })
-site.start
-
-# keep running until stopped
-site.join
+site.run

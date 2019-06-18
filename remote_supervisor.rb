@@ -13,11 +13,17 @@ module RSMP
       @settings = @site.site_settings
     end
 
-    def run
+    def start
+      connect
       start_reader
       send_version @settings["rsmp_versions"].first
-      @reader.join
-      kill_threads
+    rescue Errno::ECONNREFUSED
+      error "No connection to supervisor at #{@settings["supervisor_ip"]}:#{@settings["port"]}"
+    end
+
+    def connect
+      return if @socket
+      @socket = TCPSocket.open @settings["supervisor_ip"], @settings["port"]  # connect to supervisor
     end
 
     def connection_complete

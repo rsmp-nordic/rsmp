@@ -20,7 +20,7 @@ module RSMP
 
       @port = @supervisor_settings["port"]
       
-      @logger = Logger.new self, @supervisor_settings["log"]
+      @logger = options[:logger] || RSMP::Logger.new(self, @supervisor_settings["log"]) 
 
       @remote_sites = []
 
@@ -76,14 +76,18 @@ module RSMP
     def start
       @run = true
       starting
-      @socket = TCPServer.new @port  # server on specific port
       @socket_thread = Thread.new do
+        @tcp_server = TCPServer.new @port  # server on specific port
         while @run
           begin
-            @socket_threads << Thread.start(@socket.accept) do |socket|    # wait for a site to connect
+            @socket_threads << Thread.start(@tcp_server.accept) do |socket|    # wait for a site to connect
               handle_connection(socket)
             end
-          rescue Errno::EBADF => e
+          rescue SystemCallError => e # all ERRNO errors
+            log str: "Exception: #{e.to_s}", level: :error
+            break
+          rescue StandardError => e
+            log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
             break
           end
         end
@@ -97,8 +101,8 @@ module RSMP
       @remote_sites.each { |site| site.terminate }
       @remote_sites.clear
 
-      @socket.close if @socket
-      @socket = nil
+      @tcp_server.close if @tcp_server
+      @tcp_server = nil
 
       join
     ensure
@@ -113,8 +117,10 @@ module RSMP
       else
         reject socket, info
       end
+    rescue SystemCallError => e # all ERRNO errors
+      log str: "Exception: #{e.to_s}", level: :error
     rescue StandardError => e
-      log str: "Uncaught exception:", exception: e, level: :error
+      log str: "Exception: #{e}", exception: e, level: :error
     ensure
       close socket, info
     end
@@ -131,7 +137,7 @@ module RSMP
       log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", level: :info
       remote_site = RemoteSite.new supervisor: self, settings: @sites_settings, socket: socket, info: info, logger: @logger
       @remote_sites.push remote_site
-      remote_site.run # will not return untuil the site disconnects
+      remote_site.run # will run until the site disconnects
 
       @remote_sites.delete remote_site
     end
