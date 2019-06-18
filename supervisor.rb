@@ -78,11 +78,11 @@ module RSMP
 
     def stop
       log str: "Stopping supervisor #{@site_id}", level: :info
-      super
       @remote_sites.each { |remote_site| remote_site.stop }
       @remote_sites.clear
       @tcp_server.close if @tcp_server
       @tcp_server = nil
+      super
     end
 
     def handle_connection socket

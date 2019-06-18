@@ -22,7 +22,6 @@ module RSMP
       error "No connection to supervisor at #{@settings["supervisor_ip"]}:#{@settings["port"]}"
     end
 
-
     def connect
       return if @socket
       @socket = TCPSocket.open @settings["supervisor_ip"], @settings["port"]  # connect to supervisor

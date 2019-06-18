@@ -13,21 +13,7 @@ module RSMP
       @logger = options[:logger]
       @socket = options[:socket]
       @ip = options[:ip]
-      @site_ids = []
-      @state = :stoped
-      @awaiting_acknowledgement = {}
-      @latest_watchdog_received = nil
-      @watchdog_started = false
-      @version_determined = false
-      @threads = []
-
-      @state_mutex = Mutex.new
-      @state_condition = ConditionVariable.new
-
-      @acknowledgements = {}
-      @not_acknowledgements = {}
-      @acknowledgement_mutex = Mutex.new
-      @acknowledgement_condition = ConditionVariable.new
+      clear
     end
 
     def site_id
@@ -47,24 +33,31 @@ module RSMP
     def stop
       @state = :stopping
       kill_threads
-      @socket.close if @socket
-      reset
+      close_socket
+      clear
     end
 
-    def reset
-      @socket = nil
-      @state = :stopped
+    def clear
+      @state = :stoped
+      @site_ids = []
+      @awaiting_acknowledgement = {}
+      @latest_watchdog_received = nil
+      @watchdog_started = false
+      @version_determined = false
+      @threads = []
+
+      @state_mutex = Mutex.new
+      @state_condition = ConditionVariable.new
+
+      @acknowledgements = {}
+      @not_acknowledgements = {}
+      @acknowledgement_mutex = Mutex.new
+      @acknowledgement_condition = ConditionVariable.new
     end
 
     def close_socket
       @socket.close if @socket
       @socket = nil
-    end
-
-    def terminate
-      @state = :stopping
-      info "Closing connection"
-      @reader.kill
     end
 
     def kill_threads
@@ -90,12 +83,15 @@ module RSMP
             process packet
           rescue SystemCallError => e # all ERRNO errors
             error "Remote exception: #{e.to_s}"
+            break
           rescue StandardError => e
             error ["Remote exception: #{e}",e.backtrace].flatten.join("\n")
+            break
           end
         end
-        warning "Site closed connection"
+        warning "Connection closed"
       end
+      @threads << @reader
     end
 
     def start_watchdog
@@ -167,6 +163,7 @@ module RSMP
       @state = :stopping
       info "Closing connection"
       @reader.kill
+      @state = :stopped
     end
 
     def kill_threads
@@ -178,6 +175,7 @@ module RSMP
       end
       reaper.join
       @threads.clear
+      @watchdog_started = false
     end
 
     def error str, message=nil

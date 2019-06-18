@@ -8,7 +8,7 @@ require_relative 'remote_supervisor'
 
 module RSMP
   class Site < Node
-    attr_reader :rsmp_versions, :site_id, :site_settings, :logger
+    attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :remote_supervisors
 
     def initialize options
       handle_site_settings options
@@ -37,11 +37,13 @@ module RSMP
 
     def start
       super
-      # TODO for each supervisor we want to connect to
       @socket_thread = Thread.new do
+      # TODO for each supervisor we want to connect to
+        remote_supervisor = RemoteSupervisor.new site: self, settings: @site_settings, logger: @logger
+        @remote_supervisors.push remote_supervisor
         loop do
           begin
-            connect
+            remote_supervisor.run
             wait_until_reconnect
           rescue SystemCallError => e # all ERRNO errors
             log str: "Exception: #{e.to_s}", level: :error
@@ -49,27 +51,25 @@ module RSMP
             log str: ["Exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
           end
         end
+        @remote_supervisors.delete remote_supervisor
       end
     end
 
-    def connect
-      remote_supervisor = RemoteSupervisor.new site: self, settings: @site_settings, logger: @logger
-      @remote_supervisors.push remote_supervisor
-      remote_supervisor.run
-      @remote_supervisors.delete remote_supervisor
+    def stop
+      log str: "Stopping site #{@site_settings["site_id"]}", level: :info
+      @remote_supervisors.each do |remote_supervisor|
+        remote_supervisor.stop
+      end
+      @remote_supervisors.clear
+      super
     end
+
+ 
 
     def wait_until_reconnect
       interval = @site_settings["reconnect_interval"]
       log str: "Waiting #{interval} seconds before trying to reconnect", level: :info
       sleep interval
-    end
-
-    def stop
-      log str: "Stopping site #{@site_id}", level: :info
-      super
-      @remote_supervisors.each { |site| site.terminate }
-      @remote_supervisors.clear
     end
 
     def starting
