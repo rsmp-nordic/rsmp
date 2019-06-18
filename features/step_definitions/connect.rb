@@ -20,18 +20,18 @@ end
 
 When("we start the server") do
   $env.restart supervisor_settings: @supervisor_settings
-  @server = $env.server
+  @supervisor = $env.supervisor
 end
 
 Then("the site should connect within {int} seconds") do |timeout|
   site_id = @main_site_settings["site_id"]
-	@client = @server.wait_for_site site_id, timeout
-	expect(@client).not_to be_nil
-	expect(@client.site_ids.include? site_id).to eq(true)
+	@remote_site = @supervisor.wait_for_site site_id, timeout
+	expect(@remote_site).not_to be_nil
+	expect(@remote_site.site_ids.include? site_id).to eq(true)
 end
 
 Then(/the connection sequence should be complete within (\d+) second(?:s)?/) do |timeout|
-  ready = @client.wait_for_state :ready, timeout
+  ready = @remote_site.wait_for_state :ready, timeout
   expect(ready).to be(true)
 end
 

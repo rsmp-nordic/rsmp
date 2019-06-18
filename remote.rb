@@ -64,7 +64,9 @@ module RSMP
             packet.chomp!(RSMP::WRAPPING_DELIMITER)
             begin
               process packet
-            rescue StandardError => e
+            rescue SystemCallError => e # all ERRNO errors
+              error e.to_s
+           rescue StandardError => e
               error ["Uncaught exception: #{e}",e.backtrace].flatten.join("\n")
             end
           end

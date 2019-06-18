@@ -1,7 +1,7 @@
 When("we send the following command request") do |table|
   @send_values = table.hashes
   timeout = @supervisor_settings["command_response_timeout"]
-  @sent_message, @response_message = @client.send_command @component, table.hashes, timeout
+  @sent_message, @response_message = @remote_site.send_command @component, table.hashes, timeout
   expect(@sent_message).to_not be_nil
   expect(@response_message).to_not be_nil
 end

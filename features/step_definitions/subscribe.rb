@@ -2,7 +2,7 @@
 When("we subscribe to the following statuses") do |table|
   @send_values = table.hashes
   timeout = @supervisor_settings["status_update_timeout"]
-  @sent_message, @update_message = @client.subscribe_to_status @component, table.hashes, timeout
+  @sent_message, @update_message = @remote_site.subscribe_to_status @component, table.hashes, timeout
   expect(@sent_message).to_not be_nil
   expect(@update_message).to_not be_nil
 end
@@ -35,7 +35,7 @@ Then("the status update should include values") do
 end
 
 Then("the status update should include a timestamp that is within {float} seconds of our time") do |seconds|
-	timestamp = RSMP::parse_time(@update_message.attributes["sTs"])
+	timestamp = RSMP.parse_time(@update_message.attributes["sTs"])
 	difference = (timestamp - @update_message.timestamp).abs
 	expect(difference).to be <= seconds
 end

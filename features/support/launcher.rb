@@ -4,7 +4,7 @@
 # provides a big speed-up.
 
 class Launcher
-  attr_reader :supervisor_settings, :sites_settings, :server, :client
+  attr_reader :supervisor_settings, :sites_settings, :supervisor, :remote_site
 
   def initialize
     load_settings
@@ -29,28 +29,28 @@ class Launcher
   end
 
   def start options={}
-    return if @server
+    return if @supervisor
     load_settings options
 
-    @server = RSMP::Server.new(
+    @supervisor = RSMP::Supervisor.new(
       supervisor_settings: @supervisor_settings,
       sites_settings: @sites_settings
     )
-    @server.start
+    @supervisor.start
 
     main_site_settings = @sites_settings.first
 
-    @client = @server.wait_for_site main_site_settings["site_id"], @supervisor_settings["site_connect_timeout"]
-    raise RSMP::TimeoutError unless @client
+    @remote_site = @supervisor.wait_for_site main_site_settings["site_id"], @supervisor_settings["site_connect_timeout"]
+    raise RSMP::TimeoutError unless @remote_site
 
-    ready = @client.wait_for_state :ready, @server.supervisor_settings["site_ready_timeout"]
+    ready = @remote_site.wait_for_state :ready, @supervisor.supervisor_settings["site_ready_timeout"]
     raise RSMP::TimeoutError unless ready
   end
 
   def stop
-    if @server
-      @server.stop
-      @server = nil
+    if @supervisor
+      @supervisor.stop
+      @supervisor = nil
     end
   end
 end
