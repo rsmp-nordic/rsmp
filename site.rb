@@ -47,14 +47,17 @@ module RSMP
 
     def start
       starting
-      
       # TODO for each supervisor we want to connect to
-      socket = TCPSocket.open @site_settings["supervisor_ip"], @site_settings["port"]  # connect to supervisor
-      info = {ip:@site_settings["supervisor_ip"], port:@site_settings["port"], now:RSMP.now_string()}
-      log ip: info[:ip], str: "Connected to supervisor at #{@site_settings["supervisor_ip"]}:#{@site_settings["port"]}", level: :info
-      remote_supervisor = RemoteSupervisor.new site: self, settings: @site_settings, socket: socket, info: info, logger: @logger
-      @remote_supervisors.push remote_supervisor
-      remote_supervisor.run
+      # TODO when disconnected, reconnect at interval
+      begin
+        info = {ip:@site_settings["supervisor_ip"], port:@site_settings["port"], now:RSMP.now_string()}
+        socket = TCPSocket.open @site_settings["supervisor_ip"], @site_settings["port"]  # connect to supervisor
+        remote_supervisor = RemoteSupervisor.new site: self, settings: @site_settings, socket: socket, info: info, logger: @logger
+        @remote_supervisors.push remote_supervisor
+        remote_supervisor.run
+      rescue Errno::ECONNREFUSED
+        log str: "No connection to supervisor at #{@site_settings["supervisor_ip"]}:#{@site_settings["port"]}", level: :error
+      end
     end
 
     def stop

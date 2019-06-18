@@ -70,7 +70,7 @@ module RSMP
     def output level, str
       return if str.empty? || /^\s+$/.match(str)
       streams = [$stdout]
-      streams << $stderr if level == :error
+      #streams << $stderr if level == :error
       str = colorize level, str
       streams.each do |stream|
         stream.puts str
