@@ -19,7 +19,7 @@ module RSMP
 
     def run
       start
-      @socket_thread.join
+      @socket_thread.join if @socket_thread
     rescue SystemExit, SignalException, Interrupt
       exiting
       exit      #will cause all open sockets to be closed

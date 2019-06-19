@@ -22,7 +22,7 @@ log:
   level: false
   text: true
   direction: true
-  json: true
-  acknowledgements: false
+  json: false
+  acknowledgements: true
   watchdogs: false
 

@@ -32,7 +32,7 @@ module RSMP
       check_required_settings @site_settings, required
 
       # randomize site id
-      #@site_settings["site_id"] = "RN+RC#{rand(9999).to_i}"
+      @site_settings["site_id"] = "RN+RC#{rand(9999).to_i}"
     end
 
     def start
@@ -44,7 +44,7 @@ module RSMP
         loop do
           begin
             remote_supervisor.run
-            wait_until_reconnect
+            reconnect_delay
           rescue SystemCallError => e # all ERRNO errors
             log str: "Exception: #{e.to_s}", level: :error
           rescue StandardError => e
@@ -66,7 +66,7 @@ module RSMP
 
  
 
-    def wait_until_reconnect
+    def reconnect_delay
       interval = @site_settings["reconnect_interval"]
       log str: "Waiting #{interval} seconds before trying to reconnect", level: :info
       sleep interval

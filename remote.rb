@@ -56,8 +56,11 @@ module RSMP
     end
 
     def close_socket
-      @socket.close if @socket
-      @socket = nil
+      if @socket
+        #@socket.flush
+        @socket.close 
+        @socket = nil
+      end
     end
 
     def kill_threads
@@ -75,7 +78,7 @@ module RSMP
       @reader = Thread.new(@socket) do |socket|
         Thread.current[:name] = "reader"
         # an rsmp message is json terminated with a form-feed
-        loop do
+        until socket.closed? do
           begin
             packet = socket.gets(RSMP::WRAPPING_DELIMITER)
             break unless packet
@@ -141,7 +144,7 @@ module RSMP
         latest = message.timestamp + timeout
         if now > latest
           error "No acknowledgements for #{message.type} within #{timeout} seconds"
-          terminate
+          stop
           return true
         end
       end
@@ -153,17 +156,10 @@ module RSMP
       latest = @latest_watchdog_received + timeout
       if now > latest
         error "No Watchdog within #{timeout} seconds"
-        terminate
+        stop
         return true
       end
       false
-    end
-
-    def terminate
-      @state = :stopping
-      info "Closing connection"
-      @reader.kill
-      @state = :stopped
     end
 
     def kill_threads
@@ -262,7 +258,7 @@ module RSMP
       dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
     rescue FatalError => e
       dont_acknowledge message, "Rejected", "#{message.type}, #{e.message}"
-      terminate 
+      stop 
     end
 
     def expect_acknowledgement message
@@ -319,7 +315,7 @@ module RSMP
         "rea" => reason || "Unknown reason"
       })
       message.original = original.clone
-     send message, "for #{original.type}"
+      send message, "for #{original.type}"
     end
 
     def send_command component, args, timeout=nil

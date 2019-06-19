@@ -20,7 +20,7 @@ log:
   text: true
   direction: true
   level: false
-  json: true
+  json: false
   acknowledgements: false
   watchdogs: false
 

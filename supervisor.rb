@@ -59,10 +59,16 @@ module RSMP
       raise "Sites settings: port is missing" unless @supervisor_settings["port"]
     end
 
+    def run
+      super
+    rescue Errno::EADDRINUSE => e
+      log str: "Cannot start supervisor: #{e.to_s}", level: :error
+    end
+
     def start
+      @tcp_server = TCPServer.new @port  # server on specific port
       @socket_thread = Thread.new do
-        @tcp_server = TCPServer.new @port  # server on specific port
-        loop do
+        until @tcp_server.closed? do
           begin
             @socket_threads << Thread.start(@tcp_server.accept) do |socket|    # wait for a site to connect
               handle_connection(socket)
@@ -146,8 +152,14 @@ module RSMP
 
     def wait_for_site site_id, timeout
       @site_id_mutex.synchronize do
-        @site_id_condition_variable.wait(@site_id_mutex,timeout) unless site_connected? site_id
-        find_site site_id 
+        start = Time.now
+        loop do
+          left = timeout + (start - Time.now)
+          site = find_site site_id
+          return site if site
+          return nil if left <= 0
+          @site_id_condition_variable.wait(@site_id_mutex,left)
+        end
       end
     end
 
