@@ -12,12 +12,14 @@ module RSMP
     attr_accessor :site_id_mutex, :site_id_condition_variable
 
     def initialize options
+      super options
       handle_supervisor_settings options
       handle_sites_sittings options
 
       @logger = options[:logger] || RSMP::Logger.new(self, @supervisor_settings["log"]) 
+
+      @remote_sites_mutex = Mutex.new
       @remote_sites = []
-      @socket_threads = []
       
       @site_id_mutex = Mutex.new
       @site_id_condition_variable = ConditionVariable.new
@@ -38,9 +40,13 @@ module RSMP
                   "acknowledgement_timeout","command_response_timeout","log"]
       check_required_settings @supervisor_settings, required
 
-      @port = @supervisor_settings["port"]
       @rsmp_versions = @supervisor_settings["rsmp_versions"]
-      @site_id = @supervisor_settings["site_id"]
+      
+      # randomize site id
+      @supervisor_settings["site_id"] = "RN+SU#{rand(9999).to_i}"
+
+      # randomize port
+      #@supervisor_settings["port"] = @supervisor_settings["port"] + rand(10).to_i
     end
 
     def handle_sites_sittings options
@@ -65,12 +71,17 @@ module RSMP
       log str: "Cannot start supervisor: #{e.to_s}", level: :error
     end
 
+    def wait_for_threads
+      @socket_thread.join
+    end
+
     def start
-      @tcp_server = TCPServer.new @port  # server on specific port
-      @socket_thread = Thread.new do
+      super
+      @tcp_server = TCPServer.new @supervisor_settings["port"]  # server on specific port
+      @socket_thread =Thread.new do
         until @tcp_server.closed? do
           begin
-            @socket_threads << Thread.start(@tcp_server.accept) do |socket|    # wait for a site to connect
+            @connection_threads << Thread.new(@tcp_server.accept) do |socket|    # wait for a site to connect
               handle_connection(socket)
             end
           rescue SystemCallError => e # all ERRNO errors
@@ -83,12 +94,16 @@ module RSMP
     end
 
     def stop
-      log str: "Stopping supervisor #{@site_id}", level: :info
-      @remote_sites.each { |remote_site| remote_site.stop }
-      @remote_sites.clear
+      log str: "Stopping supervisor #{@supervisor_settings["site_id"]}", level: :info
+      @remote_sites_mutex.synchronize do
+        @remote_sites.each { |remote_site| remote_site.stop }
+        @remote_sites.clear
+      end
+      super
+      @socket_thread.kill if @socket_thread
+      @socket_thread = nil
       @tcp_server.close if @tcp_server
       @tcp_server = nil
-      super
     end
 
     def handle_connection socket
@@ -108,7 +123,7 @@ module RSMP
     end
 
     def starting
-      log str: "Starting supervisor #{@site_id} on port #{@port}", level: :info
+      log str: "Starting supervisor #{@supervisor_settings["site_id"]} on port #{@supervisor_settings["port"]}", level: :info
     end
 
     def accept? socket, info
@@ -118,10 +133,15 @@ module RSMP
     def connect socket, info
       log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", level: :info
       remote_site = RemoteSite.new supervisor: self, settings: @sites_settings, socket: socket, info: info, logger: @logger
-      @remote_sites.push remote_site
+      @remote_sites_mutex.synchronize do
+        @remote_sites.push remote_site
+      end
+      
       remote_site.run # will run until the site disconnects
 
-      @remote_sites.delete remote_site
+      @remote_sites_mutex.synchronize do
+        @remote_sites.delete remote_site
+      end
     end
 
     def reject socket, info
@@ -138,8 +158,10 @@ module RSMP
     end
 
     def find_site site_id
-      @remote_sites.each do |site|
-        return site if site.site_ids.include? site_id
+      @remote_sites_mutex.synchronize do
+        @remote_sites.each do |site|
+          return site if site.site_ids.include? site_id
+        end
       end
       nil
     end
@@ -164,11 +186,7 @@ module RSMP
     end
 
     def check_site_id site_id
-      @remote_sites.each do |site|
-        if site.site_ids.include? site_id
-          raise FatalError.new "Site id #{site_id} already connected" 
-        end
-      end
+      raise FatalError.new "Site id #{site_id} already connected" if find_site(site_id)
     end
 
   end

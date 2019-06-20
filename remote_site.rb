@@ -11,8 +11,6 @@ module RSMP
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings
 
-      #@socket = options[:socket] # socket was created by Supervisor, when the site connected to our port
-
       @aggregated_status = {}
 
       @command_responses = {}

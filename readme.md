@@ -1,4 +1,4 @@
-# Ruby RSMP
+# rsmp-ruby
 This is a Ruby implementation of the RSMP protocol, including:
  - RSMP classes (engine) that can be used to build RSMP tools
  - Ruby command-line tools for starting RSMP supervisors or sites

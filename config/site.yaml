@@ -1,6 +1,10 @@
-site_id: RN+RC0001
-port: 12111
-supervisor_ip: 127.0.0.1
+site_id: RN+SI0001
+supervisors:
+  - ip: 127.0.0.1
+    port: 12111
+  - ip: 127.0.0.1
+    port: 12112
+
 rsmp_versions:
   - 3.1.4
 

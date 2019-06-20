@@ -10,27 +10,36 @@ module RSMP
     def initialize options
       super options
       @site = options[:site]
-      @settings = @site.site_settings
+      @site_settings = @site.site_settings
+      @ip = options[:ip]
+      @port = options[:port]
     end
 
     def start
+      info "Connecting to remote superviser at #{@ip}:#{@port}"
       super
       connect
       start_reader
-      send_version @settings["rsmp_versions"].first
+      send_version @site_settings["rsmp_versions"].first
     rescue Errno::ECONNREFUSED
-      error "No connection to supervisor at #{@settings["supervisor_ip"]}:#{@settings["port"]}"
+      error "No connection to supervisor at #{@ip}:#{@port}"
     end
 
     def connect
       return if @socket
-      @socket = TCPSocket.open @settings["supervisor_ip"], @settings["port"]  # connect to supervisor
+      @socket = TCPSocket.open @ip, @port  # connect to supervisor
     end
 
     def connection_complete
       super
       info "Connection to supervisor established"
       start_watchdog
+    end
+
+    def reconnect_delay
+      interval = @site_settings["reconnect_interval"]
+      info "Waiting #{interval} seconds before trying to reconnect"
+      sleep interval
     end
 
     def version_accepted message, rsmp_version

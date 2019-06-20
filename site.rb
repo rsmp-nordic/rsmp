@@ -11,8 +11,11 @@ module RSMP
     attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :remote_supervisors
 
     def initialize options
+      super options
       handle_site_settings options
       @logger = options[:logger] || RSMP::Logger.new(self, @site_settings["log"])
+      
+      @remote_supervisors_mutex = Mutex.new
       @remote_supervisors = []
     end
 
@@ -27,31 +30,41 @@ module RSMP
         end
       end
 
-      required = ["supervisor_ip","port","rsmp_versions","site_id","watchdog_interval","watchdog_timeout",
+      required = ["supervisors","rsmp_versions","site_id","watchdog_interval","watchdog_timeout",
                   "acknowledgement_timeout","command_response_timeout","log"]
       check_required_settings @site_settings, required
 
       # randomize site id
-      @site_settings["site_id"] = "RN+RC#{rand(9999).to_i}"
+      @site_settings["site_id"] = "RN+SI#{rand(9999).to_i}"
+
     end
 
     def start
       super
-      @socket_thread = Thread.new do
-      # TODO for each supervisor we want to connect to
-        remote_supervisor = RemoteSupervisor.new site: self, settings: @site_settings, logger: @logger
-        @remote_supervisors.push remote_supervisor
-        loop do
-          begin
-            remote_supervisor.run
-            reconnect_delay
-          rescue SystemCallError => e # all ERRNO errors
-            log str: "Exception: #{e.to_s}", level: :error
-          rescue StandardError => e
-            log str: ["Exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+      @site_settings["supervisors"].each do |supervisor_settings|
+        @connection_threads << Thread.new do
+          remote_supervisor = RemoteSupervisor.new({
+            site: self, 
+            settings: @site_settings, 
+            ip: supervisor_settings["ip"],
+            port: supervisor_settings["port"],
+            logger: @logger
+          })
+          @remote_supervisors_mutex.synchronize do
+            @remote_supervisors << remote_supervisor
+          end
+
+          loop do
+            begin
+              remote_supervisor.run
+              remote_supervisor.reconnect_delay
+            rescue SystemCallError => e # all ERRNO errors
+              log str: "Exception: #{e.to_s}", level: :error
+            rescue StandardError => e
+              log str: ["Exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+            end
           end
         end
-        @remote_supervisors.delete remote_supervisor
       end
     end
 
@@ -63,18 +76,9 @@ module RSMP
       @remote_supervisors.clear
       super
     end
-
  
-
-    def reconnect_delay
-      interval = @site_settings["reconnect_interval"]
-      log str: "Waiting #{interval} seconds before trying to reconnect", level: :info
-      sleep interval
-    end
-
     def starting
       log str: "Starting site #{@site_settings["site_id"]} on port #{@site_settings["port"]}", level: :info
     end
-
   end
 end

@@ -15,11 +15,12 @@ require_relative 'logger'
 module RSMP
   class Node
     def initialize options
+      @connection_threads = []
     end
 
     def run
       start
-      @socket_thread.join if @socket_thread
+      wait_for_threads
     rescue SystemExit, SignalException, Interrupt
       exiting
       exit      #will cause all open sockets to be closed
@@ -30,15 +31,21 @@ module RSMP
     end
 
     def stop
-      if @socket_thread
-        @socket_thread.kill
-        @socket_thread = nil
-      end
+      kill_threads @connection_threads
     end
 
     def restart
       stop
       start
+    end
+
+    def wait_for_threads
+      @connection_threads.each { |thread| thread.join }
+    end
+
+    def kill_threads threads
+      threads.each { |thread| thread.kill }
+      threads.clear
     end
 
     def log item
