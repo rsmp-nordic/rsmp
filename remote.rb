@@ -283,7 +283,7 @@ module RSMP
         version = candidates.sort.last
         return version
       else
-        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but we only support [#{@server.rsmp_versions.join(',')}]."
+        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but we only support [#{@settings["rsmp_versions"].join(',')}]."
       end
     end
 
@@ -467,7 +467,7 @@ module RSMP
     def ignore message, reason=nil
       reason = "since we're a #{self.class.name.downcase}" unless reason
       warning "Ignoring #{message.type}, #{reason}", message
-      dont_acknowledge message
+      dont_acknowledge message, nil, reason
     end
 
   end

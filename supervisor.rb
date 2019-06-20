@@ -26,16 +26,21 @@ module RSMP
     end
 
     def handle_supervisor_settings options
-      if options[:supervisor_settings]
-        @supervisor_settings = options[:supervisor_settings]
-      else
-        if options[:supervisor_settings_path]
-          @supervisor_settings = YAML.load_file(options[:supervisor_settings_path])
-        else
-          raise "supervisor_settings or supervisor_settings_path must be present"
-        end
+      @supervisor_settings = {}
+
+      unless options[:supervisor_settings_path] || options[:supervisor_settings]
+        raise "supervisor_settings or supervisor_settings_path must be present"
+      end
+
+      if options[:supervisor_settings_path]
+        @supervisor_settings = YAML.load_file(options[:supervisor_settings_path])
       end
       
+      if options[:supervisor_settings]
+        options = options[:supervisor_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
+        @supervisor_settings.merge! options
+      end
+
       required = ["port","rsmp_versions","site_id","watchdog_interval","watchdog_timeout",
                   "acknowledgement_timeout","command_response_timeout","log"]
       check_required_settings @supervisor_settings, required

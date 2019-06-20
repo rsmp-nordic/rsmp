@@ -93,7 +93,7 @@ module RSMP
     end
 
     def process_command_request message
-      ignore message
+      dont_acknowledge message, "Cannot yet handle #{message.type}", "not implemented"
     end
 
     def process_command_response message
@@ -101,7 +101,7 @@ module RSMP
     end
 
     def process_status_request message
-      ignore message
+      dont_acknowledge message, "Cannot yet handle #{message.type}", "not implemented"
     end
 
     def process_status_response message
@@ -109,7 +109,7 @@ module RSMP
     end
 
     def process_status_subcribe message
-      ignore message
+      dont_acknowledge message, "Cannot yet handle #{message.type}", "not implemented"
     end
 
     def process_status_update message

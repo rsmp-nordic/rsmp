@@ -3,7 +3,7 @@ port: 12111
 rsmp_versions:
   - 3.1.4
 
-watchdog_interval: 2
+watchdog_interval: 1
 watchdog_timeout: 2
 acknowledgement_timeout: 2
 command_response_timeout: 1
@@ -15,7 +15,7 @@ site_ready_timeout: 1
 log:
   active: true
   color: :light_blue
-  info: false
+  info: true
   timestamp: false
   ip: false
   level: false
@@ -23,6 +23,6 @@ log:
   text: true
   direction: true
   json: true
-  acknowledgements: false
-  watchdogs: false
+  acknowledgements: true
+  watchdogs: true
 

@@ -5,10 +5,33 @@
 # Expect a settings files to be present at config/supervisor.yaml
 
 require_relative 'supervisor'
+require 'optparse'
 
 dir = File.dirname(__FILE__)
-supervisor_settings_path = File.expand_path File.join(dir,'config/supervisor.yaml')
-sites_settings_path = File.expand_path File.join(dir,'config/sites.yaml')
-server = RSMP::Supervisor.new supervisor_settings_path: supervisor_settings_path, 
-															sites_settings_path: sites_settings_path
-server.run
+options = {
+	supervisor_settings_path: File.expand_path(File.join(dir,'config/supervisor.yaml')), 
+	sites_settings_path: File.expand_path(File.join(dir,'config/sites.yaml')),
+	supervisor_settings: {}
+}
+
+supervisor_settings = {}
+options_parser = OptionParser.new do |opts|
+  opts.banner = "Usage: supervisor [options]"
+  opts.on("-p PORT", "--port P", Integer, "Listen on port P") do |port|
+    options[:supervisor_settings][:port] = port
+  end
+  opts.on( '-h', '--help', 'Show help' ) do
+    puts opts
+    exit
+  end
+end
+
+begin
+	options_parser.parse!
+rescue OptionParser::ParseError => e
+    puts e
+    puts options_parser
+    exit 1
+end
+
+RSMP::Supervisor.new(options).run

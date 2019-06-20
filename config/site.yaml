@@ -2,8 +2,6 @@ site_id: RN+SI0001
 supervisors:
   - ip: 127.0.0.1
     port: 12111
-  - ip: 127.0.0.1
-    port: 12112
 
 rsmp_versions:
   - 3.1.4
@@ -28,5 +26,5 @@ log:
   direction: true
   json: false
   acknowledgements: true
-  watchdogs: false
+  watchdogs: true
 

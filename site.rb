@@ -35,7 +35,7 @@ module RSMP
       check_required_settings @site_settings, required
 
       # randomize site id
-      @site_settings["site_id"] = "RN+SI#{rand(9999).to_i}"
+      #@site_settings["site_id"] = "RN+SI#{rand(9999).to_i}"
 
     end
 
