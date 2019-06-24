@@ -5,7 +5,7 @@ require_relative 'remote'
 module RSMP  
   class RemoteSupervisor < Remote
 
-    attr_reader :supervisor_id, :site
+    attr_reader :supervisor_id, :site, :aggregated_status_bools
 
     def initialize options
       super options
@@ -13,6 +13,7 @@ module RSMP
       @site_settings = @site.site_settings
       @ip = options[:ip]
       @port = options[:port]
+      @aggregated_status_bools = Array.new(8,false)
     end
 
     def start
@@ -20,7 +21,7 @@ module RSMP
       super
       connect
       start_reader
-      send_version @site_settings["rsmp_versions"].first
+      send_version @site_settings["rsmp_versions"]
     rescue Errno::ECONNREFUSED
       error "No connection to supervisor at #{@ip}:#{@port}"
     end
@@ -35,6 +36,17 @@ module RSMP
       info "Connection to supervisor established"
       start_watchdog
     end
+
+    def acknowledged_first_ingoing message
+      # TODO
+      # aggregateds status shoudl only be send for later version of rsmp
+      # to handle verison differences, we probably need inherited classes
+      case message.type
+        when "Watchdog"
+          send_aggregated_status
+      end
+    end
+
 
     def reconnect_delay
       interval = @site_settings["reconnect_interval"]
@@ -68,6 +80,7 @@ module RSMP
                :rest,
                :not_connected ]
 
+      @aggregated_status_bools = se
       on = []
       keys.each_with_index do |key,index|
         @aggregated_status[key] = se[index]
@@ -75,6 +88,17 @@ module RSMP
       end
       on
     end
+
+    def send_aggregated_status
+      message = AggregatedStatus.new({
+        "aSTS"=>RSMP.now_string,
+        "fP"=>nil,
+        "fS"=>nil,
+        "se"=>@aggregated_status_bools
+      })
+      send message
+    end
+
 
     def process_aggregated_status message
       se = message.attribute("se")
@@ -93,7 +117,7 @@ module RSMP
     end
 
     def process_command_request message
-      dont_acknowledge message, "Cannot yet handle #{message.type}", "not implemented"
+      dont_acknowledge message, "Ignoring #{message.type},", "not implemented"
     end
 
     def process_command_response message
@@ -101,7 +125,7 @@ module RSMP
     end
 
     def process_status_request message
-      dont_acknowledge message, "Cannot yet handle #{message.type}", "not implemented"
+      dont_acknowledge message, "Ignoring #{message.type},", "not implemented"
     end
 
     def process_status_response message
@@ -109,7 +133,7 @@ module RSMP
     end
 
     def process_status_subcribe message
-      dont_acknowledge message, "Cannot yet handle #{message.type}", "not implemented"
+      dont_acknowledge message, "Ignoring #{message.type},", "not implemented"
     end
 
     def process_status_update message

@@ -63,7 +63,7 @@ module RSMP
     end
 
     def attribute key
-      unless @attributes[key]
+      unless @attributes.key? key # note that this is not the same as @attributes[key] when key=nil
         maybe = @attributes.find { |k,v| k.downcase == key.downcase }
         if maybe
           raise MissingAttribute.new "attribute '#{maybe.first}' should be named '#{key}'"

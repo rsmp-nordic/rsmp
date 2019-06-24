@@ -44,6 +44,8 @@ module RSMP
       @latest_watchdog_received = nil
       @watchdog_started = false
       @version_determined = false
+      @ingoing_acknowledged = {}
+      @outgoing_acknowledged = {}
       @threads = []
 
       @state_mutex = Mutex.new
@@ -186,6 +188,10 @@ module RSMP
       log_at_level str, :log, message
     end
 
+    def log_not_acknowledged str, message=nil
+      log_at_level str, :nack, message
+    end
+
     def info str, message=nil
       log_at_level str, :info, message
     end
@@ -211,9 +217,15 @@ module RSMP
 
     def log_send message, reason=nil
       if reason
-        log "Sent #{message.type} #{reason}", message
+        str = "Sent #{message.type} #{reason}"
       else
-        log "Sent #{message.type}", message
+        str = "Sent #{message.type}"
+      end
+
+      if message.type == "MessageNotAck"
+        log_not_acknowledged str, message
+      else
+        log str, message
       end
     end
 
@@ -253,7 +265,7 @@ module RSMP
       warning "Received invalid package, must be valid JSON but got #{packet.size} bytes: #{e.message}"
     rescue MalformedMessage => e
       warning "Received malformed message, #{e.message}", Malformed.new(attributes)
-      # cannot send NotAckknowleded for a malformed message since we can't read it, just ignore it
+      # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
     rescue InvalidMessage => e
       dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
     rescue FatalError => e
@@ -304,6 +316,7 @@ module RSMP
       ack = MessageAck.build_from(original)
       ack.original = original.clone
       send ack, "for #{ack.original.type} #{original.m_id[0..3]}"
+      check_ingoing_acknowledged original
     end
 
     def dont_acknowledge original, prefix=nil, reason=nil
@@ -349,9 +362,10 @@ module RSMP
       end
     end
 
-    def send_version rsmp_version
+    def send_version rsmp_versions
+      versions_hash = [rsmp_versions].flatten.map {|v| {"vers":v} }
       version_response = Version.new({
-        "RSMP"=>[{"vers"=>rsmp_version}],
+        "RSMP"=>versions_hash,
         "siteId"=>[{"sId"=>@settings["site_id"]}],
         "SXL"=>"1.1"
       })
@@ -360,6 +374,27 @@ module RSMP
 
     def find_original_for_message message
        @awaiting_acknowledgement[ message.attribute("oMId") ]
+    end
+
+    # TODO this might be better handled by a proper event machine using e.g. the EventMachine gem
+    def check_outgoing_acknowledged message
+      unless @outgoing_acknowledged[message.type]
+        @outgoing_acknowledged[message.type] = true
+        acknowledged_first_outgoing message
+      end
+    end
+
+    def check_ingoing_acknowledged message
+      unless @ingoing_acknowledged[message.type]
+        @ingoing_acknowledged[message.type] = true
+        acknowledged_first_ingoing message
+      end
+    end
+
+    def acknowledged_first_outgoing message
+    end
+
+    def acknowledged_first_ingoing message
     end
 
     def process_ack message
@@ -372,6 +407,8 @@ module RSMP
         if original.type == "Version"
           version_acknowledged
         end
+
+        check_outgoing_acknowledged original
 
         @acknowledgement_mutex.synchronize do
           @acknowledgements[ original.m_id ] = message
@@ -398,7 +435,12 @@ module RSMP
     end
 
     def log_acknowledgement_for_original message, original
-      log "Received #{message.type} for #{original.type} #{message.attribute("oMId")[0..3]}", message
+      str = "Received #{message.type} for #{original.type} #{message.attribute("oMId")[0..3]}"
+      if message.type == 'MessageNotAck'
+        log_not_acknowledged str, message
+      else
+        log str, message
+      end
     end
 
     def log_acknowledgement_for_unknown message

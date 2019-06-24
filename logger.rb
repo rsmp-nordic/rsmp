@@ -86,14 +86,20 @@ module RSMP
         when  :error
           str.colorize(:red)
         when :warning
-          str.colorize(:yellow)
+          str.colorize(:light_yellow)
+        when :not_acknowledged
+          str.colorize(:cyan)
         when :info
           str.colorize(:light_black)
         else
           str
         end
       else
-        str.colorize(@settings["color"])
+        if level == :nack || level == :warning || level == :error
+          str.colorize(@settings["color"]).bold
+        else
+          str.colorize @settings["color"]
+        end
       end
     end
 
