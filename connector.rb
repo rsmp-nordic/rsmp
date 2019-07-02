@@ -47,6 +47,7 @@ module RSMP
       @ingoing_acknowledged = {}
       @outgoing_acknowledged = {}
       @threads = []
+      @latest_watchdog_send_at = nil
 
       @state_mutex = Mutex.new
       @state_condition = ConditionVariable.new
@@ -99,26 +100,13 @@ module RSMP
     end
 
     def start_watchdog
-      name = "watchdog"
-      interval = @settings["watchdog_interval"]
-      info "Starting #{name} with interval #{interval} seconds"
-      @threads << Thread.new(@socket) do |socket|
-        Thread.current[:name] = name
-        loop do
-          begin
-            message = Watchdog.new( {"wTs" => RSMP.now_string})
-            send message
-          rescue StandardError => e
-            error ["#{name} error: #{e}",e.backtrace].flatten.join("\n")
-          end
-          sleep interval
-        end
-      end
+      info "Starting watchdog with interval #{@settings["watchdog_interval"]} seconds"
+      send_watchdog
       @watchdog_started = true
     end
 
-    def start_timeout
-      name = "timeout checker"
+    def start_timer
+      name = "timer"
       interval = 1
       info "Starting #{name} with interval #{interval} seconds"
       @latest_watchdog_received = RSMP.now_object
@@ -127,8 +115,7 @@ module RSMP
         loop do
           begin
             now = RSMP.now_object
-            break if check_ack_timeout now
-            break if check_watchdog_timeout now
+            break if timer(now) == false
           rescue StandardError => e
             error ["#{name} exception: #{e}",e.backtrace].flatten.join("\n")
           ensure
@@ -136,6 +123,28 @@ module RSMP
           end
         end
       end
+    end
+
+    def timer now
+      check_watchdog_send_time now
+      return false if check_ack_timeout now
+      return false if check_watchdog_timeout now
+    end
+
+    def check_watchdog_send_time now
+      return unless @watchdog_started    
+      if @latest_watchdog_send_at == nil || (now - @latest_watchdog_send_at) >= @settings["watchdog_interval"]
+        send_watchdog now
+      end
+    rescue StandardError => e
+      error ["Watchdog error: #{e}",e.backtrace].flatten.join("\n")
+    end
+
+    def send_watchdog now=nil
+      now = RSMP.now_object unless nil
+      message = Watchdog.new( {"wTs" => now})
+      send message
+      @latest_watchdog_send_at = now
     end
 
     def check_ack_timeout now

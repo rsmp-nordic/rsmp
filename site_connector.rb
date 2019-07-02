@@ -14,6 +14,9 @@ module RSMP
       @ip = options[:ip]
       @port = options[:port]
       @aggregated_status_bools = Array.new(8,false)
+
+      @status_subscriptions = {}
+      @status_subscriptions_mutex = Mutex.new
     end
 
     def start
@@ -55,7 +58,7 @@ module RSMP
 
     def version_accepted message, rsmp_version
       log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message
-      start_timeout
+      start_timer
       acknowledge message
       connection_complete
       @version_determined = true
@@ -151,24 +154,90 @@ module RSMP
 
     def process_status_subcribe message
       log "Received #{message.type}", message
-      sS = []
-      message.attributes["sS"].each do |arg|
-        sS << { "sCI": arg["sCI"],
-                 "n": arg["n"],
-                 "s": rand(100),
-                 "q": "recent" }
+
+      # @status_subscriptions is organized by component/code/name, for example:
+      #
+      # {"AA+BBCCC=DDDEE002"=>{"S001"=>["number"]}}
+      #
+      # This is done to make it easy to send a single status update
+      # for each component, containing all the requested statuses
+
+      update_list = {}
+
+      @status_subscriptions_mutex.synchronize do
+        component = message.attributes["cId"]
+        
+        @status_subscriptions[component] ||= {}    
+        update_list[component] ||= {} 
+
+        message.attributes["sS"].each do |arg|
+          subcription = {interval: arg["uRt"].to_i, last_sent_at: nil}
+          @status_subscriptions[component][arg["sCI"]] ||= {}
+          @status_subscriptions[component][arg["sCI"]][arg["n"]] = subcription
+
+          update_list[component][arg["sCI"]] ||= []
+          update_list[component][arg["sCI"]] << arg["n"]
+        end
       end
-      update = StatusUpdate.new({
-        "cId"=>message.attributes["cId"],
-        "sTs"=>RSMP.now_string,
-        "sS"=>sS
-      })
       acknowledge message
-      send update
+      send_status_updates update_list
     end
 
     def process_status_unsubcribe message
       acknowledge message
+    end
+
+    def timer now
+      super
+      begin
+        status_update_timer now
+      rescue StandardError => e
+       error ["Status update exception: #{e}",e.backtrace].flatten.join("\n")
+      end
+    end
+
+    def status_update_timer now
+      update_list = {}
+      @status_subscriptions_mutex.synchronize do
+        # go through subscriptons and build a similarly organized list,
+        # that only contains what should be send
+
+        @status_subscriptions.each_pair do |component,by_code|
+          by_code.each_pair do |code,by_name|
+            by_name.each_pair do |name,subscription|
+              break if subscription[:interval] == 0 
+              if subscription[:last_sent_at] == nil || (now - subscription[:last_sent_at]) >= subscription[:interval]
+                subscription[:last_sent_at] = now
+                update_list[component] ||= {}
+                update_list[component][code] ||= []
+                update_list[component][code] << name
+              end
+            end
+          end
+        end
+      end
+      send_status_updates update_list
+    end
+
+    def send_status_updates update_list
+      now = RSMP.now_string
+      update_list.each_pair do |component,by_code|
+        sS = []
+        by_code.each_pair do |code,names|
+          names.each do |name|
+            sS << { "sCI": code,
+                     "n": name,
+                     "s": rand(100),
+                     "q": "recent" }
+          end
+        end
+        update = StatusUpdate.new({
+          "cId"=>component,
+          "sTs"=>now,
+          "sS"=>sS
+        })
+        send update
+      end
     end
 
   end

@@ -15,4 +15,4 @@ Feature: subscribing to status updates
     And the status update should include the correct status code ids
     And the status update should include values
     And we start collecting messages
-    And we should receive 1 "StatusUpdate" messages within 2 seconds
+    And we should receive 2 "StatusUpdate" messages within 2 seconds
