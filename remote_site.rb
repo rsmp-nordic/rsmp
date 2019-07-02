@@ -146,7 +146,7 @@ module RSMP
     end
 
     def process_status_request message
-      ignore message
+      dont_acknowledge message, "Ignoring #{message.type},", "not implemented"
     end
 
     def process_status_response message

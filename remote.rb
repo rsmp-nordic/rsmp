@@ -494,7 +494,7 @@ module RSMP
             message = @acknowledgements.delete(original.m_id)
           else
             message = @not_acknowledgements.delete(original.m_id)
-          end  
+          end
           return message if message
           return if left <= 0
           @acknowledgement_condition.wait(@acknowledgement_mutex,left)

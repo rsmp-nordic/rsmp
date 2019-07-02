@@ -15,7 +15,7 @@ site_ready_timeout: 1
 log:
   active: true
   color: :blue
-  info: true
+  info: false
   timestamp: false
   ip: false
   level: false
@@ -23,6 +23,6 @@ log:
   text: true
   direction: true
   json: true
-  acknowledgements: true
-  watchdogs: true
+  acknowledgements: false
+  watchdogs: false
 

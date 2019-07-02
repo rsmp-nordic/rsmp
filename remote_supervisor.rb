@@ -125,7 +125,19 @@ module RSMP
     end
 
     def process_status_request message
-      dont_acknowledge message, "Ignoring #{message.type},", "not implemented"
+      log "Received #{message.type}", message
+      response = message.attributes["sS"].clone.map do |request|
+        request["s"] = rand(100)
+        request["q"] = "recent"
+        request
+      end
+      response = StatusResponse.new({
+        "cId"=>message.attributes["cId"],
+        "sTs"=>RSMP.now_string,
+        "sS"=>response
+      })
+      acknowledge message
+      send response
     end
 
     def process_status_response message
