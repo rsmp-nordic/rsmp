@@ -5,7 +5,7 @@ require_relative 'error'
 require 'timeout'
 
 module RSMP  
-  class Remote
+  class Connector
     attr_reader :site_ids, :state
 
     def initialize options
@@ -52,7 +52,6 @@ module RSMP
       @state_condition = ConditionVariable.new
 
       @acknowledgements = {}
-      @not_acknowledgements = {}
       @acknowledgement_mutex = Mutex.new
       @acknowledgement_condition = ConditionVariable.new
     end
@@ -87,10 +86,10 @@ module RSMP
             packet.chomp!(RSMP::WRAPPING_DELIMITER)
             process packet
           rescue SystemCallError => e # all ERRNO errors
-            error "Remote exception: #{e.to_s}"
+            error "Connector exception: #{e.to_s}"
             break
           rescue StandardError => e
-            error ["Remote exception: #{e}",e.backtrace].flatten.join("\n")
+            error ["Connector exception: #{e}",e.backtrace].flatten.join("\n")
             break
           end
         end
@@ -256,6 +255,8 @@ module RSMP
           process_status_response message
         when StatusSubscribe
           process_status_subcribe message
+        when StatusUnsubscribe
+          process_status_unsubcribe message
         when StatusUpdate
           process_status_update message
         else
@@ -329,18 +330,6 @@ module RSMP
       })
       message.original = original.clone
       send message, "for #{original.type}"
-    end
-
-    def send_command component, args, timeout=nil
-      raise NotReady unless @state == :ready
-      message = RSMP::CommandRequest.new({
-          "ntsOId" => '',
-          "xNId" => '',
-          "cId" => component,
-          "arg" => args
-      })
-      send message
-      return message, wait_for_command_response(component, timeout)
     end
 
     def state= state
@@ -426,7 +415,7 @@ module RSMP
         message.original = original
         log_acknowledgement_for_original message, original
         @acknowledgement_mutex.synchronize do
-          @not_acknowledgements[ original.m_id ] = message
+          @acknowledgements[ original.m_id ] = message
           @acknowledgement_condition.broadcast
         end
       else
@@ -490,26 +479,50 @@ module RSMP
       @acknowledgement_mutex.synchronize do
         loop do
           left = timeout + (start - Time.now)
-          unless options[:not_acknowledged]
-            message = @acknowledgements.delete(original.m_id)
-          else
-            message = @not_acknowledgements.delete(original.m_id)
-          end
+          message = @acknowledgements.delete(original.m_id)
           return message if message
-          return if left <= 0
+          return nil if left <= 0
           @acknowledgement_condition.wait(@acknowledgement_mutex,left)
         end
       end
     end
 
     def wait_for_not_acknowledged original, timeout
-      wait_for_acknowledgement original, timeout, not_acknowledged: true
+      wait_for_acknowledgement original, timeout, type: :not_acknowledged
     end
 
     def ignore message, reason=nil
       reason = "since we're a #{self.class.name.downcase}" unless reason
       warning "Ignoring #{message.type}, #{reason}", message
       dont_acknowledge message, nil, reason
+    end
+
+    def process_command_request message
+      ignore message
+    end
+
+    def process_command_response message
+      ignore message
+    end
+
+    def process_status_request message
+      ignore message
+    end
+
+    def process_status_response message
+      ignore message
+    end
+
+    def process_status_subcribe message
+      ignore message
+    end
+
+    def process_status_unsubcribe message
+      ignore message
+    end
+
+    def process_status_update message
+      ignore message
     end
 
   end

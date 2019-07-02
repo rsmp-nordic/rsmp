@@ -1,10 +1,10 @@
 # RSMP site
 #
-# Handles connection to a supervisor.
+# Handles connector to a supervisor.
 # We connect to the supervisor.
 
 require_relative 'node'
-require_relative 'remote_supervisor'
+require_relative 'site_connector'
 
 module RSMP
   class Site < Node
@@ -43,7 +43,7 @@ module RSMP
       super
       @site_settings["supervisors"].each do |supervisor_settings|
         @connection_threads << Thread.new do
-          remote_supervisor = RemoteSupervisor.new({
+          remote_supervisor = SiteConnector.new({
             site: self, 
             settings: @site_settings, 
             ip: supervisor_settings["ip"],

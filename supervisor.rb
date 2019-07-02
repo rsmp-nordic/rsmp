@@ -4,7 +4,7 @@
 # The supervisor waits for sites to connect.
 
 require_relative 'node'
-require_relative 'remote_site'
+require_relative 'supervisor_connector'
 
 module RSMP
   class Supervisor < Node
@@ -137,7 +137,7 @@ module RSMP
 
     def connect socket, info
       log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", level: :info
-      remote_site = RemoteSite.new supervisor: self, settings: @sites_settings, socket: socket, info: info, logger: @logger
+      remote_site = SupervisorConnector.new supervisor: self, settings: @sites_settings, socket: socket, info: info, logger: @logger
       @remote_sites_mutex.synchronize do
         @remote_sites.push remote_site
       end

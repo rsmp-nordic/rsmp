@@ -1,9 +1,9 @@
-# handles connection to a single remote client
+# Handles a supervisor connection to a remote client
 
-require_relative 'remote'
+require_relative 'connector'
 
 module RSMP  
-  class RemoteSite < Remote
+  class SupervisorConnector < Connector
     attr_reader :supervisor
 
     def initialize options
@@ -106,33 +106,6 @@ module RSMP
       @supervisor.check_site_id site_id
     end
 
-    def process_command_request message
-      ignore message
-    end
-
-    def process_command_response message
-      log "Received #{message.type}", message
-      acknowledge message
-      @command_response_mutex.synchronize do
-        c_id = message.attributes["cId"]
-        @command_responses[c_id] = message
-        @command_response_condition.broadcast
-      end
-    end
-
-    def wait_for_command_response component_id, timeout
-      start = Time.now
-      @command_response_mutex.synchronize do
-        loop do
-          left = timeout + (start - Time.now)
-          message = @command_responses.delete(component_id)
-          return message if message
-          return if left <= 0
-          @command_response_condition.wait(@command_response_mutex,left)
-        end
-      end
-    end
-
     def request_status component, status_list, timeout=nil
       raise NotReady unless @state == :ready
       message = RSMP::StatusRequest.new({
@@ -181,11 +154,7 @@ module RSMP
           "sS" => status_list
       })
       send message
-      return message, wait_for_status_update(component, timeout)
-    end
-
-    def process_status_subscribe message
-      ignore message
+      message
     end
 
     def process_status_update message
@@ -212,5 +181,41 @@ module RSMP
         end
       end
     end
+
+    def send_command component, args
+      raise NotReady unless @state == :ready
+      message = RSMP::CommandRequest.new({
+          "ntsOId" => '',
+          "xNId" => '',
+          "cId" => component,
+          "arg" => args
+      })
+      send message
+      message
+    end
+
+    def process_command_response message
+      log "Received #{message.type}", message
+      acknowledge message
+      @command_response_mutex.synchronize do
+        c_id = message.attributes["cId"]
+        @command_responses[c_id] = message
+        @command_response_condition.broadcast
+      end
+    end
+
+    def wait_for_command_response component_id, timeout
+      start = Time.now
+      @command_response_mutex.synchronize do
+        loop do
+          left = timeout + (start - Time.now)
+          message = @command_responses.delete(component_id)
+          return message if message
+          return if left <= 0
+          @command_response_condition.wait(@command_response_mutex,left)
+        end
+      end
+    end
+
   end
 end

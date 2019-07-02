@@ -23,6 +23,6 @@ log:
   text: true
   direction: true
   json: true
-  acknowledgements: false
+  acknowledgements: true
   watchdogs: false
 

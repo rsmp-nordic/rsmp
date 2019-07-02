@@ -18,7 +18,7 @@ end
 
 Then("we should receive an acknowledgement") do
   @acknowledged = @remote_site.wait_for_acknowledgement @sent_message, @supervisor_settings["acknowledgement_timeout"]
-  expect(@acknowledged).not_to be_nil
+  expect(@acknowledged).to be_a(RSMP::MessageAck)
 end
 
 

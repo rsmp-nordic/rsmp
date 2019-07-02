@@ -1,7 +1,7 @@
 #
 # RSMP site
 #
-# Handles a single connection to supervisor.
+# Handles a single connection to a supervisor.
 # We connect to the supervisor.
 #
 

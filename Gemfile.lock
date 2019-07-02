@@ -1,5 +1,5 @@
 GEM
-  remote: https://rubygems.org/
+  connection: https://rubygems.org/
   specs:
     backports (3.15.0)
     builder (3.2.3)

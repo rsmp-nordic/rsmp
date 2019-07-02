@@ -1,9 +1,9 @@
-# handles connection to a single remote supervisor
+# Handles a site connection to a remote supervisor
 
-require_relative 'remote'
+require_relative 'connector'
 
 module RSMP  
-  class RemoteSupervisor < Remote
+  class SiteConnector < Connector
 
     attr_reader :supervisor_id, :site, :aggregated_status_bools
 
@@ -17,7 +17,7 @@ module RSMP
     end
 
     def start
-      info "Connecting to remote superviser at #{@ip}:#{@port}"
+      info "Connecting to superviser at #{@ip}:#{@port}"
       super
       connect
       start_reader
@@ -39,14 +39,13 @@ module RSMP
 
     def acknowledged_first_ingoing message
       # TODO
-      # aggregateds status shoudl only be send for later version of rsmp
+      # aggregateds status should only be send for later version of rsmp
       # to handle verison differences, we probably need inherited classes
       case message.type
         when "Watchdog"
           send_aggregated_status
       end
     end
-
 
     def reconnect_delay
       interval = @site_settings["reconnect_interval"]
@@ -99,7 +98,6 @@ module RSMP
       send message
     end
 
-
     def process_aggregated_status message
       se = message.attribute("se")
       validate_aggregated_status(message,se) == false
@@ -117,16 +115,27 @@ module RSMP
     end
 
     def process_command_request message
-      dont_acknowledge message, "Ignoring #{message.type},", "not implemented"
-    end
+      log "Received #{message.type}", message
+      rvs = []
+      message.attributes["arg"].each do |arg|
+        rvs << { "cCI": arg["cCI"],
+                 "n": arg["n"],
+                 "v": arg["v"],
+                 "age": "recent" }
+      end
 
-    def process_command_response message
-      ignore message
+      response = CommandResponse.new({
+        "cId"=>message.attributes["cId"],
+        "cTS"=>RSMP.now_string,
+        "rvs"=>rvs
+      })
+      acknowledge message
+      send response
     end
 
     def process_status_request message
       log "Received #{message.type}", message
-      response = message.attributes["sS"].clone.map do |request|
+      sS = message.attributes["sS"].clone.map do |request|
         request["s"] = rand(100)
         request["q"] = "recent"
         request
@@ -134,22 +143,32 @@ module RSMP
       response = StatusResponse.new({
         "cId"=>message.attributes["cId"],
         "sTs"=>RSMP.now_string,
-        "sS"=>response
+        "sS"=>sS
       })
       acknowledge message
       send response
     end
 
-    def process_status_response message
-      ignore message
-    end
-
     def process_status_subcribe message
-      dont_acknowledge message, "Ignoring #{message.type},", "not implemented"
+      log "Received #{message.type}", message
+      sS = []
+      message.attributes["sS"].each do |arg|
+        sS << { "sCI": arg["sCI"],
+                 "n": arg["n"],
+                 "s": rand(100),
+                 "q": "recent" }
+      end
+      update = StatusUpdate.new({
+        "cId"=>message.attributes["cId"],
+        "sTs"=>RSMP.now_string,
+        "sS"=>sS
+      })
+      acknowledge message
+      send update
     end
 
-    def process_status_update message
-      ignore message
+    def process_status_unsubcribe message
+      acknowledge message
     end
 
   end

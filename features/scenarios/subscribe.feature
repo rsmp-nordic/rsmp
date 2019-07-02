@@ -6,9 +6,10 @@ Feature: subscribing to status updates
 
   Scenario: Subcribe to status
     When we subscribe to the following statuses
-      | cCI  | n      | uRt |
+      | sCI  | n      | uRt |
       | S001 | number | 1   |
     Then we should receive an acknowledgement
+    And we should receive a status update within 1 second
     And the status update should include the component id
     And the status update should include a timestamp that is within 1.0 seconds of our time
     And the status update should include the correct status code ids
