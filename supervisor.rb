@@ -12,11 +12,9 @@ module RSMP
     attr_accessor :site_id_mutex, :site_id_condition_variable
 
     def initialize options
-      super options
       handle_supervisor_settings options
       handle_sites_sittings options
-
-      @logger = options[:logger] || RSMP::Logger.new(self, @supervisor_settings["log"]) 
+      super options.merge log_settings: @supervisor_settings["log"]
 
       @remote_sites_mutex = Mutex.new
       @remote_sites = []

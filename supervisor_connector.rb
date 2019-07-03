@@ -145,9 +145,21 @@ module RSMP
       end
     end
 
-    def subscribe_to_status component, status_list, timeout
+    def subscribe_to_status component, status_list
       raise NotReady unless @state == :ready
       message = RSMP::StatusSubscribe.new({
+          "ntsOId" => '',
+          "xNId" => '',
+          "cId" => component,
+          "sS" => status_list
+      })
+      send message
+      message
+    end
+
+    def unsubscribe_to_status component, status_list
+      raise NotReady unless @state == :ready
+      message = RSMP::StatusUnsubscribe.new({
           "ntsOId" => '',
           "xNId" => '',
           "cId" => component,
@@ -169,17 +181,18 @@ module RSMP
 
     def wait_for_status_update component_id, timeout
       raise ArgumentError unless component_id
-      raise ArgumentError unless timeout      
-      start = Time.now
-      @status_update_mutex.synchronize do
-        loop do
-          left = timeout + (start - Time.now)
-          message = @status_updates.delete(component_id)
-          return message if message
-          return if left <= 0
-          @status_update_condition.wait(@status_update_mutex,left)
-        end
-      end
+      found = @archive.wait_for_message( timeout: timeout, type: "StatusUpdate", with_message: true )
+      p found.class
+      #start = Time.now
+      #@status_update_mutex.synchronize do
+      #  loop do
+      #    left = timeout + (start - Time.now)
+      #    message = @status_updates.delete(component_id)
+      #    return message if message
+      #    return if left <= 0
+      #    @status_update_condition.wait(@status_update_mutex,left)
+      #  end
+      #end
     end
 
     def send_command component, args

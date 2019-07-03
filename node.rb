@@ -10,11 +10,16 @@ require 'yaml'
 require 'socket'
 require 'time'
 require_relative 'rsmp'
+require_relative 'archive'
 require_relative 'logger'
 
 module RSMP
   class Node
+    attr_reader :archive, :logger
+
     def initialize options
+      @archive = options[:archive] || RSMP::Archive.new
+      @logger = options[:logger] || RSMP::Logger.new(options[:log_settings]) 
       @connection_threads = []
     end
 

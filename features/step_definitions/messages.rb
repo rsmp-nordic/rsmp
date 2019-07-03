@@ -32,7 +32,8 @@ end
 
 Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout, expected_table|
   expected_num = expected_table.rows.size
-  @messages, num = @supervisor.logger.wait_for_messages num: expected_num, timeout: timeout, earliest: @log_start
+  @messages, num = @supervisor.archive.wait_for_messages num: expected_num, timeout: timeout, earliest: @log_start
+  p [@messages.size, num]
   actual_table = @messages.map { |message| [message.direction.to_s, message.type] }
   actual_table = actual_table.slice(0,expected_table.rows.size)
   actual_table.unshift expected_table.headers
@@ -40,7 +41,7 @@ Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout,
 end
 
 Then("we should receive {int} {string} messages within {int} seconds") do |expected_num, type, timeout|
-  @messages, got_num = @supervisor.logger.wait_for_messages type: type, num: expected_num, timeout: timeout, earliest: @log_start
+  @messages, got_num = @supervisor.archive.wait_for_messages type: type, num: expected_num, timeout: timeout, earliest: @log_start
   expect(got_num).to eq(expected_num)
 end
 

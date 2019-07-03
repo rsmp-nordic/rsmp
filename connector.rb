@@ -38,6 +38,7 @@ module RSMP
     end
 
     def clear
+      @archive = RSMP::Archive.new
       @state = :stoped
       @site_ids = []
       @awaiting_acknowledgement = {}
@@ -59,7 +60,6 @@ module RSMP
 
     def close_socket
       if @socket
-        #@socket.flush
         @socket.close 
         @socket = nil
       end
@@ -205,13 +205,14 @@ module RSMP
     end
 
     def log_at_level str, level, message=nil
-      @logger.log({
+      item = RSMP::Archive.prepare_item({
         level: level,
         ip: @ip,
         site_id: site_id,
         str: str,
         message: message
       })
+      @logger.log item
     end
 
     def send message, reason=nil

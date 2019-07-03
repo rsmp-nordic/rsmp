@@ -1,14 +1,24 @@
 
 When("we subscribe to the following statuses") do |table|
   @send_values = table.hashes
-  timeout = @supervisor_settings["status_update_timeout"]
-  @sent_message = @remote_site.subscribe_to_status @component, table.hashes, timeout
+  @sent_message = @remote_site.subscribe_to_status @component, table.hashes
   expect(@sent_message).to_not be_nil
+end
+
+When("we unsubscribe to the following statuses") do |table|
+  @send_values = table.hashes
+  @sent_message = @remote_site.unsubscribe_to_status @component, table.hashes
 end
 
 Then(/we should receive a status update within (\d+) second(?:s)?/) do |timeout|
   @update_message = @remote_site.wait_for_status_update @component, timeout
+  p @update_message.class
   expect(@update_message).to_not be_nil
+end
+
+Then(/we should not receive a status update within (\d+) second(?:s)?/) do |timeout|
+  @update_message = @remote_site.wait_for_status_update @component, timeout
+  expect(@update_message).to be_nil
 end
 
 Then("the status update should include the component id") do

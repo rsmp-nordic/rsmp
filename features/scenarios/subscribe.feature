@@ -5,7 +5,8 @@ Feature: subscribing to status updates
     Given we focus on component "AA+BBCCC=DDDEE002"
 
   Scenario: Subcribe to status
-    When we subscribe to the following statuses
+    When we start collecting messages
+    And we subscribe to the following statuses
       | sCI  | n      | uRt |
       | S001 | number | 1   |
     Then we should receive an acknowledgement
@@ -14,5 +15,10 @@ Feature: subscribing to status updates
     And the status update should include a timestamp that is within 1.0 seconds of our time
     And the status update should include the correct status code ids
     And the status update should include values
-    And we start collecting messages
-    And we should receive 2 "StatusUpdate" messages within 2 seconds
+    And we should receive 4 "StatusUpdate" messages within 4 seconds
+
+    When we unsubscribe to the following statuses
+      | sCI  | n      |
+      | S001 | number |
+    Then we should receive an acknowledgement
+    And we should not receive a status update within 2 second

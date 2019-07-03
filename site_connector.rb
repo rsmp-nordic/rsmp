@@ -180,10 +180,28 @@ module RSMP
         end
       end
       acknowledge message
-      send_status_updates update_list
+      send_status_updates update_list   # send status after subscribing is accepted
     end
 
     def process_status_unsubcribe message
+      log "Received #{message.type}", message
+      component = message.attributes["cId"]
+
+      if @status_subscriptions[component]
+        @status_subscriptions_mutex.synchronize do
+           message.attributes["sS"].each do |arg|
+            if @status_subscriptions[component][arg["sCI"]]
+              @status_subscriptions[component][arg["sCI"]].delete arg["n"]
+            end
+            if @status_subscriptions[component][arg["sCI"]].empty?
+              @status_subscriptions[component].delete(arg["sCI"])
+            end
+          end
+          if @status_subscriptions[component].empty?
+            @status_subscriptions.delete(component)
+          end
+        end
+      end
       acknowledge message
     end
 
@@ -205,13 +223,23 @@ module RSMP
         @status_subscriptions.each_pair do |component,by_code|
           by_code.each_pair do |code,by_name|
             by_name.each_pair do |name,subscription|
-              break if subscription[:interval] == 0 
-              if subscription[:last_sent_at] == nil || (now - subscription[:last_sent_at]) >= subscription[:interval]
+              if subscription[:interval] == 0 
+                # send as soon as the data changes
+                if rand(100) >= 90
+                  should_send = true
+                end
+              else
+                # send at regular intervals
+                if subscription[:last_sent_at] == nil || (now - subscription[:last_sent_at]) >= subscription[:interval]
+                  should_send = true
+                end
+              end
+              if should_send
                 subscription[:last_sent_at] = now
                 update_list[component] ||= {}
                 update_list[component][code] ||= []
                 update_list[component][code] << name
-              end
+             end
             end
           end
         end

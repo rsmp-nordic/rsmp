@@ -11,10 +11,9 @@ module RSMP
     attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :remote_supervisors
 
     def initialize options
-      super options
       handle_site_settings options
-      @logger = options[:logger] || RSMP::Logger.new(self, @site_settings["log"])
-      
+      super options.merge log_settings: @site_settings["log"]
+
       @remote_supervisors_mutex = Mutex.new
       @remote_supervisors = []
     end
