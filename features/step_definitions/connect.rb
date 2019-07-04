@@ -21,6 +21,7 @@ end
 When("we start the server") do
   $env.restart supervisor_settings: @supervisor_settings
   @supervisor = $env.supervisor
+  @probe = $env.probe
 end
 
 Then("the site should connect within {int} seconds") do |timeout|

@@ -16,7 +16,7 @@ Then("the {string} message should contain the return values") do |message_type, 
 	expected_table.diff!(actual_table)
 end
 
-Then("we should receive an acknowledgement") do
+Then("we should receive an acknowledgement") do	
   @acknowledged = @remote_site.wait_for_acknowledgement @sent_message, @supervisor_settings["acknowledgement_timeout"]
   expect(@acknowledged).to be_a(RSMP::MessageAck)
 end
@@ -27,14 +27,13 @@ Then("we should receive a not acknowledged message") do
 end
 
 When("we start collecting messages") do
-  @log_start = Time.now
+	@probe.reset
 end
 
 Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout, expected_table|
   expected_num = expected_table.rows.size
-  @messages, num = @supervisor.archive.wait_for_messages num: expected_num, timeout: timeout, earliest: @log_start
-  p [@messages.size, num]
-  actual_table = @messages.map { |message| [message.direction.to_s, message.type] }
+  @items, num = @probe.capture expected_num, timeout
+  actual_table = @items.map { |item| item[:message] }.map { |message| [message.direction.to_s, message.type] }
   actual_table = actual_table.slice(0,expected_table.rows.size)
   actual_table.unshift expected_table.headers
   expected_table.diff!(actual_table)

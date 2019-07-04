@@ -11,6 +11,8 @@ require 'socket'
 require 'time'
 require_relative 'rsmp'
 require_relative 'archive'
+require_relative 'probe'
+require_relative 'probe_collection'
 require_relative 'logger'
 
 module RSMP

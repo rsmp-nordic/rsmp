@@ -47,7 +47,8 @@ module RSMP
             settings: @site_settings, 
             ip: supervisor_settings["ip"],
             port: supervisor_settings["port"],
-            logger: @logger
+            logger: @logger,
+            archive: @archive
           })
           @remote_supervisors_mutex.synchronize do
             @remote_supervisors << remote_supervisor

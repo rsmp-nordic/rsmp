@@ -4,7 +4,7 @@
 # provides a big speed-up.
 
 class Launcher
-  attr_reader :supervisor_settings, :sites_settings, :supervisor, :remote_site
+  attr_reader :supervisor_settings, :sites_settings, :supervisor, :remote_site, :probe, :archive
 
   def initialize
     load_settings
@@ -18,8 +18,6 @@ class Launcher
   def load_settings options={}
     @supervisor_settings = YAML.load_file(relative_filename('supervisor.yaml'))
     @supervisor_settings.merge! options[:supervisor_settings] if options[:supervisor_settings]
-
-
     @sites_settings = YAML.load_file(relative_filename('sites.yaml'))
   end
 
@@ -32,9 +30,14 @@ class Launcher
     return if @supervisor
     load_settings options
 
+    @archive = RSMP::Archive.new
+    @probe = RSMP::Probe.new with_message: true
+    @archive.probes.add @probe
+
     @supervisor = RSMP::Supervisor.new(
       supervisor_settings: @supervisor_settings,
-      sites_settings: @sites_settings
+      sites_settings: @sites_settings,
+      archive: @archive
     )
     @supervisor.start
 

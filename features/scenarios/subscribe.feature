@@ -5,8 +5,7 @@ Feature: subscribing to status updates
     Given we focus on component "AA+BBCCC=DDDEE002"
 
   Scenario: Subcribe to status
-    When we start collecting messages
-    And we subscribe to the following statuses
+    When we subscribe to the following statuses
       | sCI  | n      | uRt |
       | S001 | number | 1   |
     Then we should receive an acknowledgement

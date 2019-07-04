@@ -1,7 +1,13 @@
 
 When("we subscribe to the following statuses") do |table|
+
+	@status_probe = RSMP::Probe.new(with_message: true, type: "StatusUpdate") do |item|
+		#item[:message].attributes
+	end
+
   @send_values = table.hashes
-  @sent_message = @remote_site.subscribe_to_status @component, table.hashes
+  @archive.probes.add @status_probe
+  @sent_message = @remote_site.subscribe_to_status @component, @send_value, @status_probe
   expect(@sent_message).to_not be_nil
 end
 
@@ -12,7 +18,6 @@ end
 
 Then(/we should receive a status update within (\d+) second(?:s)?/) do |timeout|
   @update_message = @remote_site.wait_for_status_update @component, timeout
-  p @update_message.class
   expect(@update_message).to_not be_nil
 end
 

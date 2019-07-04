@@ -2,6 +2,8 @@
 
 require_relative 'message'
 require_relative 'error'
+require_relative 'archive'
+require_relative 'probe'
 require 'timeout'
 
 module RSMP  
@@ -12,6 +14,7 @@ module RSMP
       @settings = options[:settings]
       @logger = options[:logger]
       @socket = options[:socket]
+      @archive = options[:archive]
       @ip = options[:ip]
       clear
     end
@@ -38,7 +41,6 @@ module RSMP
     end
 
     def clear
-      @archive = RSMP::Archive.new
       @state = :stoped
       @site_ids = []
       @awaiting_acknowledgement = {}
@@ -212,14 +214,16 @@ module RSMP
         str: str,
         message: message
       })
+      @archive.add item
       @logger.log item
     end
 
-    def send message, reason=nil
+    def send message, reason=nil, probe=nil
       message.generate_json
       message.direction = :out
       expect_acknowledgement message
       log_send message, reason
+      probe.start if probe
       @socket.print message.out
       message.m_id
     end

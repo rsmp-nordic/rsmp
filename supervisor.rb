@@ -135,7 +135,14 @@ module RSMP
 
     def connect socket, info
       log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", level: :info
-      remote_site = SupervisorConnector.new supervisor: self, settings: @sites_settings, socket: socket, info: info, logger: @logger
+      remote_site = SupervisorConnector.new({
+        supervisor: self,
+        settings: @sites_settings,
+        socket: socket,
+        info: info,
+        logger: @logger,
+        archive: @archive
+      })
       @remote_sites_mutex.synchronize do
         @remote_sites.push remote_site
       end

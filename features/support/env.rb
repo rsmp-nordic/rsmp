@@ -11,11 +11,14 @@ Before do |scenario|
 	@sites_settings = $env.sites_settings
 	@main_site_settings = @sites_settings.first
 	@supervisor_settings = $env.supervisor_settings
+	@probe = $env.probe
+	@archive = $env.archive
 end
 
 Before('@manual_connection') do
 	$env.stop
 end
+
 
 $env = Launcher.new
 at_exit do
