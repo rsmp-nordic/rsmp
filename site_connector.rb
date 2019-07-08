@@ -27,6 +27,8 @@ module RSMP
       send_version @site_settings["rsmp_versions"]
     rescue Errno::ECONNREFUSED
       error "No connection to supervisor at #{@ip}:#{@port}"
+      info "Will try to reconnect again every #{@site.site_settings["reconnect_interval"]} seconds.."
+      @logger.pause
     end
 
     def connect
@@ -35,6 +37,7 @@ module RSMP
     end
 
     def connection_complete
+      @logger.continue
       super
       info "Connection to supervisor established"
       start_watchdog

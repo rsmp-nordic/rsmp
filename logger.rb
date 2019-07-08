@@ -6,9 +6,19 @@ module RSMP
 
     def initialize settings
       @settings = settings
+      @pause = false
+    end
+
+    def pause
+      @pause = true
+    end
+
+    def continue
+      @pause = false
     end
 
     def output? item
+      return false if @pause
       return false if @settings["active"] == false
       return false if @settings["info"] == false && item[:level] == :info
       if item[:message]
