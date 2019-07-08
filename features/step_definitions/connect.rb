@@ -19,9 +19,10 @@ Given("the site setting {string} is set to {string}") do |key, value|
 end
 
 When("we start the server") do
+  @probe_start_time = Time.now
   $env.restart supervisor_settings: @supervisor_settings
   @supervisor = $env.supervisor
-  @probe = $env.probe
+  @archive = $env.archive
 end
 
 Then("the site should connect within {int} seconds") do |timeout|

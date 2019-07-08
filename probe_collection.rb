@@ -9,12 +9,14 @@ module RSMP
     end
 
     def add probe
+      raise ArgumentError unless probe
       @mutex.synchronize do
         @probes << probe
       end
     end
 
     def remove probe
+      raise ArgumentError unless probe
       @mutex.synchronize do
         @probes.delete probe
       end

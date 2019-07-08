@@ -88,6 +88,9 @@ module RSMP
             break unless packet
             packet.chomp!(RSMP::WRAPPING_DELIMITER)
             process packet
+          rescue Errno::ECONNRESET => e
+            warning "Connection reset by peer"
+            break            
           rescue SystemCallError => e # all ERRNO errors
             error "Connector exception: #{e.to_s}"
             break
@@ -218,12 +221,11 @@ module RSMP
       @logger.log item
     end
 
-    def send message, reason=nil, probe=nil
+    def send message, reason=nil
       message.generate_json
       message.direction = :out
       expect_acknowledgement message
       log_send message, reason
-      probe.start if probe
       @socket.print message.out
       message.m_id
     end

@@ -4,7 +4,7 @@
 # provides a big speed-up.
 
 class Launcher
-  attr_reader :supervisor_settings, :sites_settings, :supervisor, :remote_site, :probe, :archive
+  attr_reader :supervisor_settings, :sites_settings, :supervisor, :remote_site, :archive
 
   def initialize
     load_settings
@@ -31,8 +31,6 @@ class Launcher
     load_settings options
 
     @archive = RSMP::Archive.new
-    @probe = RSMP::Probe.new with_message: true
-    @archive.probes.add @probe
 
     @supervisor = RSMP::Supervisor.new(
       supervisor_settings: @supervisor_settings,

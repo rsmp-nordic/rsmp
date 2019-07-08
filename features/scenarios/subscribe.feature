@@ -14,7 +14,7 @@ Feature: subscribing to status updates
     And the status update should include a timestamp that is within 1.0 seconds of our time
     And the status update should include the correct status code ids
     And the status update should include values
-    And we should receive 4 "StatusUpdate" messages within 4 seconds
+    And we should receive 2 "StatusUpdate" messages within 2 seconds
 
     When we unsubscribe to the following statuses
       | sCI  | n      |

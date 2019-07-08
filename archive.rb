@@ -32,6 +32,11 @@ module RSMP
       end
     end
 
+    def capture options
+      probe = RSMP::Probe.new self
+      probe.capture options
+    end
+
     private
 
     def probe item
