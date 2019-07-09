@@ -14,15 +14,13 @@ $ gem intall bundler
 $ bundle
 
 ## Ruby classes 
-A set of classes that represents RSMP messages, supervisors and sites and handles connecting,
-exchanging version information, acknowledging messages and other RSMP protocol specifics.
+A set of classes that represents RSMP messages, supervisors and sites and handles connecting, exchanging version information, acknowledging messages and other RSMP protocol specifics.
 
 ## Command-line tool
 Tools for easily running RSMP supervisors and sites.
 
-### supervisor
-The "supervisor" command will start an RSMP supervisor (server), which equipment can connect to.
-Here's a an example of how the RSMP simuator connects to our supervisor:
+### Supervisor
+The "supervisor" command will start an RSMP supervisor (server), which equipment can connect to. Here's a an example of how the RSMP simulator connects to a Ruby supervisor:
 
 $ ./supervisor
                          Site connected from ::ffff:10.202.183.252:57454
@@ -33,13 +31,11 @@ AA+BBCCC=DDD             Connection to site established
 AA+BBCCC=DDD             Starting watchdog with interval 1 seconds
 AA+BBCCC=DDD  -->  d032  Received AggregatedStatus status [local_control, normal]
 
+When starting, the supervisor will read setting from the file config/supervisor.yaml, including the port to listen to and the rsmp version that's supported. The settings file can also be used to adjust what will be logged, and whether to colorize the output.
 
-When starting, the supervisor will read setting from the file comnfig/supervisor.yaml, including the port to listen to and the rsmp version that's supported. THe settings file can also be used to adjust what will be logged, and whether to colorize the output.
 
-
-### site
-The "site" tool will start an RSMP site. Settings will be read from the file comnfig/supervisor.yaml, including
-what supervisor to connect to, reconnect interval, etc. Here's an example of the site site connecting to a Ruby supervisor:
+### Site
+The "site" tool will start an RSMP site. Here's an example of the site connecting to a Ruby supervisor:
 
 $ ./site
                          Starting site RN+RC4443 on port 12111
@@ -51,11 +47,44 @@ RN+RS0001     <--  1c30  Sent MessageAck for Version c517
 RN+RS0001                Connection to supervisor established
 RN+RS0001                Starting watchdog with interval 1 seconds
 
+Settings will be read from the file config/supervisor.yaml, including what supervisor to connect to, reconnect interval, etc. 
+
 ## Cucumber tests
+A suite of cucumber tests can be used to test RSMP communication.
+
+It currently focuses on testing sites. It will therefore run an internal supervisor, and tests the communication with the an external) site.
+
+However, cucumber can optionally also run an internal site. In this case all tests can be run quickly, since reconnect delays are eliminated.
+
+### Installing cucumber
 Since cucumber is installed via bundler, it's recommended to run via bundle exec: 
 $ bundle exec cucumber
 
-Connection settings used in cucumber tests are stored in features/support/supervisor.yaml.
+### Cucumber tests
+The tests are located in features/scenarios/.
+Run all tests by simpkly using the cucumber command:
+$ cucumber
+
+Different sets of tests can be run using the --tag selector, eg:
+$ cucumber -t @command
+
+A small set of tests needs check what messages are send within a certain time. This will cause longer running time when testing. These tests are marked with @delay and can be excluded when running tests:
+
+$ cucumber --t 'not @delay'
+
+### Cucumber settings
+Connection settings used in cucumber tests are stored in:
+features/support/supervisor.yaml
+features/support/sites.yaml
+
+To run an internal site, ensure this is in features/support/supervisor.yaml:
+
+cucumber:
+  run_site: false
+
+You can override the settings file by using the SITE environment variable:
+$ cucumber SITE=internal   # run an internal site
+$ cucumber SITE=external   # don't run an internal site
 
 
 ## RSMP Simulator / VirtualBox setup
@@ -68,7 +97,6 @@ Create a network in VirtualBox global preferences. Turn off DHCP and add a port 
 
 Open the VM network settings, and pick the newly created network.
 
-
 In the VM, the RSMP simulator must be set to connect to the ip of the host. For the site simulator this is setup be editing the file:
 Program Files (x86)/RSMPSG1/Settings/RSMPSG1.INI
 
@@ -76,9 +104,6 @@ Edit the line:
 IPAddress=111.111.111.111:12111
 
 Change the ip to the ip of the host. The host ip can be found (if you're on Mac) by opening System Preferences > Network in the host. The IP is in "IP Address".
-
-
-
 
 
 
