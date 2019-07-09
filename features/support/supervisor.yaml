@@ -13,13 +13,12 @@ site_connect_timeout: 2
 site_ready_timeout: 1
 
 log:
-  active: true
+  active: false
   color: :blue
   id: false
-  info: false
+  info: true
   timestamp: false
   ip: false
-  level: false
   site_id: false
   text: true
   direction: true

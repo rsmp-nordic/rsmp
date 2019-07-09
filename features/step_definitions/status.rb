@@ -3,8 +3,8 @@ When("we request the following statuses") do |table|
   @send_values = table.hashes
   timeout = @supervisor_settings["status_response_timeout"]
   @sent_message, @response_message = @remote_site.request_status @component, table.hashes, timeout
-  expect(@sent_message).to_not be_nil
-  expect(@response_message).to_not be_nil
+  expect(@sent_message).to be_a(RSMP::StatusRequest)
+  expect(@response_message).to be_a(RSMP::StatusResponse)
 end
 
 

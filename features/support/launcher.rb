@@ -33,6 +33,10 @@ class Launcher
   def load_settings options={}
     @supervisor_settings = YAML.load_file(relative_filename('supervisor.yaml'))
     @supervisor_settings.merge! options[:supervisor_settings] if options[:supervisor_settings]
+
+    if ENV["LOG"] == "yes" then
+      @supervisor_settings["log"]["active"] = true
+    end
     @sites_settings = YAML.load_file(relative_filename('sites.yaml'))
   end
 
@@ -56,11 +60,15 @@ class Launcher
 
     main_site_settings = @sites_settings.first
 
-    @site.reconnect if @site
+    # when we're running an internal site, we don't have to rely on the reconnect interval.
+    # instead we ask the site to connect immediately:
+    @site.reconnect if @site_settings
 
+    # wait for site to connect
     @remote_site = @supervisor.wait_for_site :any, @supervisor_settings["site_connect_timeout"]
     raise RSMP::TimeoutError unless @remote_site
 
+    # and wait for site to be ready
     ready = @remote_site.wait_for_state :ready, @supervisor.supervisor_settings["site_ready_timeout"]
     raise RSMP::TimeoutError unless ready
   end

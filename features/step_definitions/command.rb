@@ -1,4 +1,5 @@
 When("we send the following command request") do |table|
+  raise "Cannot run test without site" unless @remote_site
   @send_values = table.hashes
   timeout = @supervisor_settings["command_response_timeout"]
   @probe_start_index = @archive.current_index
