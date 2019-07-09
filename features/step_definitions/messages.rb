@@ -26,13 +26,13 @@ Then("we should receive a not acknowledged message") do
 end
 
 When("we start collecting messages") do
-	@probe_start_time = Time.now
+	@probe_start_index = @archive.current_index
 	@probe.reset
 end
 
 Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout, expected_table|
   expected_num = expected_table.rows.size
-  @items, num = @archive.capture with_message: true, num: expected_num, timeout: timeout, earliest: @probe_start_time
+  @items = @archive.capture with_message: true, num: expected_num, timeout: timeout, from: @probe_start_index
   actual_table = @items.map { |item| item[:message] }.map { |message| [message.direction.to_s, message.type] }
   actual_table = actual_table.slice(0,expected_table.rows.size)
   actual_table.unshift expected_table.headers
@@ -40,7 +40,7 @@ Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout,
 end
 
 Then("we should receive {int} {string} messages within {int} seconds") do |expected_num, type, timeout|
-  @items, num = @archive.capture with_message: true, type: type, num: expected_num, timeout: timeout, earliest: @probe_start_time
-  expect(num).to eq(expected_num)
+  @items = @archive.capture with_message: true, type: type, num: expected_num, timeout: timeout, from: @probe_start_index
+  expect(@items.size).to eq(expected_num)
 end
 

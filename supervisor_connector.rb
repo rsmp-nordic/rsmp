@@ -181,13 +181,10 @@ module RSMP
 
     def wait_for_status_update options={}
       raise ArgumentError unless options[:component]
-      items, num = @archive.capture(options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
+      item = @archive.capture(options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
         # check component
       end
-      if items && items.any?
-        message = items.first[:message]
-        return message
-      end
+      item[:message] if item
     end
 
     def send_command component, args
@@ -212,17 +209,12 @@ module RSMP
       end
     end
 
-    def wait_for_command_response component_id, timeout
-      start = Time.now
-      @command_response_mutex.synchronize do
-        loop do
-          left = timeout + (start - Time.now)
-          message = @command_responses.delete(component_id)
-          return message if message
-          return if left <= 0
-          @command_response_condition.wait(@command_response_mutex,left)
-        end
+    def wait_for_command_response options
+      raise ArgumentError unless options[:component]
+      item = @archive.capture(options.merge(num: 1, type: "CommandResponse", with_message: true)) do |item|
+         # check component
       end
+      item[:message] if item
     end
 
   end

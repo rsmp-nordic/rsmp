@@ -81,6 +81,7 @@ module RSMP
 
     def build_output item
       parts = []
+      parts << item[:id].to_s.ljust(7) unless @settings["id"] == false
       parts << item[:timestamp].to_s.ljust(24) unless @settings["timestamp"] == false
       parts << item[:ip].to_s.ljust(22) unless @settings["ip"] == false
       parts << item[:site_id].to_s.ljust(13) unless @settings["site_id"] == false

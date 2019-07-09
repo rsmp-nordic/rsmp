@@ -1,7 +1,7 @@
 
 When("we subscribe to the following statuses") do |table|
   @send_values = table.hashes
-  @start_time = Time.now
+	@probe_start_index = @archive.current_index
   @sent_message = @remote_site.subscribe_to_status @component, @send_values
   expect(@sent_message).to_not be_nil
 end
@@ -12,7 +12,7 @@ When("we unsubscribe to the following statuses") do |table|
 end
 
 Then(/we should receive a status update within (\d+) second(?:s)?/) do |timeout|
-  @update_message = @remote_site.wait_for_status_update component: @component, timeout: timeout, earliest: @start_time
+  @update_message = @remote_site.wait_for_status_update component: @component, timeout: timeout, from: @probe_start_index
   expect(@update_message).to be_a(RSMP::StatusUpdate)
 end
 

@@ -31,35 +31,41 @@ module RSMP
       @num = options[:num]
 
       if options[:earliest]
-        backscan options
+        from = find_timestamp_index options[:earliest]
+        backscan from
+      elsif options[:from]
+        backscan options[:from]
       end
 
+      # if backscan didn't find enough items, then
+      # insert ourself as probe and sleep until enough items are captured
       if @items.size < @num
         begin
-          @archive.probes.add self              # we will not get incoming events
+          @archive.probes.add self
           @mutex.synchronize do
-            @condition_variable.wait(@mutex,options[:timeout])    # sleep until processing an item wakes us up
+            @condition_variable.wait(@mutex,options[:timeout])
           end
         ensure
           @archive.probes.remove self
         end
       end
-      out = @items[0..@num-1]
-      return out, out.size
-    end
 
-    def done
-    end
-
-    def backscan options
-      # use binary search to earliest item to consider
-      from = (0..@archive.items.size).bsearch do |i|
-        @archive.items[i][:timestamp] >= options[:earliest]
+      if @num == 1
+        @items.first        # if one item was requested, return item instead of array
+      else
+        @items[0..@num-1]   # return array, but ensure we never return more than requested
       end
-      # then look at each item from that index and up, stopping if haave enough items
-      from.upto(@archive.items.size) do |i|
-        process @archive.items[i]
-        break if @done
+    end
+
+    def find_timestamp_index earliest
+      (0..@archive.items.size).bsearch do |i|        # use binary search to find item index
+        @archive.items[i][:timestamp] >= earliest
+      end
+    end
+
+    def backscan from
+      from.upto(@archive.items.size-1) do |i|
+        return if process @archive.items[i]
       end
     end
 
@@ -71,19 +77,23 @@ module RSMP
     end
 
     def process item
-      return if @done
+      raise ArgumentError unless item
+      return true if @done
       @mutex.synchronize do
         if matches? item
           @items << item
           if @num && @items.size >= @num
             @done = true
             @condition_variable.broadcast
+            return true
           end
         end
       end
+      false
     end
 
     def matches? item
+      raise ArgumentError unless item
       return false if @options[:type] && (item[:message] == nil || (item[:message].type != @options[:type]))
       return false if @options[:with_message] && !(item[:direction] && item[:message])
       return false if @block && @block.call == false

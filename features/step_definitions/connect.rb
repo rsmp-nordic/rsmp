@@ -19,7 +19,7 @@ Given("the site setting {string} is set to {string}") do |key, value|
 end
 
 When("we start the server") do
-  @probe_start_time = Time.now
+  @probe_start_index = 0
   $env.restart supervisor_settings: @supervisor_settings
   @supervisor = $env.supervisor
   @archive = $env.archive

@@ -25,8 +25,13 @@ module RSMP
       cleaned
     end
 
+    def current_index
+      @items.size
+    end
+
     def add item
       @mutex.synchronize do
+        item[:id] = @items.size
         @items << item
         probe item
       end

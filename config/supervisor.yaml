@@ -15,6 +15,7 @@ log:
   active: true
   color: true
   timestamp: false
+  id: false
   ip: false
   site_id: true
   text: true

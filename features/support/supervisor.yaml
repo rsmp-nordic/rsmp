@@ -15,6 +15,7 @@ site_ready_timeout: 1
 log:
   active: true
   color: :blue
+  id: false
   info: false
   timestamp: false
   ip: false
