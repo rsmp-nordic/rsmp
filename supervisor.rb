@@ -187,7 +187,11 @@ module RSMP
         start = Time.now
         loop do
           left = timeout + (start - Time.now)
-          site = find_site site_id
+          if site_id == :any
+            site = @remote_sites.first
+          else
+            site = find_site site_id
+          end
           return site if site
           return nil if left <= 0
           @site_id_condition_variable.wait(@site_id_mutex,left)
@@ -196,7 +200,21 @@ module RSMP
     end
 
     def check_site_id site_id
+      check_site_already_connected site_id
+      return find_allowed_site_setting site_id
+    end
+
+    def check_site_already_connected site_id
       raise FatalError.new "Site id #{site_id} already connected" if find_site(site_id)
+    end
+
+    def find_allowed_site_setting site_id
+      @sites_settings.each do |allowed_site|
+        if allowed_site["site_id"] == :any || allowed_site["site_id"] == site_id
+          return allowed_site
+        end
+      end
+      raise FatalError.new "site id #{site_id} rejected"
     end
 
   end

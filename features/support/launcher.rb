@@ -41,7 +41,7 @@ class Launcher
 
     main_site_settings = @sites_settings.first
 
-    @remote_site = @supervisor.wait_for_site main_site_settings["site_id"], @supervisor_settings["site_connect_timeout"]
+    @remote_site = @supervisor.wait_for_site :any, @supervisor_settings["site_connect_timeout"]
     raise RSMP::TimeoutError unless @remote_site
 
     ready = @remote_site.wait_for_state :ready, @supervisor.supervisor_settings["site_ready_timeout"]

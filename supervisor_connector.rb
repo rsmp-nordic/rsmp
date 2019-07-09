@@ -12,6 +12,7 @@ module RSMP
       @settings = @supervisor.supervisor_settings
 
       @aggregated_status = {}
+      @site_settings = nil
     end
 
     def start
@@ -91,7 +92,7 @@ module RSMP
     end
 
     def check_site_id site_id
-      @supervisor.check_site_id site_id
+      @site_settings = @supervisor.check_site_id site_id
     end
 
     def request_status component, status_list, timeout=nil

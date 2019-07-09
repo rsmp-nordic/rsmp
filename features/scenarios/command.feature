@@ -45,41 +45,29 @@ Feature: Sending commands
     When we send the following command request
       | cCI   | n        | cO | v          | bad |
       | MM104 | messsage |    | Rainbbows! | 1   |
-    Then we should receive an acknowledgement
-    And we should receive a command response within 1 second
-    And same values should be returned in the command response
+    Then we should receive a not acknowledged message
 
     When we send the following command request
       | cCI   | n        | v          |
       | MM104 | messsage | Rainbbows! |
-    Then we should receive an acknowledgement
-    And we should receive a command response within 1 second
-    And same values should be returned in the command response
+    Then we should receive a not acknowledged message
 
     When we send the following command request
       | cCI | n        | cO | v          |
       | bad | messsage |    | Rainbbows! |
-    Then we should receive an acknowledgement
-    And we should receive a command response within 1 second
-    And same values should be returned in the command response
+    Then we should receive a not acknowledged message
 
     When we send the following command request
       | cCI | n        | cO | v          |
       |     | messsage |    | Rainbbows! |
-    Then we should receive an acknowledgement
-    And we should receive a command response within 1 second
-    And same values should be returned in the command response
+    Then we should receive a not acknowledged message
 
     When we send the following command request
       | cCI   | n     | cO | v          |
       | MA104 | wrong |    | Rainbbows! |
-    Then we should receive an acknowledgement
-    And we should receive a command response within 1 second
-    And same values should be returned in the command response
+    Then we should receive a not acknowledged message
 
     When we send the following command request
       | cCI   | n       | cO  | v          |
       | MA104 | message | bad | Rainbbows! |
-    Then we should receive an acknowledgement
-    And we should receive a command response within 1 second
-    And same values should be returned in the command response
+    Then we should receive a not acknowledged message

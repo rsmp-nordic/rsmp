@@ -290,7 +290,7 @@ module RSMP
     rescue InvalidMessage => e
       dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
     rescue FatalError => e
-      dont_acknowledge message, "Rejected", "#{message.type}, #{e.message}"
+      dont_acknowledge message, "Rejected #{message.type},", "#{e.message}"
       stop 
     end
 
