@@ -4,6 +4,7 @@ Feature: subscribing to status updates
   Background: We're connected to a site
     Given we focus on component "AA+BBCCC=DDDEE002"
 
+  @delay
   Scenario: Subcribe to status
     When we subscribe to the following statuses
       | sCI  | n      | uRt |

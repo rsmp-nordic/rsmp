@@ -16,6 +16,9 @@ module RSMP
 
       @remote_supervisors_mutex = Mutex.new
       @remote_supervisors = []
+
+      @sleep_mutex = Mutex.new
+      @sleep_condition_variable = ConditionVariable.new
     end
 
     def handle_site_settings options
@@ -38,6 +41,12 @@ module RSMP
 
     end
 
+    def reconnect
+      @sleep_mutex.synchronize do
+        @sleep_condition_variable.broadcast
+      end
+    end
+
     def start
       super
       @site_settings["supervisors"].each do |supervisor_settings|
@@ -57,7 +66,13 @@ module RSMP
           loop do
             begin
               remote_supervisor.run
-              remote_supervisor.reconnect_delay
+
+              # sleep until waken by reconnect() or the sleep interval passed
+              @sleep_mutex.synchronize do
+                @sleep_condition_variable.wait(@sleep_mutex,@site_settings["reconnect_interval"])
+              end
+
+              #remote_supervisor.reconnect_delay
             rescue SystemCallError => e # all ERRNO errors
               log str: "Exception: #{e.to_s}", level: :error
             rescue StandardError => e

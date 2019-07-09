@@ -1,31 +1,34 @@
-site_id: RN+RS0001
-port: 12111
+site_id: RN+SI0001
+supervisors:
+  - ip: 127.0.0.1
+    port: 12111
+
 rsmp_versions:
+  - 3.1.1
+  - 3.1.2
+  - 3.1.3
   - 3.1.4
 
 watchdog_interval: 1
 watchdog_timeout: 2
 acknowledgement_timeout: 2
+store_messages: false
 command_response_timeout: 1
 status_response_timeout: 1
 status_update_timeout: 1
-site_connect_timeout: 2
-site_ready_timeout: 1
+reconnect_interval: 1
 
 log:
-  active: true
-  color: :blue
-  id: false
-  info: false
+  active: false
+  color: true
   timestamp: false
+  id: false
   ip: false
+  site_id: true
   level: false
-  site_id: false
   text: true
   direction: true
   json: true
-  acknowledgements: true
-  watchdogs: true
+  acknowledgements: false
+  watchdogs: false
 
-cucumber:
-  run_site: true

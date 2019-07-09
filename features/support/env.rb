@@ -1,4 +1,5 @@
 require_relative '../../supervisor'
+require_relative '../../site'
 require 'rspec/expectations'
 require_relative 'launcher'
 
@@ -17,7 +18,6 @@ end
 Before('@manual_connection') do
 	$env.stop
 end
-
 
 $env = Launcher.new
 at_exit do

@@ -34,11 +34,11 @@ module RSMP
     end
 
     def start
-      @state = :starting
+      set_state :starting
     end
 
     def stop
-      @state = :stopping
+      set_state :stopping
       kill_threads
       close_socket
       clear
@@ -324,7 +324,7 @@ module RSMP
       return extraneous_version message if @version_determined
       check_site_ids message
       rsmp_version = check_rsmp_version message
-      @state = :version_determined
+      set_state :version_determined
       check_sxl_version
       version_accepted message, rsmp_version
     end
@@ -352,7 +352,7 @@ module RSMP
       send message, "for #{original.type}"
     end
 
-    def state= state
+    def set_state state
       @state_mutex.synchronize do
         @state = state
         @state_condition.broadcast
@@ -469,7 +469,7 @@ module RSMP
     end
 
     def connection_complete
-      @state = :ready
+      set_state :ready
     end
 
     def check_site_ids message

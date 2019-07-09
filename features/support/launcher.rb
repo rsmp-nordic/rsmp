@@ -8,6 +8,21 @@ class Launcher
 
   def initialize
     load_settings
+
+    if ENV["SITE"]=="internal" || 
+        (ENV["SITE"]!="external" && @supervisor_settings["cucumber"] && @supervisor_settings["cucumber"]["run_site"] == true)
+      start_site
+    end
+  end
+
+  def start_site
+    @site_settings = YAML.load_file(relative_filename('site.yaml'))
+    @site_archive = RSMP::Archive.new
+    @site = RSMP::Site.new(
+      site_settings: @site_settings,
+      archive: @site_archive
+    )
+    @site.start
   end
 
   def relative_filename filename
@@ -40,6 +55,8 @@ class Launcher
     @supervisor.start
 
     main_site_settings = @sites_settings.first
+
+    @site.reconnect if @site
 
     @remote_site = @supervisor.wait_for_site :any, @supervisor_settings["site_connect_timeout"]
     raise RSMP::TimeoutError unless @remote_site
