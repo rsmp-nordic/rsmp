@@ -210,11 +210,7 @@ module RSMP
 
     def timer now
       super
-      begin
-        status_update_timer now
-      rescue StandardError => e
-       error ["Status update exception: #{e}",e.backtrace].flatten.join("\n")
-      end
+      status_update_timer now if ready?
     end
 
     def status_update_timer now
@@ -248,6 +244,8 @@ module RSMP
         end
       end
       send_status_updates update_list
+    rescue StandardError => e
+      error ["Status update exception: #{e}",e.backtrace].flatten.join("\n")
     end
 
     def send_status_updates update_list

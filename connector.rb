@@ -29,6 +29,10 @@ module RSMP
       stop
     end
 
+    def ready?
+      @state == :ready
+    end
+
     def start
       @state = :starting
     end
