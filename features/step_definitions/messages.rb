@@ -39,7 +39,7 @@ Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout,
   expected_table.diff!(actual_table)
 end
 
-Then("we should receive {int} {string} messages within {int} seconds") do |expected_num, type, timeout|
+Then("we should receive {int} {string} messages within {float} seconds") do |expected_num, type, timeout|
   @items = @archive.capture with_message: true, type: type, num: expected_num, timeout: timeout, from: @probe_start_index
   expect(@items.size).to eq(expected_num)
 end

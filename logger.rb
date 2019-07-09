@@ -21,6 +21,7 @@ module RSMP
       return false if @pause
       return false if @settings["active"] == false
       return false if @settings["info"] == false && item[:level] == :info
+
       if item[:message]
         type = item[:message].type
         ack = type == "MessageAck" || type == "MessageNotAck"

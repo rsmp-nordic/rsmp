@@ -16,7 +16,7 @@ Then(/we should receive a status update within (\d+) second(?:s)?/) do |timeout|
   expect(@update_message).to be_a(RSMP::StatusUpdate)
 end
 
-Then(/we should not receive a status update within (\d+) second(?:s)?/) do |timeout|
+Then("we should not receive a status update within {float} seconds") do |timeout|
   @update_message = @remote_site.wait_for_status_update component: @component, timeout: timeout
   expect(@update_message).to be_nil
 end

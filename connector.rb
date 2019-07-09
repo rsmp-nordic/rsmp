@@ -128,7 +128,7 @@ module RSMP
           rescue StandardError => e
             error ["#{name} exception: #{e}",e.backtrace].flatten.join("\n")
           ensure
-            sleep 1
+            sleep 0.1
           end
         end
       end
