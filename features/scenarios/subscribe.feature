@@ -26,10 +26,10 @@ Feature: subscribing to status updates
       | sCI  | n      | uRt |
       | S001 | number | 1   |
     Then we should receive an acknowledgement
-    And we should receive 2 "StatusUpdate" messages within 0.2 seconds
+    And we should receive 2 "StatusUpdate" messages within 2.0 seconds
 
     When we unsubscribe to the following statuses
       | sCI  | n      |
       | S001 | number |
     Then we should receive an acknowledgement
-    And we should not receive a status update within 0.2 seconds
+    And we should not receive a status update within 2.0 seconds

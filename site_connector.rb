@@ -10,7 +10,7 @@ module RSMP
     def initialize options
       super options
       @site = options[:site]
-      @site_settings = @site.site_settings
+      @site_settings = @site.site_settings.clone
       @ip = options[:ip]
       @port = options[:port]
       @aggregated_status_bools = Array.new(8,false)
@@ -23,6 +23,7 @@ module RSMP
       info "Connecting to superviser at #{@ip}:#{@port}"
       super
       connect
+      @logger.continue
       start_reader
       send_version @site_settings["rsmp_versions"]
     rescue Errno::ECONNREFUSED
@@ -37,7 +38,6 @@ module RSMP
     end
 
     def connection_complete
-      @logger.continue
       super
       info "Connection to supervisor established"
       start_watchdog

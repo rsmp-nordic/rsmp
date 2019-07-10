@@ -3,6 +3,7 @@ port: 12111
 rsmp_versions:
   - 3.1.4
 
+timer_interval: 0.1
 watchdog_interval: 1
 watchdog_timeout: 2
 acknowledgement_timeout: 2
@@ -15,8 +16,9 @@ site_ready_timeout: 1
 log:
   active: false
   color: :blue
-  id: false
+  id: true
   info: true
+  level: false
   timestamp: false
   ip: false
   site_id: false
@@ -27,4 +29,4 @@ log:
   watchdogs: true
 
 cucumber:
-  run_site: true
+  site: internal

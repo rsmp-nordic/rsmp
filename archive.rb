@@ -31,7 +31,7 @@ module RSMP
 
     def add item
       @mutex.synchronize do
-        item[:id] = @items.size
+        item[:index] = @items.size
         @items << item
         probe item
       end

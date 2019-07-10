@@ -5,21 +5,21 @@ require_relative 'launcher'
 
 Before do |scenario|
 	unless scenario.source_tag_names.include? "@manual_connection"
-		$env.start
-		@supervisor = $env.supervisor
-		@remote_site = $env.remote_site
+		$launcher.start
+		@supervisor = $launcher.supervisor
+		@remote_site = $launcher.remote_site
 	end
-	@sites_settings = $env.sites_settings
+	@sites_settings = $launcher.sites_settings
 	@main_site_settings = @sites_settings.first
-	@supervisor_settings = $env.supervisor_settings
-	@archive = $env.archive
+	@supervisor_settings = $launcher.supervisor_settings
+	@archive = $launcher.archive
 end
 
 Before('@manual_connection') do
-	$env.stop
+	$launcher.stop
 end
 
-$env = Launcher.new
+$launcher = Launcher.new
 at_exit do
-	$env.stop
+	$launcher.stop
 end

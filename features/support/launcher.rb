@@ -10,13 +10,12 @@ class Launcher
     load_settings
 
     if ENV["SITE"]=="internal" || 
-        (ENV["SITE"]!="external" && @supervisor_settings["cucumber"] && @supervisor_settings["cucumber"]["run_site"] == true)
+        (ENV["SITE"]!="external" && @supervisor_settings["cucumber"] && @supervisor_settings["cucumber"]["site"].to_s == "internal")
       start_site
     end
   end
 
   def start_site
-    @site_settings = YAML.load_file(relative_filename('site.yaml'))
     @site_archive = RSMP::Archive.new
     @site = RSMP::Site.new(
       site_settings: @site_settings,
@@ -33,11 +32,14 @@ class Launcher
   def load_settings options={}
     @supervisor_settings = YAML.load_file(relative_filename('supervisor.yaml'))
     @supervisor_settings.merge! options[:supervisor_settings] if options[:supervisor_settings]
+    @sites_settings = YAML.load_file(relative_filename('sites.yaml'))
+
+    @site_settings = YAML.load_file(relative_filename('site.yaml'))
 
     if ENV["LOG"] == "yes" then
       @supervisor_settings["log"]["active"] = true
+      @site_settings["log"]["active"] = true
     end
-    @sites_settings = YAML.load_file(relative_filename('sites.yaml'))
   end
 
   def restart options={}
@@ -62,7 +64,7 @@ class Launcher
 
     # when we're running an internal site, we don't have to rely on the reconnect interval.
     # instead we ask the site to connect immediately:
-    @site.reconnect if @site_settings
+    @site.reconnect if @site
 
     # wait for site to connect
     @remote_site = @supervisor.wait_for_site :any, @supervisor_settings["site_connect_timeout"]

@@ -21,6 +21,7 @@ module RSMP
       return false if @pause
       return false if @settings["active"] == false
       return false if @settings["info"] == false && item[:level] == :info
+      return false if @settings["debug"] != true && item[:level] == :debug
 
       if item[:message]
         type = item[:message].type
@@ -76,20 +77,23 @@ module RSMP
       if output? item
         output item[:level], build_output(item) 
       end
+
     end
 
     private
 
     def build_output item
       parts = []
-      parts << item[:id].to_s.ljust(7) unless @settings["id"] == false
+      parts << item[:index].to_s.ljust(7) if @settings["index"] == true
       parts << item[:timestamp].to_s.ljust(24) unless @settings["timestamp"] == false
       parts << item[:ip].to_s.ljust(22) unless @settings["ip"] == false
       parts << item[:site_id].to_s.ljust(13) unless @settings["site_id"] == false
-      parts << item[:level].to_s.capitalize.ljust(7) unless @settings["level"] == false
 
       directions = {in:"-->",out:"<--"}
       parts << directions[item[:direction]].to_s.ljust(4) unless @settings["direction"] == false
+
+      parts << item[:level].to_s.capitalize.ljust(7) unless @settings["level"] == false
+
       
       unless @settings["id"] == false
         length = 4

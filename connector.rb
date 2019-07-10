@@ -30,7 +30,9 @@ module RSMP
     end
 
     def ready?
-      @state == :ready
+      @state_mutex.synchronize do
+        @state == :ready
+      end
     end
 
     def start
@@ -42,10 +44,10 @@ module RSMP
       kill_threads
       close_socket
       clear
+      set_state :stopped
     end
 
     def clear
-      @state = :stoped
       @site_ids = []
       @awaiting_acknowledgement = {}
       @latest_watchdog_received = nil
@@ -71,17 +73,6 @@ module RSMP
       end
     end
 
-    def kill_threads
-      reaper = Thread.new(@threads) do |threads|
-        threads.each do |thread|
-          info "Stopping #{thread[:name]}"
-          thread.kill
-        end
-      end
-      reaper.join
-      @threads.clear
-    end
-
     def start_reader    
       @reader = Thread.new(@socket) do |socket|
         Thread.current[:name] = "reader"
@@ -93,7 +84,7 @@ module RSMP
             packet.chomp!(RSMP::WRAPPING_DELIMITER)
             process packet
           rescue Errno::ECONNRESET => e
-            warning "Connection reset by peer"
+            #warning "Connection reset by peer"
             break            
           rescue SystemCallError => e # all ERRNO errors
             error "Connector exception: #{e.to_s}"
@@ -109,15 +100,15 @@ module RSMP
     end
 
     def start_watchdog
-      info "Starting watchdog with interval #{@settings["watchdog_interval"]} seconds"
+      debug "Starting watchdog with interval #{@settings["watchdog_interval"]} seconds"
       send_watchdog
       @watchdog_started = true
     end
 
     def start_timer
       name = "timer"
-      interval = 1
-      info "Starting #{name} with interval #{interval} seconds"
+      interval = @settings["timer_interval"] || 1
+      debug "Starting #{name} with interval #{interval} seconds"
       @latest_watchdog_received = RSMP.now_object
       @threads << Thread.new(@socket) do |socket|
         Thread.current[:name] = name
@@ -128,7 +119,7 @@ module RSMP
           rescue StandardError => e
             error ["#{name} exception: #{e}",e.backtrace].flatten.join("\n")
           ensure
-            sleep 0.1
+            sleep interval
           end
         end
       end
@@ -141,7 +132,8 @@ module RSMP
     end
 
     def check_watchdog_send_time now
-      return unless @watchdog_started    
+      return unless @watchdog_started  
+      return if @settings["watchdog_interval"] == :never
       if @latest_watchdog_send_at == nil || (now - @latest_watchdog_send_at) >= @settings["watchdog_interval"]
         send_watchdog now
       end
@@ -184,7 +176,7 @@ module RSMP
     def kill_threads
       reaper = Thread.new(@threads) do |threads|
         threads.each do |thread|
-          info "Stopping #{thread[:name]}"
+          debug "Stopping #{thread[:name]}"
           thread.kill
         end
       end
@@ -211,6 +203,10 @@ module RSMP
 
     def info str, message=nil
       log_at_level str, :info, message
+    end
+
+    def debug str, message=nil
+      log_at_level str, :debug, message
     end
 
     def log_at_level str, level, message=nil

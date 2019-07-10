@@ -30,7 +30,7 @@ When("we start collecting messages") do
 	@probe.reset
 end
 
-Then(/we should exchange these messages within (\d+) second(?:s)?/) do |timeout, expected_table|
+Then("we should exchange these messages within {float} seconds") do |timeout, expected_table|
   expected_num = expected_table.rows.size
   @items = @archive.capture with_message: true, num: expected_num, timeout: timeout, from: @probe_start_index
   actual_table = @items.map { |item| item[:message] }.map { |message| [message.direction.to_s, message.type] }

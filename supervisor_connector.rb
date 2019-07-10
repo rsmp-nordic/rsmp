@@ -9,7 +9,7 @@ module RSMP
     def initialize options
       super options
       @supervisor = options[:supervisor]
-      @settings = @supervisor.supervisor_settings
+      @settings = @supervisor.supervisor_settings.clone
 
       @aggregated_status = {}
       @site_settings = nil
@@ -184,6 +184,10 @@ module RSMP
          # check component
       end
       item[:message] if item
+    end
+
+    def set_watchdog_interval interval
+      @settings["watchdog_interval"] = interval
     end
 
   end

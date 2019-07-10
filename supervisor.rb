@@ -46,7 +46,7 @@ module RSMP
       @rsmp_versions = @supervisor_settings["rsmp_versions"]
       
       # randomize site id
-      @supervisor_settings["site_id"] = "RN+SU#{rand(9999).to_i}"
+      #@supervisor_settings["site_id"] = "RN+SU#{rand(9999).to_i}"
 
       # randomize port
       #@supervisor_settings["port"] = @supervisor_settings["port"] + rand(10).to_i
@@ -159,7 +159,7 @@ module RSMP
     end
 
     def close socket, info
-      log ip: info[:ip], str: "Site #{info[:ip]}:#{info[:port]} gone", level: :info
+      log ip: info[:ip], str: "Connection to #{info[:ip]}:#{info[:port]} closed", level: :info
       socket.close
     end
 
@@ -194,6 +194,19 @@ module RSMP
           end
           return site if site
           return nil if left <= 0
+          @site_id_condition_variable.wait(@site_id_mutex,left)
+        end
+      end
+    end
+
+    def wait_for_site_disconnect site_id, timeout
+      @site_id_mutex.synchronize do
+        start = Time.now
+        loop do
+          left = timeout + (start - Time.now)
+          site = find_site site_id
+          return true if site == nil
+          return false if left <= 0
           @site_id_condition_variable.wait(@site_id_mutex,left)
         end
       end
