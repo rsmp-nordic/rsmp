@@ -1,7 +1,9 @@
 # rsmp messages
 
 require 'json'
-require 'securerandom'
+require'securerandom'
+require_relative 'error'
+require_relative 'rsmp'
 
 module RSMP  
   class Message
@@ -10,6 +12,7 @@ module RSMP
     attr_accessor :json, :direction,
 
     def self.parse_attributes packet
+      raise ArgumentError unless packet
       JSON.parse packet
     rescue JSON::ParserError
       raise InvalidPacket, bin_to_chars(packet)
@@ -51,9 +54,6 @@ module RSMP
       message.json = packet
       message.direction = :in
       message
-    end
-
-    def validate
     end
 
     def type
@@ -106,8 +106,8 @@ module RSMP
     end
 
     def validate
-      validate_type &&
-      validate_id
+      validate_type == true &&
+      validate_id == true
     end
 
     def validate_type
@@ -115,7 +115,7 @@ module RSMP
     end
 
     def validate_id
-       @attributes["mId"] =~ /[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}/i
+       (@attributes["mId"] =~ /[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}/i) != nil
     end
 
     def valid?
