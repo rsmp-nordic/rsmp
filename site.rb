@@ -32,8 +32,8 @@ module RSMP
         end
       end
 
-      required = ["supervisors","rsmp_versions","site_id","watchdog_interval","watchdog_timeout",
-                  "acknowledgement_timeout","command_response_timeout","log"]
+      required = [:supervisors,:rsmp_versions,:site_id,:watchdog_interval,:watchdog_timeout,
+                  :acknowledgement_timeout,:command_response_timeout,:log]
       check_required_settings @site_settings, required
 
       # randomize site id

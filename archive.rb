@@ -25,6 +25,10 @@ module RSMP
       cleaned
     end
 
+    def strings
+      items.map { |item| item[:str] }
+    end
+
     def current_index
       @items.size
     end

@@ -37,6 +37,9 @@ module RSMP
       starting
     end
 
+    def starting
+    end
+
     def stop
       kill_threads @connection_threads
     end

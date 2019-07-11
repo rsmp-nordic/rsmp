@@ -27,7 +27,7 @@ module RSMP
       @supervisor_settings = {}
 
       unless options[:supervisor_settings_path] || options[:supervisor_settings]
-        raise "supervisor_settings or supervisor_settings_path must be present"
+        raise ArgumentError.new("supervisor_settings or supervisor_settings_path must be present")
       end
 
       if options[:supervisor_settings_path]
@@ -159,7 +159,12 @@ module RSMP
     end
 
     def close socket, info
-      log ip: info[:ip], str: "Connection to #{info[:ip]}:#{info[:port]} closed", level: :info
+      if info
+        log ip: info[:ip], str: "Connection to #{info[:ip]}:#{info[:port]} closed", level: :info
+      else
+        log str: "Connection closed", level: :info
+      end
+
       socket.close
     end
 
