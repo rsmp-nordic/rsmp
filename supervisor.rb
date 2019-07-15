@@ -39,8 +39,8 @@ module RSMP
         @supervisor_settings.merge! options
       end
 
-      required = ["port","rsmp_versions","site_id","watchdog_interval","watchdog_timeout",
-                  "acknowledgement_timeout","command_response_timeout","log"]
+      required = [:port, :rsmp_versions, :site_id, :watchdog_interval, :watchdog_timeout,
+                  :acknowledgement_timeout, :command_response_timeout, :log]
       check_required_settings @supervisor_settings, required
 
       @rsmp_versions = @supervisor_settings["rsmp_versions"]

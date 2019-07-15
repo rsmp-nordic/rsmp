@@ -69,7 +69,7 @@ module RSMP
     def check_required_settings settings, required
       raise ArgumentError.new "Settings is empty" unless settings
       required.each do |setting|
-        raise ArgumentError.new "Missing setting: #{setting}" unless settings.include? setting
+        raise ArgumentError.new "Missing setting: #{setting}" unless settings.include? setting.to_s
       end 
     end
 

@@ -7,31 +7,31 @@ describe RSMP::Supervisor do
 
 		let(:supervisor_settings) {
 			{
-				site_id: 'RN+RS0001',
-				port: 12111,
-				rsmp_versions: ['3.1.4'],
-				timer_interval: 0.1,
-				watchdog_interval: 1,
-				watchdog_timeout: 2,
-				acknowledgement_timeout: 2,
-				command_response_timeout: 1,
-				status_response_timeout: 1,
-				status_update_timeout: 1,
-				site_connect_timeout: 2,
-				site_ready_timeout: 1,
-				log: {
-					"active" => true,					# set to true to debug
-					"color" => :light_black,
-					"ip" => false,
-					"timestamp" => false,
-					"site_id" => false,
-					"level" => false
+				'site_id' => 'RN+RS0001',
+				'port' => 12111,
+				'rsmp_versions' => ['3.1.4'],
+				'timer_interval' => 0.1,
+				'watchdog_interval' => 1,
+				'watchdog_timeout' => 2,
+				'acknowledgement_timeout' => 2,
+				'command_response_timeout' => 1,
+				'status_response_timeout' => 1,
+				'status_update_timeout' => 1,
+				'site_connect_timeout' => 2,
+				'site_ready_timeout' => 1,
+				'log' => {
+					'active' => true,					# set to true to debug
+					'color' => :light_black,
+					'ip' => false,
+					'timestamp' => false,
+					'site_id' => false,
+					'level' => false
 				}
 			}
 		}
 
 		let(:sites_settings) {
-			[ { "site_id"=> 'RN+SI0001', sxl_versions: ['1,1']} ]
+			[ { 'site_id' => 'RN+SI0001', sxl_versions: ['1,1']} ]
 		}
 
 
@@ -56,7 +56,7 @@ describe RSMP::Supervisor do
 			supervisor.start
 
 			# create a simple tcp socket, and send a version message
-			socket = TCPSocket.open "127.0.0.1", supervisor_settings[:port]
+			socket = TCPSocket.open "127.0.0.1", supervisor_settings['port']
 			socket.print '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.4"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'+"\f"
 
 			# supervisor should see our tcp socket and create a connector
