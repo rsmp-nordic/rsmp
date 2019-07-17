@@ -1,8 +1,8 @@
 require_relative '../helpers/launcher'
 
 include Launcher
-Launcher::load_settings
-Launcher::start_site
+#Launcher::load_settings
+#Launcher::start_site
 
 describe 'External RSMP site' do
 

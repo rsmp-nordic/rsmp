@@ -124,6 +124,10 @@ module RSMP
       log "Received #{message.type}", message
       rvs = []
       message.attributes["arg"].each do |arg|
+        unless arg['cCI'] && arg['n'] && arg['v']
+          dont_acknowledge message, '', 'bad arguments'
+          return
+        end 
         rvs << { "cCI": arg["cCI"],
                  "n": arg["n"],
                  "v": arg["v"],

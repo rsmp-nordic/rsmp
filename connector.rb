@@ -504,7 +504,6 @@ module RSMP
     end
 
     def wait_for_not_acknowledged original, timeout
-      p :not
       wait_for_acknowledgement original, timeout, type: :not_acknowledged
     end
 

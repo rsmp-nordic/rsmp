@@ -54,8 +54,8 @@ module RSMP
           remote_supervisor = SiteConnector.new({
             site: self, 
             settings: @site_settings, 
-            ip: supervisor_settings["ip"],
-            port: supervisor_settings["port"],
+            ip: supervisor_settings['ip'],
+            port: supervisor_settings['port'],
             logger: @logger,
             archive: @archive
           })
