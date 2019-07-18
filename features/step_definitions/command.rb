@@ -3,12 +3,17 @@ When("we send the following command request") do |table|
   @send_values = table.hashes
   timeout = @supervisor_settings["command_response_timeout"]
   @probe_start_index = @archive.current_index
-	@sent_message = @remote_site.send_command @component, table.hashes
-  expect(@sent_message).to_not be_nil
+
+  @response_message = RSMP::Probe.collect_response @remote_site, timeout: 1 do
+		@sent_event = @remote_site.send_command @component, table.hashes
+	end
+  expect(@sent_event).to_not be_nil
+	@sent_message = @sent_event[:message]
+  expect(@sent_message).to_not be_nil	
 end
 
 Then(/we should receive a command response within (\d+) second(?:s)?/) do |timeout|
-  @response_message = @remote_site.wait_for_command_response component: @component, timeout: timeout, from: @probe_start_index
+  #@response_message = @remote_site.wait_for_command_response component: @component, timeout: timeout, from: @probe_start_index
   expect(@response_message).to be_a(RSMP::CommandResponse)
 end
 

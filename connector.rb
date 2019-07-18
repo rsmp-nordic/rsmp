@@ -8,7 +8,7 @@ require 'timeout'
 
 module RSMP  
   class Connector
-    attr_reader :site_ids, :state
+    attr_reader :site_ids, :state, :archive
 
     def initialize options
       @settings = options[:settings]
@@ -219,15 +219,16 @@ module RSMP
       })
       @archive.add item
       @logger.log item
+      item
     end
 
     def send message, reason=nil
       message.generate_json
       message.direction = :out
       expect_acknowledgement message
-      log_send message, reason
       @socket.print message.out
-      message.m_id
+      log_send message, reason
+      #message.m_id
     end
 
     def log_send message, reason=nil
@@ -490,7 +491,7 @@ module RSMP
     end
 
     def wait_for_acknowledgement original, timeout, options={}
-      raise InvalidArgument unless original
+      raise ArgumentError unless original
       start = Time.now
       @acknowledgement_mutex.synchronize do
         loop do

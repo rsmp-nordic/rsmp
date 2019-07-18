@@ -170,7 +170,6 @@ module RSMP
           "arg" => args
       })
       send message
-      message
     end
 
     def process_command_response message
