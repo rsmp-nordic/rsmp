@@ -5,6 +5,7 @@
 
 require_relative 'node'
 require_relative 'supervisor_connector'
+require 'async/io'
 
 module RSMP
   class Supervisor < Node
@@ -75,23 +76,22 @@ module RSMP
     end
 
     def wait_for_threads
-      @socket_thread.join
+      #@task.wait
     end
 
     def start
       super
-      @tcp_server = TCPServer.new @supervisor_settings["port"]  # server on specific port
-      @socket_thread =Thread.new do
-        until @tcp_server.closed? do
-          begin
-            @connection_threads << Thread.new(@tcp_server.accept) do |socket|    # wait for a site to connect
-              handle_connection(socket)
-            end
-          rescue SystemCallError => e # all ERRNO errors
-            log str: "Exception: #{e.to_s}", level: :error
-          rescue StandardError => e
-            log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
+      @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
+      @socket_task = @task.async do
+        begin
+          @endpoint.accept do |socket|
+            # This is an asynchronous block within the current reactor
+            handle_connection(socket)
           end
+        rescue SystemCallError => e # all ERRNO errors
+          log str: "Exception: #{e.to_s}", level: :error
+        rescue StandardError => e
+          log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
         end
       end
     end
@@ -103,14 +103,18 @@ module RSMP
         @remote_sites.clear
       end
       super
-      @socket_thread.kill if @socket_thread
-      @socket_thread = nil
+      #@socket_thread.kill if @socket_thread
+      #@socket_thread = nil
       @tcp_server.close if @tcp_server
       @tcp_server = nil
     end
 
     def handle_connection socket
-      sock_domain, remote_port, remote_hostname, remote_ip = socket.peeraddr
+
+      remote_port = socket.remote_address.ip_port
+      remote_hostname = socket.remote_address.ip_address
+      remote_ip = socket.remote_address.ip_address
+
       info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:RSMP.now_string()}
       if accept? socket, info
         connect socket, info
@@ -137,6 +141,7 @@ module RSMP
       log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", level: :info
       remote_site = SupervisorConnector.new({
         supervisor: self,
+        task: @task,
         settings: @sites_settings,
         socket: socket,
         info: info,

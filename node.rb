@@ -26,7 +26,10 @@ module RSMP
     end
 
     def run
-      start
+      Async do |task|
+        @task = task
+        start
+      end
       wait_for_threads
     rescue SystemExit, SignalException, Interrupt
       exiting
@@ -41,7 +44,7 @@ module RSMP
     end
 
     def stop
-      kill_threads @connection_threads
+      @task.stop
     end
 
     def restart
@@ -50,12 +53,7 @@ module RSMP
     end
 
     def wait_for_threads
-      @connection_threads.each { |thread| thread.join }
-    end
-
-    def kill_threads threads
-      threads.each { |thread| thread.kill }
-      threads.clear
+      #@task.wait
     end
 
     def log item

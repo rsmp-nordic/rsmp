@@ -5,6 +5,9 @@ require_relative 'error'
 require_relative 'archive'
 require_relative 'probe'
 require 'timeout'
+require 'async/io'
+#require 'async/io/host_endpoint'
+require 'async/io/protocol/line'
 
 module RSMP  
   class Connector
@@ -13,9 +16,11 @@ module RSMP
     def initialize options
       @settings = options[:settings]
       @logger = options[:logger]
+      @task = options[:task]
       @socket = options[:socket]
       @archive = options[:archive]
       @ip = options[:ip]
+
       clear
     end
 
@@ -25,7 +30,7 @@ module RSMP
 
     def run
       start
-      @reader.join if @reader
+      @reader.wait if @reader
       stop
     end
 
@@ -56,6 +61,7 @@ module RSMP
       @ingoing_acknowledged = {}
       @outgoing_acknowledged = {}
       @threads = []
+      @tasks = []
       @latest_watchdog_send_at = nil
 
       @state_mutex = Mutex.new
@@ -73,30 +79,33 @@ module RSMP
       end
     end
 
-    def start_reader    
-      @reader = Thread.new(@socket) do |socket|
-        Thread.current[:name] = "reader"
+    def start_reader  
+      @reader = @task.async do
+        @stream = Async::IO::Stream.new(@socket)
         # an rsmp message is json terminated with a form-feed
-        until socket.closed? do
-          begin
-            packet = socket.gets(RSMP::WRAPPING_DELIMITER)
-            break unless packet
-            packet.chomp!(RSMP::WRAPPING_DELIMITER)
-            process packet
-          rescue Errno::ECONNRESET => e
-            #warning "Connection reset by peer"
-            break            
-          rescue SystemCallError => e # all ERRNO errors
-            error "Connector exception: #{e.to_s}"
-            break
-          rescue StandardError => e
-            error ["Connector exception: #{e}",e.backtrace].flatten.join("\n")
-            break
+        @protocol = Async::IO::Protocol::Line.new(@stream,"\f")
+
+        begin
+          while packet = @protocol.read_line
+            begin
+              #packet.chomp!(RSMP::WRAPPING_DELIMITER)
+              process packet
+            rescue Errno::ECONNRESET => e
+              #warning "Connection reset by peer"
+              break            
+            rescue SystemCallError => e # all ERRNO errors
+              error "Connector exception: #{e.to_s}"
+              break
+            rescue StandardError => e
+              error ["Connector exception: #{e}",e.backtrace].flatten.join("\n")
+              break
+            end
           end
+        rescue EOFError
+          warning "Connection closed"
         end
-        warning "Connection closed"
       end
-      @threads << @reader
+      @tasks << @reader
     end
 
     def start_watchdog
@@ -110,8 +119,7 @@ module RSMP
       interval = @settings["timer_interval"] || 1
       debug "Starting #{name} with interval #{interval} seconds"
       @latest_watchdog_received = RSMP.now_object
-      @threads << Thread.new(@socket) do |socket|
-        Thread.current[:name] = name
+      @timer = @task.async do |task|
         loop do
           begin
             now = RSMP.now_object
@@ -119,7 +127,7 @@ module RSMP
           rescue StandardError => e
             error ["#{name} exception: #{e}",e.backtrace].flatten.join("\n")
           ensure
-            sleep interval
+            task.sleep interval
           end
         end
       end
@@ -174,14 +182,14 @@ module RSMP
     end
 
     def kill_threads
-      reaper = Thread.new(@threads) do |threads|
-        threads.each do |thread|
-          debug "Stopping #{thread[:name]}"
-          thread.kill
-        end
-      end
-      reaper.join
-      @threads.clear
+      #reaper = Thread.new(@threads) do |threads|
+      #  threads.each do |thread|
+      #    debug "Stopping #{thread[:name]}"
+      #    thread.kill
+      #  end
+      #end
+      #reaper.join
+      #@threads.clear
       @watchdog_started = false
     end
 
@@ -226,7 +234,7 @@ module RSMP
       message.generate_json
       message.direction = :out
       expect_acknowledgement message
-      @socket.print message.out
+      @protocol.write_lines message.out
       log_send message, reason
       #message.m_id
     end

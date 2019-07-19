@@ -34,10 +34,17 @@ module RSMP
 
     def connect
       return if @socket
-      @socket = TCPSocket.open @ip, @port  # connect to supervisor
+      @endpoint = Async::IO::Endpoint.tcp(@ip, @port)
+      @socket = @endpoint.connect
+      @stream = Async::IO::Stream.new(@socket)
+      # an rsmp message is json terminated with a form-feed
+      @protocol = Async::IO::Protocol::Line.new(@stream,"\f")
+
+      #@socket = TCPSocket.open @ip, @port  # connect to supervisor
     end
 
     def connection_complete
+      p :connection_complete
       super
       info "Connection to supervisor established"
       start_watchdog
@@ -56,7 +63,7 @@ module RSMP
     def reconnect_delay
       interval = @site_settings["reconnect_interval"]
       info "Waiting #{interval} seconds before trying to reconnect"
-      sleep interval
+      @task.sleep interval
     end
 
     def version_accepted message, rsmp_version

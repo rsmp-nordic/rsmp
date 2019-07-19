@@ -127,7 +127,7 @@ module RSMP
 
       # wrap json with a form feed to create an rsmp packet,
       #as required by the rsmp specification
-      @out = "#{@json}\f"
+      @out = "#{@json}"
     end
 
   end

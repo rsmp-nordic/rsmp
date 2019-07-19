@@ -22,6 +22,6 @@ log:
   direction: true
   level: false
   json: false
-  acknowledgements: false
-  watchdogs: false
+  acknowledgements: true
+  watchdogs: true
 

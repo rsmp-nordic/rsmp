@@ -50,9 +50,10 @@ module RSMP
     def start
       super
       @site_settings["supervisors"].each do |supervisor_settings|
-        @connection_threads << Thread.new do
+        @site_task = @task.async do
           remote_supervisor = SiteConnector.new({
-            site: self, 
+            site: self,
+            task: @task,
             settings: @site_settings, 
             ip: supervisor_settings['ip'],
             port: supervisor_settings['port'],
