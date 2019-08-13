@@ -46,7 +46,7 @@ module RSMP
 
     def stop
       set_state :stopping
-      kill_threads
+      stop_tasks
       close_socket
       clear
       set_state :stopped
@@ -60,8 +60,6 @@ module RSMP
       @version_determined = false
       @ingoing_acknowledged = {}
       @outgoing_acknowledged = {}
-      @threads = []
-      @tasks = []
       @latest_watchdog_send_at = nil
 
       @state_mutex = Mutex.new
@@ -88,7 +86,6 @@ module RSMP
         begin
           while packet = @protocol.read_line
             begin
-              #packet.chomp!(RSMP::WRAPPING_DELIMITER)
               process packet
             rescue Errno::ECONNRESET => e
               #warning "Connection reset by peer"
@@ -105,7 +102,6 @@ module RSMP
           warning "Connection closed"
         end
       end
-      @tasks << @reader
     end
 
     def start_watchdog
@@ -134,6 +130,7 @@ module RSMP
     end
 
     def timer now
+      p ":timer, now is #{now}"
       check_watchdog_send_time now
       return false if check_ack_timeout now
       return false if check_watchdog_timeout now
@@ -174,23 +171,16 @@ module RSMP
       timeout = @settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       if now > latest
-        error "No Watchdog within #{timeout} seconds"
+        error "No Watchdog within #{timeout} seconds, received at #{@latest_watchdog_received}, now is #{now}"
         stop
         return true
       end
       false
     end
 
-    def kill_threads
-      #reaper = Thread.new(@threads) do |threads|
-      #  threads.each do |thread|
-      #    debug "Stopping #{thread[:name]}"
-      #    thread.kill
-      #  end
-      #end
-      #reaper.join
-      #@threads.clear
-      @watchdog_started = false
+    def stop_tasks
+      @timer.stop
+      @reader.stop
     end
 
     def error str, message=nil

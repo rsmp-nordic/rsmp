@@ -75,10 +75,6 @@ module RSMP
       log str: "Cannot start supervisor: #{e.to_s}", level: :error
     end
 
-    def wait_for_threads
-      #@task.wait
-    end
-
     def start
       super
       @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
@@ -103,8 +99,6 @@ module RSMP
         @remote_sites.clear
       end
       super
-      #@socket_thread.kill if @socket_thread
-      #@socket_thread = nil
       @tcp_server.close if @tcp_server
       @tcp_server = nil
     end

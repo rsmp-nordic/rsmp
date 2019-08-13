@@ -28,7 +28,6 @@ module RSMP
     def version_accepted message, rsmp_version
       log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message
       start_timer
-      p :ack
       acknowledge message
       send_version rsmp_version
       @version_determined = true

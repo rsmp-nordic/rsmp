@@ -22,7 +22,6 @@ module RSMP
     def initialize options
       @archive = options[:archive] || RSMP::Archive.new
       @logger = options[:logger] || RSMP::Logger.new(options[:log_settings]) 
-      @connection_threads = []
     end
 
     def run
@@ -30,7 +29,7 @@ module RSMP
         @task = task
         start
       end
-      wait_for_threads
+      #task.wait
     rescue SystemExit, SignalException, Interrupt
       exiting
       exit      #will cause all open sockets to be closed
@@ -50,10 +49,6 @@ module RSMP
     def restart
       stop
       start
-    end
-
-    def wait_for_threads
-      #@task.wait
     end
 
     def log item

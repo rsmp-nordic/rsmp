@@ -44,7 +44,6 @@ module RSMP
     end
 
     def connection_complete
-      p :connection_complete
       super
       info "Connection to supervisor established"
       start_watchdog
