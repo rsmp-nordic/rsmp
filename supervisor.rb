@@ -5,7 +5,6 @@
 
 require_relative 'node'
 require_relative 'supervisor_connector'
-require 'async/io'
 
 module RSMP
   class Supervisor < Node
@@ -77,27 +76,28 @@ module RSMP
 
     def start
       super
-      @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
-      @socket_task = @task.async do
-        begin
-          @endpoint.accept do |socket|
-            # This is an asynchronous block within the current reactor
-            handle_connection(socket)
+      Async do |task|
+        @task = task
+        @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
+        @socket_task = @task.async do
+          begin
+            @endpoint.accept do |socket|
+              # This is an asynchronous block within the current reactor
+              handle_connection(socket)
+            end
+          rescue SystemCallError => e # all ERRNO errors
+            log str: "Exception: #{e.to_s}", level: :error
+          rescue StandardError => e
+            log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
           end
-        rescue SystemCallError => e # all ERRNO errors
-          log str: "Exception: #{e.to_s}", level: :error
-        rescue StandardError => e
-          log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
         end
       end
     end
 
     def stop
       log str: "Stopping supervisor #{@supervisor_settings["site_id"]}", level: :info
-      @remote_sites_mutex.synchronize do
-        @remote_sites.each { |remote_site| remote_site.stop }
-        @remote_sites.clear
-      end
+      @remote_sites.each { |remote_site| remote_site.stop }
+      @remote_sites.clear
       super
       @tcp_server.close if @tcp_server
       @tcp_server = nil
@@ -142,15 +142,10 @@ module RSMP
         logger: @logger,
         archive: @archive
       })
-      @remote_sites_mutex.synchronize do
-        @remote_sites.push remote_site
-      end
+      @remote_sites.push remote_site
       
       remote_site.run # will run until the site disconnects
-
-      @remote_sites_mutex.synchronize do
-        @remote_sites.delete remote_site
-      end
+      @remote_sites.delete remote_site
     end
 
     def reject socket, info
@@ -172,18 +167,14 @@ module RSMP
     end
 
     def find_site site_id
-      @remote_sites_mutex.synchronize do
-        @remote_sites.each do |site|
-          return site if site.site_ids.include? site_id
-        end
+      @remote_sites.each do |site|
+        return site if site.site_ids.include? site_id
       end
       nil
     end
 
     def site_ids_changed
-      @site_id_mutex.synchronize do
-        @site_id_condition_variable.broadcast
-      end
+      @site_id_condition_variable.broadcast
     end
 
     def wait_for_site site_id, timeout

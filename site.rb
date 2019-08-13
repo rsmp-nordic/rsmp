@@ -49,35 +49,36 @@ module RSMP
 
     def start
       super
-      @site_settings["supervisors"].each do |supervisor_settings|
-        @site_task = @task.async do
-          remote_supervisor = SiteConnector.new({
-            site: self,
-            task: @task,
-            settings: @site_settings, 
-            ip: supervisor_settings['ip'],
-            port: supervisor_settings['port'],
-            logger: @logger,
-            archive: @archive
-          })
-          @remote_supervisors_mutex.synchronize do
+      Async do |task|
+        @task = task
+        @site_settings["supervisors"].each do |supervisor_settings|
+          @task.async do
+            remote_supervisor = SiteConnector.new({
+              site: self,
+              task: @task,
+              settings: @site_settings, 
+              ip: supervisor_settings['ip'],
+              port: supervisor_settings['port'],
+              logger: @logger,
+              archive: @archive
+            })
             @remote_supervisors << remote_supervisor
-          end
 
-          loop do
-            begin
-              remote_supervisor.run
+            loop do
+              begin
+                remote_supervisor.run
 
-              # sleep until waken by reconnect() or the sleep interval passed
-              @sleep_mutex.synchronize do
-                @sleep_condition_variable.wait(@sleep_mutex,@site_settings["reconnect_interval"])
+                # sleep until waken by reconnect() or the sleep interval passed
+                @sleep_mutex.synchronize do
+                  @sleep_condition_variable.wait(@sleep_mutex,@site_settings["reconnect_interval"])
+                end
+
+                #remote_supervisor.reconnect_delay
+              rescue SystemCallError => e # all ERRNO errors
+                log str: "Exception: #{e.to_s}", level: :error
+              rescue StandardError => e
+                log str: ["Exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
               end
-
-              #remote_supervisor.reconnect_delay
-            rescue SystemCallError => e # all ERRNO errors
-              log str: "Exception: #{e.to_s}", level: :error
-            rescue StandardError => e
-              log str: ["Exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
             end
           end
         end

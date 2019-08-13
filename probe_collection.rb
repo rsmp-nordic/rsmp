@@ -5,33 +5,24 @@ module RSMP
 
     def initialize
       @probes = []
-      @mutex = Mutex.new
     end
 
     def add probe
       raise ArgumentError unless probe
-      @mutex.synchronize do
-        @probes << probe
-      end
+      @probes << probe
     end
 
     def remove probe
       raise ArgumentError unless probe
-      @mutex.synchronize do
-        @probes.delete probe
-      end
+      @probes.delete probe
     end
 
     def process item
-      @mutex.synchronize do
-        @probes.each { |probe| probe.process item }
-      end
+      @probes.each { |probe| probe.process item }
     end
 
     def clear
-      @mutex.synchronize do
-        @probes.each { |probe| probe.clear }
-      end
+      @probes.each { |probe| probe.clear }
     end
   end
 end

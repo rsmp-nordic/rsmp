@@ -14,6 +14,7 @@ require_relative 'archive'
 require_relative 'probe'
 require_relative 'probe_collection'
 require_relative 'logger'
+require 'async/io'
 
 module RSMP
   class Node
@@ -25,11 +26,8 @@ module RSMP
     end
 
     def run
-      Async do |task|
-        @task = task
-        start
-      end
-      #task.wait
+      start
+      @task.wait if @task
     rescue SystemExit, SignalException, Interrupt
       exiting
       exit      #will cause all open sockets to be closed

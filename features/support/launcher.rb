@@ -21,7 +21,7 @@ class Launcher
       site_settings: @site_settings,
       archive: @site_archive
     )
-    @site.start
+    @site.run
   end
 
   def relative_filename filename

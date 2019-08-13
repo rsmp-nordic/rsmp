@@ -34,11 +34,9 @@ module RSMP
     end
 
     def add item
-      @mutex.synchronize do
-        item[:index] = @items.size
-        @items << item
-        probe item
-      end
+      item[:index] = @items.size
+      @items << item
+      probe item
     end
 
     def capture options, &block

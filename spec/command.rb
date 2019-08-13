@@ -38,7 +38,6 @@ describe RSMP::Supervisor do
 
 		@supervisor = RSMP::Supervisor.new(supervisor_settings:supervisor_settings,sites_settings:sites_settings)
 		@supervisor.start
-
 		site_settings = {
 			'site_id' => 'RN+SI0001',
 			'supervisors' => [

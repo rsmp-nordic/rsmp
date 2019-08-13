@@ -86,23 +86,19 @@ module RSMP
     end
 
     def reset
-      @mutex.synchronize do
-        @items.clear
-        @done = false
-      end
+      @items.clear
+      @done = false
     end
 
     def process item
       raise ArgumentError unless item
       return true if @done
-      @mutex.synchronize do
-        if matches? item
-          @items << item
-          if @num && @items.size >= @num
-            @done = true
-            @condition_variable.broadcast
-            return true
-          end
+      if matches? item
+        @items << item
+        if @num && @items.size >= @num
+          @done = true
+          @condition_variable.broadcast
+          return true
         end
       end
       false

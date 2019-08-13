@@ -131,7 +131,7 @@ describe RSMP::Message do
 			message.generate_json 
 			str = '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.1"},{"vers":"3.1.2"},{"vers":"3.1.3"},{"vers":"3.1.4"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","siteId":[{"sId":"RN+SI0001"}]}'
 			expect(message.json).to eq(str)
-			expect(message.out).to eq("#{str}\f")
+			expect(message.out).to eq(str)
 		end
 
 		it 'validates mType' do

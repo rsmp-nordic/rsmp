@@ -5,8 +5,6 @@ require_relative 'error'
 require_relative 'archive'
 require_relative 'probe'
 require 'timeout'
-require 'async/io'
-#require 'async/io/host_endpoint'
 require 'async/io/protocol/line'
 
 module RSMP  
@@ -35,9 +33,7 @@ module RSMP
     end
 
     def ready?
-      @state_mutex.synchronize do
-        @state == :ready
-      end
+      @state == :ready
     end
 
     def start
@@ -348,10 +344,8 @@ module RSMP
     end
 
     def set_state state
-      @state_mutex.synchronize do
-        @state = state
-        @state_condition.broadcast
-      end
+      @state = state
+      @state_condition.broadcast
     end
 
     def wait_for_state state, timeout
