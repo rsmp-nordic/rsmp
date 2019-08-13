@@ -21,14 +21,14 @@ reconnect_interval: 1
 log:
   active: true
   color: true
-  timestamp: false
+  timestamp: true
   id: false
   ip: false
   site_id: true
   level: false
   text: true
   direction: true
-  json: true
+  json: false
   acknowledgements: true
   watchdogs: true
 

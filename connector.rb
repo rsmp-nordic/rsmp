@@ -135,7 +135,7 @@ module RSMP
     def check_watchdog_send_time now
       return unless @watchdog_started  
       return if @settings["watchdog_interval"] == :never
-      if @latest_watchdog_send_at == nil || (now - @latest_watchdog_send_at) >= @settings["watchdog_interval"]
+      if @latest_watchdog_send_at == nil || (now - @latest_watchdog_send_at) >= (@settings["watchdog_interval"]-0.5)
         send_watchdog now
       end
     rescue StandardError => e
@@ -167,7 +167,7 @@ module RSMP
       timeout = @settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       if now > latest
-        error "No Watchdog within #{timeout} seconds, received at #{@latest_watchdog_received}, now is #{now}"
+        error "No Watchdog within #{timeout} seconds, received at #{@latest_watchdog_received}, now is #{now}, diff #{now-latest}"
         stop
         return true
       end

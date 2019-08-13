@@ -30,7 +30,6 @@ module RSMP
       @task.wait if @task
     rescue SystemExit, SignalException, Interrupt
       exiting
-      exit      #will cause all open sockets to be closed
     end
 
     def start

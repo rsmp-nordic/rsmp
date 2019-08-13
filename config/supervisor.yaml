@@ -14,7 +14,7 @@ status_update_timeout: 1
 log:
   active: true
   color: true
-  timestamp: false
+  timestamp: true
   id: false
   ip: false
   site_id: true

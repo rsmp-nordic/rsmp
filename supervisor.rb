@@ -19,8 +19,7 @@ module RSMP
       @remote_sites_mutex = Mutex.new
       @remote_sites = []
       
-      @site_id_mutex = Mutex.new
-      @site_id_condition_variable = ConditionVariable.new
+      @site_id_condition_variable = Async::Condition.new
     end
 
     def handle_supervisor_settings options
@@ -79,17 +78,14 @@ module RSMP
       Async do |task|
         @task = task
         @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
-        @socket_task = @task.async do
-          begin
-            @endpoint.accept do |socket|
-              # This is an asynchronous block within the current reactor
-              handle_connection(socket)
-            end
-          rescue SystemCallError => e # all ERRNO errors
-            log str: "Exception: #{e.to_s}", level: :error
-          rescue StandardError => e
-            log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
+        begin
+          @endpoint.accept do |socket|
+            handle_connection(socket)
           end
+        rescue SystemCallError => e # all ERRNO errors
+          log str: "Exception: #{e.to_s}", level: :error
+        rescue StandardError => e
+          log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
         end
       end
     end
@@ -174,11 +170,11 @@ module RSMP
     end
 
     def site_ids_changed
-      @site_id_condition_variable.broadcast
+      @site_id_condition_variable.signal
     end
 
     def wait_for_site site_id, timeout
-      @site_id_mutex.synchronize do
+      task = @task.async do |task|
         start = Time.now
         loop do
           left = timeout + (start - Time.now)
@@ -187,24 +183,34 @@ module RSMP
           else
             site = find_site site_id
           end
-          return site if site
-          return nil if left <= 0
-          @site_id_condition_variable.wait(@site_id_mutex,left)
+          break site if site
+          break nil if left <= 0
+          task.with_timeout(left) do
+            @site_id_condition_variable.wait
+          rescue Async::TimeoutError
+            break nil
+          end
         end
       end
+      task.wait
     end
 
     def wait_for_site_disconnect site_id, timeout
-      @site_id_mutex.synchronize do
+      task = @task.async do |task|
         start = Time.now
         loop do
           left = timeout + (start - Time.now)
           site = find_site site_id
-          return true if site == nil
-          return false if left <= 0
-          @site_id_condition_variable.wait(@site_id_mutex,left)
+          break true if site == nil
+          break false if left <= 0
+          task.with_timeout(left) do
+            @site_id_condition_variable.wait
+          rescue Async::TimeoutError
+            break nil
+          end
         end
       end
+      task.wait
     end
 
     def check_site_id site_id
