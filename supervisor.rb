@@ -7,6 +7,20 @@ require_relative 'node'
 require_relative 'supervisor_connector'
 
 module RSMP
+  class SiteCondition < Async::Condition
+    def initialize supervisor, site_id
+      super()
+      @supervisor = supervisor
+      @site_id = site_id
+    end
+
+    def check
+      if @supervisor.site_connected? @site_id
+        signal @site_id
+      end
+    end
+  end
+
   class Supervisor < Node
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_sites, :logger
     attr_accessor :site_id_mutex, :site_id_condition_variable
@@ -19,7 +33,7 @@ module RSMP
       @remote_sites_mutex = Mutex.new
       @remote_sites = []
       
-      @site_id_condition_variable = Async::Condition.new
+      @site_id_conditions = []
     end
 
     def handle_supervisor_settings options
@@ -170,26 +184,21 @@ module RSMP
     end
 
     def site_ids_changed
-      @site_id_condition_variable.signal
+      @site_id_conditions.each do |condition|
+        condition.check
+      end
     end
 
     def wait_for_site site_id, timeout
+      condition = SiteCondition.new self, site_id
+      @site_id_conditions << condition
       task = @task.async do |task|
-        start = Time.now
-        loop do
-          left = timeout + (start - Time.now)
-          if site_id == :any
-            site = @remote_sites.first
-          else
-            site = find_site site_id
-          end
-          break site if site
-          break nil if left <= 0
-          task.with_timeout(left) do
-            @site_id_condition_variable.wait
-          rescue Async::TimeoutError
-            break nil
-          end
+        task.with_timeout(timeout) do
+          condition.wait
+        rescue Async::TimeoutError
+          break nil
+        ensure
+          @site_id_conditions.delete condition
         end
       end
       task.wait
