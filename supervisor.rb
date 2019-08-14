@@ -13,9 +13,19 @@ module RSMP
       @supervisor = supervisor
       @site_id = site_id
     end
+  end
 
+  class SiteConnected < SiteCondition
     def check
       if @supervisor.site_connected? @site_id
+        signal @site_id
+      end
+    end
+  end
+
+  class SiteDisconnected < SiteCondition
+    def check
+      unless @supervisor.site_connected? @site_id
         signal @site_id
       end
     end
@@ -143,6 +153,7 @@ module RSMP
       
       remote_site.run # will run until the site disconnects
       @remote_sites.delete remote_site
+      site_ids_changed
     end
 
     def reject socket, info
@@ -171,40 +182,30 @@ module RSMP
     end
 
     def site_ids_changed
-        p :check
       @site_id_conditions.each do |condition|
         condition.check
       end
     end
 
     def wait_for_site site_id, timeout
-      condition = SiteCondition.new self, site_id
-      @site_id_conditions << condition
-      task = @task.async do |task|
-        task.with_timeout(timeout) do
-          condition.wait
-        rescue Async::TimeoutError
-          break nil
-        ensure
-          @site_id_conditions.delete condition
-        end
-      end
-      task.wait
+      condition = RSMP::SiteConnected.new self, site_id
+      wait_for_site_condition condition, timeout
     end
 
     def wait_for_site_disconnect site_id, timeout
-      condition = SiteCondition.new self, site_id
+      condition = RSMP::SiteDisconnected.new self, site_id
+      wait_for_site_condition condition, timeout
+    end
+
+    def wait_for_site_condition condition, timeout
       @site_id_conditions << condition
-      task = @task.async do |task|
-        task.with_timeout(timeout) do
-          condition.wait == nil
-        rescue Async::TimeoutError
-          break false
-        ensure
-          @site_id_conditions.delete condition
-        end
+      @task.with_timeout(timeout) do
+        condition.wait
+      rescue Async::TimeoutError
+        nil
       end
-      task.wait
+    ensure
+      @site_id_conditions.delete condition
     end
 
     def check_site_id site_id

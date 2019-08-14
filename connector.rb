@@ -41,7 +41,6 @@ module RSMP
     end
 
     def stop
-      p :stop
       set_state :stopping
       stop_tasks
       close_socket

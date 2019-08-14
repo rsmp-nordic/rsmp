@@ -32,7 +32,7 @@ module RSMP
         start_action
       end
     rescue Errno::EADDRINUSE => e
-      log str: "Cannot start supervisor: #{e.to_s}", level: :error
+      log str: "Cannot start: #{e.to_s}", level: :error
     rescue SystemExit, SignalException, Interrupt
       exiting
     end
