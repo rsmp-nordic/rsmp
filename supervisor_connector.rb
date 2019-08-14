@@ -86,8 +86,7 @@ module RSMP
       end
     end
 
-    def check_site_ids message
-      super
+    def site_ids_changed
       @supervisor.site_ids_changed
     end
 

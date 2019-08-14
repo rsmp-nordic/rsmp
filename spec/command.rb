@@ -12,8 +12,8 @@ def up &block
 		@supervisor.start
 		@site.start
 		@supervisor_connector = @supervisor.wait_for_site "RN+SI0001", 0.1
-		#@supervisor_connector.wait_for_state :ready, 0.1
-		task.sleep 0.1 #FIXME
+		@supervisor_connector.wait_for_state :ready, 0.1
+		#task.sleep 0.1 #FIXME
 		yield task
 		@site.stop
 		@supervisor.stop

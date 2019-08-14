@@ -7,27 +7,6 @@ require_relative 'node'
 require_relative 'supervisor_connector'
 
 module RSMP
-  class SiteCondition < Async::Condition
-    def initialize supervisor, site_id
-      super()
-      @supervisor = supervisor
-      @site_id = site_id
-    end
-  end
-
-  class SiteConnected < SiteCondition
-    def check
-      site = @supervisor.find_site @site_id
-      signal site if site
-    end
-  end
-
-  class SiteDisconnected < SiteCondition
-    def check
-      signal true unless @supervisor.site_connected? @site_id
-    end
-  end
-
   class Supervisor < Node
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_sites, :logger
     attr_accessor :site_id_mutex, :site_id_condition_variable
@@ -38,6 +17,8 @@ module RSMP
       super options.merge log_settings: @supervisor_settings["log"]
       @remote_sites = []
       @site_id_conditions = []
+
+      @site_id_condition = Async::Condition.new
     end
 
     def handle_supervisor_settings options
@@ -150,6 +131,10 @@ module RSMP
       site_ids_changed
     end
 
+    def site_ids_changed
+      @site_id_condition.signal
+    end
+
     def reject socket, info
       log ip: info[:ip], str: "Site rejected", level: :info
     end
@@ -175,32 +160,28 @@ module RSMP
       nil
     end
 
-    def site_ids_changed
-      @site_id_conditions.each do |condition|
-        condition.check
-      end
-    end
-
     def wait_for_site site_id, timeout
-      condition = RSMP::SiteConnected.new self, site_id
-      wait_for_site_condition condition, timeout
+      wait_for_site_id_condition(timeout) { find_site site_id }
     end
 
     def wait_for_site_disconnect site_id, timeout
-      condition = RSMP::SiteDisconnected.new self, site_id
-      wait_for_site_condition condition, timeout
+      value = wait_for_site_id_condition(timeout) do 
+        return true unless find_site site_id
+        false
+      end
     end
 
-    def wait_for_site_condition condition, timeout
-      @site_id_conditions << condition
+    def wait_for_site_id_condition timeout, &block
       @task.with_timeout(timeout) do
-        condition.wait
-      rescue Async::TimeoutError
-        nil
+        loop do
+          @site_id_condition.wait
+          value = yield
+          return value if value
+        end
       end
-    ensure
-      @site_id_conditions.delete condition
-    end
+    rescue Async::TimeoutError
+      nil
+    end      
 
     def check_site_id site_id
       check_site_already_connected site_id

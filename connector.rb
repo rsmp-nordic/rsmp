@@ -313,12 +313,16 @@ module RSMP
     def process_version message
       return extraneous_version message if @version_determined
       check_site_ids message
+      site_ids_changed
       rsmp_version = check_rsmp_version message
       set_state :version_determined
       check_sxl_version
       version_accepted message, rsmp_version
     end
 
+    def site_ids_changed
+    end
+    
     def check_sxl_version
     end
 
@@ -344,7 +348,7 @@ module RSMP
 
     def set_state state
       @state = state
-      @state_condition.broadcast
+      @state_condition.signal
     end
 
     def wait_for_state state, timeout
