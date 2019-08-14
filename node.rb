@@ -34,13 +34,8 @@ module RSMP
     rescue Errno::EADDRINUSE => e
       log str: "Cannot start: #{e.to_s}", level: :error
     rescue SystemExit, SignalException, Interrupt
+      @logger.continue
       exiting
-    end
-
-    def start_action
-    end
-
-    def starting
     end
 
     def stop

@@ -37,10 +37,7 @@ module RSMP
       @endpoint = Async::IO::Endpoint.tcp(@ip, @port)
       @socket = @endpoint.connect
       @stream = Async::IO::Stream.new(@socket)
-      # an rsmp message is json terminated with a form-feed
-      @protocol = Async::IO::Protocol::Line.new(@stream,"\f")
-
-      #@socket = TCPSocket.open @ip, @port  # connect to supervisor
+      @protocol = Async::IO::Protocol::Line.new(@stream,"\f") # rsmp messages are json terminated with a form-feed
     end
 
     def connection_complete

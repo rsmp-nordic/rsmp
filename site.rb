@@ -59,20 +59,19 @@ module RSMP
           @remote_supervisors << remote_supervisor
 
           loop do
-            begin
-              remote_supervisor.run
-
-              # sleep until waken by reconnect() or the sleep interval passed
-              @task.with_timeout(@site_settings["reconnect_interval"]) do
-                @sleep_condition.wait
-              end
-            rescue Async::TimeoutError
-            rescue SystemCallError => e # all ERRNO errors
-              log str: "Exception: #{e.to_s}", level: :error
-            rescue StandardError => e
-              log str: ["Exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+            remote_supervisor.run       # run until disconnected
+            @task.with_timeout(@site_settings["reconnect_interval"]) do
+              @sleep_condition.wait          # sleep until waken by reconnect() or the reconnect interval passed
             end
+          rescue Async::TimeoutError
+            # ignore
+          rescue SystemCallError => e # all ERRNO errors
+            log str: "Exception: #{e.to_s}", level: :error
+          rescue StandardError => e
+            log str: ["Exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
           end
+        ensure
+          @remote_supervisors.delete remote_supervisor
         end
       end
     end

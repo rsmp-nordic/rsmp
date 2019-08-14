@@ -77,7 +77,6 @@ module RSMP
       if output? item
         output item[:level], build_output(item) 
       end
-
     end
 
     private
