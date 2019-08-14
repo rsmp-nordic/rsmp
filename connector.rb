@@ -41,6 +41,7 @@ module RSMP
     end
 
     def stop
+      p :stop
       set_state :stopping
       stop_tasks
       close_socket
@@ -126,7 +127,6 @@ module RSMP
     end
 
     def timer now
-      p ":timer, now is #{now}"
       check_watchdog_send_time now
       return false if check_ack_timeout now
       return false if check_watchdog_timeout now

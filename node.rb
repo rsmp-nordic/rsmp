@@ -25,15 +25,19 @@ module RSMP
       @logger = options[:logger] || RSMP::Logger.new(options[:log_settings]) 
     end
 
-    def run
-      start
-      @task.wait if @task
+    def start
+      starting
+      Async do |task|
+        @task = task
+        start_action
+      end
+    rescue Errno::EADDRINUSE => e
+      log str: "Cannot start supervisor: #{e.to_s}", level: :error
     rescue SystemExit, SignalException, Interrupt
       exiting
     end
 
-    def start
-      starting
+    def start_action
     end
 
     def starting

@@ -35,5 +35,5 @@ rescue OptionParser::ParseError => e
 end
 
 supervisor = RSMP::Supervisor.new(options)
-supervisor.run
+supervisor.start
 

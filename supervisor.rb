@@ -81,27 +81,15 @@ module RSMP
       raise "Sites settings: port is missing" unless @supervisor_settings["port"]
     end
 
-    def run
-      super
-    rescue Errno::EADDRINUSE => e
-      log str: "Cannot start supervisor: #{e.to_s}", level: :error
-    end
-
-    def start
-      super
-      Async do |task|
-        @task = task
-        @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
-        begin
-          @endpoint.accept do |socket|
-            handle_connection(socket)
-          end
-        rescue SystemCallError => e # all ERRNO errors
-          log str: "Exception: #{e.to_s}", level: :error
-        rescue StandardError => e
-          log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
-        end
+    def start_action
+      @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
+      @endpoint.accept do |socket|
+        handle_connection(socket)
       end
+    rescue SystemCallError => e # all ERRNO errors
+      log str: "Exception: #{e.to_s}", level: :error
+    rescue StandardError => e
+      log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def stop
@@ -114,7 +102,6 @@ module RSMP
     end
 
     def handle_connection socket
-
       remote_port = socket.remote_address.ip_port
       remote_hostname = socket.remote_address.ip_address
       remote_ip = socket.remote_address.ip_address
@@ -184,6 +171,7 @@ module RSMP
     end
 
     def site_ids_changed
+        p :check
       @site_id_conditions.each do |condition|
         condition.check
       end
@@ -205,18 +193,15 @@ module RSMP
     end
 
     def wait_for_site_disconnect site_id, timeout
+      condition = SiteCondition.new self, site_id
+      @site_id_conditions << condition
       task = @task.async do |task|
-        start = Time.now
-        loop do
-          left = timeout + (start - Time.now)
-          site = find_site site_id
-          break true if site == nil
-          break false if left <= 0
-          task.with_timeout(left) do
-            @site_id_condition_variable.wait
-          rescue Async::TimeoutError
-            break nil
-          end
+        task.with_timeout(timeout) do
+          condition.wait == nil
+        rescue Async::TimeoutError
+          break false
+        ensure
+          @site_id_conditions.delete condition
         end
       end
       task.wait
