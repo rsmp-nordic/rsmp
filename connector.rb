@@ -174,8 +174,8 @@ module RSMP
     end
 
     def stop_tasks
-      @timer.stop
-      @reader.stop
+      @timer.stop if @timer
+      @reader.stop if @reader
     end
 
     def error str, message=nil

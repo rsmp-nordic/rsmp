@@ -16,7 +16,7 @@ store_messages: false
 command_response_timeout: 1
 status_response_timeout: 1
 status_update_timeout: 1
-reconnect_interval: 0.1
+reconnect_interval: 1.1
 
 log:
   active: false

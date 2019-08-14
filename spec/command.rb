@@ -6,6 +6,20 @@ require_relative 'helpers/launcher'
 require_relative '../supervisor'
 require_relative '../site'
 
+
+def up &block
+	Async do |task|
+		@supervisor.start
+		@site.start
+		@supervisor_connector = @supervisor.wait_for_site "RN+SI0001", 0.1
+		#@supervisor_connector.wait_for_state :ready, 0.1
+		task.sleep 0.1 #FIXME
+		yield task
+		@site.stop
+		@supervisor.stop
+	end
+end
+
 describe RSMP::Supervisor do
 
 	before(:all) do
@@ -28,7 +42,9 @@ describe RSMP::Supervisor do
 				'ip' => false,
 				'timestamp' => false,
 				'site_id' => false,
-				'level' => false
+				'level' => false,
+				'acknowledgements' => false,
+				'watchdogs' => false
 			}
 		}
 
@@ -37,7 +53,8 @@ describe RSMP::Supervisor do
 		]
 
 		@supervisor = RSMP::Supervisor.new(supervisor_settings:supervisor_settings,sites_settings:sites_settings)
-		@supervisor.start
+		#@supervisor.start
+		
 		site_settings = {
 			'site_id' => 'RN+SI0001',
 			'supervisors' => [
@@ -53,23 +70,27 @@ describe RSMP::Supervisor do
 			'status_update_timeout' => 1,
 			'site_connect_timeout' => 2,
 			'site_ready_timeout' => 1,
+			'reconnect_interval' => 1,
 			'log' => {
 				'active' => true,					# set to true to debug
 				'color' => :light_black,
 				'ip' => false,
 				'timestamp' => false,
 				'site_id' => false,
-				'level' => false
+				'level' => false,
+				'acknowledgements' => false,
+				'watchdogs' => false
 			}
 		}
 
 		@site = RSMP::Site.new(
       site_settings: site_settings,
     )
-    @site.start
+    #@site.start
 
-		@supervisor_connector = @supervisor.wait_for_site "RN+SI0001", 0.1
-		@supervisor_connector.wait_for_state :ready, 0.1
+		#@supervisor_connector = @supervisor.wait_for_site "RN+SI0001", 0.1
+		#@supervisor_connector.wait_for_state :ready, 0.1
+
 	end
 
 	after (:all) do
@@ -79,18 +100,20 @@ describe RSMP::Supervisor do
 
 	context 'sending command'
 		it 'sends valid arguments' do
-			supervisor_start_index = @supervisor.archive.current_index
-			@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","n":"message","cO":"","v":"Rainbows!"}]
-			expect( @supervisor_connector.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_a(RSMP::CommandResponse)
-			
+			up do |task|
+				supervisor_start_index = @supervisor.archive.current_index
+				@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","n":"message","cO":"","v":"Rainbows!"}]
+				#task.sleep 0.01
+				expect(@supervisor_connector.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_a(RSMP::CommandResponse)
+			end
 			#p supervisor_start_index
 			#@supervisor.archive.items[supervisor_start_index..-1].each do |item|
 			#	p [item[:index],item[:str]]
 			#end
 		end
 
-		it 'sends invalid arguments' do
-			@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","cO":"","v":"Rainbows!"}]
-			expect( @supervisor_connector.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_nil
-		end
+		#it 'sends invalid arguments' do
+		#	@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","cO":"","v":"Rainbows!"}]
+		#	expect( @supervisor_connector.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_nil
+		#end
 	end

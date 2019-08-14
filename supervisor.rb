@@ -17,17 +17,14 @@ module RSMP
 
   class SiteConnected < SiteCondition
     def check
-      if @supervisor.site_connected? @site_id
-        signal @site_id
-      end
+      site = @supervisor.find_site @site_id
+      signal site if site
     end
   end
 
   class SiteDisconnected < SiteCondition
     def check
-      unless @supervisor.site_connected? @site_id
-        signal @site_id
-      end
+      signal true unless @supervisor.site_connected? @site_id
     end
   end
 
@@ -39,10 +36,7 @@ module RSMP
       handle_supervisor_settings options
       handle_sites_sittings options
       super options.merge log_settings: @supervisor_settings["log"]
-
-      @remote_sites_mutex = Mutex.new
       @remote_sites = []
-      
       @site_id_conditions = []
     end
 
