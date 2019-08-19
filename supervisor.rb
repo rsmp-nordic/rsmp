@@ -48,19 +48,19 @@ module RSMP
     end
 
     def handle_sites_sittings options
+      unless options[:sites_settings_path] || options[:sites_settings]
+        raise ArgumentError.new("sites_settings or sites_settings_path must be present")
+      end
+
+      if options[:sites_settings_path]
+        @sites_settings = YAML.load_file(options[:sites_settings_path])
+      end
+
       if options[:sites_settings]
         @sites_settings = options[:sites_settings]
-      else
-        # load settings
-        dir = File.dirname(__FILE__)
-        if options[:sites_settings_path]
-          @sites_settings = YAML.load_file(options[:sites_settings_path])
-        else
-          raise ":sites_settings or :sites_settings_path must be present"
-        end
       end
-      raise "Sites settings is empty" unless @supervisor_settings
-      raise "Sites settings: port is missing" unless @supervisor_settings["port"]
+        
+      raise "Sites settings is empty" unless @sites_settings
     end
 
     def start_action
