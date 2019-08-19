@@ -59,7 +59,7 @@ module RSMP
           })
           @remote_supervisors << remote_supervisor
 
-          begin
+          loop do
             remote_supervisor.run       # run until disconnected
             @task.with_timeout(@site_settings["reconnect_interval"]) do
               @sleep_condition.wait          # sleep until waken by reconnect() or the reconnect interval passed
