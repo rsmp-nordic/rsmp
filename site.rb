@@ -13,22 +13,22 @@ module RSMP
     def initialize options
       handle_site_settings options
       super options.merge log_settings: @site_settings["log"]
-
-      @remote_supervisors_mutex = Mutex.new
       @remote_supervisors = []
-      @@site_connector_tasks = []
       @sleep_condition = Async::Condition.new
     end
 
     def handle_site_settings options
+      unless options[:site_settings_path] || options[:site_settings]
+        raise ArgumentError.new("site_settings or site_settings_path must be present")
+      end
+
+      if options[:site_settings_path]
+        @site_settings = YAML.load_file(options[:site_settings_path])
+      end
+
       if options[:site_settings]
-        @site_settings = options[:site_settings]
-      else
-        if options[:site_settings_path]
-          @site_settings = YAML.load_file(options[:site_settings_path])
-        else
-          raise "site_settings or site_settings_path must be present"
-        end
+        options = options[:site_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
+        @site_settings.merge! options
       end
 
       required = [:supervisors,:rsmp_versions,:site_id,:watchdog_interval,:watchdog_timeout,

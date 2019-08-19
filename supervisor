@@ -14,7 +14,6 @@ options = {
 	supervisor_settings: {}
 }
 
-supervisor_settings = {}
 options_parser = OptionParser.new do |opts|
   opts.banner = "Usage: supervisor [options]"
   opts.on("-p PORT", "--port P", Integer, "Listen on port P") do |port|

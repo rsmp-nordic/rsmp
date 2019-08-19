@@ -5,8 +5,35 @@
 # Expect settings files to be present
 
 require_relative 'site'
+require 'optparse'
 
 dir = File.dirname(__FILE__)
-site_settings_path = File.expand_path File.join(dir,'config/site.yaml')
-site = RSMP::Site.new site_settings_path: site_settings_path
+options = {
+	site_settings_path: File.expand_path(File.join(dir,'config/site.yaml')),
+	site_settings: {
+	}
+}
+
+options_parser = OptionParser.new do |opts|
+  opts.banner = "Usage: site [options]"
+  opts.on('-s IP:PORT', '--supervisor IP:PORT', 'Connect on supervisor on IP:PORT') do |supervisor|
+		ip, port = supervisor.split ':'
+    options[:site_settings][:supervisors] = [] unless options[:site_settings][:supervisor]
+		options[:site_settings][:supervisors] << {"ip"=>ip, "port"=>port}
+  end
+  opts.on( '-h', '--help', 'Show help' ) do
+    puts opts
+    exit
+  end
+end
+
+begin
+	options_parser.parse!
+rescue OptionParser::ParseError => e
+    puts e
+    puts options_parser
+    exit 1
+end
+
+site = RSMP::Site.new options
 site.start
