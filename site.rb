@@ -16,7 +16,7 @@ module RSMP
 
       @remote_supervisors_mutex = Mutex.new
       @remote_supervisors = []
-
+      @@site_connector_tasks = []
       @sleep_condition = Async::Condition.new
     end
 
@@ -46,7 +46,8 @@ module RSMP
 
     def start_action
       @site_settings["supervisors"].each do |supervisor_settings|
-        @task.async do
+        @task.async do |task|
+          task.annotate "site_connector"
           remote_supervisor = SiteConnector.new({
             site: self,
             task: @task,
@@ -58,7 +59,7 @@ module RSMP
           })
           @remote_supervisors << remote_supervisor
 
-          loop do
+          begin
             remote_supervisor.run       # run until disconnected
             @task.with_timeout(@site_settings["reconnect_interval"]) do
               @sleep_condition.wait          # sleep until waken by reconnect() or the reconnect interval passed

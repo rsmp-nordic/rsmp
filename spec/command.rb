@@ -11,10 +11,12 @@ def up &block
 	Async do |task|
 		@supervisor.start
 		@site.start
-		@supervisor_connector = @supervisor.wait_for_site "RN+SI0001", 0.1
-		@supervisor_connector.wait_for_state :ready, 0.1
-		#task.sleep 0.1 #FIXME
+
+		@supervisor_connector = @supervisor.wait_for_site "RN+SI0001", 10
+		#@supervisor_connector.wait_for_state :ready, 0.1
+		task.sleep 0.1
 		yield task
+		
 		@site.stop
 		@supervisor.stop
 	end
@@ -53,7 +55,6 @@ describe RSMP::Supervisor do
 		]
 
 		@supervisor = RSMP::Supervisor.new(supervisor_settings:supervisor_settings,sites_settings:sites_settings)
-		#@supervisor.start
 		
 		site_settings = {
 			'site_id' => 'RN+SI0001',
@@ -72,7 +73,7 @@ describe RSMP::Supervisor do
 			'site_ready_timeout' => 1,
 			'reconnect_interval' => 1,
 			'log' => {
-				'active' => true,					# set to true to debug
+				'active' => true,
 				'color' => :light_black,
 				'ip' => false,
 				'timestamp' => false,
@@ -86,16 +87,9 @@ describe RSMP::Supervisor do
 		@site = RSMP::Site.new(
       site_settings: site_settings,
     )
-    #@site.start
-
-		#@supervisor_connector = @supervisor.wait_for_site "RN+SI0001", 0.1
-		#@supervisor_connector.wait_for_state :ready, 0.1
-
 	end
 
 	after (:all) do
-		@site.stop
-		@supervisor.stop
 	end
 
 	context 'sending command'
@@ -103,9 +97,8 @@ describe RSMP::Supervisor do
 			up do |task|
 				supervisor_start_index = @supervisor.archive.current_index
 				@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","n":"message","cO":"","v":"Rainbows!"}]
-				#task.sleep 0.01
 				expect(@supervisor_connector.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_a(RSMP::CommandResponse)
-			end
+				end
 			#p supervisor_start_index
 			#@supervisor.archive.items[supervisor_start_index..-1].each do |item|
 			#	p [item[:index],item[:str]]

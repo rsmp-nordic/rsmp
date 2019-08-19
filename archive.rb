@@ -8,7 +8,6 @@ module RSMP
 
     def initialize
       @items = []
-      @mutex = Mutex.new
       @probes = ProbeCollection.new
     end
 
@@ -39,9 +38,9 @@ module RSMP
       probe item
     end
 
-    def capture options, &block
+    def capture task, options, &block
       probe = RSMP::Probe.new self
-      probe.capture options, &block
+      probe.capture task, options, &block
     end
 
     private

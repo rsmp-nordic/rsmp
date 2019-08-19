@@ -2,20 +2,9 @@
 # Once it has collected what it needs, it triggers a condition variable
 # and the client wakes up.
 
-<<-EOF
-
-global archive
-local archive is not needed, we can just scan the global archive with a time range
-create a probe and insert it. it will backscan a range, and then process incoming messages one by one
-once it's done it should remove itself
-
-
-EOF
-
-
 module RSMP
   class Probe
-    attr_reader :condition_variable, :items, :done
+    attr_reader :condition, :items, :done
 
     # block should send a message and return message just sent
     def self.collect_response connector, options={}, &block
@@ -37,11 +26,10 @@ module RSMP
       raise ArgumentError.new("Archive expected") unless archive.is_a? Archive
       @archive = archive
       @items = []
-      @mutex = Mutex.new
-      @condition_variable = ConditionVariable.new
+      @condition = Async::Condition.new
     end
 
-    def capture options={}, &block
+    def capture task, options={}, &block
       @options = options
       @block = block
       @num = options[:num]
@@ -58,8 +46,8 @@ module RSMP
       if @items.size < @num
         begin
           @archive.probes.add self
-          @mutex.synchronize do
-            @condition_variable.wait(@mutex,options[:timeout])
+          task.with_timeout(options[:timeout]) do
+            @condition.wait
           end
         ensure
           @archive.probes.remove self
@@ -97,7 +85,7 @@ module RSMP
         @items << item
         if @num && @items.size >= @num
           @done = true
-          @condition_variable.broadcast
+          @condition.signal
           return true
         end
       end

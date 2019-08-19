@@ -42,8 +42,8 @@ module RSMP
 
     def stop
       set_state :stopping
-      stop_tasks
       close_socket
+      stop_tasks
       clear
       set_state :stopped
     end
@@ -58,8 +58,7 @@ module RSMP
       @outgoing_acknowledged = {}
       @latest_watchdog_send_at = nil
 
-      @state_mutex = Mutex.new
-      @state_condition = ConditionVariable.new
+      @state_condition = Async::Condition.new
 
       @acknowledgements = {}
       @acknowledgement_mutex = Mutex.new
@@ -74,10 +73,10 @@ module RSMP
     end
 
     def start_reader  
-      @reader = @task.async do
+      @reader = @task.async do |task|
+        task.annotate "reader"
         @stream = Async::IO::Stream.new(@socket)
-        # an rsmp message is json terminated with a form-feed
-        @protocol = Async::IO::Protocol::Line.new(@stream,"\f")
+        @protocol = Async::IO::Protocol::Line.new(@stream,"\f") # rsmp messages are json terminated with a form-feed
 
         begin
           while packet = @protocol.read_line
@@ -112,6 +111,7 @@ module RSMP
       debug "Starting #{name} with interval #{interval} seconds"
       @latest_watchdog_received = RSMP.now_object
       @timer = @task.async do |task|
+        task.annotate "timer"
         loop do
           begin
             now = RSMP.now_object
@@ -322,7 +322,7 @@ module RSMP
 
     def site_ids_changed
     end
-    
+
     def check_sxl_version
     end
 
@@ -348,20 +348,22 @@ module RSMP
 
     def set_state state
       @state = state
-      @state_condition.signal
+      @state_condition.signal @state
     end
 
     def wait_for_state state, timeout
-      start = Time.now
-      @state_mutex.synchronize do
+      wait_for(@state_condition,timeout) { |s| s == state }
+    end
+
+    def wait_for condition, timeout, &block
+      @task.with_timeout(timeout) do
         loop do
-          left = timeout + (start - Time.now)
-          return true if @state == state
-          return @state if left <= 0
-          @state_condition.wait(@state_mutex,left)
+          value = yield condition.wait
+          return value if value
         end
       end
-    end
+    end   
+
 
     def send_version rsmp_versions
       versions_hash = [rsmp_versions].flatten.map {|v| {"vers":v} }

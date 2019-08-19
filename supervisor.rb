@@ -9,15 +9,12 @@ require_relative 'supervisor_connector'
 module RSMP
   class Supervisor < Node
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_sites, :logger
-    attr_accessor :site_id_mutex, :site_id_condition_variable
 
     def initialize options
       handle_supervisor_settings options
       handle_sites_sittings options
       super options.merge log_settings: @supervisor_settings["log"]
       @remote_sites = []
-      @site_id_conditions = []
-
       @site_id_condition = Async::Condition.new
     end
 
@@ -161,27 +158,16 @@ module RSMP
     end
 
     def wait_for_site site_id, timeout
-      wait_for_site_id_condition(timeout) { find_site site_id }
+      wait_for(@site_id_condition,timeout) { find_site site_id }
+    rescue Async::TimeoutError
+      nil
     end
 
     def wait_for_site_disconnect site_id, timeout
-      value = wait_for_site_id_condition(timeout) do 
-        return true unless find_site site_id
-        false
-      end
-    end
-
-    def wait_for_site_id_condition timeout, &block
-      @task.with_timeout(timeout) do
-        loop do
-          @site_id_condition.wait
-          value = yield
-          return value if value
-        end
-      end
+      value = wait_for(@site_id_condition,timeout) { return true unless find_site site_id }
     rescue Async::TimeoutError
-      nil
-    end      
+      false
+    end   
 
     def check_site_id site_id
       check_site_already_connected site_id
