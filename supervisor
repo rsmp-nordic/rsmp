@@ -19,6 +19,9 @@ options_parser = OptionParser.new do |opts|
   opts.on("-p PORT", "--port P", Integer, "Listen on port P") do |port|
     options[:supervisor_settings][:port] = port
   end
+  opts.on('-i ID', '--site-id ID', 'Use site id ID') do |id|
+    options[:supervisor_settings][:site_id] = id
+  end
   opts.on( '-h', '--help', 'Show help' ) do
     puts opts
     exit
