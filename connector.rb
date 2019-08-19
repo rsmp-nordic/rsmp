@@ -191,7 +191,7 @@ module RSMP
     end
 
     def log_not_acknowledged str, message=nil
-      log_at_level str, :nack, message
+      log_at_level str, :warning, message
     end
 
     def info str, message=nil
@@ -440,6 +440,8 @@ module RSMP
     def log_acknowledgement_for_original message, original
       str = "Received #{message.type} for #{original.type} #{message.attribute("oMId")[0..3]}"
       if message.type == 'MessageNotAck'
+        reason = message.attributes["rea"]
+        str = "#{str}, #{reason}" if reason
         log_not_acknowledged str, message
       else
         log str, message

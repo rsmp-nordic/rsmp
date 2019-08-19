@@ -32,7 +32,8 @@ module RSMP
             return false if item[:message].original && item[:message].original.type == "Watchdog"
           end
         end
-        return false if ack && @settings["acknowledgements"] == false
+        return false if ack && @settings["acknowledgements"] == false && 
+          [:not_acknowledged,:warning,:error].include?(item[:level]) == false
       end
       true
     end
