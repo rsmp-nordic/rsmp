@@ -9,8 +9,7 @@ require 'optparse'
 
 dir = File.dirname(__FILE__)
 options = {
-	site_settings: {
-	}
+	site_settings: {}
 }
 
 options_parser = OptionParser.new do |opts|

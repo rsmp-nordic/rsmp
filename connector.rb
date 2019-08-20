@@ -438,10 +438,8 @@ module RSMP
         dont_expect_acknowledgement message
         message.original = original
         log_acknowledgement_for_original message, original
-        @acknowledgement_mutex.synchronize do
-          @acknowledgements[ original.m_id ] = message
-          @acknowledgement_condition.signal message
-        end
+        @acknowledgements[ original.m_id ] = message
+        @acknowledgement_condition.signal message
       else
         log_acknowledgement_for_unknown message
       end
