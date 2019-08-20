@@ -29,7 +29,7 @@ module RSMP
     rescue Errno::ECONNREFUSED
       error "No connection to supervisor at #{@ip}:#{@port}"
       info "Will try to reconnect again every #{@site.site_settings["reconnect_interval"]} seconds.."
-      @logger.pause
+      #@logger.pause
     end
 
     def connect

@@ -66,8 +66,13 @@ module RSMP
     end
 
     def close_socket
+      if @stream
+        @stream.close
+        @stream = nil
+      end
+
       if @socket
-        @socket.close 
+        @socket.close
         @socket = nil
       end
     end
@@ -78,24 +83,29 @@ module RSMP
         @stream = Async::IO::Stream.new(@socket)
         @protocol = Async::IO::Protocol::Line.new(@stream,"\f") # rsmp messages are json terminated with a form-feed
 
-        begin
-          while packet = @protocol.read_line
-            begin
-              process packet
-            rescue Errno::ECONNRESET => e
-              #warning "Connection reset by peer"
-              break            
-            rescue SystemCallError => e # all ERRNO errors
-              error "Connector exception: #{e.to_s}"
-              break
-            rescue StandardError => e
-              error ["Connector exception: #{e}",e.backtrace].flatten.join("\n")
-              break
-            end
+        while packet = @protocol.read_line
+          begin
+            process packet
+          rescue Errno::ECONNRESET => e
+            warning "Connection reset by peer"
+            break            
+          rescue SystemCallError => e # all ERRNO errors
+            error "Connector exception: #{e.to_s}"
+            break
+          rescue StandardError => e
+            error ["Connector exception: #{e}",e.backtrace].flatten.join("\n")
+            break
           end
-        rescue EOFError
-          warning "Connection closed"
         end
+      rescue Async::Wrapper::Cancelled
+        break        
+      rescue EOFError
+        warning "Connection closed"
+      rescue IOError => e
+        warning "Stream error: #{e}"
+      rescue StandardError => e
+        error ["Connector exception: #{e}",e.backtrace].flatten.join("\n")
+        break
       end
     end
 

@@ -31,7 +31,6 @@ module RSMP
         @site_settings.merge! options
       end
 
-      p options
       required = [:supervisors,:rsmp_versions,:site_id,:watchdog_interval,:watchdog_timeout,
                   :acknowledgement_timeout,:command_response_timeout,:log]
       check_required_settings @site_settings, required
@@ -49,34 +48,46 @@ module RSMP
       @site_settings["supervisors"].each do |supervisor_settings|
         @task.async do |task|
           task.annotate "site_connector"
-          remote_supervisor = SiteConnector.new({
-            site: self,
-            task: @task,
-            settings: @site_settings, 
-            ip: supervisor_settings['ip'],
-            port: supervisor_settings['port'],
-            logger: @logger,
-            archive: @archive
-          })
-          @remote_supervisors << remote_supervisor
-
-          loop do
-            remote_supervisor.run       # run until disconnected
-            @task.with_timeout(@site_settings["reconnect_interval"]) do
-              @sleep_condition.wait          # sleep until waken by reconnect() or the reconnect interval passed
-            end
-          rescue Async::TimeoutError
-            # ignore
-          rescue SystemCallError => e # all ERRNO errors
-            log str: "Exception: #{e.to_s}", level: :error
-          rescue StandardError => e
-            log str: ["Exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
-          end
-        ensure
-          @remote_supervisors.delete remote_supervisor
+          connect_to_supervisor task, supervisor_settings
         end
       end
     end
+
+    def connect_to_supervisor task, supervisor_settings
+      remote_supervisor = SiteConnector.new({
+        site: self,
+        task: @task,
+        settings: @site_settings, 
+        ip: supervisor_settings['ip'],
+        port: supervisor_settings['port'],
+        logger: @logger,
+        archive: @archive
+      })
+      @remote_supervisors << remote_supervisor
+      run_site_connector task, remote_supervisor
+    ensure
+      @remote_supervisors.delete remote_supervisor
+    end
+
+    def run_site_connector task, remote_supervisor
+      loop do
+        remote_supervisor.run       # run until disconnected
+      rescue IOError => e
+        log str: "Stream error: #{e}", level: :warning
+      rescue SystemCallError => e # all ERRNO errors
+        log str: "Reader exception: #{e.to_s}", level: :error
+      rescue StandardError => e
+        log str: ["Reader exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+      ensure
+        begin
+          # sleep until waken by reconnect() or the reconnect interval passed
+          task.with_timeout(@site_settings["reconnect_interval"]) { @sleep_condition.wait }
+        rescue Async::TimeoutError
+          # ignore
+        end
+      end
+    end
+
 
     def stop
       log str: "Stopping site #{@site_settings["site_id"]}", level: :info
