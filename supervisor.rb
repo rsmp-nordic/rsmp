@@ -10,7 +10,7 @@ module RSMP
   class Supervisor < Node
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_sites, :logger
 
-    def initialize options
+    def initialize options={}
       handle_supervisor_settings options
       handle_sites_sittings options
       super options.merge log_settings: @supervisor_settings["log"]
@@ -19,19 +19,39 @@ module RSMP
     end
 
     def handle_supervisor_settings options
-      @supervisor_settings = {}
-
-      unless options[:supervisor_settings_path] || options[:supervisor_settings]
-        raise ArgumentError.new("supervisor_settings or supervisor_settings_path must be present")
-      end
+      @supervisor_settings = {
+        'site_id' => 'RN+SU0001',
+        'port' => 12111,
+        'rsmp_versions' => ['3.1.1','3.1.2','3.1.3','3.1.4'],
+        'timer_interval' => 0.1,
+        'watchdog_interval' => 1,
+        'watchdog_timeout' => 2,
+        'acknowledgement_timeout' => 2,
+        'command_response_timeout' => 1,
+        'status_response_timeout' => 1,
+        'status_update_timeout' => 1,
+        'site_connect_timeout' => 2,
+        'site_ready_timeout' => 1,
+        'log' => {
+          'active' => true,
+          'color' => true,
+          'ip' => false,
+          'timestamp' => true,
+          'site_id' => true,
+          'level' => false,
+          'acknowledgements' => false,
+          'watchdogs' => false,
+          'json' => false
+        }
+      }
 
       if options[:supervisor_settings_path]
-        @supervisor_settings = YAML.load_file(options[:supervisor_settings_path])
+        @supervisor_settings.merge! YAML.load_file(options[:supervisor_settings_path])
       end
       
       if options[:supervisor_settings]
-        options = options[:supervisor_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
-        @supervisor_settings.merge! options
+        converted = options[:supervisor_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
+        @supervisor_settings.merge! converted
       end
 
       required = [:port, :rsmp_versions, :site_id, :watchdog_interval, :watchdog_timeout,
@@ -48,15 +68,13 @@ module RSMP
     end
 
     def handle_sites_sittings options
-      unless options[:sites_settings_path] || options[:sites_settings]
-        raise ArgumentError.new("sites_settings or sites_settings_path must be present")
-      end
+      @sites_settings = [
+        {'site_id'=>:any}
+      ]
 
       if options[:sites_settings_path]
         @sites_settings = YAML.load_file(options[:sites_settings_path])
-      end
-
-      if options[:sites_settings]
+      elsif options[:sites_settings]
         @sites_settings = options[:sites_settings]
       end
         

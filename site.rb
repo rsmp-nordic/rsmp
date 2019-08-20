@@ -10,7 +10,7 @@ module RSMP
   class Site < Node
     attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :remote_supervisors
 
-    def initialize options
+    def initialize options={}
       handle_site_settings options
       super options.merge log_settings: @site_settings["log"]
       @remote_supervisors = []
@@ -18,17 +18,41 @@ module RSMP
     end
 
     def handle_site_settings options
-      unless options[:site_settings_path] || options[:site_settings]
-        raise ArgumentError.new("site_settings or site_settings_path must be present")
-      end
-
+      @site_settings = {
+        'site_id' => 'RN+SI0001',
+        'supervisors' => [
+          { 'ip' => '127.0.0.1', 'port' => 12111 }
+        ],
+        'rsmp_versions' => ['3.1.1','3.1.2','3.1.3','3.1.4'],
+        'timer_interval' => 0.1,
+        'watchdog_interval' => 1,
+        'watchdog_timeout' => 2,
+        'acknowledgement_timeout' => 2,
+        'command_response_timeout' => 1,
+        'status_response_timeout' => 1,
+        'status_update_timeout' => 1,
+        'site_connect_timeout' => 2,
+        'site_ready_timeout' => 1,
+        'reconnect_interval' => 1,
+        'log' => {
+          'active' => true,
+          'color' => true,
+          'ip' => false,
+          'timestamp' => true,
+          'site_id' => true,
+          'level' => false,
+          'acknowledgements' => false,
+          'watchdogs' => false,
+          'json' => false
+        }
+      }
       if options[:site_settings_path]
-        @site_settings = YAML.load_file(options[:site_settings_path])
+        @site_settings.merge! YAML.load_file(options[:site_settings_path])
       end
 
       if options[:site_settings]
-        options = options[:site_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
-        @site_settings.merge! options
+        converted = options[:site_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
+        @site_settings.merge! converted
       end
 
       required = [:supervisors,:rsmp_versions,:site_id,:watchdog_interval,:watchdog_timeout,

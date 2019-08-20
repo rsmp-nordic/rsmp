@@ -59,10 +59,8 @@ module RSMP
       @latest_watchdog_send_at = nil
 
       @state_condition = Async::Condition.new
-
       @acknowledgements = {}
-      @acknowledgement_mutex = Mutex.new
-      @acknowledgement_condition = ConditionVariable.new
+      @acknowledgement_condition = Async::Condition.new
     end
 
     def close_socket
@@ -424,10 +422,8 @@ module RSMP
 
         check_outgoing_acknowledged original
 
-        @acknowledgement_mutex.synchronize do
-          @acknowledgements[ original.m_id ] = message
-          @acknowledgement_condition.broadcast
-        end
+        @acknowledgements[ original.m_id ] = message
+        @acknowledgement_condition.signal message
       else
         log_acknowledgement_for_unknown message
       end
@@ -441,7 +437,7 @@ module RSMP
         log_acknowledgement_for_original message, original
         @acknowledgement_mutex.synchronize do
           @acknowledgements[ original.m_id ] = message
-          @acknowledgement_condition.broadcast
+          @acknowledgement_condition.signal message
         end
       else
         log_acknowledgement_for_unknown message
@@ -502,20 +498,18 @@ module RSMP
 
     def wait_for_acknowledgement original, timeout, options={}
       raise ArgumentError unless original
-      start = Time.now
-      @acknowledgement_mutex.synchronize do
-        loop do
-          left = timeout + (start - Time.now)
-          message = @acknowledgements.delete(original.m_id)
-          return message if message
-          return nil if left <= 0
-          @acknowledgement_condition.wait(@acknowledgement_mutex,left)
-        end
+      wait_for(@acknowledgement_condition,timeout) do |message|
+        message.is_a?(MessageAck) &&
+        message.attributes["mId"] == original.m_id
       end
     end
 
     def wait_for_not_acknowledged original, timeout
-      wait_for_acknowledgement original, timeout, type: :not_acknowledged
+      raise ArgumentError unless original
+      wait_for(@acknowledgement_condition,timeout) do |message|
+        message.is_a?(MessageNotAck) &&
+        message.attributes["mId"] == original.m_id
+      end
     end
 
     def ignore message, reason=nil

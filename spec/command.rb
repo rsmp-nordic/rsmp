@@ -13,8 +13,8 @@ def up &block
 		@site.start
 
 		@supervisor_connector = @supervisor.wait_for_site "RN+SI0001", 10
-		#@supervisor_connector.wait_for_state :ready, 0.1
-		task.sleep 0.1
+		@supervisor_connector.wait_for_state :ready, 0.1
+		
 		yield task
 		
 		@site.stop
@@ -84,9 +84,7 @@ describe RSMP::Supervisor do
 			}
 		}
 
-		@site = RSMP::Site.new(
-      site_settings: site_settings,
-    )
+		@site = RSMP::Site.new
 	end
 
 	after (:all) do
