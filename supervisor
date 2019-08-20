@@ -24,10 +24,14 @@ options_parser = OptionParser.new do |opts|
   end
   
   opts.on('-s ID', '--sites ID', 'Allow sites with ID,...') do |list|
-    list = list.split ','
-    list.each do |id|
-      options[:sites_settings] = [] unless options[:sites_settings]
-      options[:sites_settings] << {"site_id"=>id}
+    options[:sites_settings] = [] unless options[:sites_settings]
+    if list == 'any'
+      options[:sites_settings] << {"site_id"=>:any}
+    else
+      list = list.split ','
+      list.each do |id|
+        options[:sites_settings] << {"site_id"=>id}
+      end
     end
   end
 
