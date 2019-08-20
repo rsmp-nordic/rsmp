@@ -103,7 +103,9 @@ module RSMP
     end
 
     def starting
-      log str: "Starting supervisor #{@supervisor_settings["site_id"]} on port #{@supervisor_settings["port"]}", level: :info
+      log str: "Starting supervisor #{@supervisor_settings["site_id"]} on port #{@supervisor_settings["port"]}", 
+          level: :info,
+          timestamp: RSMP.now_object
     end
 
     def accept? socket, info
@@ -111,7 +113,10 @@ module RSMP
     end
 
     def connect socket, info
-      log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", level: :info
+      log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", 
+          level: :info,
+          timestamp: RSMP.now_object
+
       remote_site = SupervisorConnector.new({
         supervisor: self,
         task: @task,
@@ -138,9 +143,9 @@ module RSMP
 
     def close socket, info
       if info
-        log ip: info[:ip], str: "Connection to #{info[:ip]}:#{info[:port]} closed", level: :info
+        log ip: info[:ip], str: "Connection to #{info[:ip]}:#{info[:port]} closed", level: :info, timestamp: RSMP.now_object
       else
-        log str: "Connection closed", level: :info
+        log str: "Connection closed", level: :info, timestamp: RSMP.now_object
       end
 
       socket.close

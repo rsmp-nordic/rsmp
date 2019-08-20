@@ -99,7 +99,9 @@ module RSMP
     end
  
     def starting
-      log str: "Starting site #{@site_settings["site_id"]} on port #{@site_settings["port"]}", level: :info
+      log str: "Starting site #{@site_settings["site_id"]} on port #{@site_settings["port"]}",
+          level: :info,
+          timestamp: RSMP.now_object
     end
   end
 end
