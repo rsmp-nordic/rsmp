@@ -6,19 +6,23 @@ module RSMP
 
     def initialize settings
       @settings = settings
-      @pause = false
+      @muted = {}
     end
 
-    def pause
-      @pause = true
+    def mute ip, port
+      @muted["#{ip}:#{port}"] = true
     end
 
-    def continue
-      @pause = false
+    def unmute ip, port
+      @muted.delete "#{ip}:#{port}"
+    end
+
+    def unmute_all
+      @muted = {}
     end
 
     def output? item
-      return false if @pause
+      return false if item[:ip] && item[:port] && @muted["#{item[:ip]}:#{item[:port]}"]
       return false if @settings["active"] == false
       return false if @settings["info"] == false && item[:level] == :info
       return false if @settings["debug"] != true && item[:level] == :debug

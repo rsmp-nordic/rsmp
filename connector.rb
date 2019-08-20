@@ -216,6 +216,7 @@ module RSMP
       item = RSMP::Archive.prepare_item({
         level: level,
         ip: @ip,
+        port: @port,
         site_id: site_id,
         str: str,
         message: message

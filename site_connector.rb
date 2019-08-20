@@ -23,13 +23,13 @@ module RSMP
       info "Connecting to superviser at #{@ip}:#{@port}"
       super
       connect
-      @logger.continue
+      @logger.unmute @ip, @port
       start_reader
       send_version @site_settings["rsmp_versions"]
     rescue Errno::ECONNREFUSED
       error "No connection to supervisor at #{@ip}:#{@port}"
       info "Will try to reconnect again every #{@site.site_settings["reconnect_interval"]} seconds.."
-      #@logger.pause
+      @logger.mute @ip, @port
     end
 
     def connect
