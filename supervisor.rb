@@ -176,7 +176,7 @@ module RSMP
 
     def find_site site_id
       @remote_sites.each do |site|
-        return site if site.site_ids.include? site_id
+        return site if site_id == :any || site.site_ids.include?(site_id)
       end
       nil
     end

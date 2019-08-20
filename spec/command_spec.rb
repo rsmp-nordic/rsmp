@@ -22,12 +22,12 @@ def up &block
 	end
 end
 
-describe RSMP::Supervisor do
+describe "Sending commands" do
 
 	before(:all) do
 		supervisor_settings = {
 			'log' => {
-				'active' => true,
+				'active' => false,
 				'color' => :light_blue,
 				'ip' => false,
 				'timestamp' => false,
@@ -43,7 +43,7 @@ describe RSMP::Supervisor do
 		
 		site_settings = {
 			'log' => {
-				'active' => true,
+				'active' => false,
 				'color' => :light_black,
 				'ip' => false,
 				'timestamp' => false,
