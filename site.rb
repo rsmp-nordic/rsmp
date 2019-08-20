@@ -5,6 +5,7 @@
 
 require_relative 'node'
 require_relative 'site_connector'
+require 'async/queue'
 
 module RSMP
   class Site < Node
@@ -14,7 +15,7 @@ module RSMP
       handle_site_settings options
       super options.merge log_settings: @site_settings["log"]
       @remote_supervisors = []
-      @sleep_condition = Async::Condition.new
+      @sleep_condition = Async::Notification.new
     end
 
     def handle_site_settings options

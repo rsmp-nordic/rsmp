@@ -41,9 +41,10 @@ module RSMP
     end
 
     def stop
+      return if @state == :stopped
       set_state :stopping
-      close_socket
       stop_tasks
+      close_socket
       clear
       set_state :stopped
     end
@@ -58,9 +59,9 @@ module RSMP
       @outgoing_acknowledged = {}
       @latest_watchdog_send_at = nil
 
-      @state_condition = Async::Condition.new
+      @state_condition = Async::Notification.new
       @acknowledgements = {}
-      @acknowledgement_condition = Async::Condition.new
+      @acknowledgement_condition = Async::Notification.new
     end
 
     def close_socket
@@ -84,6 +85,9 @@ module RSMP
         while packet = @protocol.read_line
           begin
             process packet
+          rescue IOError => e
+            warning "IOError: #{e}"
+            break            
           rescue Errno::ECONNRESET => e
             warning "Connection reset by peer"
             break            
@@ -91,12 +95,12 @@ module RSMP
             error "Connector exception: #{e.to_s}"
             break
           rescue StandardError => e
-            error ["Connector exception: #{e}",e.backtrace].flatten.join("\n")
+            error ["Connector exception: #{e.inspect}",e.backtrace].flatten.join("\n")
             break
           end
         end
       rescue Async::Wrapper::Cancelled
-        break        
+        # ignore        
       rescue EOFError
         warning "Connection closed"
       rescue IOError => e
@@ -372,7 +376,6 @@ module RSMP
         end
       end
     end   
-
 
     def send_version rsmp_versions
       versions_hash = [rsmp_versions].flatten.map {|v| {"vers":v} }

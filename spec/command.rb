@@ -26,18 +26,6 @@ describe RSMP::Supervisor do
 
 	before(:all) do
 		supervisor_settings = {
-			'site_id' => 'RN+SU0001',
-			'port' => 12111,
-			'rsmp_versions' => ['3.1.4'],
-			'timer_interval' => 0.1,
-			'watchdog_interval' => 1,
-			'watchdog_timeout' => 2,
-			'acknowledgement_timeout' => 2,
-			'command_response_timeout' => 1,
-			'status_response_timeout' => 1,
-			'status_update_timeout' => 1,
-			'site_connect_timeout' => 2,
-			'site_ready_timeout' => 1,
 			'log' => {
 				'active' => true,
 				'color' => :light_blue,
@@ -50,28 +38,10 @@ describe RSMP::Supervisor do
 			}
 		}
 
-		sites_settings = [
-			{ 'site_id' => 'RN+SI0001', sxl_versions: ['1,1']}
-		]
 
-		@supervisor = RSMP::Supervisor.new(supervisor_settings:supervisor_settings,sites_settings:sites_settings)
+		@supervisor = RSMP::Supervisor.new(supervisor_settings:supervisor_settings)
 		
 		site_settings = {
-			'site_id' => 'RN+SI0001',
-			'supervisors' => [
-				{ 'ip' => '127.0.0.1', 'port' => 12111 }
-			],
-			'rsmp_versions' => ['3.1.4'],
-			'timer_interval' => 0.1,
-			'watchdog_interval' => 1,
-			'watchdog_timeout' => 2,
-			'acknowledgement_timeout' => 2,
-			'command_response_timeout' => 1,
-			'status_response_timeout' => 1,
-			'status_update_timeout' => 1,
-			'site_connect_timeout' => 2,
-			'site_ready_timeout' => 1,
-			'reconnect_interval' => 1,
 			'log' => {
 				'active' => true,
 				'color' => :light_black,
@@ -84,7 +54,9 @@ describe RSMP::Supervisor do
 			}
 		}
 
-		@site = RSMP::Site.new
+		@site = RSMP::Site.new(
+      site_settings: site_settings,
+    )
 	end
 
 	after (:all) do
@@ -94,7 +66,10 @@ describe RSMP::Supervisor do
 		it 'sends valid arguments' do
 			up do |task|
 				supervisor_start_index = @supervisor.archive.current_index
-				@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","n":"message","cO":"","v":"Rainbows!"}]
+				task.async do
+					@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","n":"message","cO":"","v":"Rainbows!"}]
+				end
+
 				expect(@supervisor_connector.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_a(RSMP::CommandResponse)
 				end
 			#p supervisor_start_index

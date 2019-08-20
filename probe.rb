@@ -26,7 +26,7 @@ module RSMP
       raise ArgumentError.new("Archive expected") unless archive.is_a? Archive
       @archive = archive
       @items = []
-      @condition = Async::Condition.new
+      @condition = Async::Notification.new
     end
 
     def capture task, options={}, &block
