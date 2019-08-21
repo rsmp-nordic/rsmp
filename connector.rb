@@ -9,7 +9,7 @@ require 'async/io/protocol/line'
 
 module RSMP  
   class Connector
-    attr_reader :site_ids, :state, :archive
+    attr_reader :site_ids, :state, :archive, :connection_info
 
     def initialize options
       @settings = options[:settings]
@@ -18,6 +18,7 @@ module RSMP
       @socket = options[:socket]
       @archive = options[:archive]
       @ip = options[:ip]
+      @connection_info = options[:info]
 
       clear
     end
