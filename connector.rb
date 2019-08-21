@@ -44,6 +44,7 @@ module RSMP
       return if @state == :stopped
       set_state :stopping
       stop_tasks
+    ensure
       close_socket
       clear
       set_state :stopped
@@ -83,31 +84,22 @@ module RSMP
         @protocol = Async::IO::Protocol::Line.new(@stream,"\f") # rsmp messages are json terminated with a form-feed
 
         while packet = @protocol.read_line
-          begin
-            process packet
-          rescue IOError => e
-            warning "IOError: #{e}"
-            break            
-          rescue Errno::ECONNRESET => e
-            warning "Connection reset by peer"
-            break            
-          rescue SystemCallError => e # all ERRNO errors
-            error "Connector exception: #{e.to_s}"
-            break
-          rescue StandardError => e
-            error ["Connector exception: #{e.inspect}",e.backtrace].flatten.join("\n")
-            break
-          end
+          process packet
         end
       rescue Async::Wrapper::Cancelled
         # ignore        
       rescue EOFError
         warning "Connection closed"
       rescue IOError => e
-        warning "Stream error: #{e}"
+        warning "IOError: #{e}"
+      rescue Errno::ECONNRESET
+        warning "Connection reset by peer"
+      rescue Errno::EPIPE
+        warning "Broken pipe"
+      rescue SystemCallError => e # all ERRNO errors
+        error "Connector exception: #{e.to_s}"
       rescue StandardError => e
-        error ["Connector exception: #{e}",e.backtrace].flatten.join("\n")
-        break
+        error ["Connector exception: #{e.inspect}",e.backtrace].flatten.join("\n")
       end
     end
 
@@ -125,14 +117,12 @@ module RSMP
       @timer = @task.async do |task|
         task.annotate "timer"
         loop do
-          begin
-            now = RSMP.now_object
-            break if timer(now) == false
-          rescue StandardError => e
-            error ["#{name} exception: #{e}",e.backtrace].flatten.join("\n")
-          ensure
-            task.sleep interval
-          end
+          now = RSMP.now_object
+          break if timer(now) == false
+        rescue StandardError => e
+          error ["#{name} exception: #{e}",e.backtrace].flatten.join("\n")
+        ensure
+          task.sleep interval
         end
       end
     end

@@ -13,9 +13,13 @@ describe RSMP::Supervisor do
 				end
 
 				puts "Waiting for site to connect..."
-				remote_site = supervisor.wait_for_site(:any,10)
-				puts "Site connected"
-	    	
+				remote_site = supervisor.wait_for_site(:any,1)
+				if remote_site
+					puts "Site connected"
+				else
+					raise "Site connect timeout"
+				end
+
 	    	# TODO the sequence differs a bit between RSMP versions
 	    	sequence = [
 		      ['in','Version'],
@@ -30,7 +34,7 @@ describe RSMP::Supervisor do
 		      ['out','MessageAck'],
 		    ]
 
-			  items = supervisor.archive.capture task, with_message: true, num: sequence.size, timeout: 1, from: 0
+			  items = supervisor.archive.capture task, with_message: true, num: sequence.size, timeout: 10, from: 0
 			  got = items.map { |item| item[:message] }.map { |message| [message.direction.to_s, message.type] }
 			  expect(got).to eq(sequence)
 

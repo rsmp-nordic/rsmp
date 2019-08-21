@@ -22,7 +22,7 @@ module RSMP
 
     def connection_complete
       super
-      info "Connection to site established"
+      info "Connection to site #{@site_ids.first} established"
     end
 
     def version_accepted message, rsmp_version
