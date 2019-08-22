@@ -34,7 +34,7 @@ module RSMP
         'status_update_timeout' => 1,
         'site_connect_timeout' => 2,
         'site_ready_timeout' => 1,
-        'reconnect_interval' => 1,
+        'reconnect_interval' => 0.1,
         'log' => {
           'active' => true,
           'color' => true,
