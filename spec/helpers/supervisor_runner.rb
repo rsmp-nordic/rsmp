@@ -58,12 +58,12 @@ class SupervisorRunner
   end
 
   def wait_for_site supervisor
-    puts "Waiting for site...".colorize(:light_blue)
+    #puts "Waiting for site...".colorize(:light_blue)
     remote_site = supervisor.wait_for_site(:any,10)
     if remote_site
       remote_site.wait_for_state :ready, 3
       from = "#{remote_site.connection_info[:ip]}:#{remote_site.connection_info[:port]}"
-      puts "Site #{remote_site.site_id} connected from #{from}".colorize(:light_blue)
+      #puts "Site #{remote_site.site_id} connected from #{from}".colorize(:light_blue)
       remote_site
     else
       raise "Site connection timeout".colorize(:red)

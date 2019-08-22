@@ -2,7 +2,6 @@
 # supervisor and site can either both be either internal, or one of them can be external,
 # in case you're testing equipment or other software systems
 
-require_relative 'helpers/launcher'
 require_relative '../supervisor'
 require_relative '../site'
 

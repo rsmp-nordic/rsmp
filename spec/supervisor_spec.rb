@@ -7,6 +7,7 @@ describe RSMP::Supervisor do
 
 		let(:supervisor_settings) {
 			{
+				'port' => 13111,		# use special port to avoid sites connection during test
 				'log' => 
 				{
 					'active' => false
@@ -73,7 +74,6 @@ describe RSMP::Supervisor do
 				protocol.write_lines JSON.generate("mType":"rSMsg","type":"MessageAck","oMId":version["mId"],"mId":SecureRandom.uuid())
 				expect( supervisor_connector.wait_for_state(:ready, 0.1) ).to eq(true)
 
-				#supervisor.task.yield
 				# verify log content
 				expect( supervisor.archive.strings ).to eq([
 					"Received Version message for sites [RN+SI0001] using RSMP 3.1.4",
@@ -81,9 +81,8 @@ describe RSMP::Supervisor do
 					"Sent MessageAck for Version 8db0",
 					"Sent Version",
 					"Received MessageAck for Version fd92",
-					"Connection to site established"
+					"Connection to site RN+SI0001 established"
 				])
-
 
 				supervisor.stop
 			end
