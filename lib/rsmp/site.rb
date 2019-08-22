@@ -53,6 +53,7 @@ module RSMP
 
       if options[:site_settings]
         converted = options[:site_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
+        converted.compact!
         @site_settings.merge! converted
       end
 
@@ -124,7 +125,7 @@ module RSMP
     end
  
     def starting
-      log str: "Starting site #{@site_settings["site_id"]} on port #{@site_settings["port"]}",
+      log str: "Starting site #{@site_settings["site_id"]}",
           level: :info,
           timestamp: RSMP.now_object
     end

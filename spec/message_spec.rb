@@ -1,12 +1,11 @@
-require_relative '../message'
-require 'timecop'
+Bundler.require(:default, :development)
 
 def build packet
 	attributes = RSMP::Message.parse_attributes(packet)
 	RSMP::Message.build(attributes,packet)
 end
 
-describe RSMP::Message do
+RSpec.describe RSMP::Message do
 	let(:version_str) { '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.1"},{"vers":"3.1.2"},{"vers":"3.1.3"},{"vers":"3.1.4"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}' }
 	let(:ack_str) { '{"mType":"rSMsg","type":"MessageAck","oMId":"a54dc38b-7ddb-42a6-b6e8-95b0d00dad19","mId":"561c15c9-e050-4ee7-9cf4-8643c6769dcb"}' }
 	let(:not_ack_str) { '{"mType":"rSMsg","type":"MessageNotAck","rea":"since we are a rsmp::siteconnector","oMId":"24b5e2d1-fd32-4f12-80cf-f32f8b2772af","mId":"808b957d-6e93-408b-b5e3-ce7f64dc3c61"}' }

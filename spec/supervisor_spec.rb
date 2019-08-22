@@ -1,8 +1,4 @@
-require_relative '../supervisor'
-require_relative '../site'
-require_relative '../supervisor_connector'
-
-describe RSMP::Supervisor do
+RSpec.describe RSMP::Supervisor do
 	context 'when creating' do
 
 		let(:supervisor_settings) {

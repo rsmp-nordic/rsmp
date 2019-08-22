@@ -2,9 +2,6 @@
 # supervisor and site can either both be either internal, or one of them can be external,
 # in case you're testing equipment or other software systems
 
-require_relative '../supervisor'
-require_relative '../site'
-
 
 def up &block
 	Async do |task|
@@ -21,7 +18,7 @@ def up &block
 	end
 end
 
-describe "Sending commands" do
+RSpec.describe "Sending commands" do
 
 	before(:all) do
 		supervisor_settings = {
