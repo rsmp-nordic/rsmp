@@ -310,7 +310,8 @@ module RSMP
         version = candidates.sort.last
         return version
       else
-        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but we only support [#{@settings["rsmp_versions"].join(',')}]."
+        p message.attributes
+        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{@settings["rsmp_versions"].join(',')}] supported."
       end
     end
 

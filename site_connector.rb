@@ -63,7 +63,7 @@ module RSMP
     end
 
     def version_accepted message, rsmp_version
-      log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message
+      log "Received Version message, using RSMP #{rsmp_version}", message
       start_timer
       acknowledge message
       connection_complete
