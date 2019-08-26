@@ -48,7 +48,12 @@ module RSMP
         }
       }
       if options[:site_settings_path]
-        @site_settings.merge! YAML.load_file(options[:site_settings_path])
+        if File.exist? options[:site_settings_path]
+          @site_settings.merge! YAML.load_file(options[:site_settings_path])
+        else
+          puts "Error: Config #{options[:site_settings_path]} not found, pwd"
+          exit
+        end
       end
 
       if options[:site_settings]

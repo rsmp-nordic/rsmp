@@ -1,14 +1,51 @@
 #!/usr/bin/env ruby
 
-require "bundler/setup"
-require "rsmp"
+# Make IRB run inside Async, so async task
+# will run the the background. 
 
-# You can add fixtures and/or initialization code here to make experimenting
-# with your gem easier. You can also use a different console, if you like.
+require 'bundler/setup'
+require 'irb'
+require 'rsmp'
+#require 'async/io/protocol/line'
 
-# (If you use this, don't forget to add pry to your Gemfile!)
-# require "pry"
-# Pry.start
+module IRB
 
-require "irb"
-IRB.start(__FILE__)
+  # custom input class which reads from an async stream
+  class MyInputMethod < StdioInputMethod
+    def initialize
+      super
+      @input = Async::IO::Protocol::Line.new(
+        Async::IO::Stream.new(
+          Async::IO::Generic.new($stdin)
+        )
+      )
+    end
+
+    def gets
+      # since this is an async stream, the call to read_line()
+      # will give the Async reactor a chance to schedule other task
+      print @prompt
+      line = @input.read_line
+      @line[@line_no += 1] = "#{line}\n"
+    end
+  end
+
+  def self.start(ap_path = nil)
+    STDOUT.sync = true
+    $0 = File::basename(ap_path, ".rb") if ap_path
+
+    IRB.setup(ap_path)
+
+    if @CONF[:SCRIPT]
+      irb = Irb.new(nil, @CONF[:SCRIPT])
+    else
+      irb = Irb.new(nil,MyInputMethod.new)
+    end
+
+    irb.run(@CONF)
+  end
+end
+
+Async do
+  IRB.start(__FILE__)
+end

@@ -47,7 +47,13 @@ module RSMP
       }
 
       if options[:supervisor_settings_path]
-        @supervisor_settings.merge! YAML.load_file(options[:supervisor_settings_path])
+        if File.exist? options[:supervisor_settings_path]
+          @supervisor_settings.merge! YAML.load_file(options[:supervisor_settings_path])
+        else
+          puts "Error: Site settings #{options[:supervisor_settings_path]} not found"
+          exit
+        end
+
       end
       
       if options[:supervisor_settings]
@@ -74,7 +80,12 @@ module RSMP
       ]
 
       if options[:sites_settings_path]
-        @sites_settings = YAML.load_file(options[:sites_settings_path])
+        if File.exist? options[:sites_settings_path]
+          @sites_settings = YAML.load_file(options[:sites_settings_path])
+        else
+          puts "Error: Site settings #{options[:sites_settings_path]} not found"
+          exit
+        end
       elsif options[:sites_settings]
         @sites_settings = options[:sites_settings]
       end
