@@ -2,12 +2,11 @@
 This is a Ruby implementation of the RSMP protocol, including:
  - RSMP classes (engine) that can be used to build RSMP tools
  - Ruby command-line tools for starting RSMP supervisors or sites
- - An initial set of Cucumber tests for testing RSMP implemenetations.
 
 The code has so far only been tested on Mac.
 
 ## Installation
-You need a recent version of Ruby intalled. Latest is recommended.
+You need a recent version of Ruby intalled. 2.6.3 or later is recommended.
 
 Install required gems:
 $ gem intall bundler
@@ -17,21 +16,18 @@ $ bundle
 A set of classes that represents RSMP messages, supervisors and sites and handles connecting, exchanging version information, acknowledging messages and other RSMP protocol specifics.
 
 ## Command-line tool
-Tools for easily running RSMP supervisors and sites.
+Tools for easily running RSMP supervisors and sites. The command is called rsmp.
 
-### Supervisor
-The "supervisor" command will start an RSMP supervisor (server), which equipment can connect to. Here's a an example of how the RSMP simulator connects to a Ruby supervisor:
+### Running a supervisor
+The 'supervisor' command will start an RSMP supervisor (server), which equipment can connect to:
 
-$ ./supervisor
-                         Site connected from ::ffff:10.202.183.252:57454
-AA+BBCCC=DDD  -->  4234  Received Version message for sites [AA+BBCCC=DDD] using RSMP 3.1.4
-AA+BBCCC=DDD             Starting timeout checker with interval 1 seconds
-AA+BBCCC=DDD  <--  564c  Sent Version
-AA+BBCCC=DDD             Connection to site established
-AA+BBCCC=DDD             Starting watchdog with interval 1 seconds
-AA+BBCCC=DDD  -->  d032  Received AggregatedStatus status [local_control, normal]
-
-When starting, the supervisor will read setting from the file config/supervisor.yaml, including the port to listen to and the rsmp version that's supported. The settings file can also be used to adjust what will be logged, and whether to colorize the output.
+$ rsmp supervisor
+2019-08-26 11:48:58 UTC                           Starting supervisor RN+SU0001 on port 12111
+2019-08-26 11:49:49 UTC                           Site connected from 127.0.0.1:57138
+2019-08-26 11:49:49 UTC  RN+SI0001     -->  2b20  Received Version message for sites [RN+SI0001] using RSMP 3.1.4
+2019-08-26 11:49:49 UTC  RN+SI0001     <--  1168  Sent Version
+2019-08-26 11:49:49 UTC  RN+SI0001                Connection to site RN+SI0001 established
+2019-08-26 11:49:49 UTC  RN+SI0001     -->  f912  Received AggregatedStatus status []
 
 
 ### Site

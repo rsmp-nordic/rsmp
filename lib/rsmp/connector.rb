@@ -6,6 +6,7 @@ require_relative 'archive'
 require_relative 'probe'
 require 'timeout'
 require 'async/io/protocol/line'
+require 'benchmark'
 
 module RSMP  
   class Connector
@@ -85,7 +86,20 @@ module RSMP
         @protocol = Async::IO::Protocol::Line.new(@stream,"\f") # rsmp messages are json terminated with a form-feed
 
         while packet = @protocol.read_line
-          process packet
+          beginning = Time.now
+          message = process packet
+          duration = Time.now - beginning
+          ms = (duration*1000).round(4)
+          per_second = (1.0 / duration).round
+          if message
+            type = message.type
+            m_id = Logger.shorten_message_id(message.m_id)
+          else
+            type = 'Unknown'
+            m_id = nil
+          end
+          str = [type,m_id,"processed in #{ms}ms, #{per_second}req/s"].compact.join(' ')
+          log_at_level str, :statistics
         end
       rescue Async::Wrapper::Cancelled
         # ignore        
@@ -276,6 +290,7 @@ module RSMP
         else
           dont_acknowledge message, "Received", "unknown message (#{message.type})"
       end
+      message
     rescue InvalidPacket => e
       warning "Received invalid package, must be valid JSON but got #{packet.size} bytes: #{e.message}"
     rescue MalformedMessage => e

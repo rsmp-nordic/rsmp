@@ -44,7 +44,8 @@ module RSMP
           'level' => false,
           'acknowledgements' => false,
           'watchdogs' => false,
-          'json' => false
+          'json' => false,
+          'statistics' => false
         }
       }
       if options[:site_settings_path]

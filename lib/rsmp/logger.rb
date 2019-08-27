@@ -26,6 +26,7 @@ module RSMP
       return false if @settings["active"] == false
       return false if @settings["info"] == false && item[:level] == :info
       return false if @settings["debug"] != true && item[:level] == :debug
+      return false if @settings["statistics"] != true && item[:level] == :statistics
 
       if item[:message]
         type = item[:message].type
@@ -66,6 +67,8 @@ module RSMP
           str.colorize(:cyan)
         when :log
           str.colorize(:light_blue)
+        when :statistics
+          str.colorize(:light_black)
         else
           str
         end
@@ -84,8 +87,12 @@ module RSMP
       end
     end
 
-    private
+    def self.shorten_message_id m_id, length=4
+      m_id[0..length-1].ljust(length)
+    end 
 
+    private
+    
     def build_output item
       parts = []
       parts << item[:index].to_s.ljust(7) if @settings["index"] == true
@@ -102,7 +109,7 @@ module RSMP
       unless @settings["id"] == false
         length = 4
         if item[:message]
-          parts << item[:message].m_id[0..length-1].ljust(length+1)
+          parts << Logger.shorten_message_id(item[:message].m_id,length)+' '
         else
           parts << " "*(length+1)
         end
