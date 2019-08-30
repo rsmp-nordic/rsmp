@@ -151,8 +151,15 @@ module RSMP
     def check_watchdog_send_time now
       return unless @watchdog_started  
       return if @settings["watchdog_interval"] == :never
-      if @latest_watchdog_send_at == nil || (now - @latest_watchdog_send_at) >= (@settings["watchdog_interval"]-0.5)
+      
+      if @latest_watchdog_send_at == nil
         send_watchdog now
+      else
+        # we add half the timer interval to pick the timer
+        # event closes to the wanted wathcdog interval
+        diff = now - @latest_watchdog_send_at
+        if (diff + 0.5*@settings["timer_interval"]) >= (@settings["watchdog_interval"])
+          send_watchdog now
       end
     rescue StandardError => e
       error ["Watchdog error: #{e}",e.backtrace].flatten.join("\n")
