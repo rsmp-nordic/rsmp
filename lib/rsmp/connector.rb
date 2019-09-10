@@ -160,6 +160,7 @@ module RSMP
         diff = now - @latest_watchdog_send_at
         if (diff + 0.5*@settings["timer_interval"]) >= (@settings["watchdog_interval"])
           send_watchdog now
+        end
       end
     rescue StandardError => e
       error ["Watchdog error: #{e}",e.backtrace].flatten.join("\n")
