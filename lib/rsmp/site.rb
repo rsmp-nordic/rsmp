@@ -85,6 +85,10 @@ module RSMP
       end
     end
 
+    def build_connector settings
+      SupervisorProxy.new settings
+    end
+
     def aggrated_status_changed component
       @proxies.each do |proxy|
         proxy.send_aggregated_status component
@@ -92,7 +96,7 @@ module RSMP
     end
 
     def connect_to_supervisor task, supervisor_settings
-      proxy = SupervisorProxy.new({
+      proxy = build_connector({
         site: self,
         task: @task,
         settings: @site_settings, 

@@ -117,12 +117,16 @@ module RSMP
       true
     end
 
+    def build_connector settings
+      SiteProxy.new settings
+    end
+
     def connect socket, info
       log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", 
           level: :info,
           timestamp: RSMP.now_object
 
-      proxy = SiteProxy.new({
+      proxy = build_connector({
         supervisor: self,
         task: @task,
         settings: @supervisor_settings[:sites],
