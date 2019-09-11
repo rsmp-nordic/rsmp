@@ -6,7 +6,8 @@ RSpec.describe RSMP::Supervisor do
 				'port' => 13111,		# use special port to avoid sites connection during test
 				'log' => 
 				{
-					'active' => false
+					'active' => false,
+					'hide_ip_and_port' => true
 				}
 			}
 		}
@@ -75,6 +76,8 @@ RSpec.describe RSMP::Supervisor do
 				# verify log content
 				got = supervisor.archive.by_level([:log, :info, :debug]).map { |item| item[:str] }
 				expect( got ).to match_array([
+					"Starting supervisor RN+SU0001 on port 13111",
+					"Site connected from ********",
 					"Received Version message for sites [RN+SI0001] using RSMP 3.1.4",
 					"Starting timer with interval 0.1 seconds",
 					"Sent MessageAck for Version 8db0",

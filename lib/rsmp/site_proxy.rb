@@ -20,7 +20,7 @@ module RSMP
 
     def connection_complete
       super
-      info "Connection to site #{@site_ids.first} established"
+      log "Connection to site #{@site_ids.first} established", level: :info
     end
 
     def process_message message
@@ -46,7 +46,7 @@ module RSMP
     end
 
     def version_accepted message, rsmp_version
-      log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message
+      log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message: message, level: :log
       start_timer
       acknowledge message
       send_version rsmp_version
@@ -77,7 +77,7 @@ module RSMP
       if component == nil
         if @site_settings == nil || @site_settings['components'] == nil
           component = build_component c_id
-          info "Adding component #{c_id} to site #{site_id}"
+          log "Adding component #{c_id} to site #{site_id}", level: :info
         else
           reason = "component #{c_id} not found"
           dont_acknowledge message, "Ignoring #{message.type}:", reason
@@ -86,7 +86,7 @@ module RSMP
       end
 
       component.set_aggregated_status_bools se
-      log "Received #{message.type} status for component #{c_id} [#{component.aggregated_status.join(', ')}]", message
+      log "Received #{message.type} status for component #{c_id} [#{component.aggregated_status.join(', ')}]", message: message
       acknowledge message
     end
 
@@ -98,7 +98,7 @@ module RSMP
       alarm_code = message.attribute("aCId")
       asp = message.attribute("aSp")
       status = ["ack","aS","sS"].map { |key| message.attribute(key) }.join(',')
-      log "Received #{message.type}, #{alarm_code} #{asp} [#{status}]", message
+      log "Received #{message.type}, #{alarm_code} #{asp} [#{status}]", message: message, level: :log
       acknowledge message
     end
 
@@ -134,7 +134,7 @@ module RSMP
     end
 
     def process_status_response message
-      log "Received #{message.type}", message
+      log "Received #{message.type}", message: message, level: :log
       acknowledge message
     end
 
@@ -171,7 +171,7 @@ module RSMP
     end
 
     def process_status_update message
-      log "Received #{message.type}", message
+      log "Received #{message.type}", message: message, level: :log
       acknowledge message
     end
 
@@ -196,7 +196,7 @@ module RSMP
     end
 
     def process_command_response message
-      log "Received #{message.type}", message
+      log "Received #{message.type}", message: message, level: :log
       acknowledge message
     end
 

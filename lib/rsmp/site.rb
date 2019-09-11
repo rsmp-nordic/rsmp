@@ -115,11 +115,11 @@ module RSMP
       loop do
         proxy.run       # run until disconnected
       rescue IOError => e
-        log str: "Stream error: #{e}", level: :warning
+        log "Stream error: #{e}", level: :warning
       rescue SystemCallError => e # all ERRNO errors
-        log str: "Reader exception: #{e.to_s}", level: :error
+        log "Reader exception: #{e.to_s}", level: :error
       rescue StandardError => e
-        log str: ["Reader exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+        log ["Reader exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
       ensure
         begin
           if @site_settings["reconnect_interval"] != :no
@@ -137,7 +137,7 @@ module RSMP
     end
 
     def stop
-      log str: "Stopping site #{@site_settings["site_id"]}", level: :info
+      log "Stopping site #{@site_settings["site_id"]}", level: :info
       @proxies.each do |proxy|
         proxy.stop
       end
@@ -146,7 +146,7 @@ module RSMP
     end
  
     def starting
-      log str: "Starting site #{@site_settings["site_id"]}",
+      log "Starting site #{@site_settings["site_id"]}",
           level: :info,
           timestamp: RSMP.now_object
     end

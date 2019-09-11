@@ -74,13 +74,13 @@ module RSMP
         handle_connection(socket)
       end
     rescue SystemCallError => e # all ERRNO errors
-      log str: "Exception: #{e.to_s}", level: :error
+      log "Exception: #{e.to_s}", level: :error
     rescue StandardError => e
-      log str: ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
+      log ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def stop
-      log str: "Stopping supervisor #{@supervisor_settings["site_id"]}", level: :info
+      log "Stopping supervisor #{@supervisor_settings["site_id"]}", level: :info
       @proxies.each { |proxy| proxy.stop }
       @proxies.clear
       super
@@ -100,15 +100,15 @@ module RSMP
         reject socket, info
       end
     rescue SystemCallError => e # all ERRNO errors
-      log str: "Exception: #{e.to_s}", level: :error
+      log "Exception: #{e.to_s}", level: :error
     rescue StandardError => e
-      log str: "Exception: #{e}", exception: e, level: :error
+      log "Exception: #{e}", exception: e, level: :error
     ensure
       close socket, info
     end
 
     def starting
-      log str: "Starting supervisor #{@supervisor_settings["site_id"]} on port #{@supervisor_settings["port"]}", 
+      log "Starting supervisor #{@supervisor_settings["site_id"]} on port #{@supervisor_settings["port"]}", 
           level: :info,
           timestamp: RSMP.now_object
     end
@@ -122,7 +122,14 @@ module RSMP
     end
 
     def connect socket, info
-      log ip: info[:ip], str: "Site connected from #{info[:ip]}:#{info[:port]}", 
+      if @supervisor_settings['log']['hide_ip_and_port']
+        port_and_port = '********'
+      else
+        port_and_port = "#{info[:ip]}:#{info[:port]}"
+      end
+
+      log "Site connected from #{port_and_port}", 
+          ip: port_and_port,
           level: :info,
           timestamp: RSMP.now_object
 
@@ -147,14 +154,14 @@ module RSMP
     end
 
     def reject socket, info
-      log ip: info[:ip], str: "Site rejected", level: :info
+      log "Site rejected", ip: info[:ip], level: :info
     end
 
     def close socket, info
       if info
-        log ip: info[:ip], str: "Connection to #{info[:ip]}:#{info[:port]} closed", level: :info, timestamp: RSMP.now_object
+        log "Connection to #{info[:ip]}:#{info[:port]} closed", ip: info[:ip], level: :info, timestamp: RSMP.now_object
       else
-        log str: "Connection closed", level: :info, timestamp: RSMP.now_object
+        log "Connection closed", level: :info, timestamp: RSMP.now_object
       end
 
       socket.close

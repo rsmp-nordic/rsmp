@@ -4,12 +4,11 @@
 # We connect to the supervisor.
 
 module RSMP
-  class Node
+  class Node < Base
     attr_reader :archive, :logger, :task
 
     def initialize options
-      @archive = options[:archive] || RSMP::Archive.new
-      @logger = options[:logger] || RSMP::Logger.new(options[:log_settings])
+      super options
     end
 
     def start
@@ -20,7 +19,7 @@ module RSMP
         start_action
       end
     rescue Errno::EADDRINUSE => e
-      log str: "Cannot start: #{e.to_s}", level: :error
+      log "Cannot start: #{e.to_s}", level: :error
     rescue SystemExit, SignalException, Interrupt
       @logger.unmute_all
       exiting
@@ -35,12 +34,8 @@ module RSMP
       start
     end
 
-    def log item
-      @logger.log item
-    end
-
     def exiting
-      log str: "Exiting", level: :info
+      log "Exiting", level: :info
     end
 
     def check_required_settings settings, required

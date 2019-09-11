@@ -1,18 +1,16 @@
 # Base class for a connection to a remote site or supervisor.
 
 module RSMP  
-  class Proxy
+  class Proxy < Base
     attr_reader :site_ids, :state, :archive, :connection_info
 
     def initialize options
+      super options
       @settings = options[:settings]
-      @logger = options[:logger]
       @task = options[:task]
       @socket = options[:socket]
-      @archive = options[:archive]
       @ip = options[:ip]
       @connection_info = options[:info]
-
       clear
     end
 
@@ -91,27 +89,27 @@ module RSMP
             m_id = nil
           end
           str = [type,m_id,"processed in #{ms}ms, #{per_second}req/s"].compact.join(' ')
-          log_at_level str, :statistics
+          log str, level: :statistics
         end
       rescue Async::Wrapper::Cancelled
         # ignore        
       rescue EOFError
-        warning "Connection closed"
+        log "Connection closed", level: :warning
       rescue IOError => e
-        warning "IOError: #{e}"
+        log "IOError: #{e}", level: :warning
       rescue Errno::ECONNRESET
-        warning "Connection reset by peer"
+        log "Connection reset by peer", level: :warning
       rescue Errno::EPIPE
-        warning "Broken pipe"
+        log "Broken pipe", level: :warning
       rescue SystemCallError => e # all ERRNO errors
-        error "Proxy exception: #{e.to_s}"
+        log "Proxy exception: #{e.to_s}", level: :error
       rescue StandardError => e
-        error ["Proxy exception: #{e.inspect}",e.backtrace].flatten.join("\n")
+        log ["Proxy exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
       end
     end
 
     def start_watchdog
-      debug "Starting watchdog with interval #{@settings["watchdog_interval"]} seconds"
+      log "Starting watchdog with interval #{@settings["watchdog_interval"]} seconds", level: :debug
       send_watchdog
       @watchdog_started = true
     end
@@ -119,7 +117,7 @@ module RSMP
     def start_timer
       name = "timer"
       interval = @settings["timer_interval"] || 1
-      debug "Starting #{name} with interval #{interval} seconds"
+      log "Starting #{name} with interval #{interval} seconds", level: :debug
       @latest_watchdog_received = RSMP.now_object
       @timer = @task.async do |task|
         task.annotate "timer"
@@ -127,7 +125,7 @@ module RSMP
           now = RSMP.now_object
           break if timer(now) == false
         rescue StandardError => e
-          error ["#{name} exception: #{e}",e.backtrace].flatten.join("\n")
+          log ["#{name} exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
         ensure
           task.sleep interval
         end
@@ -155,7 +153,7 @@ module RSMP
         end
       end
     rescue StandardError => e
-      error ["Watchdog error: #{e}",e.backtrace].flatten.join("\n")
+      log ["Watchdog error: #{e}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def send_watchdog now=nil
@@ -171,7 +169,7 @@ module RSMP
       @awaiting_acknowledgement.clone.each_pair do |m_id, message|
         latest = message.timestamp + timeout
         if now > latest
-          error "No acknowledgements for #{message.type} within #{timeout} seconds"
+          log "No acknowledgements for #{message.type} within #{timeout} seconds", level: :error
           stop
           return true
         end
@@ -183,7 +181,7 @@ module RSMP
       timeout = @settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       if now > latest
-        error "No Watchdog within #{timeout} seconds, received at #{@latest_watchdog_received}, now is #{now}, diff #{now-latest}"
+        log "No Watchdog within #{timeout} seconds, received at #{@latest_watchdog_received}, now is #{now}, diff #{now-latest}", level: :error
         stop
         return true
       end
@@ -195,42 +193,8 @@ module RSMP
       @reader.stop if @reader
     end
 
-    def error str, message=nil
-      log_at_level str, :error, message
-    end
-
-    def warning str, message=nil
-      log_at_level str, :warning, message
-    end
-
-    def log str, message=nil
-      log_at_level str, :log, message
-    end
-
-    def log_not_acknowledged str, message=nil
-      log_at_level str, :warning, message
-    end
-
-    def info str, message=nil
-      log_at_level str, :info, message
-    end
-
-    def debug str, message=nil
-      log_at_level str, :debug, message
-    end
-
-    def log_at_level str, level, message=nil
-      item = RSMP::Archive.prepare_item({
-        level: level,
-        ip: @ip,
-        port: @port,
-        site_id: site_id,
-        str: str,
-        message: message
-      })
-      @archive.add item
-      @logger.log item
-      item
+    def log str, options={}
+      super str, options.merge(ip: @ip, port: @port, site_id: site_id)
     end
 
     def send_message message, reason=nil
@@ -244,12 +208,12 @@ module RSMP
     rescue EOFError, IOError
       buffer_message message
     rescue SchemaError => e
-      error "Error sending #{message.type}, schema validation failed: #{e.message}", message
+      log "Error sending #{message.type}, schema validation failed: #{e.message}", message: message, level: :error
     end
 
     def buffer_message message
       # TODO
-      error "Cannot send #{message.type} because the connection is closed.", message
+      log "Cannot send #{message.type} because the connection is closed.", message: message, level: :error
     end
 
     def log_send message, reason=nil
@@ -260,9 +224,9 @@ module RSMP
       end
 
       if message.type == "MessageNotAck"
-        log_not_acknowledged str, message
+        log str, message: message, level: :warning
       else
-        log str, message
+        log str, message: message, level: :log
       end
     end
 
@@ -309,7 +273,7 @@ module RSMP
 
     def will_not_handle message
       reason = "since we're a #{self.class.name.downcase}" unless reason
-      warning "Ignoring #{message.type}, #{reason}", message
+      log "Ignoring #{message.type}, #{reason}", message: message, level: :warning
       dont_acknowledge message, nil, reason
     end
 
@@ -366,7 +330,7 @@ module RSMP
     def dont_acknowledge original, prefix=nil, reason=nil
       raise InvalidArgument unless original
       str = [prefix,reason].join(' ')
-      warning str, original if reason
+      log str, message: original, level: :warning if reason
       message = MessageNotAck.new({
         "oMId" => original.m_id,
         "rea" => reason || "Unknown reason"
@@ -464,16 +428,16 @@ module RSMP
         str = "#{str}: #{reason}" if reason
         log_not_acknowledged str, message
       else
-        log str, message
+        log str, message: message, level: :log
       end
     end
 
     def log_acknowledgement_for_unknown message
-      warning "Received #{message.type} for unknown message #{message.attribute("oMId")[0..3]}", message
+      log "Received #{message.type} for unknown message #{message.attribute("oMId")[0..3]}", message: message, level: :warning
     end
 
     def process_watchdog message
-      log "Received #{message.type}", message
+      log "Received #{message.type}", message: message, level: :log
       @latest_watchdog_received = RSMP.now_object
       acknowledge message
     end

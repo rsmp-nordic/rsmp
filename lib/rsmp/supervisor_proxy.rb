@@ -16,16 +16,16 @@ module RSMP
     end
 
     def start
-      info "Connecting to superviser at #{@ip}:#{@port}"
+      log "Connecting to superviser at #{@ip}:#{@port}", level: :info
       super
       connect
       @logger.unmute @ip, @port
       start_reader
       send_version @site_settings["rsmp_versions"]
     rescue Errno::ECONNREFUSED
-      error "No connection to supervisor at #{@ip}:#{@port}"
+      log "No connection to supervisor at #{@ip}:#{@port}", level: :error
       unless @site.site_settings["reconnect_interval"] == :no
-        info "Will try to reconnect again every #{@site.site_settings["reconnect_interval"]} seconds.."
+        log "Will try to reconnect again every #{@site.site_settings["reconnect_interval"]} seconds..", level: :info
         @logger.mute @ip, @port
       end
     end
@@ -40,7 +40,7 @@ module RSMP
 
     def connection_complete
       super
-      info "Connection to supervisor established"
+      log "Connection to supervisor established", level: :info
       start_watchdog
     end
 
@@ -88,12 +88,12 @@ module RSMP
 
     def reconnect_delay
       interval = @site_settings["reconnect_interval"]
-      info "Waiting #{interval} seconds before trying to reconnect"
+      log "Waiting #{interval} seconds before trying to reconnect", level: :info
       @task.sleep interval
     end
 
     def version_accepted message, rsmp_version
-      log "Received Version message, using RSMP #{rsmp_version}", message
+      log "Received Version message, using RSMP #{rsmp_version}", message: message, level: :log
       start_timer
       acknowledge message
       connection_complete
@@ -111,8 +111,24 @@ module RSMP
       send_message message
     end
 
+    def process_aggregated_status message
+      se = message.attribute("se")
+      validate_aggregated_status(message,se) == false
+      on = set_aggregated_status se
+      log "Received #{message.type} status [#{on.join(', ')}]", message: message, level: :log
+      acknowledge message
+    end
+
+    def process_alarm message
+      alarm_code = message.attribute("aCId")
+      asp = message.attribute("aSp")
+      status = ["ack","aS","sS"].map { |key| message.attribute(key) }.join(',')
+      log "Received #{message.type}, #{alarm_code} #{asp} [#{status}]", message: message, level: :log
+      acknowledge message
+    end
+
     def process_command_request message
-      log "Received #{message.type}", message
+      log "Received #{message.type}", message: message, level: :log
       rvs = []
       message.attributes["arg"].each do |arg|
         unless arg['cCI'] && arg['n'] && arg['v']
@@ -135,7 +151,7 @@ module RSMP
     end
 
     def process_status_request message
-      log "Received #{message.type}", message
+      log "Received #{message.type}", message: message, level: :log
       sS = message.attributes["sS"].clone.map do |request|
         request["s"] = rand(100).to_s
         request["q"] = "recent"
@@ -151,7 +167,7 @@ module RSMP
     end
 
     def process_status_subcribe message
-      log "Received #{message.type}", message
+      log "Received #{message.type}", message: message, level: :log
 
       # @status_subscriptions is organized by component/code/name, for example:
       #
@@ -180,7 +196,7 @@ module RSMP
     end
 
     def process_status_unsubcribe message
-      log "Received #{message.type}", message
+      log "Received #{message.type}", message: message, level: :log
       component = message.attributes["cId"]
 
       if @status_subscriptions[component]
@@ -234,7 +250,7 @@ module RSMP
       end
       send_status_updates update_list
     rescue StandardError => e
-      error ["Status update exception: #{e}",e.backtrace].flatten.join("\n")
+      log ["Status update exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def send_status_updates update_list

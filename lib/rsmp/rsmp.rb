@@ -1,4 +1,4 @@
-# Base RSMP module with a few time helpers
+# RSMP module
 
 module RSMP
   WRAPPING_DELIMITER = "\f"
