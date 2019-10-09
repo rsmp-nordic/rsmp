@@ -10,5 +10,6 @@ ignore
 /pkg/
 /spec/reports/
 /tmp/
+/lib/rsmp_schema/
 
 
