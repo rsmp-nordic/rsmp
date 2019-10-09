@@ -11,7 +11,7 @@ module RSMP
     attr_reader :now, :attributes, :out, :timestamp
     attr_accessor :json, :direction
 
-    @@schemer = JSONSchemer.schema( Pathname.new('../rsmp_schema/schema/tlc/sxl.json') )
+    @@schemer = JSONSchemer.schema( Pathname.new('../rsmp_schema/schema/core/rsmp.json') )
 
     def self.parse_attributes packet
       raise ArgumentError unless packet

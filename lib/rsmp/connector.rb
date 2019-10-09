@@ -306,17 +306,21 @@ module RSMP
       message
     rescue InvalidPacket => e
       warning "Received invalid package, must be valid JSON but got #{packet.size} bytes: #{e.message}"
+      nil
     rescue MalformedMessage => e
       warning "Received malformed message, #{e.message}", Malformed.new(attributes)
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
+      nil
     rescue SchemaError => e
-      error "Invalid message schema format: #{e.message}"
-      dont_acknowledge message, "Received", "invalid #{e.type}, #{e.message}"
+      dont_acknowledge message, "Received", "invalid #{message.type}, schema errors: #{e.message}"
+      message
     rescue InvalidMessage => e
       dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
+      message
     rescue FatalError => e
       dont_acknowledge message, "Rejected #{message.type},", "#{e.message}"
       stop
+      message
     end
 
     def expect_acknowledgement message
