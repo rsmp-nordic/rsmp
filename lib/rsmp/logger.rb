@@ -28,6 +28,7 @@ module RSMP
       return false if @settings["debug"] != true && item[:level] == :debug
       return false if @settings["statistics"] != true && item[:level] == :statistics
 
+
       if item[:message]
         type = item[:message].type
         ack = type == "MessageAck" || type == "MessageNotAck"

@@ -27,8 +27,8 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "async", "~> 1.20.1"
-  spec.add_dependency "async-io", "~> 1.24.0"
+  spec.add_dependency "async", "~> 1.21.0"
+  spec.add_dependency "async-io", "~> 1.25.0"
   spec.add_dependency "colorize", "~> 0.8.1"
   spec.add_dependency "thor"
 

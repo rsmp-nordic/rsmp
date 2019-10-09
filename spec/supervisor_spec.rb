@@ -71,7 +71,8 @@ RSpec.describe RSMP::Supervisor do
 				expect( supervisor_connector.wait_for_state(:ready, 0.1) ).to eq(true)
 
 				# verify log content
-				expect( supervisor.archive.strings ).to eq([
+				got = supervisor.archive.by_level([:log, :info, :debug]).map { |item| item[:str] }
+				expect( got ).to match_array([
 					"Received Version message for sites [RN+SI0001] using RSMP 3.1.4",
 					"Starting timer with interval 0.1 seconds",
 					"Sent MessageAck for Version 8db0",

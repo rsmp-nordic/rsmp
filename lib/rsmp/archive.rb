@@ -24,6 +24,10 @@ module RSMP
       cleaned
     end
 
+    def by_level levels
+      items.select { |item| levels.include? item[:level] }
+    end
+
     def strings
       items.map { |item| item[:str] }
     end
