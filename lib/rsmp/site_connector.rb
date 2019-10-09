@@ -131,10 +131,10 @@ module RSMP
           dont_acknowledge message, '', 'bad arguments'
           return
         end 
-        rvs << { "cCI": arg["cCI"],
-                 "n": arg["n"],
-                 "v": arg["v"],
-                 "age": "recent" }
+        rvs << { "cCI" => arg["cCI"],
+                 "n" => arg["n"],
+                 "v" => arg["v"],
+                 "age" => "recent" }
       end
 
       response = CommandResponse.new({

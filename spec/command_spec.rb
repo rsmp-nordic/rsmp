@@ -63,7 +63,7 @@ RSpec.describe "Sending commands" do
 			up do |task|
 				supervisor_start_index = @supervisor.archive.current_index
 				task.async do
-					@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","n":"message","cO":"","v":"Rainbows!"}]
+					@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI" => "M0001","n" => "status","cO" => "setValue","v" => "Green"}]
 				end
 
 				expect(@supervisor_connector.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_a(RSMP::CommandResponse)

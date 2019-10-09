@@ -67,7 +67,7 @@ RSpec.describe RSMP::Supervisor do
 				version = JSON.parse protocol.read_line
 				expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.4"}], "SXL"=>"1.1", "mId"=>"fd92d6f6-f0c3-4a91-a582-6fff4e5bb63b", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SU0001"}], "type"=>"Version"})
 
-				protocol.write_lines JSON.generate("mType":"rSMsg","type":"MessageAck","oMId":version["mId"],"mId":SecureRandom.uuid())
+				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
 				expect( supervisor_connector.wait_for_state(:ready, 0.1) ).to eq(true)
 
 				# verify log content

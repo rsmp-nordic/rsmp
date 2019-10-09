@@ -2,14 +2,16 @@
 
 require 'json'
 require'securerandom'
+require 'json_schemer'
 require_relative 'error'
 require_relative 'rsmp'
 
 module RSMP  
   class Message
-
     attr_reader :now, :attributes, :out, :timestamp
-    attr_accessor :json, :direction,
+    attr_accessor :json, :direction
+
+    @@schemer = JSONSchemer.schema( Pathname.new('../rsmp_schema/schema/tlc/sxl.json') )
 
     def self.parse_attributes packet
       raise ArgumentError unless packet
@@ -50,7 +52,6 @@ module RSMP
       else
         message = Unknown.new attributes
       end
-      message.validate
       message.json = packet
       message.direction = :in
       message
@@ -106,8 +107,15 @@ module RSMP
     end
 
     def validate
-      validate_type == true &&
-      validate_id == true
+      #validate_type == true &&
+      #validate_id == true
+      unless @@schemer.valid? attributes
+        errors = @@schemer.validate attributes
+        error_string = errors.map do |item|
+          [item['data_pointer'],item['type'],item['details']].compact.join(' ')
+        end.join(", ")
+        raise SchemaError.new error_string
+      end
     end
 
     def validate_type

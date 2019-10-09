@@ -2,23 +2,25 @@ Bundler.require(:default, :development)
 
 def build packet
 	attributes = RSMP::Message.parse_attributes(packet)
-	RSMP::Message.build(attributes,packet)
+	message = RSMP::Message.build(attributes,packet)
+	message.validate unless message.is_a? RSMP::Unknown
+	message
 end
 
 RSpec.describe RSMP::Message do
 	let(:version_str) { '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.1"},{"vers":"3.1.2"},{"vers":"3.1.3"},{"vers":"3.1.4"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}' }
 	let(:ack_str) { '{"mType":"rSMsg","type":"MessageAck","oMId":"a54dc38b-7ddb-42a6-b6e8-95b0d00dad19","mId":"561c15c9-e050-4ee7-9cf4-8643c6769dcb"}' }
 	let(:not_ack_str) { '{"mType":"rSMsg","type":"MessageNotAck","rea":"since we are a rsmp::siteconnector","oMId":"24b5e2d1-fd32-4f12-80cf-f32f8b2772af","mId":"808b957d-6e93-408b-b5e3-ce7f64dc3c61"}' }
-	let(:watchdog_str) { '{"mType":"rSMsg","type":"Watchdog","wTs":"2019-07-11 06:37:55 UTC","mId":"a8cafa58-31bc-40bb-b335-645b5ac985cd"}' }
-	let(:command_request_str) { '{"mType":"rSMsg","type":"CommandRequest","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","arg":[{"cCI":"MA104","n":"message","cO":"","v":"Rainbbows!"}],"mId":"1a913af3-82ba-489b-8895-54c2fb56d728"}' }
-	let(:command_response_str) { '{"mType":"rSMsg","type":"CommandResponse","cId":"AA+BBCCC=DDDEE002","cTS":"2019-07-11T06:37:55.914Z","rvs":[{"cCI":"MA104","n":"message","v":"Rainbbows!","age":"recent"}],"mId":"f0f38584-e3ff-46f8-88a1-598e7de0e671"}' }
+	let(:watchdog_str) { '{"mType":"rSMsg","type":"Watchdog","wTs":"2015-06-08T12:01:39.654Z","mId":"a8cafa58-31bc-40bb-b335-645b5ac985cd"}' }
+	let(:command_request_str) { '{"mType":"rSMsg","type":"CommandRequest","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","arg":[{"cCI":"M0001","n":"status","cO":"setValue","v":"Green"}],"mId":"1a913af3-82ba-489b-8895-54c2fb56d728"}' }
+	let(:command_response_str) { '{"mType":"rSMsg","type":"CommandResponse","cId":"AA+BBCCC=DDDEE002","cTS":"2019-07-11T06:37:55.914Z","rvs":[{"cCI":"M0001","n":"status","v":"Green","age":"recent"}],"mId":"f0f38584-e3ff-46f8-88a1-598e7de0e671"}' }
 	let(:aggregated_status_str) { ' {"mType":"rSMsg","type":"AggregatedStatus","aSTS":"2019-07-11T06:37:55.913Z","fP":null,"fS":null,"se":[false,false,false,false,false,false,false,false],"mId":"d9a904cc-b39d-4b72-ad67-f7d634552d36"}' }
-	let(:status_request_str) { '{"mType":"rSMsg","type":"StatusRequest","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","sS":[{"cCI":"S001","n":"number"}],"mId":"859e189e-c973-4b40-90c4-45a7a25f2dda"}' }
-	let(:status_response_str) { '{"mType":"rSMsg","type":"StatusResponse","cId":"AA+BBCCC=DDDEE002","sTs":"2019-07-11T06:37:56.096Z","sS":[{"cCI":"S001","n":"number","s":90,"q":"recent"}],"mId":"0872f9f4-caee-4495-96ef-68a5cf56c993"}' }
-	let(:status_subscribe_str) { '{"mType":"rSMsg","type":"StatusSubscribe","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","sS":[{"sCI":"S001","n":"number","uRt":"0.1"}],"mId":"6aee9e40-c6cb-4cd8-8b7a-3ee8906043c9"}' }
-	let(:status_unsubscribe_str) { '{"mType":"rSMsg","type":"StatusUnsubscribe","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","sS":[{"sCI":"S001","n":"number"}],"mId":"bae361e1-7b26-48f3-9776-5aac815544da"}' }
-	let(:status_update_str) { '{"mType":"rSMsg","type":"StatusUpdate","cId":"AA+BBCCC=DDDEE002","sTs":"2019-07-11T06:37:56.103Z","sS":[{"sCI":"S001","n":"number","s":98,"q":"recent"}],"mId":"e0694101-4b8c-4832-9bd4-7ed598b247bd"}' }
-	let(:unkown_str) { '{"mType":"rSMsg","type":"SomeNonExistingMessage","mId":"c014bd2d-5671-4a19-b37e-50deef301b82"}' }
+	let(:status_request_str) { '{"mType":"rSMsg","type":"StatusRequest","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","sS":[{"sCI":"S0001","n":"number"}],"mId":"859e189e-c973-4b40-90c4-45a7a25f2dda"}' }
+	let(:status_response_str) { '{"mType":"rSMsg","type":"StatusResponse","cId":"AA+BBCCC=DDDEE002","sTs":"2019-07-11T06:37:56.096Z","sS":[{"sCI":"S0001","n":"number","s":"90","q":"recent"}],"mId":"0872f9f4-caee-4495-96ef-68a5cf56c993"}' }
+	let(:status_subscribe_str) { '{"mType":"rSMsg","type":"StatusSubscribe","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","sS":[{"sCI":"S0001","n":"number","uRt":"4"}],"mId":"6aee9e40-c6cb-4cd8-8b7a-3ee8906043c9"}' }
+	let(:status_unsubscribe_str) { '{"mType":"rSMsg","type":"StatusUnsubscribe","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","sS":[{"sCI":"S0001","n":"number"}],"mId":"bae361e1-7b26-48f3-9776-5aac815544da"}' }
+	let(:status_update_str) { '{"mType":"rSMsg","type":"StatusUpdate","cId":"AA+BBCCC=DDDEE002","sTs":"2019-07-11T06:37:56.103Z","sS":[{"sCI":"S0001","n":"number","s":"98","q":"recent"}],"mId":"e0694101-4b8c-4832-9bd4-7ed598b247bd"}' }
+	let(:unknown_str) { '{"mType":"rSMsg","type":"SomeNonExistingMessage","mId":"c014bd2d-5671-4a19-b37e-50deef301b82"}' }
 	let(:malformed_str) { '{"mType":"rSMsg",mId":"c014bd2d-5671-4a19-b37e-50deef301b82"}' }
 
 	context 'when parsing json packages' do
@@ -76,7 +78,7 @@ RSpec.describe RSMP::Message do
 			expect(build(status_subscribe_str)).to be_instance_of(RSMP::StatusSubscribe)
 			expect(build(status_unsubscribe_str)).to be_instance_of(RSMP::StatusUnsubscribe)
 			expect(build(status_update_str)).to be_instance_of(RSMP::StatusUpdate)
-			expect(build(unkown_str)).to be_instance_of(RSMP::Unknown)
+			expect(build(unknown_str)).to be_instance_of(RSMP::Unknown)
 		end
 
 		it 'parses attributes values' do

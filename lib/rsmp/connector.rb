@@ -168,7 +168,7 @@ module RSMP
 
     def send_watchdog now=nil
       now = RSMP.now_object unless nil
-      message = Watchdog.new( {"wTs" => now})
+      message = Watchdog.new( {"wTs" => RSMP.now_object_to_string(now)})
       send message
       @latest_watchdog_send_at = now
     end
@@ -242,12 +242,16 @@ module RSMP
     end
 
     def send message, reason=nil
+      message.validate
       message.generate_json
       message.direction = :out
       expect_acknowledgement message
       @protocol.write_lines message.out
       log_send message, reason
       #message.m_id
+    rescue SchemaError => e
+      puts "Error sending #{message.type}, schema validation failed: #{e.message}"
+      p message
     end
 
     def log_send message, reason=nil
@@ -267,6 +271,7 @@ module RSMP
     def process packet
       attributes = Message.parse_attributes packet
       message = Message.build attributes, packet
+      message.validate
       expect_version_message(message) unless @version_determined
       case message
         when MessageAck
@@ -304,11 +309,14 @@ module RSMP
     rescue MalformedMessage => e
       warning "Received malformed message, #{e.message}", Malformed.new(attributes)
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
+    rescue SchemaError => e
+      error "Invalid message schema format: #{e.message}"
+      dont_acknowledge message, "Received", "invalid #{e.type}, #{e.message}"
     rescue InvalidMessage => e
       dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
     rescue FatalError => e
       dont_acknowledge message, "Rejected #{message.type},", "#{e.message}"
-      stop 
+      stop
     end
 
     def expect_acknowledgement message
@@ -393,7 +401,7 @@ module RSMP
     end   
 
     def send_version rsmp_versions
-      versions_hash = [rsmp_versions].flatten.map {|v| {"vers":v} }
+      versions_hash = [rsmp_versions].flatten.map {|v| {"vers" => v} }
       version_response = Version.new({
         "RSMP"=>versions_hash,
         "siteId"=>[{"sId"=>@settings["site_id"]}],

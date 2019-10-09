@@ -9,6 +9,9 @@ module RSMP
 	class MalformedMessage < Error
 	end
 
+	class SchemaError < Error
+	end
+
 	class InvalidMessage < Error
 	end
 
