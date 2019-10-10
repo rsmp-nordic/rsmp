@@ -102,7 +102,11 @@ module RSMP
       @timestamp = RSMP.now_object
       @attributes = { "mType"=> "rSMsg" }.merge attributes
 
-      # if message is empty, generate a new one
+      ensure_message_id
+    end
+
+    def ensure_message_id
+      # if message id is empty, generate a new one
       @attributes["mId"] ||= SecureRandom.uuid()
     end
 
@@ -192,7 +196,7 @@ module RSMP
     end
   end
 
-  class MessageAck < Message
+  class MessageAcking < Message
     attr_reader :original
 
     def self.build_from message
@@ -201,32 +205,36 @@ module RSMP
       })
     end
 
+    def original= message
+      raise InvalidArgument unless message
+      @original = message
+    end
+
+    def validate_id
+      true
+    end
+  end
+
+  class MessageAck < MessageAcking
     def initialize attributes = {}
       super({
         "type" => "MessageAck",
       }.merge attributes)
     end
 
-    def original= message
-      raise InvalidArgument unless message
-      @original = message
+    def ensure_message_id
+      # Ack and NotAck does not have a mId
     end
   end
 
-  class MessageNotAck < Message
-    attr_reader :original
-
+  class MessageNotAck < MessageAcking
     def initialize attributes = {}
       super({
         "type" => "MessageNotAck",
         "rea" => "Unknown reason"
       }.merge attributes)
-    end
-
-    def original= message
-      raise InvalidArgument unless message
-      @original = message
-    end
+      @attributes.delete "mId"
+   end
   end
 
   class CommandRequest < Message

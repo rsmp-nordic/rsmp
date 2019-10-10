@@ -9,8 +9,8 @@ end
 
 RSpec.describe RSMP::Message do
 	let(:version_str) { '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.1"},{"vers":"3.1.2"},{"vers":"3.1.3"},{"vers":"3.1.4"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}' }
-	let(:ack_str) { '{"mType":"rSMsg","type":"MessageAck","oMId":"a54dc38b-7ddb-42a6-b6e8-95b0d00dad19","mId":"561c15c9-e050-4ee7-9cf4-8643c6769dcb"}' }
-	let(:not_ack_str) { '{"mType":"rSMsg","type":"MessageNotAck","rea":"since we are a rsmp::siteconnector","oMId":"24b5e2d1-fd32-4f12-80cf-f32f8b2772af","mId":"808b957d-6e93-408b-b5e3-ce7f64dc3c61"}' }
+	let(:ack_str) { '{"mType":"rSMsg","type":"MessageAck","oMId":"a54dc38b-7ddb-42a6-b6e8-95b0d00dad19"}' }
+	let(:not_ack_str) { '{"mType":"rSMsg","type":"MessageNotAck","rea":"since we are a rsmp::siteconnector","oMId":"24b5e2d1-fd32-4f12-80cf-f32f8b2772af"}' }
 	let(:watchdog_str) { '{"mType":"rSMsg","type":"Watchdog","wTs":"2015-06-08T12:01:39.654Z","mId":"a8cafa58-31bc-40bb-b335-645b5ac985cd"}' }
 	let(:command_request_str) { '{"mType":"rSMsg","type":"CommandRequest","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","arg":[{"cCI":"M0001","n":"status","cO":"setValue","v":"Green"}],"mId":"1a913af3-82ba-489b-8895-54c2fb56d728"}' }
 	let(:command_response_str) { '{"mType":"rSMsg","type":"CommandResponse","cId":"AA+BBCCC=DDDEE002","cTS":"2019-07-11T06:37:55.914Z","rvs":[{"cCI":"M0001","n":"status","v":"Green","age":"recent"}],"mId":"f0f38584-e3ff-46f8-88a1-598e7de0e671"}' }
@@ -79,6 +79,11 @@ RSpec.describe RSMP::Message do
 			expect(build(status_unsubscribe_str)).to be_instance_of(RSMP::StatusUnsubscribe)
 			expect(build(status_update_str)).to be_instance_of(RSMP::StatusUpdate)
 			expect(build(unknown_str)).to be_instance_of(RSMP::Unknown)
+		end
+
+		it 'should not creat mId for MessageAck and MessageNotAck' do
+			expect(build(ack_str).m_id).to be_nil
+			expect(build(not_ack_str).m_id).to be_nil
 		end
 
 		it 'parses attributes values' do

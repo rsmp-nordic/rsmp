@@ -528,7 +528,7 @@ module RSMP
       raise ArgumentError unless original
       wait_for(@acknowledgement_condition,timeout) do |message|
         message.is_a?(MessageAck) &&
-        message.attributes["mId"] == original.m_id
+        message.attributes["oMId"] == original.m_id
       end
     end
 
@@ -536,7 +536,7 @@ module RSMP
       raise ArgumentError unless original
       wait_for(@acknowledgement_condition,timeout) do |message|
         message.is_a?(MessageNotAck) &&
-        message.attributes["mId"] == original.m_id
+        message.attributes["oMId"] == original.m_id
       end
     end
 
