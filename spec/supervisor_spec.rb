@@ -61,11 +61,11 @@ RSpec.describe RSMP::Supervisor do
 				expect(version_ack['mType']).to eq('rSMsg')
 				expect(version_ack['type']).to eq('MessageAck')
 				expect(version_ack['oMId']).to eq('8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6')
-				expect(version_ack['mId']).to match(/[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}/i)
+				expect(version_ack['mId']).to be_nil
 
 
 				version = JSON.parse protocol.read_line
-				expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.4"}], "SXL"=>"1.1", "mId"=>"fd92d6f6-f0c3-4a91-a582-6fff4e5bb63b", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SU0001"}], "type"=>"Version"})
+				expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.4"}], "SXL"=>"1.1", "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SU0001"}], "type"=>"Version"})
 
 				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
 				expect( supervisor_connector.wait_for_state(:ready, 0.1) ).to eq(true)
@@ -77,7 +77,7 @@ RSpec.describe RSMP::Supervisor do
 					"Starting timer with interval 0.1 seconds",
 					"Sent MessageAck for Version 8db0",
 					"Sent Version",
-					"Received MessageAck for Version fd92",
+					"Received MessageAck for Version 1b20",
 					"Connection to site RN+SI0001 established"
 				])
 
