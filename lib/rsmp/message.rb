@@ -6,12 +6,26 @@ require 'json_schemer'
 require_relative 'error'
 require_relative 'rsmp'
 
-module RSMP  
+module RSMP
   class Message
+
     attr_reader :now, :attributes, :out, :timestamp
     attr_accessor :json, :direction
 
-    @@schemer = JSONSchemer.schema( Pathname.new('../rsmp_schema/schema/core/rsmp.json') )
+    def self.load_schemas
+      @@schemas = {}
+      @@schemas[:traffic_light_controller] = JSONSchemer.schema( Pathname.new('../rsmp_schema/schema/core/rsmp.json') )
+      @@schemas
+    end
+
+    def self.get_schema sxl = :traffic_light_controller
+      schema = @@schemas[sxl]
+      raise SchemaError.new("Unknown schema #{sxl}") unless schema
+      schema
+    end
+
+    @@schemas = load_schemas
+
 
     def self.parse_attributes packet
       raise ArgumentError unless packet
@@ -111,10 +125,8 @@ module RSMP
     end
 
     def validate
-      #validate_type == true &&
-      #validate_id == true
-      unless @@schemer.valid? attributes
-        errors = @@schemer.validate attributes
+      unless Message.get_schema.valid? attributes
+        errors = Message.get_schema.validate attributes
         error_string = errors.map do |item|
           [item['data_pointer'],item['type'],item['details']].compact.join(' ')
         end.join(", ")
