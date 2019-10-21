@@ -2,14 +2,16 @@
 
 require 'json'
 require'securerandom'
+require 'json_schemer'
 require_relative 'error'
 require_relative 'rsmp'
 
 module RSMP  
   class Message
-
     attr_reader :now, :attributes, :out, :timestamp
-    attr_accessor :json, :direction,
+    attr_accessor :json, :direction
+
+    @@schemer = JSONSchemer.schema( Pathname.new('../rsmp_schema/schema/core/rsmp.json') )
 
     def self.parse_attributes packet
       raise ArgumentError unless packet
@@ -50,7 +52,6 @@ module RSMP
       else
         message = Unknown.new attributes
       end
-      message.validate
       message.json = packet
       message.direction = :in
       message
@@ -101,13 +102,24 @@ module RSMP
       @timestamp = RSMP.now_object
       @attributes = { "mType"=> "rSMsg" }.merge attributes
 
-      # if message is empty, generate a new one
+      ensure_message_id
+    end
+
+    def ensure_message_id
+      # if message id is empty, generate a new one
       @attributes["mId"] ||= SecureRandom.uuid()
     end
 
     def validate
-      validate_type == true &&
-      validate_id == true
+      #validate_type == true &&
+      #validate_id == true
+      unless @@schemer.valid? attributes
+        errors = @@schemer.validate attributes
+        error_string = errors.map do |item|
+          [item['data_pointer'],item['type'],item['details']].compact.join(' ')
+        end.join(", ")
+        raise SchemaError.new error_string
+      end
     end
 
     def validate_type
@@ -184,7 +196,7 @@ module RSMP
     end
   end
 
-  class MessageAck < Message
+  class MessageAcking < Message
     attr_reader :original
 
     def self.build_from message
@@ -193,32 +205,36 @@ module RSMP
       })
     end
 
+    def original= message
+      raise InvalidArgument unless message
+      @original = message
+    end
+
+    def validate_id
+      true
+    end
+  end
+
+  class MessageAck < MessageAcking
     def initialize attributes = {}
       super({
         "type" => "MessageAck",
       }.merge attributes)
     end
 
-    def original= message
-      raise InvalidArgument unless message
-      @original = message
+    def ensure_message_id
+      # Ack and NotAck does not have a mId
     end
   end
 
-  class MessageNotAck < Message
-    attr_reader :original
-
+  class MessageNotAck < MessageAcking
     def initialize attributes = {}
       super({
         "type" => "MessageNotAck",
         "rea" => "Unknown reason"
       }.merge attributes)
-    end
-
-    def original= message
-      raise InvalidArgument unless message
-      @original = message
-    end
+      @attributes.delete "mId"
+   end
   end
 
   class CommandRequest < Message

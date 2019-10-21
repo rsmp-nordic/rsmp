@@ -1,0 +1,3 @@
+[submodule "rsmp_schema"]
+	path = lib/rsmp_schema
+	url = git@github.com:rsmp-nordic/rsmp_schema.git

@@ -15,13 +15,13 @@ log:
   active: true
   color: true
   timestamp: true
-  id: false
+  id: true
   ip: false
   site_id: true
   text: true
   direction: true
   level: false
-  json: false
-  acknowledgements: false
+  json: true
+  acknowledgements: true
   watchdogs: false
 

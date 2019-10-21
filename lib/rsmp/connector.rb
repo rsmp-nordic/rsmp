@@ -168,7 +168,7 @@ module RSMP
 
     def send_watchdog now=nil
       now = RSMP.now_object unless nil
-      message = Watchdog.new( {"wTs" => now})
+      message = Watchdog.new( {"wTs" => RSMP.now_object_to_string(now)})
       send message
       @latest_watchdog_send_at = now
     end
@@ -242,12 +242,16 @@ module RSMP
     end
 
     def send message, reason=nil
+      message.validate
       message.generate_json
       message.direction = :out
       expect_acknowledgement message
       @protocol.write_lines message.out
       log_send message, reason
       #message.m_id
+    rescue SchemaError => e
+      puts "Error sending #{message.type}, schema validation failed: #{e.message}"
+      p message
     end
 
     def log_send message, reason=nil
@@ -267,6 +271,7 @@ module RSMP
     def process packet
       attributes = Message.parse_attributes packet
       message = Message.build attributes, packet
+      message.validate
       expect_version_message(message) unless @version_determined
       case message
         when MessageAck
@@ -301,14 +306,21 @@ module RSMP
       message
     rescue InvalidPacket => e
       warning "Received invalid package, must be valid JSON but got #{packet.size} bytes: #{e.message}"
+      nil
     rescue MalformedMessage => e
       warning "Received malformed message, #{e.message}", Malformed.new(attributes)
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
+      nil
+    rescue SchemaError => e
+      dont_acknowledge message, "Received", "invalid #{message.type}, schema errors: #{e.message}"
+      message
     rescue InvalidMessage => e
       dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
+      message
     rescue FatalError => e
       dont_acknowledge message, "Rejected #{message.type},", "#{e.message}"
-      stop 
+      stop
+      message
     end
 
     def expect_acknowledgement message
@@ -393,7 +405,7 @@ module RSMP
     end   
 
     def send_version rsmp_versions
-      versions_hash = [rsmp_versions].flatten.map {|v| {"vers":v} }
+      versions_hash = [rsmp_versions].flatten.map {|v| {"vers" => v} }
       version_response = Version.new({
         "RSMP"=>versions_hash,
         "siteId"=>[{"sId"=>@settings["site_id"]}],
@@ -516,7 +528,7 @@ module RSMP
       raise ArgumentError unless original
       wait_for(@acknowledgement_condition,timeout) do |message|
         message.is_a?(MessageAck) &&
-        message.attributes["mId"] == original.m_id
+        message.attributes["oMId"] == original.m_id
       end
     end
 
@@ -524,7 +536,7 @@ module RSMP
       raise ArgumentError unless original
       wait_for(@acknowledgement_condition,timeout) do |message|
         message.is_a?(MessageNotAck) &&
-        message.attributes["mId"] == original.m_id
+        message.attributes["oMId"] == original.m_id
       end
     end
 

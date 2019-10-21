@@ -12,6 +12,13 @@ Install required gems:
 $ gem intall bundler
 $ bundle
 
+Install git submodules:
+The JSON Schema is is included as a git submodule. To install it run:
+$ git submodule init     # initialize local submodule config
+$ git submodule update   # fetch submodules
+
+Alternatively, you can pass --recurse-submodules to the git clone command, and it will automatically initialize and update each submodule in the repository.
+
 ## Ruby classes 
 A set of classes that represents RSMP messages, supervisors and sites and handles connecting, exchanging version information, acknowledging messages and other RSMP protocol specifics.
 

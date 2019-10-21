@@ -89,7 +89,11 @@ module RSMP
     end
 
     def self.shorten_message_id m_id, length=4
-      m_id[0..length-1].ljust(length)
+      if m_id
+        m_id[0..length-1].ljust(length)
+      else
+        ' '*length
+      end
     end 
 
     private
