@@ -3,9 +3,6 @@
 # Handles connections to multiple sites (sites).
 # The supervisor waits for sites to connect.
 
-require_relative 'node'
-require_relative 'supervisor_connector'
-require 'async/queue'
 
 module RSMP
   class Supervisor < Node

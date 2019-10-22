@@ -3,10 +3,6 @@
 # Handles connector to a supervisor.
 # We connect to the supervisor.
 
-require_relative 'node'
-require_relative 'site_connector'
-require 'async/queue'
-
 module RSMP
   class Site < Node
     attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :remote_supervisors
@@ -119,7 +115,6 @@ module RSMP
         end
       end
     end
-
 
     def stop
       log str: "Stopping site #{@site_settings["site_id"]}", level: :info

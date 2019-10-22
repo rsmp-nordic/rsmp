@@ -1,6 +1,3 @@
-require 'colorize'
-require_relative 'archive'
-
 module RSMP
   class Logger
 

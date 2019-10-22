@@ -1,13 +1,5 @@
 # Base class for conenction to a single site or supervisor
 
-require_relative 'message'
-require_relative 'error'
-require_relative 'archive'
-require_relative 'probe'
-require 'timeout'
-require 'async/io/protocol/line'
-require 'benchmark'
-
 module RSMP  
   class Connector
     attr_reader :site_ids, :state, :archive, :connection_info

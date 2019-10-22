@@ -1,20 +1,7 @@
-#
 # RSMP site
 #
 # Handles a single connection to a supervisor.
 # We connect to the supervisor.
-#
-
-require 'rubygems'
-require 'yaml'
-require 'socket'
-require 'time'
-require_relative 'rsmp'
-require_relative 'archive'
-require_relative 'probe'
-require_relative 'probe_collection'
-require_relative 'logger'
-require 'async/io'
 
 module RSMP
   class Node

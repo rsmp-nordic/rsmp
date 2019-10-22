@@ -1,7 +1,5 @@
 # Handles a site connection to a remote supervisor
 
-require_relative 'connector'
-
 module RSMP  
   class SiteConnector < Connector
 

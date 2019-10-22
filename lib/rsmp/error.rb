@@ -1,4 +1,3 @@
-
 module RSMP
 	class Error < StandardError
 	end

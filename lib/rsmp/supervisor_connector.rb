@@ -1,7 +1,5 @@
 # Handles a supervisor connection to a remote client
 
-require_relative 'connector'
-
 module RSMP  
   class SupervisorConnector < Connector
     attr_reader :supervisor

@@ -1,6 +1,4 @@
-# rsmp module
-
-require_relative 'logger'
+# Base RSMP module with a few time helpers
 
 module RSMP
   WRAPPING_DELIMITER = "\f"

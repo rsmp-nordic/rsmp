@@ -1,11 +1,4 @@
 # rsmp messages
-
-require 'json'
-require'securerandom'
-require 'json_schemer'
-require_relative 'error'
-require_relative 'rsmp'
-
 module RSMP
   class Message
 
