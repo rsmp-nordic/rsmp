@@ -23,6 +23,26 @@ module RSMP
       info "Connection to site #{@site_ids.first} established"
     end
 
+    def process_message message
+      case message
+        when CommandRequest
+        when StatusRequest
+        when StatusSubscribe
+        when StatusUnsubscribe
+          will_not_handle message
+        when Alarm
+          process_alarm message
+        when CommandResponse
+          process_command_response message
+        when StatusResponse
+          process_status_response message
+        when StatusUpdate
+          process_status_update message
+        else
+          super message
+      end
+    end
+
     def version_accepted message, rsmp_version
       log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message
       start_timer
@@ -102,10 +122,6 @@ module RSMP
       })
       send message
       return message, wait_for_status_response(component: component, timeout: timeout)
-    end
-
-    def process_status_request message
-      dont_acknowledge message, "Ignoring #{message.type},", "not implemented"
     end
 
     def process_status_response message

@@ -133,5 +133,6 @@ module RSMP
           level: :info,
           timestamp: RSMP.now_object
     end
+
   end
 end

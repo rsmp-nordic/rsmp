@@ -42,6 +42,27 @@ module RSMP
       start_watchdog
     end
 
+    def process_message message
+      case message
+        when Alarm
+        when StatusResponse
+        when StatusUpdate
+          will_not_handle message
+        when CommandRequest
+          process_command_request message
+        when CommandResponse
+          process_command_response message
+        when StatusRequest
+          process_status_request message
+        when StatusSubscribe
+          process_status_subcribe message
+        when StatusUnsubscribe
+          process_status_unsubcribe message
+        else
+          super message
+      end
+    end
+
     def acknowledged_first_ingoing message
       # TODO
       # aggregateds status should only be send for later version of rsmp

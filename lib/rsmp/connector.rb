@@ -79,7 +79,7 @@ module RSMP
 
         while packet = @protocol.read_line
           beginning = Time.now
-          message = process packet
+          message = process_packet packet
           duration = Time.now - beginning
           ms = (duration*1000).round(4)
           per_second = (1.0 / duration).round
@@ -260,41 +260,12 @@ module RSMP
       end
     end
 
-    def process packet
+    def process_packet packet
       attributes = Message.parse_attributes packet
       message = Message.build attributes, packet
       message.validate
       expect_version_message(message) unless @version_determined
-      case message
-        when MessageAck
-          process_ack message
-        when MessageNotAck
-          process_not_ack message
-        when Version
-          process_version message
-        when Watchdog
-          process_watchdog message
-        when AggregatedStatus
-          process_aggregated_status message
-        when Alarm
-          process_alarm message
-        when CommandRequest
-          process_command_request message
-        when CommandResponse
-          process_command_response message
-        when StatusRequest
-          process_status_request message
-        when StatusResponse
-          process_status_response message
-        when StatusSubscribe
-          process_status_subcribe message
-        when StatusUnsubscribe
-          process_status_unsubcribe message
-        when StatusUpdate
-          process_status_update message
-        else
-          dont_acknowledge message, "Received", "unknown message (#{message.type})"
-      end
+      process_message message
       message
     rescue InvalidPacket => e
       warning "Received invalid package, must be valid JSON but got #{packet.size} bytes: #{e.message}"
@@ -313,6 +284,29 @@ module RSMP
       dont_acknowledge message, "Rejected #{message.type},", "#{e.message}"
       stop
       message
+    end
+
+    def process_message message
+      case message
+        when MessageAck
+          process_ack message
+        when MessageNotAck
+          process_not_ack message
+        when Version
+          process_version message
+        when Watchdog
+          process_watchdog message
+        when AggregatedStatus
+          process_aggregated_status message
+        else
+          dont_acknowledge message, "Received", "unknown message (#{message.type})"
+      end
+    end
+
+    def will_not_handle message
+      reason = "since we're a #{self.class.name.downcase}" unless reason
+      warning "Ignoring #{message.type}, #{reason}", message
+      dont_acknowledge message, nil, reason
     end
 
     def expect_acknowledgement message
@@ -530,40 +524,6 @@ module RSMP
         message.is_a?(MessageNotAck) &&
         message.attributes["oMId"] == original.m_id
       end
-    end
-
-    def ignore message, reason=nil
-      reason = "since we're a #{self.class.name.downcase}" unless reason
-      warning "Ignoring #{message.type}, #{reason}", message
-      dont_acknowledge message, nil, reason
-    end
-
-    def process_command_request message
-      ignore message
-    end
-
-    def process_command_response message
-      ignore message
-    end
-
-    def process_status_request message
-      ignore message
-    end
-
-    def process_status_response message
-      ignore message
-    end
-
-    def process_status_subcribe message
-      ignore message
-    end
-
-    def process_status_unsubcribe message
-      ignore message
-    end
-
-    def process_status_update message
-      ignore message
     end
 
   end
