@@ -3,7 +3,7 @@
 module RSMP  
   class SiteConnector < Connector
 
-    attr_reader :supervisor_id, :site, :aggregated_status_bools
+    attr_reader :supervisor_id, :site
 
     def initialize options
       super options
@@ -11,8 +11,6 @@ module RSMP
       @site_settings = @site.site_settings.clone
       @ip = options[:ip]
       @port = options[:port]
-      @aggregated_status_bools = Array.new(8,false)
-
       @status_subscriptions = {}
       @status_subscriptions_mutex = Mutex.new
     end
@@ -68,31 +66,12 @@ module RSMP
       @version_determined = true
     end
 
-    def set_aggregated_status se
-      keys = [ :local_control,
-               :communication_distruption,
-               :high_priority_alarm,
-               :medium_priority_alarm,
-               :low_priority_alarm,
-               :normal,
-               :rest,
-               :not_connected ]
-
-      @aggregated_status_bools = se
-      on = []
-      keys.each_with_index do |key,index|
-        @aggregated_status[key] = se[index]
-        on << key if se[index] == true
-      end
-      on
-    end
-
     def send_aggregated_status
       message = AggregatedStatus.new({
         "aSTS"=>RSMP.now_string,
         "fP"=>nil,
         "fS"=>nil,
-        "se"=>@aggregated_status_bools
+        "se"=>@site.aggregated_status_bools
       })
       send message
     end

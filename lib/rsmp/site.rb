@@ -5,13 +5,16 @@
 
 module RSMP
   class Site < Node
-    attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :remote_supervisors
+    attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :remote_supervisors,
+                :aggregated_status_bools
 
     def initialize options={}
       handle_site_settings options
       super options.merge log_settings: @site_settings["log"]
       @remote_supervisors = []
       @sleep_condition = Async::Notification.new
+      @aggregated_status = {}
+      @aggregated_status_bools = Array.new(8,false)
     end
 
     def handle_site_settings options
