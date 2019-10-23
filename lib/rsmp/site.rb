@@ -6,8 +6,7 @@ module RSMP
   class Site < Node
     include SiteBase
 
-    attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :proxies,
-                :aggregated_status_bools
+    attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :proxies
 
     def initialize options={}
       handle_site_settings options
@@ -81,6 +80,12 @@ module RSMP
           task.annotate "site_proxy"
           connect_to_supervisor task, supervisor_settings
         end
+      end
+    end
+
+    def aggrated_status_changed
+      @proxies.each do |proxy|
+        proxy.send_aggregated_status
       end
     end
 

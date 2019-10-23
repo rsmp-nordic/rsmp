@@ -234,16 +234,22 @@ module RSMP
     end
 
     def send message, reason=nil
+      raise IOError unless @protocol
       message.validate
       message.generate_json
       message.direction = :out
       expect_acknowledgement message
       @protocol.write_lines message.out
       log_send message, reason
-      #message.m_id
+    rescue EOFError, IOError
+      buffer_message message
     rescue SchemaError => e
-      puts "Error sending #{message.type}, schema validation failed: #{e.message}"
-      p message
+      error "Error sending #{message.type}, schema validation failed: #{e.message}", message
+    end
+
+    def buffer_message message
+      # TODO
+      error "Cannot send #{message.type} because the connection is closed.", message
     end
 
     def log_send message, reason=nil
@@ -296,8 +302,6 @@ module RSMP
           process_version message
         when Watchdog
           process_watchdog message
-        when AggregatedStatus
-          process_aggregated_status message
         else
           dont_acknowledge message, "Received", "unknown message (#{message.type})"
       end

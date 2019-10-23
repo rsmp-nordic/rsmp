@@ -47,6 +47,7 @@ module RSMP
         when Alarm
         when StatusResponse
         when StatusUpdate
+        when AggregatedStatus
           will_not_handle message
         when CommandRequest
           process_command_request message

@@ -30,7 +30,7 @@ log:
   level: false
   text: true
   direction: true
-  json: true
-  acknowledgements: true
-  watchdogs: true
+  json: false
+  acknowledgements: false
+  watchdogs: false
 

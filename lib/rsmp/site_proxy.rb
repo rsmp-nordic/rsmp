@@ -31,6 +31,8 @@ module RSMP
         when StatusSubscribe
         when StatusUnsubscribe
           will_not_handle message
+        when AggregatedStatus
+          process_aggregated_status message
         when Alarm
           process_alarm message
         when CommandResponse
@@ -60,30 +62,16 @@ module RSMP
       end
     end
 
-    def set_aggregated_status se
-      keys = [ :local_control,
-               :communication_distruption,
-               :high_priority_alarm,
-               :medium_priority_alarm,
-               :low_priority_alarm,
-               :normal,
-               :rest,
-               :not_connected ]
-
-      on = []
-      keys.each_with_index do |key,index|
-        @aggregated_status[key] = se[index]
-        on << key if se[index] == true
-      end
-      on
-    end
-
     def process_aggregated_status message
       se = message.attribute("se")
       validate_aggregated_status(message,se) == false
-      on = set_aggregated_status se
-      log "Received #{message.type} status [#{on.join(', ')}]", message
+      set_aggregated_status_bools se
+      log "Received #{message.type} status [#{@aggregated_status.join(', ')}]", message
       acknowledge message
+    end
+
+    def aggrated_status_changed
+      @supervisor.aggregated_status_changed self
     end
 
     def process_alarm message
