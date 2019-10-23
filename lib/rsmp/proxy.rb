@@ -1,7 +1,7 @@
-# Base class for conenction to a single site or supervisor
+# Base class for a connection to a remote site or supervisor.
 
 module RSMP  
-  class Connector
+  class Proxy
     attr_reader :site_ids, :state, :archive, :connection_info
 
     def initialize options
@@ -104,9 +104,9 @@ module RSMP
       rescue Errno::EPIPE
         warning "Broken pipe"
       rescue SystemCallError => e # all ERRNO errors
-        error "Connector exception: #{e.to_s}"
+        error "Proxy exception: #{e.to_s}"
       rescue StandardError => e
-        error ["Connector exception: #{e.inspect}",e.backtrace].flatten.join("\n")
+        error ["Proxy exception: #{e.inspect}",e.backtrace].flatten.join("\n")
       end
     end
 

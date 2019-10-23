@@ -50,10 +50,10 @@ RSpec.describe RSMP::Supervisor do
 
 	      # write version message
 				protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.4"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'
-				# supervisor should see our tcp socket and create a connector
-				supervisor_connector = supervisor.wait_for_site "RN+SI0001", 0.1
-				expect(supervisor_connector).to be_an(RSMP::SupervisorConnector)
-				expect(supervisor_connector.site_id).to eq("RN+SI0001")
+				# supervisor should see our tcp socket and create a proxy
+				proxy = supervisor.wait_for_site "RN+SI0001", 0.1
+				expect(proxy).to be_an(RSMP::SiteProxy)
+				expect(proxy.site_id).to eq("RN+SI0001")
 
 
 				# read expected ack and version messages from the socket
@@ -68,7 +68,7 @@ RSpec.describe RSMP::Supervisor do
 				expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.4"}], "SXL"=>"1.1", "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SU0001"}], "type"=>"Version"})
 
 				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
-				expect( supervisor_connector.wait_for_state(:ready, 0.1) ).to eq(true)
+				expect( proxy.wait_for_state(:ready, 0.1) ).to eq(true)
 
 				# verify log content
 				got = supervisor.archive.by_level([:log, :info, :debug]).map { |item| item[:str] }

@@ -1,7 +1,7 @@
 # Handles a site connection to a remote supervisor
 
 module RSMP  
-  class SiteConnector < Connector
+  class SupervisorProxy < Proxy
 
     attr_reader :supervisor_id, :site
 
@@ -242,6 +242,16 @@ module RSMP
         })
         send update
       end
+    end
+
+    def send_alarm
+      message = Alarm.new({
+        "aSTS"=>RSMP.now_string,
+        "fP"=>nil,
+        "fS"=>nil,
+        "se"=>@site.aggregated_status_bools
+      })
+      send message
     end
 
   end

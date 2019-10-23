@@ -1,18 +1,16 @@
 # RSMP supervisor (server)
-#
-# Handles connections to multiple sites (sites).
 # The supervisor waits for sites to connect.
-
+# Connections to sites are handles via site proxies.
 
 module RSMP
   class Supervisor < Node
-    attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :remote_sites, :logger
+    attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :proxies, :logger
 
     def initialize options={}
       handle_supervisor_settings options
       handle_sites_sittings options
       super options.merge log_settings: @supervisor_settings["log"]
-      @remote_sites = []
+      @proxies = []
       @site_id_condition = Async::Notification.new
     end
 
@@ -103,8 +101,8 @@ module RSMP
 
     def stop
       log str: "Stopping supervisor #{@supervisor_settings["site_id"]}", level: :info
-      @remote_sites.each { |remote_site| remote_site.stop }
-      @remote_sites.clear
+      @proxies.each { |proxy| proxy.stop }
+      @proxies.clear
       super
       @tcp_server.close if @tcp_server
       @tcp_server = nil
@@ -144,7 +142,7 @@ module RSMP
           level: :info,
           timestamp: RSMP.now_object
 
-      remote_site = SupervisorConnector.new({
+      proxy = SiteProxy.new({
         supervisor: self,
         task: @task,
         settings: @sites_settings,
@@ -153,10 +151,10 @@ module RSMP
         logger: @logger,
         archive: @archive
       })
-      @remote_sites.push remote_site
+      @proxies.push proxy
       
-      remote_site.run # will run until the site disconnects
-      @remote_sites.delete remote_site
+      proxy.run # will run until the site disconnects
+      @proxies.delete proxy
       site_ids_changed
     end
 
@@ -183,7 +181,7 @@ module RSMP
     end
 
     def find_site site_id
-      @remote_sites.each do |site|
+      @proxies.each do |site|
         return site if site_id == :any || site.site_ids.include?(site_id)
       end
       nil

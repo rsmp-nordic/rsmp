@@ -1,20 +1,20 @@
 # RSMP site
-#
-# Handles connector to a supervisor.
-# We connect to the supervisor.
+# The site initializes the connection to the supervisor.
+# Connections to supervisors are handles via supervisor proxies.
 
 module RSMP
   class Site < Node
-    attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :remote_supervisors,
+    include SiteBase
+
+    attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :proxies,
                 :aggregated_status_bools
 
     def initialize options={}
       handle_site_settings options
       super options.merge log_settings: @site_settings["log"]
-      @remote_supervisors = []
+      @proxies = []
       @sleep_condition = Async::Notification.new
-      @aggregated_status = {}
-      @aggregated_status_bools = Array.new(8,false)
+      initialize_site
     end
 
     def handle_site_settings options
@@ -78,14 +78,14 @@ module RSMP
     def start_action
       @site_settings["supervisors"].each do |supervisor_settings|
         @task.async do |task|
-          task.annotate "site_connector"
+          task.annotate "site_proxy"
           connect_to_supervisor task, supervisor_settings
         end
       end
     end
 
     def connect_to_supervisor task, supervisor_settings
-      remote_supervisor = SiteConnector.new({
+      proxy = SupervisorProxy.new({
         site: self,
         task: @task,
         settings: @site_settings, 
@@ -94,15 +94,15 @@ module RSMP
         logger: @logger,
         archive: @archive
       })
-      @remote_supervisors << remote_supervisor
-      run_site_connector task, remote_supervisor
+      @proxies << proxy
+      run_site_proxy task, proxy
     ensure
-      @remote_supervisors.delete remote_supervisor
+      @proxies.delete proxy
     end
 
-    def run_site_connector task, remote_supervisor
+    def run_site_proxy task, proxy
       loop do
-        remote_supervisor.run       # run until disconnected
+        proxy.run       # run until disconnected
       rescue IOError => e
         log str: "Stream error: #{e}", level: :warning
       rescue SystemCallError => e # all ERRNO errors
@@ -121,10 +121,10 @@ module RSMP
 
     def stop
       log str: "Stopping site #{@site_settings["site_id"]}", level: :info
-      @remote_supervisors.each do |remote_supervisor|
-        remote_supervisor.stop
+      @proxies.each do |proxy|
+        proxy.stop
       end
-      @remote_supervisors.clear
+      @proxies.clear
       super
     end
  
@@ -132,6 +132,12 @@ module RSMP
       log str: "Starting site #{@site_settings["site_id"]}",
           level: :info,
           timestamp: RSMP.now_object
+    end
+
+    def alarm
+      @proxies.each do |proxy|
+        proxy.stop
+      end
     end
 
   end

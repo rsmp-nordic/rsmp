@@ -1,16 +1,17 @@
 # Handles a supervisor connection to a remote client
 
 module RSMP  
-  class SupervisorConnector < Connector
+  class SiteProxy < Proxy
+    include SiteBase
+
     attr_reader :supervisor
 
     def initialize options
       super options
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
-
-      @aggregated_status = {}
       @site_settings = nil
+      initialize_site
     end
 
     def start

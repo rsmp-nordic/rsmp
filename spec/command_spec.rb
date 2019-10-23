@@ -8,8 +8,8 @@ def up &block
 		@supervisor.start
 		@site.start
 
-		@supervisor_connector = @supervisor.wait_for_site "RN+SI0001", 10
-		@supervisor_connector.wait_for_state :ready, 0.1
+		@supervisor_proxy = @supervisor.wait_for_site "RN+SI0001", 10
+		@supervisor_proxy.wait_for_state :ready, 0.1
 		
 		yield task
 		
@@ -63,10 +63,10 @@ RSpec.describe "Sending commands" do
 			up do |task|
 				supervisor_start_index = @supervisor.archive.current_index
 				task.async do
-					@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI" => "M0001","n" => "status","cO" => "setValue","v" => "Green"}]
+					@supervisor_proxy.send_command 'AA+BBCCC=DDDEE001', [{"cCI" => "M0001","n" => "status","cO" => "setValue","v" => "Green"}]
 				end
 
-				expect(@supervisor_connector.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_a(RSMP::CommandResponse)
+				expect(@supervisor_proxy.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_a(RSMP::CommandResponse)
 				end
 			#p supervisor_start_index
 			#@supervisor.archive.items[supervisor_start_index..-1].each do |item|
@@ -75,7 +75,7 @@ RSpec.describe "Sending commands" do
 		end
 
 		#it 'sends invalid arguments' do
-		#	@supervisor_connector.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","cO":"","v":"Rainbows!"}]
-		#	expect( @supervisor_connector.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_nil
+		#	@supervisor_proxy.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","cO":"","v":"Rainbows!"}]
+		#	expect( @supervisor_proxy.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_nil
 		#end
 	end

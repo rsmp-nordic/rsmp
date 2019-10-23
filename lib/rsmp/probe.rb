@@ -7,11 +7,11 @@ module RSMP
     attr_reader :condition, :items, :done
 
     # block should send a message and return message just sent
-    def self.collect_response connector, options={}, &block
-      from = connector.archive.current_index
+    def self.collect_response proxy, options={}, &block
+      from = proxy.archive.current_index
       sent = yield
       raise RuntimeError unless sent && sent[:message].is_a?(RSMP::Message)
-      item = connector.archive.capture(options.merge(from: from+1, num: 1, with_message: true)) do |item|
+      item = proxy.archive.capture(options.merge(from: from+1, num: 1, with_message: true)) do |item|
         ["CommandResponse","StatusResponse","MessageNotAck"].include?(item[:message].type)
       end
       if item

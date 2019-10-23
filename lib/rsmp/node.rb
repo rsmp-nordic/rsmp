@@ -9,7 +9,8 @@ module RSMP
 
     def initialize options
       @archive = options[:archive] || RSMP::Archive.new
-      @logger = options[:logger] || RSMP::Logger.new(options[:log_settings]) 
+      @logger = options[:logger] || RSMP::Logger.new(options[:log_settings])
+      @components = {}
     end
 
     def start
