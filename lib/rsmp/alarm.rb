@@ -1,3 +1,5 @@
+# RSMP Alarm. Manages the various states an alarm can be in.
+
 module RSMP
   class Alarm
 
@@ -8,8 +10,6 @@ module RSMP
       @suspended = suspended
       @acknowledged = acknowledged
     end
-
-    def 
 
   end
 end

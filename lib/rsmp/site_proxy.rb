@@ -8,10 +8,9 @@ module RSMP
 
     def initialize options
       super options
+      initialize_site
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
-      @site_settings = nil
-      initialize_site
     end
 
     def start
@@ -52,12 +51,20 @@ module RSMP
       acknowledge message
       send_version rsmp_version
       @version_determined = true
+
+      site_id = @site_ids.first
+      if @settings['sites']
+        @site_settings = @settings['sites'][site_id]
+        if @site_settings
+          setup_components @site_settings['components']
+        end
+      end
     end
 
     def validate_aggregated_status  message, se
       unless se && se.is_a?(Array) && se.size == 8
-        reason = 
-        dont_acknowledge message, "Received", "invalid AggregatedStatus, 'se' must be an Array of size 8"
+        reason = "invalid AggregatedStatus, 'se' must be an Array of size 8"
+        dont_acknowledge message, "Received", reaons
         raise InvalidMessage
       end
     end
@@ -65,8 +72,21 @@ module RSMP
     def process_aggregated_status message
       se = message.attribute("se")
       validate_aggregated_status(message,se) == false
-      set_aggregated_status_bools se
-      log "Received #{message.type} status [#{@aggregated_status.join(', ')}]", message
+      c_id = message.attributes["cId"]
+      component = @components[c_id]
+      unless component
+        if @site_settings['components'] == nil
+          component = build_component c_id
+          info "Adding component #{c_id} to site #{site_id}", message
+        else
+          reason = "component #{c_id} not found"
+          dont_acknowledge message, "Ignoring #{message.type}:", reason
+          return
+        end
+      end
+
+      component.set_aggregated_status_bools se
+      log "Received #{message.type} status for component #{c_id} [#{component.aggregated_status.join(', ')}]", message
       acknowledge message
     end
 

@@ -70,7 +70,15 @@ module RSMP
       # to handle verison differences, we probably need inherited classes
       case message.type
         when "Watchdog"
-          send_aggregated_status
+          send_all_aggregated_status
+      end
+    end
+
+    def send_all_aggregated_status
+      @site.components.each_pair do |c_id,component|
+        if component.grouped
+          send_aggregated_status component
+        end
       end
     end
 
@@ -88,12 +96,13 @@ module RSMP
       @version_determined = true
     end
 
-    def send_aggregated_status
+    def send_aggregated_status component
       message = AggregatedStatus.new({
-        "aSTS"=>RSMP.now_string,
-        "fP"=>nil,
-        "fS"=>nil,
-        "se"=>@site.aggregated_status_bools
+        "aSTS" => RSMP.now_string,
+        "cId" =>  component.c_id,
+        "fP" => nil,
+        "fS" => nil,
+        "se" => component.aggregated_status_bools
       })
       send message
     end

@@ -4,11 +4,10 @@
 
 module RSMP
   class Supervisor < Node
-    attr_reader :rsmp_versions, :site_id, :supervisor_settings, :sites_settings, :proxies, :logger
+    attr_reader :rsmp_versions, :site_id, :supervisor_settings, :proxies, :logger
 
     def initialize options={}
       handle_supervisor_settings options
-      handle_sites_sittings options
       super options.merge log_settings: @supervisor_settings["log"]
       @proxies = []
       @site_id_condition = Async::Notification.new
@@ -69,25 +68,6 @@ module RSMP
       #@supervisor_settings["port"] = @supervisor_settings["port"] + rand(10).to_i
     end
 
-    def handle_sites_sittings options
-      @sites_settings = [
-        {'site_id'=>:any}
-      ]
-
-      if options[:sites_settings_path]
-        if File.exist? options[:sites_settings_path]
-          @sites_settings = YAML.load_file(options[:sites_settings_path])
-        else
-          puts "Error: Site settings #{options[:sites_settings_path]} not found"
-          exit
-        end
-      elsif options[:sites_settings]
-        @sites_settings = options[:sites_settings]
-      end
-        
-      raise "Sites settings is empty" unless @sites_settings
-    end
-
     def start_action
       @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
       @endpoint.accept do |socket|
@@ -145,7 +125,7 @@ module RSMP
       proxy = SiteProxy.new({
         supervisor: self,
         task: @task,
-        settings: @sites_settings,
+        settings: @supervisor_settings[:sites],
         socket: socket,
         info: info,
         logger: @logger,
@@ -209,9 +189,10 @@ module RSMP
     end
 
     def find_allowed_site_setting site_id
-      @sites_settings.each do |allowed_site|
-        if allowed_site["site_id"] == :any || allowed_site["site_id"] == site_id
-          return allowed_site
+      return {} unless @supervisor_settings['sites']
+      @supervisor_settings['sites'].each_pair do |id,settings|
+        if id == site_id
+          return settings
         end
       end
       raise FatalError.new "site id #{site_id} rejected"

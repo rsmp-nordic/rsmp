@@ -11,11 +11,18 @@ command_response_timeout: 1
 status_response_timeout: 1
 status_update_timeout: 1
 
+sites:
+  AA+BBCCC=DDD:    # rsmp simulator    
+  RN+SI0001:       # ruby rsmp site
+    components:
+      A1:
+
 log:
   active: true
   color: true
   timestamp: true
   id: true
+  component: true
   ip: false
   site_id: true
   text: true

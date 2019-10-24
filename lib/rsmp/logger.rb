@@ -101,7 +101,8 @@ module RSMP
       parts << item[:timestamp].to_s.ljust(24) unless @settings["timestamp"] == false
       parts << item[:ip].to_s.ljust(22) unless @settings["ip"] == false
       parts << item[:site_id].to_s.ljust(13) unless @settings["site_id"] == false
-
+      parts << item[:component_id].to_s.ljust(6) unless @settings["component"] == false
+      
       directions = {in:"-->",out:"<--"}
       parts << directions[item[:direction]].to_s.ljust(4) unless @settings["direction"] == false
 

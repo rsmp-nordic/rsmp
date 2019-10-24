@@ -5,12 +5,11 @@
 
 module RSMP
   class Node
-    attr_reader :archive, :logger
+    attr_reader :archive, :logger, :task
 
     def initialize options
       @archive = options[:archive] || RSMP::Archive.new
       @logger = options[:logger] || RSMP::Logger.new(options[:log_settings])
-      @components = {}
     end
 
     def start

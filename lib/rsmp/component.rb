@@ -1,17 +1,64 @@
 module RSMP
   class Component
+    attr_reader :c_id, :alarms, :statuses, :aggregated_status, :aggregated_status_bools, :grouped
 
-    def initialize node:, id:
-      @id = id
+    AGGREGATED_STATUS_KEYS = [ :local_control,
+                               :communication_distruption,
+                               :high_priority_alarm,
+                               :medium_priority_alarm,
+                               :low_priority_alarm,
+                               :normal,
+                               :rest,
+                               :not_connected ]
+
+    def initialize node:, id:, grouped:
+      @c_id = id
       @node = node
+      @grouped = grouped
       @alarms = {}
       @statuses = {}
+      clear_aggregated_status
     end
 
-    def alarm code, status
+    def clear_aggregated_status
+      @aggregated_status = []
+      @aggregated_status_bools = Array.new(8,false)
     end
 
-    def status code, value
+    def set_aggregated_status status
+      status = [:status] if status.is_a? Symbol
+      raise InvalidArgument unless status.is_a? Array
+      input = status & AGGREGATED_STATUS_KEYS
+      if input != @aggregated_status
+        AGGREGATED_STATUS_KEYS.each_with_index do |key,index|
+          @aggregated_status_bools[index] = status.include?(key)
+        end
+        aggrated_status_changed
+      end
+    end
+
+    def set_aggregated_status_bools status
+      raise InvalidArgument unless status.is_a? Array
+      raise InvalidArgument unless status.size == 8
+      if status != @aggregated_status_bools
+        @aggregated_status = []
+        AGGREGATED_STATUS_KEYS.each_with_index do |key,index|
+          on = status[index] == true
+          @aggregated_status_bools[index] = on
+          @aggregated_status << key if on
+        end
+        aggrated_status_changed
+      end
+    end
+
+    def aggrated_status_changed
+      @node.aggrated_status_changed self
+    end
+ 
+    def alarm code:, status:
+    end
+
+    def status code:, value:
     end
 
   end

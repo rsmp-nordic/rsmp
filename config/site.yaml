@@ -11,6 +11,10 @@ rsmp_versions:
   - 3.1.3
   - 3.1.4
 
+components:
+  A1:
+    type: main
+
 watchdog_interval: 1
 watchdog_timeout: 2
 acknowledgement_timeout: 2
@@ -24,7 +28,8 @@ log:
   active: true
   color: true
   timestamp: true
-  id: false
+  id: true
+  component: true
   ip: false
   site_id: true
   level: false

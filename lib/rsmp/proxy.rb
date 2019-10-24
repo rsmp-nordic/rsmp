@@ -335,7 +335,6 @@ module RSMP
         version = candidates.sort.last
         return version
       else
-        p message.attributes
         raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{@settings["rsmp_versions"].join(',')}] supported."
       end
     end
@@ -360,7 +359,7 @@ module RSMP
       raise InvalidArgument unless original
       ack = MessageAck.build_from(original)
       ack.original = original.clone
-      send ack, "for #{ack.original.type} #{original.m_id[0..3]}"
+      send ack, "for #{ack.original.type} #{original.m_id_short}"
       check_ingoing_acknowledged original
     end
 
@@ -373,7 +372,7 @@ module RSMP
         "rea" => reason || "Unknown reason"
       })
       message.original = original.clone
-      send message, "for #{original.type}"
+      send message, "for #{original.type} #{original.m_id_short}"
     end
 
     def set_state state
@@ -466,7 +465,7 @@ module RSMP
       str = "Received #{message.type} for #{original.type} #{message.attribute("oMId")[0..3]}"
       if message.type == 'MessageNotAck'
         reason = message.attributes["rea"]
-        str = "#{str}, #{reason}" if reason
+        str = "#{str}: #{reason}" if reason
         log_not_acknowledged str, message
       else
         log str, message

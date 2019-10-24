@@ -9,11 +9,11 @@ module RSMP
     attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :proxies
 
     def initialize options={}
+      initialize_site
       handle_site_settings options
       super options.merge log_settings: @site_settings["log"]
       @proxies = []
       @sleep_condition = Async::Notification.new
-      initialize_site
     end
 
     def handle_site_settings options
@@ -33,6 +33,9 @@ module RSMP
         'site_connect_timeout' => 2,
         'site_ready_timeout' => 1,
         'reconnect_interval' => 0.1,
+        'components' => {
+          'X1' => {}
+        },
         'log' => {
           'active' => true,
           'color' => true,
@@ -65,9 +68,7 @@ module RSMP
                   :acknowledgement_timeout,:command_response_timeout,:log]
       check_required_settings @site_settings, required
 
-      # randomize site id
-      #@site_settings["site_id"] = "RN+SI#{rand(9999).to_i}"
-
+      setup_components @site_settings['components']
     end
 
     def reconnect
@@ -83,9 +84,9 @@ module RSMP
       end
     end
 
-    def aggrated_status_changed
+    def aggrated_status_changed component
       @proxies.each do |proxy|
-        proxy.send_aggregated_status
+        proxy.send_aggregated_status component
       end
     end
 

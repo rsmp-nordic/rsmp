@@ -72,6 +72,10 @@ module RSMP
       @attributes["mId"]
     end
 
+    def m_id_short
+      @attributes["mId"][0..3]
+    end
+
     def attribute key
       unless @attributes.key? key # note that this is not the same as @attributes[key] when
         maybe = @attributes.find { |k,v| k.downcase == key.downcase }
