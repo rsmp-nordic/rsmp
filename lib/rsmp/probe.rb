@@ -95,6 +95,7 @@ module RSMP
     def matches? item
       raise ArgumentError unless item
       return false if @options[:type] && (item[:message] == nil || (item[:message].type != @options[:type]))
+      return if @options[:level] && item[:level] != @options[:level]
       return false if @options[:with_message] && !(item[:direction] && item[:message])
       return false if @block && @block.call(item) == false
       true

@@ -235,8 +235,8 @@ module RSMP
 
     def send message, reason=nil
       raise IOError unless @protocol
-      message.validate
       message.generate_json
+      message.validate
       message.direction = :out
       expect_acknowledgement message
       @protocol.write_lines message.out
@@ -381,6 +381,7 @@ module RSMP
     end
 
     def wait_for_state state, timeout
+      return if @state == state
       wait_for(@state_condition,timeout) { |s| s == state }
     end
 

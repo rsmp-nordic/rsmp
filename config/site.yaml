@@ -35,7 +35,7 @@ log:
   level: false
   text: true
   direction: true
-  json: false
+  json: true
   acknowledgements: false
   watchdogs: false
 

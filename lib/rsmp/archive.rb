@@ -62,6 +62,7 @@ module RSMP
       out = []
       @items.reverse_each do |item|
         break if options[:earliest] && item[:timestamp] < options[:earliest]
+        next if options[:level] && item[:level] != options[:level]
         next if options[:type] && (item[:message] == nil || (item[:message].type != options[:type]))
         next if options[:with_message] && !(item[:direction] && item[:message])
         next if block_given? && block.call != true
