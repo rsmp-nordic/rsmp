@@ -133,7 +133,7 @@ module RSMP
     def process_status_request message
       log "Received #{message.type}", message
       sS = message.attributes["sS"].clone.map do |request|
-        request["s"] = rand(100)
+        request["s"] = rand(100).to_s
         request["q"] = "recent"
         request
       end
