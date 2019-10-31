@@ -74,8 +74,8 @@ module RSMP
       validate_aggregated_status(message,se) == false
       c_id = message.attributes["cId"]
       component = @components[c_id]
-      unless component
-        if @site_settings['components'] == nil
+      if component == nil
+        if @site_settings == nil || @site_settings['components'] == nil
           component = build_component c_id
           info "Adding component #{c_id} to site #{site_id}", message
         else
@@ -90,8 +90,8 @@ module RSMP
       acknowledge message
     end
 
-    def aggrated_status_changed
-      @supervisor.aggregated_status_changed self
+    def aggrated_status_changed component
+      @supervisor.aggregated_status_changed self, component
     end
 
     def process_alarm message

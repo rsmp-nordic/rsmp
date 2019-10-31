@@ -198,7 +198,7 @@ module RSMP
       raise FatalError.new "site id #{site_id} rejected"
     end
 
-    def aggregated_status_changed site_proxy
+    def aggregated_status_changed site_proxy, component
     end
 
   end

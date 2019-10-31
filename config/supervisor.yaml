@@ -12,10 +12,9 @@ status_response_timeout: 1
 status_update_timeout: 1
 
 sites:
-  AA+BBCCC=DDD:    # rsmp simulator    
+  AA+BBCCC=DDD:    # rsmp simulator
+    sxl: core
   RN+SI0001:       # ruby rsmp site
-    components:
-      A1:
 
 log:
   active: true
@@ -28,7 +27,7 @@ log:
   text: true
   direction: true
   level: false
-  json: false
-  acknowledgements: false
-  watchdogs: false
+  json: true
+  acknowledgements: true
+  watchdogs: true
 

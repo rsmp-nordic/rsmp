@@ -7,11 +7,12 @@ module RSMP
 
     def self.load_schemas
       @@schemas = {}
-      @@schemas['traffic_light_controller'] = JSONSchemer.schema( Pathname.new('../rsmp_schema/schema/core/rsmp.json') )
+      @@schemas['core'] = JSONSchemer.schema( Pathname.new('./lib/rsmp_schema/schema/core/rsmp.json') )
+      @@schemas['traffic_light_controller'] = JSONSchemer.schema( Pathname.new('./lib/rsmp_schema/schema/tlc/sxl.json') )
       @@schemas
     end
 
-    def self.get_schema sxl = 'traffic_light_controller'
+    def self.get_schema sxl = 'core'
       schema = @@schemas[sxl]
       raise SchemaError.new("Unknown schema #{sxl}") unless schema
       schema
