@@ -382,14 +382,15 @@ module RSMP
 
     def wait_for_state state, timeout
       return if @state == state
-      wait_for(@state_condition,timeout) { |s| s == state }
+      wait_for(@state_condition,timeout) { |s| @state == state }
     end
 
     def wait_for condition, timeout, &block
       @task.with_timeout(timeout) do
         loop do
-          value = yield condition.wait
-          return value if value
+          value = condition.wait
+          ok = yield value
+          return if ok
         end
       end
     end   

@@ -68,7 +68,9 @@ RSpec.describe RSMP::Supervisor do
 				expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.4"}], "SXL"=>"1.1", "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SU0001"}], "type"=>"Version"})
 
 				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
-				expect( proxy.wait_for_state(:ready, 0.1) ).to eq(true)
+				expect {
+					proxy.wait_for_state(:ready, 0.1)
+				}.not_to raise_error
 
 				# verify log content
 				got = supervisor.archive.by_level([:log, :info, :debug]).map { |item| item[:str] }
