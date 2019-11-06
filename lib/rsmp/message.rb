@@ -6,9 +6,16 @@ module RSMP
     attr_accessor :json, :direction
 
     def self.load_schemas
+      # path to files in submodule folder
+      schema_path = File.join(File.dirname(__dir__),'rsmp_schema','schema')
       @@schemas = {}
-      @@schemas['core'] = JSONSchemer.schema( Pathname.new('./lib/rsmp_schema/schema/core/rsmp.json') )
-      @@schemas['traffic_light_controller'] = JSONSchemer.schema( Pathname.new('./lib/rsmp_schema/schema/tlc/sxl.json') )
+
+      core_schema_path = File.join(schema_path,'core','rsmp.json')
+      @@schemas['core'] = JSONSchemer.schema( Pathname.new(core_schema_path) )
+
+      tlc_schema_path = File.join(schema_path,'tlc','sxl.json')
+      @@schemas['traffic_light_controller'] = JSONSchemer.schema( Pathname.new(tlc_schema_path) )
+  
       @@schemas
     end
 
