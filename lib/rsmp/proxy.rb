@@ -161,7 +161,7 @@ module RSMP
     def send_watchdog now=nil
       now = RSMP.now_object unless nil
       message = Watchdog.new( {"wTs" => RSMP.now_object_to_string(now)})
-      send message
+      send_message message
       @latest_watchdog_send_at = now
     end
 
@@ -233,10 +233,10 @@ module RSMP
       item
     end
 
-    def send message, reason=nil
+    def send_message message, reason=nil
       raise IOError unless @protocol
-      message.generate_json
       message.validate
+      message.generate_json
       message.direction = :out
       expect_acknowledgement message
       @protocol.write_lines message.out
@@ -359,7 +359,7 @@ module RSMP
       raise InvalidArgument unless original
       ack = MessageAck.build_from(original)
       ack.original = original.clone
-      send ack, "for #{ack.original.type} #{original.m_id_short}"
+      send_message ack, "for #{ack.original.type} #{original.m_id_short}"
       check_ingoing_acknowledged original
     end
 
@@ -372,7 +372,7 @@ module RSMP
         "rea" => reason || "Unknown reason"
       })
       message.original = original.clone
-      send message, "for #{original.type} #{original.m_id_short}"
+      send_message message, "for #{original.type} #{original.m_id_short}"
     end
 
     def set_state state
@@ -381,19 +381,13 @@ module RSMP
     end
 
     def wait_for_state state, timeout
-      return if @state == state
-      wait_for(@state_condition,timeout) { |s| @state == state }
-    end
-
-    def wait_for condition, timeout, &block
-      @task.with_timeout(timeout) do
-        loop do
-          value = condition.wait
-          ok = yield value
-          return if ok
-        end
+      states = [state].flatten
+      return if states.include?(@state)
+      RSMP::Wait.wait_for(@task,@state_condition,timeout) do |s|
+        states.include?(@state)
       end
-    end   
+      @state
+    end
 
     def send_version rsmp_versions
       versions_hash = [rsmp_versions].flatten.map {|v| {"vers" => v} }
@@ -402,7 +396,7 @@ module RSMP
         "siteId"=>[{"sId"=>@settings["site_id"]}],
         "SXL"=>"1.1"
       })
-      send version_response
+      send_message version_response
     end
 
     def find_original_for_message message
@@ -517,7 +511,7 @@ module RSMP
 
     def wait_for_acknowledgement original, timeout, options={}
       raise ArgumentError unless original
-      wait_for(@acknowledgement_condition,timeout) do |message|
+      RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
         message.is_a?(MessageAck) &&
         message.attributes["oMId"] == original.m_id
       end
@@ -525,9 +519,16 @@ module RSMP
 
     def wait_for_not_acknowledged original, timeout
       raise ArgumentError unless original
-      wait_for(@acknowledgement_condition,timeout) do |message|
+      RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
         message.is_a?(MessageNotAck) &&
         message.attributes["oMId"] == original.m_id
+      end
+    end
+
+    def wait_for_acknowledgements timeout
+      return if @awaiting_acknowledgement.empty?
+      RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
+        @awaiting_acknowledgement.empty?
       end
     end
 

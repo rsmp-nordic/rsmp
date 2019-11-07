@@ -24,8 +24,10 @@ module RSMP
       send_version @site_settings["rsmp_versions"]
     rescue Errno::ECONNREFUSED
       error "No connection to supervisor at #{@ip}:#{@port}"
-      info "Will try to reconnect again every #{@site.site_settings["reconnect_interval"]} seconds.."
-      @logger.mute @ip, @port
+      unless @site.site_settings["reconnect_interval"] == :no
+        info "Will try to reconnect again every #{@site.site_settings["reconnect_interval"]} seconds.."
+        @logger.mute @ip, @port
+      end
     end
 
     def connect
@@ -70,7 +72,9 @@ module RSMP
       # to handle verison differences, we probably need inherited classes
       case message.type
         when "Watchdog"
-          send_all_aggregated_status
+          if @site_settings['send_after_connect']
+            send_all_aggregated_status
+          end
       end
     end
 
@@ -104,7 +108,7 @@ module RSMP
         "fS" => nil,
         "se" => component.aggregated_status_bools
       })
-      send message
+      send_message message
     end
 
     def process_command_request message
@@ -127,7 +131,7 @@ module RSMP
         "rvs"=>rvs
       })
       acknowledge message
-      send response
+      send_message response
     end
 
     def process_status_request message
@@ -143,7 +147,7 @@ module RSMP
         "sS"=>sS
       })
       acknowledge message
-      send response
+      send_message response
     end
 
     def process_status_subcribe message
@@ -250,7 +254,7 @@ module RSMP
           "sTs"=>now,
           "sS"=>sS
         })
-        send update
+        send_message update
       end
     end
 
@@ -261,7 +265,7 @@ module RSMP
         "fS"=>nil,
         "se"=>@site.aggregated_status_bools
       })
-      send message
+      send_message message
     end
 
   end

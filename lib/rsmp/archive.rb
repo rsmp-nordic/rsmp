@@ -49,7 +49,7 @@ module RSMP
       probe = RSMP::Probe.new self
       probe.capture task, options, &block
     end
-
+    
     private
 
     def probe item

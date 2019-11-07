@@ -77,7 +77,7 @@ module RSMP
       if component == nil
         if @site_settings == nil || @site_settings['components'] == nil
           component = build_component c_id
-          info "Adding component #{c_id} to site #{site_id}", message
+          info "Adding component #{c_id} to site #{site_id}"
         else
           reason = "component #{c_id} not found"
           dont_acknowledge message, "Ignoring #{message.type}:", reason
@@ -129,7 +129,7 @@ module RSMP
           "cId" => component,
           "sS" => status_list
       })
-      send message
+      send_message message
       return message, wait_for_status_response(component: component, timeout: timeout)
     end
 
@@ -154,7 +154,7 @@ module RSMP
           "cId" => component,
           "sS" => status_list
       })
-      send message
+      send_message message
       message
     end
 
@@ -166,7 +166,7 @@ module RSMP
           "cId" => component,
           "sS" => status_list
       })
-      send message
+      send_message message
       message
     end
 
@@ -191,7 +191,7 @@ module RSMP
           "cId" => component,
           "arg" => args
       })
-      send message
+      send_message message
       message
     end
 

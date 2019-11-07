@@ -50,13 +50,5 @@ module RSMP
       end 
     end
 
-    def wait_for condition, timeout, &block
-      @task.with_timeout(timeout) do |task|
-        loop do
-          value = yield condition.wait
-          return value if value
-        end
-      end
-    end   
   end
 end

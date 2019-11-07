@@ -33,6 +33,7 @@ module RSMP
         'site_connect_timeout' => 2,
         'site_ready_timeout' => 1,
         'reconnect_interval' => 0.1,
+        'send_after_connect' => true,
         'components' => {
           'X1' => {}
         },
@@ -117,8 +118,14 @@ module RSMP
         log str: ["Reader exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
       ensure
         begin
-          # sleep until waken by reconnect() or the reconnect interval passed
-          task.with_timeout(@site_settings["reconnect_interval"]) { @sleep_condition.wait }
+          if @site_settings["reconnect_interval"] != :no
+            # sleep until waken by reconnect() or the reconnect interval passed
+            proxy.set_state :wait_for_reconnect
+            task.with_timeout(@site_settings["reconnect_interval"]) { @sleep_condition.wait }
+          else
+            proxy.set_state :cannot_connect
+            break
+          end
         rescue Async::TimeoutError
           # ignore
         end

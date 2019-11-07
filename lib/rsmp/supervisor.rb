@@ -168,13 +168,13 @@ module RSMP
     end
 
     def wait_for_site site_id, timeout
-      wait_for(@site_id_condition,timeout) { find_site site_id }
+      RSMP::Wait.wait_for(@task,@site_id_condition,timeout) { find_site site_id }
     rescue Async::TimeoutError
       nil
     end
 
     def wait_for_site_disconnect site_id, timeout
-      value = wait_for(@site_id_condition,timeout) { return true unless find_site site_id }
+      RSMP::Wait.wait_for(@task,@site_id_condition,timeout) { true unless find_site site_id }
     rescue Async::TimeoutError
       false
     end   

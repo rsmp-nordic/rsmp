@@ -37,5 +37,8 @@ module RSMP
 
 	class TimeoutError < Error
 	end
-	
+
+	class ConnectionError < Error
+	end
+
 end

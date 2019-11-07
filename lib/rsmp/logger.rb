@@ -79,8 +79,8 @@ module RSMP
       end
     end
 
-    def log item      
-      if output? item
+    def log item, force:false 
+      if force || output?(item)
         output item[:level], build_output(item) 
       end
     end
@@ -92,6 +92,12 @@ module RSMP
         ' '*length
       end
     end 
+
+    def dump archive
+      archive.items.each do |item|
+        log item, force:true
+      end
+    end
 
     private
     

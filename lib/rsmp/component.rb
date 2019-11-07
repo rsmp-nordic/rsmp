@@ -26,7 +26,7 @@ module RSMP
     end
 
     def set_aggregated_status status
-      status = [:status] if status.is_a? Symbol
+      status = [status] if status.is_a? Symbol
       raise InvalidArgument unless status.is_a? Array
       input = status & AGGREGATED_STATUS_KEYS
       if input != @aggregated_status
