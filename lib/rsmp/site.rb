@@ -35,7 +35,7 @@ module RSMP
         'reconnect_interval' => 0.1,
         'send_after_connect' => true,
         'components' => {
-          'X1' => {}
+          'C1' => {}
         },
         'log' => {
           'active' => true,
