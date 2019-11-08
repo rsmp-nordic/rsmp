@@ -22,6 +22,7 @@ RSpec.describe "Sending commands" do
 
 	before(:all) do
 		supervisor_settings = {
+			'port' => 13111,
 			'log' => {
 				'active' => false,
 				'color' => :light_blue,
@@ -38,6 +39,7 @@ RSpec.describe "Sending commands" do
 		@supervisor = RSMP::Supervisor.new(supervisor_settings:supervisor_settings)
 		
 		site_settings = {
+			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ],
 			'log' => {
 				'active' => false,
 				'color' => :light_black,
