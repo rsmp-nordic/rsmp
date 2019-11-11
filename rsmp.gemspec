@@ -4,7 +4,7 @@ require "rsmp/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "rsmp"
-  spec.version       = Rsmp::VERSION
+  spec.version       = RSMP::VERSION
   spec.authors       = ["Emil Tin"]
   spec.email         = ["zf0f@kk.dk"]
 
@@ -12,11 +12,10 @@ Gem::Specification.new do |spec|
   spec.description   = %q{Easy RSMP site and supervisor communication.}
   spec.homepage      = "https://github.com/rsmp-nordic/rsmp"
 
-  spec.metadata["allowed_push_host"] = "https://github.com/rsmp-nordic/rsmp" #TODO: Set to 'http://mygemserver.com'"
-
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/rsmp-nordic/rsmp" #"TODO: Put your gem's public repo URL here."
-  spec.metadata["changelog_uri"] = "https://github.com/rsmp-nordic/rsmp" #"TODO: Put your gem's CHANGELOG.md URL here."
+  spec.metadata["source_code_uri"] = "https://github.com/rsmp-nordic/rsmp"
+  spec.metadata["changelog_uri"] = "https://github.com/rsmp-nordic/rsmp/blob/master/CHANGELOG.md"
+  spec.metadata["bug_tracker_uri"] = "https://github.com/rsmp-nordic/rsmp/issues"
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
