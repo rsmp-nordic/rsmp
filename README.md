@@ -97,6 +97,8 @@ See the async documentation for more information about working with task and con
 ### Archive and Logging
 Sites and supervisor can log message and events, and will store them in an archive.
 
+RSMP::Archive stores messages. RSMP::Logger filters and formats messages according to log settings.
+
 By default, sites and supervisor will create a new archive when initialized, but you can pass in an exsiting archive, which is useful in case you want several sites/supervisors to use the same archive:
 
 ```ruby
@@ -106,41 +108,29 @@ require 'rsmp'
 logger = RSMP::Logger.new('timestamp'=>false,'author'=>true)
 archive = RSMP::Archive.new
 
+# run supervisor and site for 0.1 second, then stop them
 Async do |task|
-  # run supervisor
-   RSMP::Supervisor.new(archive:archive,logger:logger).start
-
-  # run two sites
-  task.async do
-    RSMP::Site.new(archive:archive,logger:logger,site_settings:{'site_id'=>'RN+SiteA'}).start
-  end
-  task.async do
-    RSMP::Site.new(archive:archive,logger:logger,site_settings:{'site_id'=>'RN+SiteB'}).start
-  end
-
-  # wait for a bit and show what's in the archive
+  RSMP::Supervisor.new(archive:archive,logger:logger).start
+  RSMP::Site.new(archive:archive,logger:logger).start
   task.sleep 0.1
-  logger.dump archive, force:true
+  task.stop
 end
+
+# show archiuve content
+logger.dump archive, force:true
 ```
 
-This will output:
+This will output messages form both the site and the supervisor, ordered chronologically:
 
 ```console
-code/rsmp % be ruby ignore/test.rb
 RN+SU0001                              Starting supervisor RN+SU0001 on port 12111
-RN+SiteA                               Starting site RN+SiteA
-RN+SiteA                               Connecting to superviser at 127.0.0.1:12111
-RN+SiteB                               Starting site RN+SiteB
-RN+SiteB                               Connecting to superviser at 127.0.0.1:12111
-RN+SiteB                    <--  0891  Sent Version
-RN+SiteA                    <--  d3c9  Sent Version
-RN+SU0001                              Site connected from 127.0.0.1:51261
-RN+SU0001     RN+SiteA      -->  d3c9  Received Version message for sites [RN+SiteA] using RSMP 3.1.4
-RN+SU0001     RN+SiteA      <--        Sent MessageAck for Version d3c9
+RN+SI0001                              Starting site RN+SI0001
+RN+SI0001                              Connecting to superviser at 127.0.0.1:12111
+RN+SI0001                   <--  f8c7  Sent Version
+RN+SU0001                              Site connected from 127.0.0.1:53500
+RN+SU0001     RN+SI0001     -->  f8c7  Received Version message for sites [RN+SI0001] using RSMP 3.1.4
 ...
 ```
-
 
 ### JSON Schema validation
 All messages sent and received will be validated against the core [RSMP JSON Schema](https://github.com/rsmp-nordic/rsmp_schema).
