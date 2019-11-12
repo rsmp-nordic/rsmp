@@ -2,7 +2,21 @@ module RSMP
   class Logger
 
     def initialize settings
-      @settings = settings
+      defaults = {
+        'active'=>false,
+        'author'=>false,
+        'color'=>true,
+        'site_id'=>true,
+        'component'=>false,
+        'level'=>false,
+        'ip'=>false,
+        'index'=>false,
+        'timestamp'=>true,
+        'json'=>false,
+        'debug'=>false,
+        'statistics'=>false
+      }
+      @settings = defaults.merge settings
       @muted = {}
     end
 
@@ -18,13 +32,12 @@ module RSMP
       @muted = {}
     end
 
-    def output? item
+    def output? item, force=false
       return false if item[:ip] && item[:port] && @muted["#{item[:ip]}:#{item[:port]}"]
-      return false if @settings["active"] == false
+      return false if @settings["active"] == false && force != true
       return false if @settings["info"] == false && item[:level] == :info
       return false if @settings["debug"] != true && item[:level] == :debug
       return false if @settings["statistics"] != true && item[:level] == :statistics
-
 
       if item[:message]
         type = item[:message].type
@@ -80,7 +93,7 @@ module RSMP
     end
 
     def log item, force:false 
-      if force || output?(item)
+      if output?(item, force)
         output item[:level], build_output(item) 
       end
     end
@@ -93,9 +106,9 @@ module RSMP
       end
     end 
 
-    def dump archive
+    def dump archive, force:false
       archive.items.each do |item|
-        log item, force:true
+        log item, force:force
       end
     end
 
@@ -104,6 +117,7 @@ module RSMP
     def build_output item
       parts = []
       parts << item[:index].to_s.ljust(7) if @settings["index"] == true
+      parts << item[:author].to_s.ljust(13) if @settings["author"] == true
       parts << item[:timestamp].to_s.ljust(24) unless @settings["timestamp"] == false
       parts << item[:ip].to_s.ljust(22) unless @settings["ip"] == false
       parts << item[:site_id].to_s.ljust(13) unless @settings["site_id"] == false

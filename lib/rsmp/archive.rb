@@ -17,7 +17,7 @@ module RSMP
       now_obj = RSMP.now_object
       now_str = RSMP.now_string(now_obj)
 
-      cleaned = item.select { |k,v| [:level,:ip,:port,:site_id,:component_id,:str,:message,:exception].include? k }
+      cleaned = item.select { |k,v| [:author,:level,:ip,:port,:site_id,:component_id,:str,:message,:exception].include? k }
       cleaned[:timestamp] = now_obj
       if item[:message]
         cleaned[:direction] = item[:message].direction 

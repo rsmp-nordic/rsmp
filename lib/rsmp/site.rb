@@ -6,7 +6,7 @@ module RSMP
   class Site < Node
     include SiteBase
 
-    attr_reader :rsmp_versions, :site_id, :site_settings, :logger, :proxies
+    attr_reader :rsmp_versions, :site_settings, :logger, :proxies
 
     def initialize options={}
       initialize_site
@@ -14,6 +14,10 @@ module RSMP
       super options.merge log_settings: @site_settings["log"]
       @proxies = []
       @sleep_condition = Async::Notification.new
+    end
+
+    def site_id
+      @site_settings['site_id']
     end
 
     def handle_site_settings options

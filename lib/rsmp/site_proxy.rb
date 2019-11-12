@@ -13,6 +13,10 @@ module RSMP
       @settings = @supervisor.supervisor_settings.clone
     end
 
+    def node
+      supervisor
+    end
+
     def start
       super
       start_reader

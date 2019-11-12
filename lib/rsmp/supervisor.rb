@@ -13,6 +13,10 @@ module RSMP
       @site_id_condition = Async::Notification.new
     end
 
+    def site_id
+      @supervisor_settings['site_id']
+    end
+
     def handle_supervisor_settings options
       @supervisor_settings = {
         'site_id' => 'RN+SU0001',
@@ -144,7 +148,7 @@ module RSMP
       })
       @proxies.push proxy
       
-      proxy.run # will run until the site disconnects
+      proxy.run     # will run until the site disconnects
       @proxies.delete proxy
       site_ids_changed
     end
@@ -196,7 +200,7 @@ module RSMP
     end
 
     def check_site_already_connected site_id
-      raise FatalError.new "Site id #{site_id} already connected" if find_site(site_id)
+      raise FatalError.new "Site #{site_id} already connected" if find_site(site_id)
     end
 
     def find_allowed_site_setting site_id

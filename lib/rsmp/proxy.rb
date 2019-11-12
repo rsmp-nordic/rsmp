@@ -426,7 +426,7 @@ module RSMP
       if message.type == 'MessageNotAck'
         reason = message.attributes["rea"]
         str = "#{str}: #{reason}" if reason
-        log_not_acknowledged str, message
+        log str, message: message, level: :warning
       else
         log str, message: message, level: :log
       end
@@ -494,6 +494,14 @@ module RSMP
       RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
         @awaiting_acknowledgement.empty?
       end
+    end
+
+    def node
+      raise 'Must be overridden'
+    end
+
+    def author
+      node.site_id
     end
 
   end

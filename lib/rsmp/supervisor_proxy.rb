@@ -15,6 +15,10 @@ module RSMP
       @status_subscriptions_mutex = Mutex.new
     end
 
+    def node
+      site
+    end
+
     def start
       log "Connecting to superviser at #{@ip}:#{@port}", level: :info
       super

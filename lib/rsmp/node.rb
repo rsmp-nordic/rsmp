@@ -45,5 +45,9 @@ module RSMP
       end 
     end
 
+    def author
+      site_id
+    end
+
   end
 end
