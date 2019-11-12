@@ -11,7 +11,7 @@ module RSMP
       @@schemas = {}
 
       core_schema_path = File.join(schema_path,'core','rsmp.json')
-      @@schemas['core'] = JSONSchemer.schema( Pathname.new(core_schema_path) )
+      @@schemas[nil] = JSONSchemer.schema( Pathname.new(core_schema_path) )
 
       tlc_schema_path = File.join(schema_path,'tlc','sxl.json')
       @@schemas['traffic_light_controller'] = JSONSchemer.schema( Pathname.new(tlc_schema_path) )
@@ -19,7 +19,7 @@ module RSMP
       @@schemas
     end
 
-    def self.get_schema sxl = 'core'
+    def self.get_schema sxl=nil
       schema = @@schemas[sxl]
       raise SchemaError.new("Unknown schema #{sxl}") unless schema
       schema
@@ -129,9 +129,10 @@ module RSMP
       @attributes["mId"] ||= SecureRandom.uuid()
     end
 
-    def validate
-      unless Message.get_schema.valid? attributes
-        errors = Message.get_schema.validate attributes
+    def validate sxl=nil
+      schema = Message.get_schema(sxl)
+      unless schema.valid? attributes
+        errors = schema.validate attributes
         error_string = errors.map do |item|
           [item['data_pointer'],item['type'],item['details']].compact.join(' ')
         end.join(", ")
@@ -174,11 +175,6 @@ module RSMP
       super({
         "type" => "Version",
       }.merge attributes)
-    end
-
-    def validate
-      super &&
-      @attributes["RSMP"].is_a?(Array) && @attributes["RSMP"].size >= 1
     end
 
     def versions

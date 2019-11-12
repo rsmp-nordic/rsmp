@@ -2,7 +2,7 @@
 
 module RSMP  
   class Proxy < Base
-    attr_reader :site_ids, :state, :archive, :connection_info
+    attr_reader :site_ids, :state, :archive, :connection_info, :sxl
 
     def initialize options
       super options
@@ -11,6 +11,7 @@ module RSMP
       @socket = options[:socket]
       @ip = options[:ip]
       @connection_info = options[:info]
+      @sxl = nil
       clear
     end
 
@@ -199,8 +200,8 @@ module RSMP
 
     def send_message message, reason=nil
       raise IOError unless @protocol
-      message.validate
       message.generate_json
+      message.validate sxl
       message.direction = :out
       expect_acknowledgement message
       @protocol.write_lines message.out

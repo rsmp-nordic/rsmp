@@ -48,7 +48,8 @@ RSpec.describe "Sending commands" do
 				'site_id' => false,
 				'level' => false,
 				'acknowledgements' => false,
-				'watchdogs' => false
+				'watchdogs' => false,
+				'json' => true
 			}
 		}
 
@@ -65,7 +66,7 @@ RSpec.describe "Sending commands" do
 			up do |task|
 				supervisor_start_index = @supervisor.archive.current_index
 				task.async do
-					@supervisor_proxy.send_command 'AA+BBCCC=DDDEE001', [{"cCI" => "M0001","n" => "status","cO" => "setValue","v" => "Green"}]
+					@supervisor_proxy.send_command 'AA+BBCCC=DDDEE001', [{"cCI" => "M0001","n" => "status","cO" => "setValue","v" => "NormalControl"}]
 				end
 
 				expect(@supervisor_proxy.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_a(RSMP::CommandResponse)

@@ -13,7 +13,6 @@ status_update_timeout: 1
 
 sites:
   AA+BBCCC=DDD:    # rsmp simulator
-    sxl: core
   RN+SI0001:       # ruby rsmp site
 
 log:

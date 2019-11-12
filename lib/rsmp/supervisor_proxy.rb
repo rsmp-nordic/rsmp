@@ -13,6 +13,7 @@ module RSMP
       @port = options[:port]
       @status_subscriptions = {}
       @status_subscriptions_mutex = Mutex.new
+      @sxl = @site_settings['sxl']
     end
 
     def node
