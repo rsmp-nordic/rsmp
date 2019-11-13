@@ -76,9 +76,9 @@ module RSMP
         @stream = Async::IO::Stream.new(@socket)
         @protocol = Async::IO::Protocol::Line.new(@stream,"\f") # rsmp messages are json terminated with a form-feed
 
-        while packet = @protocol.read_line
+        while json = @protocol.read_line
           beginning = Time.now
-          message = process_packet packet
+          message = process_packet json
           duration = Time.now - beginning
           ms = (duration*1000).round(4)
           per_second = (1.0 / duration).round
@@ -204,7 +204,7 @@ module RSMP
       message.validate sxl
       message.direction = :out
       expect_acknowledgement message
-      @protocol.write_lines message.out
+      @protocol.write_lines message.json
       log_send message, reason
     rescue EOFError, IOError
       buffer_message message
@@ -231,15 +231,15 @@ module RSMP
       end
     end
 
-    def process_packet packet
-      attributes = Message.parse_attributes packet
-      message = Message.build attributes, packet
+    def process_packet json
+      attributes = Message.parse_attributes json
+      message = Message.build attributes, json
       message.validate
       expect_version_message(message) unless @version_determined
       process_message message
       message
     rescue InvalidPacket => e
-      warning "Received invalid package, must be valid JSON but got #{packet.size} bytes: #{e.message}"
+      warning "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}"
       nil
     rescue MalformedMessage => e
       warning "Received malformed message, #{e.message}", Malformed.new(attributes)

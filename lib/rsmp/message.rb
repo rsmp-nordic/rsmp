@@ -28,14 +28,14 @@ module RSMP
     @@schemas = load_schemas
 
 
-    def self.parse_attributes packet
-      raise ArgumentError unless packet
-      JSON.parse packet
+    def self.parse_attributes json
+      raise ArgumentError unless json
+      JSON.parse json
     rescue JSON::ParserError
-      raise InvalidPacket, bin_to_chars(packet)
+      raise InvalidPacket, bin_to_chars(json)
     end
 
-    def self.build attributes, packet
+    def self.build attributes, json
       validate_message_type attributes
       case attributes["type"]
       when "MessageAck"
@@ -67,7 +67,7 @@ module RSMP
       else
         message = Unknown.new attributes
       end
-      message.json = packet
+      message.json = json
       message.direction = :in
       message
     end
@@ -154,10 +154,6 @@ module RSMP
 
     def generate_json
       @json = JSON.generate @attributes
-
-      # wrap json with a form feed to create an rsmp packet,
-      #as required by the rsmp specification
-      @out = "#{@json}"
     end
 
   end

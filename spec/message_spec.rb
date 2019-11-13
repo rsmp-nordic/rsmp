@@ -1,8 +1,8 @@
 Bundler.require(:default, :development)
 
-def build packet
-	attributes = RSMP::Message.parse_attributes(packet)
-	message = RSMP::Message.build(attributes,packet)
+def build json
+	attributes = RSMP::Message.parse_attributes(json)
+	message = RSMP::Message.build(attributes,json)
 	message.validate unless message.is_a? RSMP::Unknown
 	message
 end
@@ -137,7 +137,6 @@ RSpec.describe RSMP::Message do
 			message.generate_json 
 			str = '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.1"},{"vers":"3.1.2"},{"vers":"3.1.3"},{"vers":"3.1.4"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","siteId":[{"sId":"RN+SI0001"}]}'
 			expect(message.json).to eq(str)
-			expect(message.out).to eq(str)
 		end
 
 		it 'validates mType' do

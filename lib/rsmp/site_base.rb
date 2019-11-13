@@ -18,6 +18,10 @@ module RSMP
       end
     end
 
+    def add_component component
+      @components[component.c_id] = component
+    end
+
     def build_component id, settings={}
       Component.new id: id, node: self, grouped: true
     end
