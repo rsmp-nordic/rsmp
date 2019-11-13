@@ -47,7 +47,7 @@ RSpec.describe RSMP::Supervisor do
 	      endpoint = Async::IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
 	      socket = endpoint.connect
 	      stream = Async::IO::Stream.new(socket)
-	      protocol = Async::IO::Protocol::Line.new(stream,"\f") # rsmp messages are json terminated with a form-feed
+	      protocol = Async::IO::Protocol::Line.new(stream,RSMP::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
 
 	      # write version message
 				protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.4"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'

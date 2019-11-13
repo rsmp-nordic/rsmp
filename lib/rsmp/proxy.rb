@@ -74,7 +74,7 @@ module RSMP
       @reader = @task.async do |task|
         task.annotate "reader"
         @stream = Async::IO::Stream.new(@socket)
-        @protocol = Async::IO::Protocol::Line.new(@stream,"\f") # rsmp messages are json terminated with a form-feed
+        @protocol = Async::IO::Protocol::Line.new(@stream,RSMP::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
 
         while json = @protocol.read_line
           beginning = Time.now
