@@ -170,7 +170,7 @@ module RSMP
       @awaiting_acknowledgement.clone.each_pair do |m_id, message|
         latest = message.timestamp + timeout
         if now > latest
-          log "No acknowledgements for #{message.type} within #{timeout} seconds", level: :error
+          log "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds", level: :error
           stop
           return true
         end
@@ -359,7 +359,7 @@ module RSMP
       version_response = Version.new({
         "RSMP"=>versions_hash,
         "siteId"=>[{"sId"=>@settings["site_id"]}],
-        "SXL"=>"1.1"
+        "SXL"=>@settings["sxl_version"]
       })
       send_message version_response
     end
