@@ -310,14 +310,14 @@ module RSMP
       site_ids_changed
       rsmp_version = check_rsmp_version message
       set_state :version_determined
-      check_sxl_version
+      check_sxl_version message
       version_accepted message, rsmp_version
     end
 
     def site_ids_changed
     end
 
-    def check_sxl_version
+    def check_sxl_version message
     end
 
     def acknowledge original
@@ -359,7 +359,7 @@ module RSMP
       version_response = Version.new({
         "RSMP"=>versions_hash,
         "siteId"=>[{"sId"=>@settings["site_id"]}],
-        "SXL"=>@settings["sxl_version"]
+        "SXL"=>sxl_version
       })
       send_message version_response
     end

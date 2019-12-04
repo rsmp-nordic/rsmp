@@ -22,7 +22,6 @@ module RSMP
         'site_id' => 'RN+SU0001',
         'port' => 12111,
         'rsmp_versions' => ['3.1.1','3.1.2','3.1.3','3.1.4'],
-        'sxl_version' => '1.0.7',
         'timer_interval' => 0.1,
         'watchdog_interval' => 1,
         'watchdog_timeout' => 2,
@@ -216,6 +215,5 @@ module RSMP
 
     def aggregated_status_changed site_proxy, component
     end
-
   end
 end

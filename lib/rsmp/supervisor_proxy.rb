@@ -289,5 +289,8 @@ module RSMP
       send_message message
     end
 
+    def sxl_version
+      @site_settings['sxl_version']
+    end
   end
 end

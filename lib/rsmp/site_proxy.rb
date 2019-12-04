@@ -216,5 +216,16 @@ module RSMP
       @settings["watchdog_interval"] = interval
     end
 
+    def check_sxl_version message
+      super message
+      @site_sxl_version = message.attribute 'SXL'
+    end
+
+    def sxl_version
+      # a supervisor does not maintain it's own sxl version
+      # instead we use what the site requests
+      @site_sxl_version
+    end
+
   end
 end
