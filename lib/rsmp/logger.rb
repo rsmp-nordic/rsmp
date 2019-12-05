@@ -1,6 +1,8 @@
 module RSMP
   class Logger
 
+    attr_accessor :settings
+    
     def initialize settings
       defaults = {
         'active'=>false,
@@ -107,13 +109,13 @@ module RSMP
     end 
 
     def dump archive, force:false
-      archive.items.each do |item|
-        log item, force:force
+      log = archive.items.map do |item|
+        str = build_output item
+        str = colorize item[:level], str
       end
+      log.join("\n")
     end
-
-    private
-    
+  
     def build_output item
       parts = []
       parts << item[:index].to_s.ljust(7) if @settings["index"] == true
