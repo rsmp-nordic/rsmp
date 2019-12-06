@@ -21,40 +21,42 @@ end
 RSpec.describe "Sending commands" do
 
 	before(:all) do
-		supervisor_settings = {
-			'port' => 13111,
-			'log' => {
-				'active' => false,
-				'color' => :light_blue,
-				'ip' => false,
-				'timestamp' => false,
-				'site_id' => false,
-				'level' => false,
-				'acknowledgements' => false,
-				'watchdogs' => false
-			}
+		supervisor_settings = { 'port' => 13111 }
+		log_settings = {
+			'active' => false,
+			'color' => :light_blue,
+			'ip' => false,
+			'timestamp' => false,
+			'site_id' => false,
+			'level' => false,
+			'acknowledgements' => false,
+			'watchdogs' => false
 		}
 
 
-		@supervisor = RSMP::Supervisor.new(supervisor_settings:supervisor_settings)
+		@supervisor = RSMP::Supervisor.new(
+			supervisor_settings:supervisor_settings,
+			log_settings:log_settings
+		)
 		
 		site_settings = {
-			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ],
-			'log' => {
-				'active' => false,
-				'color' => :light_black,
-				'ip' => false,
-				'timestamp' => false,
-				'site_id' => false,
-				'level' => false,
-				'acknowledgements' => false,
-				'watchdogs' => false,
-				'json' => true
-			}
+			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ]
+		}
+		log_settings = {
+			'active' => false,
+			'color' => :light_black,
+			'ip' => false,
+			'timestamp' => false,
+			'site_id' => false,
+			'level' => false,
+			'acknowledgements' => false,
+			'watchdogs' => false,
+			'json' => true
 		}
 
 		@site = RSMP::Site.new(
       site_settings: site_settings,
+      log_settings:log_settings
     )
 	end
 

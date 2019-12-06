@@ -8,7 +8,7 @@ module RSMP
 
     def initialize options={}
       handle_supervisor_settings options
-      super options.merge log_settings: @supervisor_settings["log"]
+      super options
       @proxies = []
       @site_id_condition = Async::Notification.new
     end
@@ -30,47 +30,21 @@ module RSMP
         'status_response_timeout' => 1,
         'status_update_timeout' => 1,
         'site_connect_timeout' => 2,
-        'site_ready_timeout' => 1,
-        'log' => {
-          'active' => true,
-          'color' => true,
-          'ip' => false,
-          'timestamp' => true,
-          'site_id' => true,
-          'level' => false,
-          'acknowledgements' => false,
-          'watchdogs' => false,
-          'json' => false
-        }
+        'site_ready_timeout' => 1
       }
-
-      if options[:supervisor_settings_path]
-        if File.exist? options[:supervisor_settings_path]
-          @supervisor_settings.merge! YAML.load_file(options[:supervisor_settings_path])
-        else
-          puts "Error: Site settings #{options[:supervisor_settings_path]} not found"
-          exit
-        end
-
-      end
       
       if options[:supervisor_settings]
         converted = options[:supervisor_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
+        converted.compact!
         @supervisor_settings.merge! converted
       end
 
       required = [:port, :rsmp_versions, :site_id, :watchdog_interval, :watchdog_timeout,
-                  :acknowledgement_timeout, :command_response_timeout, :log]
+                  :acknowledgement_timeout, :command_response_timeout]
       check_required_settings @supervisor_settings, required
 
       @rsmp_versions = @supervisor_settings["rsmp_versions"]
-      
-      # randomize site id
-      #@supervisor_settings["site_id"] = "RN+SU#{rand(9999).to_i}"
-
-      # randomize port
-      #@supervisor_settings["port"] = @supervisor_settings["port"] + rand(10).to_i
-    end
+          end
 
     def start_action
       @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
@@ -126,7 +100,7 @@ module RSMP
     end
 
     def connect socket, info
-      if @supervisor_settings['log']['hide_ip_and_port']
+      if @logger.settings['hide_ip_and_port']
         port_and_port = '********'
       else
         port_and_port = "#{info[:ip]}:#{info[:port]}"

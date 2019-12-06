@@ -5,7 +5,8 @@ module RSMP
     
     def initialize settings
       defaults = {
-        'active'=>false,
+        'active'=>true,
+        'path'=>nil,
         'author'=>false,
         'color'=>true,
         'site_id'=>true,
@@ -20,6 +21,16 @@ module RSMP
       }
       @settings = defaults.merge settings
       @muted = {}
+
+      setup_output_destination
+    end
+
+    def setup_output_destination
+      if @settings['path']
+        @stream = File.open(@settings['path'],'a')  # appending
+      else
+        @stream = $stdout
+      end
     end
 
     def mute ip, port
@@ -58,12 +69,9 @@ module RSMP
 
     def output level, str
       return if str.empty? || /^\s+$/.match(str)
-      streams = [$stdout]
-      #streams << $stderr if level == :error
       str = colorize level, str
-      streams.each do |stream|
-        stream.puts str
-      end
+      @stream.puts str
+      @stream.flush
     end
 
     def colorize level, str

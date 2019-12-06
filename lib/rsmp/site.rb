@@ -11,7 +11,7 @@ module RSMP
     def initialize options={}
       initialize_site
       handle_site_settings options
-      super options.merge log_settings: @site_settings["log"]
+      super options
       @proxies = []
       @sleep_condition = Async::Notification.new
     end
@@ -41,29 +41,8 @@ module RSMP
         'send_after_connect' => true,
         'components' => {
           'C1' => {}
-        },
-        'log' => {
-          'active' => true,
-          'color' => true,
-          'ip' => false,
-          'timestamp' => true,
-          'site_id' => true,
-          'level' => false,
-          'acknowledgements' => false,
-          'watchdogs' => false,
-          'json' => false,
-          'statistics' => false
         }
       }
-      if options[:site_settings_path]
-        if File.exist? options[:site_settings_path]
-          @site_settings.merge! YAML.load_file(options[:site_settings_path])
-        else
-          puts "Error: Config #{options[:site_settings_path]} not found, pwd"
-          exit
-        end
-      end
-
       if options[:site_settings]
         converted = options[:site_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
         converted.compact!
@@ -71,7 +50,7 @@ module RSMP
       end
 
       required = [:supervisors,:rsmp_versions,:site_id,:watchdog_interval,:watchdog_timeout,
-                  :acknowledgement_timeout,:command_response_timeout,:log]
+                  :acknowledgement_timeout,:command_response_timeout]
       check_required_settings @site_settings, required
 
       setup_components @site_settings['components']

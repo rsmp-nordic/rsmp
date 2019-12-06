@@ -8,26 +8,45 @@ module RSMP
 		method_option :config, :type => :string, :aliases => "-c", banner: 'Path to .yaml config file'
 		method_option :id, :type => :string, :aliases => "-i", banner: 'RSMP site id'
 		method_option :supervisors, :type => :string, :aliases => "-s", banner: 'ip:port,... list of supervisor to connect to'			
+		method_option :log, :type => :string, :aliases => "-l", banner: 'Path to log file'
+		method_option :json, :type => :boolean, :aliases => "-j", banner: 'Show JSON messages in log'
 		def site
-			converted = {
-					site_settings_path: options[:config],
-					site_settings: {
-						site_id: options[:id],
-					}
-			}
-			
-  		if options[:supervisors]
-	  		options[:supervisors].split(',').each do |supervisor|
-	  			converted[:site_settings][:supervisors] ||= []
-					ip, port = supervisor.split ':'
-					ip = '127.0.0.1' if ip.empty?
-					port = '12111' if port.empty?
-					converted[:site_settings][:supervisors] << {"ip"=>ip, "port"=>port}
+			settings = {}
+			log_settings = {}
+
+			if options[:config]
+				if File.exist? options[:config]
+					settings = YAML.load_file options[:config]
+					log_settings = settings.delete 'log'
+				else
+					puts "Error: Config #{options[:config]} not found"
+					exit
 				end
 			end
 
-			converted[:site_settings].compact!
-			RSMP::Site.new(converted).start
+			if options[:id]
+				settings['site_id'] = options[:id]
+			end
+
+		if options[:supervisors]
+			options[:supervisors].split(',').each do |supervisor|
+				setting[:supervisors] ||= []
+					ip, port = supervisor.split ':'
+					ip = '127.0.0.1' if ip.empty?
+					port = '12111' if port.empty?
+					settings[:supervisors] << {"ip"=>ip, "port"=>port}
+				end
+			end
+
+			if options[:log]
+				log_settings['path'] = options[:log]
+			end
+
+			if options[:json]
+				log_settings['json'] = options[:json]
+			end
+
+			RSMP::Site.new(site_settings:settings, log_settings: log_settings).start
 		end
 
 		desc "supervisor", "Run RSMP supervisor"
@@ -35,17 +54,43 @@ module RSMP
 		method_option :id, :type => :string, :aliases => "-i", banner: 'RSMP site id'
 		method_option :ip, :type => :numeric, banner: 'IP address to listen on'			
 		method_option :port, :type => :string, :aliases => "-p", banner: 'Port to listen on'
+		method_option :log, :type => :string, :aliases => "-l", banner: 'Path to log file'
+		method_option :json, :type => :boolean, :aliases => "-j", banner: 'Show JSON messages in log'
 		def supervisor
-			converted = {
-					supervisor_settings_path: options[:config],
-					supervisor_settings: {
-						site_id: options[:id],
-						ip: options[:ip],
-						port: options[:port]
-					}
-			}
-			converted[:supervisor_settings].compact!
-			RSMP::Supervisor.new(converted).start
+			settings = {}
+			log_settings = {}
+
+			if options[:config]
+				if File.exist? options[:config]
+					settings = YAML.load_file options[:config]
+					log_settings = settings.delete 'log'
+				else
+					puts "Error: Config #{options[:config]} not found"
+					exit
+				end
+			end
+
+			if options[:id]
+				settings['site_id'] = options[:id]
+			end
+
+			if options[:ip]
+				settings['ip'] = options[:ip]
+			end
+
+			if options[:port]
+				settings['port'] = options[:port]
+			end
+
+			if options[:log]
+				log_settings['path'] = options[:log]
+			end
+
+			if options[:json]
+				log_settings['json'] = options[:json]
+			end
+
+			RSMP::Supervisor.new(supervisor_settings:settings,log_settings:log_settings).start
 		end
 
 	end
