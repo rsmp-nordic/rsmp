@@ -3,9 +3,9 @@ module RSMP
 
     attr_accessor :settings
     
-    def initialize settings
+    def initialize settings={}
       defaults = {
-        'active'=>true,
+        'active'=>false,
         'path'=>nil,
         'author'=>false,
         'color'=>true,
@@ -17,9 +17,15 @@ module RSMP
         'timestamp'=>true,
         'json'=>false,
         'debug'=>false,
-        'statistics'=>false
+        'statistics'=>false,
+        'hide_ip_and_port' => true
       }
-      @settings = defaults.merge settings
+      if settings
+        @settings = defaults.merge settings
+      else
+        @settings = defaults
+      end
+
       @muted = {}
 
       setup_output_destination

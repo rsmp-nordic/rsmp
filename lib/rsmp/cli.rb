@@ -12,7 +12,7 @@ module RSMP
 		method_option :json, :type => :boolean, :aliases => "-j", banner: 'Show JSON messages in log'
 		def site
 			settings = {}
-			log_settings = {}
+			log_settings = { 'active' => true }
 
 			if options[:config]
 				if File.exist? options[:config]
@@ -58,7 +58,7 @@ module RSMP
 		method_option :json, :type => :boolean, :aliases => "-j", banner: 'Show JSON messages in log'
 		def supervisor
 			settings = {}
-			log_settings = {}
+			log_settings = { 'active' => true }
 
 			if options[:config]
 				if File.exist? options[:config]
