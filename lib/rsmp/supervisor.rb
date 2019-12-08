@@ -44,7 +44,7 @@ module RSMP
       check_required_settings @supervisor_settings, required
 
       @rsmp_versions = @supervisor_settings["rsmp_versions"]
-          end
+    end
 
     def start_action
       @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
@@ -99,15 +99,18 @@ module RSMP
       SiteProxy.new settings
     end
 
-    def connect socket, info
+    def format_ip_and_port info
       if @logger.settings['hide_ip_and_port']
-        port_and_port = '********'
+         '********'
       else
-        port_and_port = "#{info[:ip]}:#{info[:port]}"
+         "#{info[:ip]}:#{info[:port]}"
       end
+    end
 
-      log "Site connected from #{port_and_port}", 
-          ip: port_and_port,
+    def connect socket, info
+      log "Site connected from #{format_ip_and_port(info)}",
+          ip: info[:ip],
+          port: info[:port],
           level: :info,
           timestamp: RSMP.now_object
 
@@ -137,7 +140,7 @@ module RSMP
 
     def close socket, info
       if info
-        log "Connection to #{info[:ip]}:#{info[:port]} closed", ip: info[:ip], level: :info, timestamp: RSMP.now_object
+        log "Connection to #{format_ip_and_port(info)} closed", ip: info[:ip], level: :info, timestamp: RSMP.now_object
       else
         log "Connection closed", level: :info, timestamp: RSMP.now_object
       end
@@ -166,7 +169,7 @@ module RSMP
       RSMP::Wait.wait_for(@task,@site_id_condition,timeout) { true unless find_site site_id }
     rescue Async::TimeoutError
       false
-    end   
+    end
 
     def check_site_id site_id
       check_site_already_connected site_id

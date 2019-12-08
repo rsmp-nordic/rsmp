@@ -42,7 +42,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "async", "~> 1.23.0"
-  spec.add_dependency "async-io", "~> 1.27.0"
+  spec.add_dependency "async-io", "~> 1.27.1"
   spec.add_dependency "colorize", "~> 0.8.1"
   spec.add_dependency "thor", "~> 0.20.3"
   spec.add_dependency "json_schemer", "~> 0.2.8"

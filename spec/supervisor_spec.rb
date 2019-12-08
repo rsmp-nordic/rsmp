@@ -3,15 +3,15 @@ RSpec.describe RSMP::Supervisor do
 
 		let(:supervisor_settings) {
 			{
-				'port' => 13111,		# use special port to avoid sites connection during test
-				'log' => 
-				{
-					'active' => false,
-					'hide_ip_and_port' => true
-				}
+				'port' => 13111		# use special port to avoid sites connection during test
 			}
 		}
-
+		let(:log_settings) {
+			{
+				'active' => false,
+				'hide_ip_and_port' => true
+			}
+		}
 		let(:sites_settings) {
 			[ { 'site_id' => 'RN+SI0001', sxl_versions: ['1,1']} ]
 		}
@@ -21,7 +21,11 @@ RSpec.describe RSMP::Supervisor do
 		end
 
 		it 'accepts options' do
-			supervisor = RSMP::Supervisor.new(supervisor_settings:supervisor_settings,sites_settings:sites_settings)
+			supervisor = RSMP::Supervisor.new(
+				supervisor_settings: supervisor_settings,
+				log_settings: log_settings,
+				sites_settings: sites_settings
+			)
 		end
 
 		it 'starts' do
@@ -37,7 +41,10 @@ RSpec.describe RSMP::Supervisor do
 				'16ec49e4-6ac1-4da6-827c-2a6562b91731'
 			)
 
-			supervisor = RSMP::Supervisor.new(supervisor_settings:supervisor_settings)
+			supervisor = RSMP::Supervisor.new(
+				supervisor_settings: supervisor_settings,
+				log_settings: log_settings
+			)
 			Async do |task|
 				task.async do
 					supervisor.start
