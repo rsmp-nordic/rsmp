@@ -17,12 +17,19 @@ module RSMP
         task.annotate self.class
         @task = task
         start_action
+        idle
       end
     rescue Errno::EADDRINUSE => e
       log "Cannot start: #{e.to_s}", level: :error
     rescue SystemExit, SignalException, Interrupt
       @logger.unmute_all
       exiting
+    end
+
+    def idle
+      loop do
+        @task.sleep 60
+      end
     end
 
     def stop

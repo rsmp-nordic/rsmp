@@ -30,7 +30,8 @@ module RSMP
         'status_response_timeout' => 1,
         'status_update_timeout' => 1,
         'site_connect_timeout' => 2,
-        'site_ready_timeout' => 1
+        'site_ready_timeout' => 1,
+        'stop_after_first_session' => false
       }
       
       if options[:supervisor_settings]
@@ -53,8 +54,8 @@ module RSMP
       end
     rescue SystemCallError => e # all ERRNO errors
       log "Exception: #{e.to_s}", level: :error
-    rescue StandardError => e
-      log ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
+    #rescue StandardError => e
+    #  log ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def stop
@@ -128,6 +129,8 @@ module RSMP
       proxy.run     # will run until the site disconnects
       @proxies.delete proxy
       site_ids_changed
+
+      stop if @supervisor_settings['stop_after_first_session']
     end
 
     def site_ids_changed
