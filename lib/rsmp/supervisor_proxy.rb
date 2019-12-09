@@ -174,6 +174,7 @@ module RSMP
     def process_status_subcribe message
       log "Received #{message.type}", message: message, level: :log
 
+
       # @status_subscriptions is organized by component/code/name, for example:
       #
       # {"AA+BBCCC=DDDEE002"=>{"S001"=>["number"]}}

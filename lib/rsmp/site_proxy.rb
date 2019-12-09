@@ -134,7 +134,7 @@ module RSMP
           "sS" => status_list
       })
       send_message message
-      return message, wait_for_status_response(component: component, timeout: timeout)
+      return message, wait_for_status_response(message: message, timeout: timeout)
     end
 
     def process_status_response message
@@ -143,9 +143,17 @@ module RSMP
     end
 
     def wait_for_status_response options
-      raise ArgumentError unless options[:component]
-      item = @archive.capture(@task, options.merge(type: "StatusResponse", with_message: true, num: 1)) do |item|
-        # check component
+      raise ArgumentError unless options[:message]
+      item = @archive.capture(@task, options.merge(
+        type: ['StatusResponse','MessageNotAck'],
+        with_message: true,
+        num: 1
+      )) do |item|
+        if item[:message].type == 'MessageNotAck'
+          next item[:message].attribute('oMId') == options[:message].m_id
+        elsif item[:message].type == 'StatusResponse'
+          next item[:message].attribute('cId') == options[:message].attribute('cId')
+        end
       end
       item[:message] if item
     end

@@ -54,8 +54,8 @@ module RSMP
       end
     rescue SystemCallError => e # all ERRNO errors
       log "Exception: #{e.to_s}", level: :error
-    #rescue StandardError => e
-    #  log ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
+    rescue StandardError => e
+      log ["Exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def stop
