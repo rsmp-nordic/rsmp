@@ -26,5 +26,11 @@ module RSMP
       Component.new id: id, node: self, grouped: true
     end
 
+    def find_component component_id
+      component = @components[component_id]
+      raise UnknownComponent.new("Component #{component_id} not found") unless component
+      component
+    end
+
   end
 end

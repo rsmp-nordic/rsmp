@@ -41,4 +41,6 @@ module RSMP
 	class ConnectionError < Error
 	end
 
+	class UnknownComponent < Error
+	end
 end

@@ -156,6 +156,9 @@ module RSMP
     end
 
     def process_status_request message
+      component_id = message.attributes["cId"]
+      component = @site.find_component component_id
+
       log "Received #{message.type}", message: message, level: :log
       sS = message.attributes["sS"].clone.map do |request|
         request["s"] = rand(100).to_s
@@ -163,12 +166,14 @@ module RSMP
         request
       end
       response = StatusResponse.new({
-        "cId"=>message.attributes["cId"],
+        "cId"=>component_id,
         "sTs"=>RSMP.now_string,
         "sS"=>sS
       })
       acknowledge message
       send_message response
+    rescue UnknownComponent => e
+      dont_acknowledge message, '', e.to_s
     end
 
     def process_status_subcribe message
