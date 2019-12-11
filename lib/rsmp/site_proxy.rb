@@ -53,7 +53,9 @@ module RSMP
       log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message: message, level: :log
       start_timer
       acknowledge message
-      send_version rsmp_version
+      send_version message.attributes['siteId'], rsmp_version
+      set_state :ready
+
       @version_determined = true
 
       site_id = @site_ids.first

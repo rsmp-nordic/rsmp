@@ -354,11 +354,11 @@ module RSMP
       @state
     end
 
-    def send_version rsmp_versions
+    def send_version site_id_array, rsmp_versions
       versions_hash = [rsmp_versions].flatten.map {|v| {"vers" => v} }
       version_response = Version.new({
         "RSMP"=>versions_hash,
-        "siteId"=>[{"sId"=>@settings["site_id"]}],
+        "siteId"=>site_id_array,
         "SXL"=>sxl_version
       })
       send_message version_response
