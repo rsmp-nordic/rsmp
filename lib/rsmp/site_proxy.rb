@@ -54,7 +54,6 @@ module RSMP
       start_timer
       acknowledge message
       send_version message.attributes['siteId'], rsmp_version
-      set_state :ready
 
       @version_determined = true
 
@@ -83,6 +82,7 @@ module RSMP
       if component == nil
         if @site_settings == nil || @site_settings['components'] == nil
           component = build_component c_id
+          @components[c_id] = component
           log "Adding component #{c_id} to site #{site_id}", level: :info
         else
           reason = "component #{c_id} not found"
@@ -160,7 +160,7 @@ module RSMP
       item[:message] if item
     end
 
-    def subscribe_to_status component, status_list
+    def subscribe_to_status component, status_list, timeout
       raise NotReady unless @state == :ready
       message = RSMP::StatusSubscribe.new({
           "ntsOId" => '',
@@ -169,7 +169,7 @@ module RSMP
           "sS" => status_list
       })
       send_message message
-      message
+      return message, wait_for_status_update(component: component, timeout: timeout)
     end
 
     def unsubscribe_to_status component, status_list
@@ -191,8 +191,19 @@ module RSMP
 
     def wait_for_status_update options={}
       raise ArgumentError unless options[:component]
-      item = @archive.capture(options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
-        # check component
+      item = @archive.capture(@task,options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
+        # TODO check components
+        found = false
+        sS = item[:message].attributes['sS']
+        sS.each do |status|
+          break if options[:sCI] && options[:sCI] != status['sCI']
+          break if options[:n] && options[:n] != status['n']
+          break if options[:q] && options[:q] != status['q']
+          break if options[:s] && options[:s] != status['s']
+          found = true
+          break
+        end
+        found
       end
       item[:message] if item
     end

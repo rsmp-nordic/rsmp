@@ -186,7 +186,7 @@ module RSMP
     def find_allowed_site_setting site_id
       return {} unless @supervisor_settings['sites']
       @supervisor_settings['sites'].each_pair do |id,settings|
-        if id == site_id
+        if id == :any || id == site_id
           return settings
         end
       end

@@ -57,6 +57,7 @@ module RSMP
       return false if @settings["info"] == false && item[:level] == :info
       return false if @settings["debug"] != true && item[:level] == :debug
       return false if @settings["statistics"] != true && item[:level] == :statistics
+      return false if @settings["test"] != true && item[:level] == :test
 
       if item[:message]
         type = item[:message].type
@@ -96,6 +97,8 @@ module RSMP
           str.colorize(:light_blue)
         when :statistics
           str.colorize(:light_black)
+        when :test
+          str.colorize(:light_magenta)
         else
           str
         end

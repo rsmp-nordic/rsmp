@@ -179,9 +179,12 @@ module RSMP
     end
 
     def check_watchdog_timeout now
+
       timeout = @settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
-      if now > latest
+      left = latest - now
+      log "check watchdog, time:#{timeout}, last:#{@latest_watchdog_received}, now: #{now}, latest:#{latest}, left #{left}, fail:#{left<0}", level: :debug
+      if left < 0
         log "No Watchdog within #{timeout} seconds, received at #{@latest_watchdog_received}, now is #{now}, diff #{now-latest}", level: :error
         stop
         return true
