@@ -237,7 +237,7 @@ module RSMP
     def process_packet json
       attributes = Message.parse_attributes json
       message = Message.build attributes, json
-      message.validate
+      message.validate sxl
       expect_version_message(message) unless @version_determined
       process_message message
       message
