@@ -270,10 +270,10 @@ module RSMP
         sS = []
         by_code.each_pair do |code,names|
           names.each do |name|
-            sS << { "sCI": code,
-                     "n": name,
-                     "s": rand(100),
-                     "q": "recent" }
+            sS << { "sCI" => code,
+                     "n" => name,
+                     "s" => rand(100).to_s,
+                     "q" => "recent" }
           end
         end
         update = StatusUpdate.new({
