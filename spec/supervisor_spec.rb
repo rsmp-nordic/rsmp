@@ -9,7 +9,8 @@ RSpec.describe RSMP::Supervisor do
 		let(:log_settings) {
 			{
 				'active' => false,
-				'hide_ip_and_port' => true
+				'hide_ip_and_port' => true,
+				'debug' => false
 			}
 		}
 		let(:sites_settings) {
@@ -73,7 +74,7 @@ RSpec.describe RSMP::Supervisor do
 
 
 				version = JSON.parse protocol.read_line
-				expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.4"}], "SXL"=>"1.0.7", "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SU0001"}], "type"=>"Version"})
+				expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.4"}], "SXL"=>"1.0.7", "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version"})
 
 				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
 				expect {
@@ -81,12 +82,11 @@ RSpec.describe RSMP::Supervisor do
 				}.not_to raise_error
 
 				# verify log content
-				got = supervisor.archive.by_level([:log, :info, :debug]).map { |item| item[:str] }
+				got = supervisor.archive.by_level([:log, :info]).map { |item| item[:str] }
 				expect( got ).to match_array([
 					"Starting supervisor RN+SU0001 on port 13111",
 					"Site connected from ********",
 					"Received Version message for sites [RN+SI0001] using RSMP 3.1.4",
-					"Starting timer with interval 0.1 seconds",
 					"Sent MessageAck for Version 8db0",
 					"Sent Version",
 					"Received MessageAck for Version 1b20",
