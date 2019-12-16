@@ -194,16 +194,19 @@ module RSMP
 
       component = message.attributes["cId"]
       
-      @status_subscriptions[component] ||= {}    
+      @status_subscriptions[component] ||= {}
       update_list[component] ||= {} 
 
-      message.attributes["sS"].each do |arg|
-        subcription = {interval: arg["uRt"].to_i, last_sent_at: nil}
-        @status_subscriptions[component][arg["sCI"]] ||= {}
-        @status_subscriptions[component][arg["sCI"]][arg["n"]] = subcription
+      subs = @status_subscriptions[component]
 
-        update_list[component][arg["sCI"]] ||= []
-        update_list[component][arg["sCI"]] << arg["n"]
+      message.attributes["sS"].each do |arg|
+        sCI = arg["sCI"]
+        subcription = {interval: arg["uRt"].to_i, last_sent_at: nil}
+        subs[sCI] ||= {}
+        subs[sCI][arg["n"]] = subcription
+
+        update_list[component][sCI] ||= []
+        update_list[component][sCI] << arg["n"]
       end
       acknowledge message
       send_status_updates update_list   # send status after subscribing is accepted
@@ -213,18 +216,16 @@ module RSMP
       log "Received #{message.type}", message: message, level: :log
       component = message.attributes["cId"]
 
-      if @status_subscriptions[component]
-         message.attributes["sS"].each do |arg|
-          if @status_subscriptions[component][arg["sCI"]]
-            @status_subscriptions[component][arg["sCI"]].delete arg["n"]
-          end
-          if @status_subscriptions[component][arg["sCI"]].empty?
-            @status_subscriptions[component].delete(arg["sCI"])
+      subs = @status_subscriptions[component]
+      if subs
+        message.attributes["sS"].each do |arg|
+          sCI = arg["sCI"]
+          if subs[sCI]
+            subs[sCI].delete arg["n"]
+            subs.delete(sCI) if subs[sCI].empty?
           end
         end
-        if @status_subscriptions[component].empty?
-          @status_subscriptions.delete(component)
-        end
+        @status_subscriptions.delete(component) if subs.empty?
       end
       acknowledge message
     end
