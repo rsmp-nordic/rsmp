@@ -8,7 +8,8 @@ def up &block
 		@supervisor.start
 		@site.start
 
-		@supervisor_proxy = @supervisor.wait_for_site "RN+SI0001", 10
+		@supervisor_proxy = @supervisor.wait_for_site "RN+SI0001", 1
+		expect(@supervisor_proxy).to_not be_nil, "Test site did not connect"
 		@supervisor_proxy.wait_for_state :ready, 0.1
 		
 		yield task
@@ -43,7 +44,7 @@ RSpec.describe "Sending commands" do
 			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ]
 		}
 		log_settings = {
-			'active' => false,
+			'active' => true,
 			'color' => :light_black,
 			'ip' => false,
 			'timestamp' => false,
@@ -60,9 +61,6 @@ RSpec.describe "Sending commands" do
     )
 	end
 
-	after (:all) do
-	end
-
 	context 'sending command'
 		it 'sends valid arguments' do
 			up do |task|
@@ -70,17 +68,7 @@ RSpec.describe "Sending commands" do
 				task.async do
 					@supervisor_proxy.send_command 'AA+BBCCC=DDDEE001', [{"cCI" => "M0001","n" => "status","cO" => "setValue","v" => "NormalControl"}]
 				end
-
 				expect(@supervisor_proxy.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_a(RSMP::CommandResponse)
-				end
-			#p supervisor_start_index
-			#@supervisor.archive.items[supervisor_start_index..-1].each do |item|
-			#	p [item[:index],item[:str]]
-			#end
+			end
 		end
-
-		#it 'sends invalid arguments' do
-		#	@supervisor_proxy.send_command 'AA+BBCCC=DDDEE001', [{"cCI":"MA104","cO":"","v":"Rainbows!"}]
-		#	expect( @supervisor_proxy.wait_for_command_response component: 'AA+BBCCC=DDDEE001', timeout: 0.1).to be_nil
-		#end
 	end
