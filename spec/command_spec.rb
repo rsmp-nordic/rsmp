@@ -44,7 +44,7 @@ RSpec.describe "Sending commands" do
 			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ]
 		}
 		log_settings = {
-			'active' => true,
+			'active' => false,
 			'color' => :light_black,
 			'ip' => false,
 			'timestamp' => false,

@@ -1,4 +1,3 @@
-site_id: RN+SU0001
 port: 12111
 rsmp_versions:
   - 3.1.1
@@ -6,8 +5,8 @@ rsmp_versions:
   - 3.1.3
   - 3.1.4
 
-watchdog_interval: 5
-watchdog_timeout: 10
+watchdog_interval: 1
+watchdog_timeout: 2
 acknowledgement_timeout: 2
 store_messages: false
 command_response_timeout: 1
@@ -15,9 +14,7 @@ status_response_timeout: 1
 status_update_timeout: 1
 
 sites:
-  KK+AG9998:       # dynniq test tlc
-  AA+BBCCC=DDD:    # rsmp simulator
-  RN+SI0001:       # ruby rsmp site
+  any:
 
 log:
   active: true

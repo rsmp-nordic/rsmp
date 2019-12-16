@@ -4,13 +4,14 @@ module RSMP
   class SiteProxy < Proxy
     include SiteBase
 
-    attr_reader :supervisor
+    attr_reader :supervisor, :site_id
 
     def initialize options
       super options
       initialize_site
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
+      @site_id = nil
     end
 
     def node
@@ -24,7 +25,7 @@ module RSMP
 
     def connection_complete
       super
-      log "Connection to site #{@site_ids.first} established", level: :info
+      log "Connection to site #{@site_id} established", level: :info
     end
 
     def process_message message
@@ -49,17 +50,16 @@ module RSMP
       end
     end
 
-    def version_accepted message, rsmp_version
-      log "Received Version message for sites [#{@site_ids.join(',')}] using RSMP #{rsmp_version}", message: message, level: :log
+    def version_accepted message
+      log "Received Version message for site #{@site_id} using RSMP #{@rsmp_version}", message: message, level: :log
       start_timer
       acknowledge message
-      send_version message.attributes['siteId'], rsmp_version
-
+      send_version @site_id, @rsmp_version
       @version_determined = true
 
-      site_id = @site_ids.first
       if @settings['sites']
-        @site_settings = @settings['sites'][site_id]
+        @site_settings = @settings['sites'][@site_id]
+        @site_settings =@settings['sites'][:any] unless @site_settings
         if @site_settings
           setup_components @site_settings['components']
         end
@@ -83,7 +83,7 @@ module RSMP
         if @site_settings == nil || @site_settings['components'] == nil
           component = build_component c_id
           @components[c_id] = component
-          log "Adding component #{c_id} to site #{site_id}", level: :info
+          log "Adding component #{c_id} to site #{@site_id}", level: :info
         else
           reason = "component #{c_id} not found"
           dont_acknowledge message, "Ignoring #{message.type}:", reason
@@ -121,10 +121,6 @@ module RSMP
 
     def site_ids_changed
       @supervisor.site_ids_changed
-    end
-
-    def check_site_id site_id
-      @site_settings = @supervisor.check_site_id site_id
     end
 
     def request_status component, status_list, timeout=nil
@@ -238,7 +234,8 @@ module RSMP
     end
 
     def check_sxl_version message
-      super message
+      # store sxl version requested by site
+      # TODO should check agaist site settings
       @site_sxl_version = message.attribute 'SXL'
     end
 
@@ -247,6 +244,23 @@ module RSMP
       # instead we use what the site requests
       @site_sxl_version
     end
+
+    def process_version message
+      return extraneous_version message if @version_determined
+      check_site_ids message
+      check_rsmp_version message
+      check_sxl_version message
+      version_accepted message
+    end
+
+    def check_site_ids message
+      # RSMP support multiple site ids. we don't support this yet. instead we use the first id only
+      site_id = message.attribute("siteId").map { |item| item["sId"] }.first
+      @supervisor.check_site_id site_id
+      @site_id = site_id
+      site_ids_changed
+    end
+
 
   end
 end

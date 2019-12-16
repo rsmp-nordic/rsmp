@@ -10,11 +10,17 @@ RSpec.describe RSMP::Supervisor do
 			{
 				'active' => false,
 				'hide_ip_and_port' => true,
-				'debug' => false
+				'debug' => false,
+				'json' => true
 			}
 		}
 		let(:sites_settings) {
-			[ { 'site_id' => 'RN+SI0001', sxl_versions: ['1,1']} ]
+			[
+				{
+					'site_id' => 'RN+SI0001',
+					sxl_versions: ['1,1']
+				}
+			]
 		}
 
 		it 'runs without options' do
@@ -59,24 +65,28 @@ RSpec.describe RSMP::Supervisor do
 
 	      # write version message
 				protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.4"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.0.7","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'
-				# supervisor should see our tcp socket and create a proxy
-				proxy = supervisor.wait_for_site "RN+SI0001", 0.1
-				expect(proxy).to be_an(RSMP::SiteProxy)
-				expect(proxy.site_id).to eq("RN+SI0001")
 
-
-				# read expected ack and version messages from the socket
+				# read ack
 				version_ack = JSON.parse protocol.read_line
 				expect(version_ack['mType']).to eq('rSMsg')
 				expect(version_ack['type']).to eq('MessageAck')
 				expect(version_ack['oMId']).to eq('8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6')
 				expect(version_ack['mId']).to be_nil
 
-
+				# read version
 				version = JSON.parse protocol.read_line
 				expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.4"}], "SXL"=>"1.0.7", "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version"})
 
+				# send ack
 				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
+
+				# supervisor should see our tcp socket and create a proxy
+				proxy = supervisor.wait_for_site "RN+SI0001", 1
+				expect(proxy).to be_an(RSMP::SiteProxy)
+				expect(proxy.site_id).to eq("RN+SI0001")
+
+
+
 				expect {
 					proxy.wait_for_state(:ready, 0.1)
 				}.not_to raise_error
@@ -84,9 +94,9 @@ RSpec.describe RSMP::Supervisor do
 				# verify log content
 				got = supervisor.archive.by_level([:log, :info]).map { |item| item[:str] }
 				expect( got ).to match_array([
-					"Starting supervisor RN+SU0001 on port 13111",
+					"Starting supervisor on port 13111",
 					"Site connected from ********",
-					"Received Version message for sites [RN+SI0001] using RSMP 3.1.4",
+					"Received Version message for site RN+SI0001 using RSMP 3.1.4",
 					"Sent MessageAck for Version 8db0",
 					"Sent Version",
 					"Received MessageAck for Version 1b20",

@@ -19,7 +19,6 @@ module RSMP
 
     def handle_supervisor_settings options
       @supervisor_settings = {
-        'site_id' => 'RN+SU0001',
         'port' => 12111,
         'rsmp_versions' => ['3.1.1','3.1.2','3.1.3','3.1.4'],
         'timer_interval' => 0.1,
@@ -31,7 +30,10 @@ module RSMP
         'status_update_timeout' => 1,
         'site_connect_timeout' => 2,
         'site_ready_timeout' => 1,
-        'stop_after_first_session' => false
+        'stop_after_first_session' => false,
+        'sites' => {
+          :any => {}
+        }
       }
       
       if options[:supervisor_settings]
@@ -40,7 +42,7 @@ module RSMP
         @supervisor_settings.merge! converted
       end
 
-      required = [:port, :rsmp_versions, :site_id, :watchdog_interval, :watchdog_timeout,
+      required = [:port, :rsmp_versions, :watchdog_interval, :watchdog_timeout,
                   :acknowledgement_timeout, :command_response_timeout]
       check_required_settings @supervisor_settings, required
 
@@ -87,7 +89,7 @@ module RSMP
     end
 
     def starting
-      log "Starting supervisor #{@supervisor_settings["site_id"]} on port #{@supervisor_settings["port"]}", 
+      log "Starting supervisor on port #{@supervisor_settings["port"]}", 
           level: :info,
           timestamp: RSMP.now_object
     end
@@ -157,12 +159,14 @@ module RSMP
 
     def find_site site_id
       @proxies.each do |site|
-        return site if site_id == :any || site.site_ids.include?(site_id)
+        return site if site.site_id == site_id
       end
       nil
     end
 
     def wait_for_site site_id, timeout
+      site = find_site site_id
+      return site if site
       RSMP::Wait.wait_for(@task,@site_id_condition,timeout) { find_site site_id }
     rescue Async::TimeoutError
       nil
@@ -195,5 +199,10 @@ module RSMP
 
     def aggregated_status_changed site_proxy, component
     end
+
+    def self.build_id_from_ip_port ip, port
+      Digest::MD5.hexdigest("#{ip}:#{port}")[0..8]
+    end
+
   end
 end

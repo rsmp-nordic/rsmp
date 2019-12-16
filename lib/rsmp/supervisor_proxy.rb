@@ -1,5 +1,7 @@
 # Handles a site connection to a remote supervisor
 
+require 'digest'
+
 module RSMP  
   class SupervisorProxy < Proxy
 
@@ -14,6 +16,7 @@ module RSMP
       @status_subscriptions = {}
       @status_subscriptions_mutex = Mutex.new
       @sxl = @site_settings['sxl']
+      @synthetic_id = Supervisor.build_id_from_ip_port @ip, @port
     end
 
     def node
@@ -26,7 +29,7 @@ module RSMP
       connect
       @logger.unmute @ip, @port
       start_reader
-      send_version @site_settings["rsmp_versions"]
+      send_version @site_settings['site_id'], @site_settings["rsmp_versions"]
     rescue Errno::ECONNREFUSED
       log "No connection to supervisor at #{@ip}:#{@port}", level: :error
       unless @site.site_settings["reconnect_interval"] == :no
@@ -97,8 +100,8 @@ module RSMP
       @task.sleep interval
     end
 
-    def version_accepted message, rsmp_version
-      log "Received Version message, using RSMP #{rsmp_version}", message: message, level: :log
+    def version_accepted message
+      log "Received Version message, using RSMP #{@rsmp_version}", message: message, level: :log
       start_timer
       acknowledge message
       connection_complete
@@ -298,5 +301,17 @@ module RSMP
     def sxl_version
       @site_settings['sxl_version']
     end
+
+    def process_version message
+      return extraneous_version message if @version_determined
+      check_rsmp_version message
+      check_sxl_version message
+      @site_id = Supervisor.build_id_from_ip_port @ip, @port
+      version_accepted message
+    end
+
+    def check_sxl_version message
+    end
+
   end
 end

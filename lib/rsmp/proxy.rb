@@ -2,7 +2,7 @@
 
 module RSMP  
   class Proxy < Base
-    attr_reader :site_ids, :state, :archive, :connection_info, :sxl
+    attr_reader :state, :archive, :connection_info, :sxl
 
     def initialize options
       super options
@@ -13,10 +13,6 @@ module RSMP
       @connection_info = options[:info]
       @sxl = nil
       clear
-    end
-
-    def site_id
-      @site_ids.first   #rsmp connection can represent multiple site ids. pick the first
     end
 
     def run
@@ -44,7 +40,6 @@ module RSMP
     end
 
     def clear
-      @site_ids = []
       @awaiting_acknowledgement = {}
       @latest_watchdog_received = nil
       @watchdog_started = false
@@ -198,7 +193,7 @@ module RSMP
     end
 
     def log str, options={}
-      super str, options.merge(ip: @ip, port: @port, site_id: site_id)
+      super str, options.merge(ip: @ip, port: @port, site_id: @site_id)
     end
 
     def send_message message, reason=nil
@@ -299,28 +294,13 @@ module RSMP
       # find versions that both we and the client support
       candidates = message.versions & @settings["rsmp_versions"]
       if candidates.any?
-        # pick latest version
-        version = candidates.sort.last
-        return version
+        @rsmp_version = candidates.sort.last  # pick latest version
       else
         raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{@settings["rsmp_versions"].join(',')}] supported."
       end
     end
 
     def process_version message
-      return extraneous_version message if @version_determined
-      check_site_ids message
-      site_ids_changed
-      rsmp_version = check_rsmp_version message
-      set_state :version_determined
-      check_sxl_version message
-      version_accepted message, rsmp_version
-    end
-
-    def site_ids_changed
-    end
-
-    def check_sxl_version message
     end
 
     def acknowledge original
@@ -357,10 +337,12 @@ module RSMP
       @state
     end
 
-    def send_version site_id_array, rsmp_versions
-      versions_hash = [rsmp_versions].flatten.map {|v| {"vers" => v} }
+    def send_version site_id, rsmp_versions
+      versions_array = [rsmp_versions].flatten.map {|v| {"vers" => v} }
+      site_id_array = [site_id].flatten.map {|id| {"sId" => id} }
+
       version_response = Version.new({
-        "RSMP"=>versions_hash,
+        "RSMP"=>versions_array,
         "siteId"=>site_id_array,
         "SXL"=>sxl_version
       })
@@ -455,24 +437,6 @@ module RSMP
     def connection_complete
       set_state :ready
     end
-
-    def check_site_ids message
-      message.attribute("siteId").map { |item| item["sId"] }.each do |site_id|
-        check_site_id site_id
-        @site_ids << site_id
-      end
-    end
-
-    def check_site_id site_id
-    end
-
-    def site_id_accetable? site_id
-      true
-    end
-
-    def add_site_id site_id
-      @site_ids << site_id
-    end
     
     def version_acknowledged
     end
@@ -507,6 +471,5 @@ module RSMP
     def author
       node.site_id
     end
-
   end
 end
