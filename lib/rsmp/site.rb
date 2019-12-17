@@ -27,6 +27,7 @@ module RSMP
           { 'ip' => '127.0.0.1', 'port' => 12111 }
         ],
         'rsmp_versions' => ['3.1.1','3.1.2','3.1.3','3.1.4'],
+        'sxl' => 'traffic_light_controller',
         'sxl_version' => '1.0.7',
         'timer_interval' => 0.1,
         'watchdog_interval' => 1,
@@ -39,6 +40,7 @@ module RSMP
         'site_ready_timeout' => 1,
         'reconnect_interval' => 0.1,
         'send_after_connect' => true,
+        'components' => {}
       }
       if options[:site_settings]
         converted = options[:site_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
@@ -66,7 +68,7 @@ module RSMP
       end
     end
 
-    def build_connector settings
+    def build_proxy settings
       SupervisorProxy.new settings
     end
 
@@ -77,7 +79,7 @@ module RSMP
     end
 
     def connect_to_supervisor task, supervisor_settings
-      proxy = build_connector({
+      proxy = build_proxy({
         site: self,
         task: @task,
         settings: @site_settings, 

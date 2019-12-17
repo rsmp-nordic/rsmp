@@ -98,7 +98,7 @@ module RSMP
       true
     end
 
-    def build_connector settings
+    def build_proxy settings
       SiteProxy.new settings
     end
 
@@ -117,7 +117,7 @@ module RSMP
           level: :info,
           timestamp: RSMP.now_object
 
-      proxy = build_connector({
+      proxy = build_proxy({
         supervisor: self,
         task: @task,
         settings: @supervisor_settings[:sites],
