@@ -159,7 +159,7 @@ module RSMP
 
     def find_site site_id
       @proxies.each do |site|
-        return site if site.site_id == site_id
+        return site if site_id == :any || site.site_id == site_id
       end
       nil
     end
