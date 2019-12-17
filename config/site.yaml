@@ -12,13 +12,12 @@ rsmp_versions:
   - 3.1.4
 
 components:
-  A1:
+  C1:
     type: main
 
 watchdog_interval: 1
 watchdog_timeout: 2
-acknowledgement_timeout: 2
-store_messages: false
+acknowledgement_timeout: 1
 command_response_timeout: 1
 status_response_timeout: 1
 status_update_timeout: 1
