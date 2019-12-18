@@ -192,10 +192,10 @@ module RSMP
         found = false
         sS = item[:message].attributes['sS']
         sS.each do |status|
-          break if options[:sCI] && options[:sCI] != status['sCI']
-          break if options[:n] && options[:n] != status['n']
-          break if options[:q] && options[:q] != status['q']
-          break if options[:s] && options[:s] != status['s']
+          next if options[:sCI] && options[:sCI] != status['sCI']
+          next if options[:n] && options[:n] != status['n']
+          next if options[:q] && options[:q] != status['q']
+          next if options[:s] && options[:s] != status['s']
           found = true
           break
         end
