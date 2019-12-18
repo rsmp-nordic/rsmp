@@ -187,21 +187,24 @@ module RSMP
 
     def wait_for_status_update options={}
       raise ArgumentError unless options[:component]
+      matching_status = nil
       item = @archive.capture(@task,options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
         # TODO check components
-        found = false
+        matching_status = nil
         sS = item[:message].attributes['sS']
         sS.each do |status|
           next if options[:sCI] && options[:sCI] != status['sCI']
           next if options[:n] && options[:n] != status['n']
           next if options[:q] && options[:q] != status['q']
           next if options[:s] && options[:s] != status['s']
-          found = true
+          matching_status = status
           break
         end
-        found
+        matching_status != nil
       end
-      item[:message] if item
+      if item
+        { message: item[:message], status: matching_status }
+      end
     end
 
     def send_command component, args
