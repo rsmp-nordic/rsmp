@@ -72,6 +72,10 @@ module RSMP
         else
           super message
       end
+    rescue UnknownComponent => e
+      dont_acknowledge message, '', e.to_s
+    rescue UnknownCommand => e
+      dont_acknowledge message, '', e.to_s
     end
 
     def acknowledged_first_ingoing message
@@ -135,20 +139,31 @@ module RSMP
       acknowledge message
     end
 
+    # reorganize rmsp command request arg attribute:
+    # [{"cCI":"M0002","cO":"setPlan","n":"status","v":"True"},{"cCI":"M0002","cO":"setPlan","n":"securityCode","v":"5678"},{"cCI":"M0002","cO":"setPlan","n":"timeplan","v":"3"}]
+    # into the simpler, but equivalent:
+    # {"M0002"=>{"status"=>"True", "securityCode"=>"5678", "timeplan"=>"3"}}
+    def simplify_command_requests arg
+      sorted = {}
+      arg.each do |item|
+        sorted[item['cCI']] ||= {}
+        sorted[item['cCI']][item['n']] = item['v']
+      end
+      sorted
+    end
+
     def process_command_request message
-      log "Received #{message.type}", message: message, level: :log
-      rvs = []
-      message.attributes["arg"].each do |arg|
-        unless arg['cCI'] && arg['n'] && arg['v']
-          dont_acknowledge message, '', 'bad arguments'
-          return
-        end 
-        rvs << { "cCI" => arg["cCI"],
-                 "n" => arg["n"],
-                 "v" => arg["v"],
-                 "age" => "recent" }
+      log "Received #{message.type}", message: message, level: :log 
+      commands = simplify_command_requests message.attributes["arg"]
+      commands.each_pair do |command_code,arg|
+        @site.handle_command(command_code,arg).merge('cCI'=>command_code)
       end
 
+      rvs = message.attributes["arg"].map do |item|
+        item = item.dup.merge('age'=>'recent')
+        item.delete 'cO'
+        item
+      end
       response = CommandResponse.new({
         "cId"=>message.attributes["cId"],
         "cTS"=>RSMP.now_string,
@@ -161,12 +176,10 @@ module RSMP
     def process_status_request message
       component_id = message.attributes["cId"]
       component = @site.find_component component_id
-
       log "Received #{message.type}", message: message, level: :log
-      sS = message.attributes["sS"].clone.map do |request|
-        request["s"] = rand(100).to_s
-        request["q"] = "recent"
-        request
+      sS = message.attributes["sS"].map do |arg|
+        value, quality =  @site.get_status, arg['sCI'], arg['n'] 
+        { "s" => value, "q" => quality }
       end
       response = StatusResponse.new({
         "cId"=>component_id,
@@ -175,8 +188,6 @@ module RSMP
       })
       acknowledge message
       send_message response
-    rescue UnknownComponent => e
-      dont_acknowledge message, '', e.to_s
     end
 
     def process_status_subcribe message
@@ -273,11 +284,12 @@ module RSMP
       update_list.each_pair do |component,by_code|
         sS = []
         by_code.each_pair do |code,names|
-          names.each do |name|
+          names.map do |status_name|
+            value,quality = @site.get_status code, status_name
             sS << { "sCI" => code,
-                     "n" => name,
-                     "s" => rand(100).to_s,
-                     "q" => "recent" }
+                     "n" => status_name,
+                     "s" => value.to_s,
+                     "q" => quality }
           end
         end
         update = StatusUpdate.new({

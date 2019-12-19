@@ -24,7 +24,7 @@ RSpec.describe "Sending commands" do
 	before(:all) do
 		supervisor_settings = { 'port' => 13111 }
 		log_settings = {
-			'active' => false,
+			'active' => true,
 			'color' => :light_blue,
 			'ip' => false,
 			'timestamp' => false,
@@ -33,18 +33,17 @@ RSpec.describe "Sending commands" do
 			'acknowledgements' => false,
 			'watchdogs' => false
 		}
-
-
 		@supervisor = RSMP::Supervisor.new(
 			supervisor_settings:supervisor_settings,
 			log_settings:log_settings
 		)
-		
+
+
 		site_settings = {
 			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ]
 		}
 		log_settings = {
-			'active' => false,
+			'active' => true,
 			'color' => :light_black,
 			'ip' => false,
 			'timestamp' => false,
@@ -54,8 +53,7 @@ RSpec.describe "Sending commands" do
 			'watchdogs' => false,
 			'json' => true
 		}
-
-		@site = RSMP::Site.new(
+		@site = RSMP::Tlc.new(
       site_settings: site_settings,
       log_settings:log_settings
     )

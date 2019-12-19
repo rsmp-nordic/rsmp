@@ -139,5 +139,8 @@ module RSMP
         proxy.stop
       end
     end
+
+    def handle_command command_code, command_name, value
+    end
   end
 end
