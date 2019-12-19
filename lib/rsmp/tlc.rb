@@ -10,6 +10,7 @@ module RSMP
       @dark_mode = 'False'
       @yellow_flash = 'False'
       @booting = 'False'
+
     end
 
     def handle_command command_code, arg
@@ -66,13 +67,17 @@ module RSMP
       when 'S0001'
         return 'AAAA', "recent"
       when 'S0005'
-        return @booting.to_s, "recent"
+        return @booting, "recent"
       when 'S0007'
-        return @dark_mode.to_s, "recent"
+        if @dark_mode == 'True'
+          return 'False', "recent"
+        else
+          return 'True', "recent"
+        end
       when 'S0014'
         return @plan.to_s, "recent"
       when 'S0011'
-        return @yellow_flash.to_s, "recent"
+        return @yellow_flash, "recent"
       else
         raise InvalidMessage.new "unknown status code #{status_code}"
       end
