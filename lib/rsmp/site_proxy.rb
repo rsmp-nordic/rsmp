@@ -165,7 +165,7 @@ module RSMP
           "sS" => status_list
       })
       send_message message
-      return message, wait_for_status_update(component: component, timeout: timeout)
+      return message, wait_for_status_update(component: component, timeout: timeout)[:message]
     end
 
     def unsubscribe_to_status component, status_list
