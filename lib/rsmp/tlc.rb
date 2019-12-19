@@ -7,6 +7,9 @@ module RSMP
       super options
       @sxl = 'traffic_light_controller'
       @plan = 0
+      @dark_mode = 'False'
+      @yellow_flash = 'False'
+      @booting = 'False'
     end
 
     def handle_command command_code, arg
@@ -21,6 +24,8 @@ module RSMP
     end
 
     def handle_m0001 arg
+      verify_security_code arg['securityCode']
+      switch_mode arg['status']
       arg
     end
 
@@ -40,8 +45,37 @@ module RSMP
       plan
     end
 
-    def get_status status_code, status_name
-      return @plan.to_s, "recent"
+   def switch_mode mode
+      log "Switching to mode #{mode}", level: :info
+      case mode
+      when 'NormalControl'
+        @yellow_flash = 'False'
+        @dark_mode = 'False'
+      when 'YellowFlash'
+        @yellow_flash = 'True'
+        @dark_mode = 'False'
+      when 'Dark'
+        @yellow_flash = 'False'
+        @dark_mode = 'True'
+      end
+      mode
+    end
+
+    def get_status status_code, status_name=nil
+      case status_code
+      when 'S0001'
+        return 'AAAA', "recent"
+      when 'S0005'
+        return @booting.to_s, "recent"
+      when 'S0007'
+        return @dark_mode.to_s, "recent"
+      when 'S0014'
+        return @plan.to_s, "recent"
+      when 'S0011'
+        return @yellow_flash.to_s, "recent"
+      else
+        raise InvalidMessage.new "unknown status code #{status_code}"
+      end
     end
 
     def verify_security_code code
