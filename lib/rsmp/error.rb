@@ -46,4 +46,7 @@ module RSMP
 
 	class UnknownCommand < Error
 	end
+
+	class UnknownStatus < Error
+	end
 end
