@@ -1,16 +1,50 @@
 # Simulates a Traffic Light Controller
 
 module RSMP
-  class Tlc < Site
 
-    def initialize options={}
-      super options
-      @sxl = 'traffic_light_controller'
+  class TrafficController < Component
+    attr_reader :pos, :cycle_time
+    def initialize node:, id:, cycle_time:
+      super node: node, id: id, grouped: true
+      @pos = 0
+      @cycle_time = cycle_time
+      @signal_groups = []
       @plan = 0
       @dark_mode = 'False'
       @yellow_flash = 'False'
       @booting = 'False'
+      @police_key = 0
+    end
 
+    def add_signal_group group
+      @signal_groups << group
+    end
+
+    def timer now
+      pos = now.to_i % @cycle_time
+      if pos != @pos
+        @pos = pos
+        move pos
+      end
+    end
+
+    def move pos
+      @signal_groups.each do |group|
+        group.move pos
+      end
+      output_states
+
+      if pos == 0
+        aggrated_status_changed
+      end
+    end
+
+    def output_states
+      out = "#{pos} "
+      @signal_groups.each do |group|
+        out << "#{group.c_id}#{group.state} "
+      end
+      print "\t#{out}\r"
     end
 
     def handle_command command_code, arg
@@ -19,6 +53,8 @@ module RSMP
         handle_m0001 arg
       when 'M0002'
         handle_m0002 arg
+      when 'M0007'
+        handle_m0007 arg
       else
         raise UnknownCommand.new "Unknown command #{command_code}"
       end
@@ -38,6 +74,16 @@ module RSMP
         switch_plan 0   # TODO use clock/calender
       end
       arg
+    end
+
+    def handle_m0007 arg
+      verify_security_code arg['securityCode']
+      set_fixed_time_control arg['status']
+      arg
+    end
+
+    def set_fixed_time_control status
+      @fixed_time_control = status
     end
 
     def switch_plan plan
@@ -74,6 +120,10 @@ module RSMP
         else
           return 'True', "recent"
         end
+      when 'S0009'
+        return @fixed_time_control.to_s, "recent"
+      when 'S0013'
+        return @police_key.to_s, "recent"
       when 'S0014'
         return @plan.to_s, "recent"
       when 'S0011'
@@ -84,6 +134,83 @@ module RSMP
     end
 
     def verify_security_code code
+    end
+
+  end
+
+  class SignalGroup < Component
+    attr_reader :plan, :state
+
+    def initialize node:, id:, plan:
+      super node: node, id: id, grouped: false
+      @plan = plan
+      move 0
+    end
+
+    def get_state pos
+      if pos > @plan.length
+        '.'
+      else
+        @plan[pos]
+      end
+    end
+
+    def move pos
+      @state = get_state pos
+    end
+  end
+
+  class Tlc < Site
+    def initialize options={}
+      super options
+
+      @sxl = 'traffic_light_controller'
+    end
+
+    def build_component id, settings={}
+      component = case settings['type']
+      when 'main'
+        @main = TrafficController.new node: self, id: id, cycle_time: settings['cycle_time']
+      when 'signal_group'
+        group = SignalGroup.new node: self, id: id, plan: settings['plan']
+        @main.add_signal_group group
+        group
+      end
+    end
+
+    def start_action
+      super
+      start_timer
+    end
+
+    def start_timer
+      name = "tlc timer"
+      interval = 1 #@settings["timer_interval"] || 1
+      log "Starting #{name} with interval #{interval} seconds", level: :debug
+
+      @timer = @task.async do |task|
+        task.annotate "timer"
+        loop do
+          now = RSMP.now_object
+          break if timer(now) == false
+        rescue StandardError => e
+          log ["#{name} exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+        ensure
+          task.sleep interval
+        end
+      end
+    end
+
+    def timer now
+      @main.timer now
+    end
+
+    def handle_command command_code, arg
+      @main.handle_command command_code, arg
+    end
+
+    def get_status status_code, status_name=nil
+      @main.get_status status_code, status_name
     end
 
   end

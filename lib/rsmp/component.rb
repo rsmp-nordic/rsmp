@@ -61,5 +61,8 @@ module RSMP
     def status code:, value:
     end
 
+    def log str, options
+      @node.log str, options
+    end
   end
 end

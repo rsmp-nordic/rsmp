@@ -40,7 +40,9 @@ module RSMP
         'site_ready_timeout' => 1,
         'reconnect_interval' => 0.1,
         'send_after_connect' => true,
-        'components' => {}
+        'components' => {
+          'C1' => {}
+        }
       }
       if options[:site_settings]
         converted = options[:site_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
