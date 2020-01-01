@@ -76,6 +76,8 @@ module RSMP
       dont_acknowledge message, '', e.to_s
     rescue UnknownCommand => e
       dont_acknowledge message, '', e.to_s
+    rescue UnknownStatus => e
+      dont_acknowledge message, '', e.to_s
     end
 
     def acknowledged_first_ingoing message

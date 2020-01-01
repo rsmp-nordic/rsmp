@@ -49,4 +49,7 @@ module RSMP
 
 	class UnknownStatus < Error
 	end
+
+	class ConfigurationError < Error
+	end
 end

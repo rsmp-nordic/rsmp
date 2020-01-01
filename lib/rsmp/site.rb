@@ -142,7 +142,13 @@ module RSMP
       end
     end
 
-    def handle_command command_code, command_name, value
+    def handle_command command_code, arg
+      raise UnknownCommand.new "Command #{command_code} not implemented"
     end
+
+    def get_status status_code, status_name=nil
+      raise UnknownStatus.new "Status #{status_code}/#{status_name} not implemented"
+    end
+
   end
 end

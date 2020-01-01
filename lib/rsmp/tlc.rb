@@ -170,6 +170,10 @@ module RSMP
       super options
 
       @sxl = 'traffic_light_controller'
+
+      unless @main
+        raise ConfigurationError.new "TLC must have a main component"
+      end
     end
 
     def build_component id, settings={}
@@ -219,14 +223,17 @@ module RSMP
     end
 
     def timer now
+      return unless @main
       @main.timer now
     end
 
     def handle_command command_code, arg
+      return unless @main
       @main.handle_command command_code, arg
     end
 
     def get_status status_code, status_name=nil
+      return unless @main
       @main.get_status status_code, status_name
     end
 
