@@ -24,7 +24,7 @@ RSpec.describe "Sending commands" do
 	before(:all) do
 		supervisor_settings = { 'port' => 13111 }
 		log_settings = {
-			'active' => true,
+			'active' => false,
 			'color' => :light_blue,
 			'ip' => false,
 			'timestamp' => false,
@@ -40,10 +40,17 @@ RSpec.describe "Sending commands" do
 
 
 		site_settings = {
-			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ]
+			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 },
+     ],
+     'components' => {
+				'TC' => {
+				    'type' => 'main',
+				    'cycle_time' => 6
+				}
+			}
 		}
 		log_settings = {
-			'active' => true,
+			'active' => false,
 			'color' => :light_black,
 			'ip' => false,
 			'timestamp' => false,

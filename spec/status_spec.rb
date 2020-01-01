@@ -41,7 +41,13 @@ RSpec.describe "Sending commands" do
 		)
 		
 		site_settings = {
-			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ]
+			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ],
+      'components' => {
+				'TC' => {
+				    'type' => 'main',
+				    'cycle_time' => 6
+				}
+			}
 		}
 		log_settings = {
 			'active' => false,
@@ -55,7 +61,7 @@ RSpec.describe "Sending commands" do
 			'json' => true
 		}
 
-		@site = RSMP::Site.new(
+		@site = RSMP::Tlc.new(
       site_settings: site_settings,
       log_settings:log_settings
     )

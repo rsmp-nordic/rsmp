@@ -40,12 +40,7 @@ module RSMP
     end
 
     def output_states
-      #out = "#{pos} "
-      #@signal_groups.each do |group|
-      #  out << "#{group.c_id}#{group.state} "
-      #end
-      #print "\t#{out}\r"
-      print "\t#{pos.to_s.ljust(3)} #{format_signal_group_status}\r"
+      #print "\t#{pos.to_s.ljust(3)} #{format_signal_group_status}\r"
     end
 
     def format_signal_group_status
