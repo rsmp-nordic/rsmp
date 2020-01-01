@@ -17,10 +17,10 @@ components:
     cycle_time: 6
   A1:
     type: signal_group
-    plan: '--/|||'
+    plan: 'GGyrrr'
   B1:
     type: signal_group
-    plan: '|||--/'
+    plan: 'rrrGGy'
 
 watchdog_interval: 1
 watchdog_timeout: 2

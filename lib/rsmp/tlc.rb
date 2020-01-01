@@ -40,11 +40,16 @@ module RSMP
     end
 
     def output_states
-      out = "#{pos} "
-      @signal_groups.each do |group|
-        out << "#{group.c_id}#{group.state} "
-      end
-      print "\t#{out}\r"
+      #out = "#{pos} "
+      #@signal_groups.each do |group|
+      #  out << "#{group.c_id}#{group.state} "
+      #end
+      #print "\t#{out}\r"
+      print "\t#{pos.to_s.ljust(3)} #{format_signal_group_status}\r"
+    end
+
+    def format_signal_group_status
+      @signal_groups.map { |group|group.state }.join
     end
 
     def handle_command command_code, arg
@@ -111,7 +116,7 @@ module RSMP
     def get_status status_code, status_name=nil
       case status_code
       when 'S0001'
-        return 'AAAA', "recent"
+        return format_signal_group_status, "recent"
       when 'S0005'
         return @booting, "recent"
       when 'S0007'
@@ -190,13 +195,25 @@ module RSMP
 
       @timer = @task.async do |task|
         task.annotate "timer"
+        next_time = Time.now.to_f
         loop do
           now = RSMP.now_object
           break if timer(now) == false
         rescue StandardError => e
           log ["#{name} exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
         ensure
-          task.sleep interval
+          # adjust sleep duration to avoid drift. so wake up always happens on the 
+          # same fractional second.
+          # note that Time.now is not monotonic. If the clock si changed,
+          # either manaully or via NTP, the sleep interval might jump.
+          # an alternative is to use ::Process.clock_gettime(::Process::CLOCK_MONOTONIC),
+          # to get the current time. this ensures a constant interval, but
+          # if the clock is changed, the wake up would then happen on a different 
+          # fractional second
+
+          next_time += interval
+          duration = next_time - Time.now.to_f
+          task.sleep duration
         end
       end
     end
