@@ -43,4 +43,13 @@ module RSMP
 
 	class UnknownComponent < Error
 	end
+
+	class UnknownCommand < Error
+	end
+
+	class UnknownStatus < Error
+	end
+
+	class ConfigurationError < Error
+	end
 end

@@ -115,15 +115,19 @@ module RSMP
       interval = @settings["timer_interval"] || 1
       log "Starting #{name} with interval #{interval} seconds", level: :debug
       @latest_watchdog_received = RSMP.now_object
+
       @timer = @task.async do |task|
         task.annotate "timer"
+        next_time = Time.now.to_f
         loop do
           now = RSMP.now_object
           break if timer(now) == false
         rescue StandardError => e
           log ["#{name} exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
         ensure
-          task.sleep interval
+          next_time += interval
+          duration = next_time - Time.now.to_f
+          task.sleep duration
         end
       end
     end

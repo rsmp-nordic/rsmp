@@ -33,16 +33,16 @@ RSpec.describe "Sending commands" do
 			'acknowledgements' => false,
 			'watchdogs' => false
 		}
+
+
 		@supervisor = RSMP::Supervisor.new(
 			supervisor_settings:supervisor_settings,
 			log_settings:log_settings
 		)
-
-
+		
 		site_settings = {
-			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 },
-     ],
-     'components' => {
+			'supervisors' => [ {'ip' => '127.0.0.1', 'port' => 13111 } ],
+      'components' => {
 				'TC' => {
 				    'type' => 'main',
 				    'cycle_time' => 6
@@ -60,6 +60,7 @@ RSpec.describe "Sending commands" do
 			'watchdogs' => false,
 			'json' => true
 		}
+
 		@site = RSMP::Tlc.new(
       site_settings: site_settings,
       log_settings:log_settings

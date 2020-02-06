@@ -10,6 +10,7 @@ module RSMP
 		method_option :supervisors, :type => :string, :aliases => "-s", banner: 'ip:port,... list of supervisor to connect to'			
 		method_option :log, :type => :string, :aliases => "-l", banner: 'Path to log file'
 		method_option :json, :type => :boolean, :aliases => "-j", banner: 'Show JSON messages in log'
+		method_option :type, :type => :string, :aliases => "-t", banner: 'Type of site: [tlc]'
 		def site
 			settings = {}
 			log_settings = { 'active' => true }
@@ -46,7 +47,16 @@ module RSMP
 				log_settings['json'] = options[:json]
 			end
 
-			RSMP::Site.new(site_settings:settings, log_settings: log_settings).start
+			site_class = RSMP::Site
+			if options[:type]
+				case options[:type]
+					when 'tlc'
+						site_class = RSMP::Tlc
+					else
+						site_class = RSMP::Site
+				end
+			end
+			site_class.new(site_settings:settings, log_settings: log_settings).start
 		end
 
 		desc "supervisor", "Run RSMP supervisor"

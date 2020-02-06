@@ -54,7 +54,7 @@ module RSMP
       log "Received Version message for site #{@site_id} using RSMP #{@rsmp_version}", message: message, level: :log
       start_timer
       acknowledge message
-      send_version @site_id, @rsmp_version
+      send_version @site_id, @settings['rsmp_versions']
       @version_determined = true
 
       if @settings['sites']
@@ -165,7 +165,7 @@ module RSMP
           "sS" => status_list
       })
       send_message message
-      return message, wait_for_status_update(component: component, timeout: timeout)
+      return message, wait_for_status_update(component: component, timeout: timeout)[:message]
     end
 
     def unsubscribe_to_status component, status_list
@@ -187,9 +187,10 @@ module RSMP
 
     def wait_for_status_update options={}
       raise ArgumentError unless options[:component]
+      matching_status = nil
       item = @archive.capture(@task,options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
         # TODO check components
-        found = false
+        matching_status = nil
         sS = item[:message].attributes['sS']
         sS.each do |status|
           next if options[:sCI] && options[:sCI] != status['sCI']
@@ -200,12 +201,14 @@ module RSMP
           else
             next if options[:s] && options[:s] != status['s']
           end
-          found = true
+          matching_status = status
           break
         end
-        found
+        matching_status != nil
       end
-      item[:message] if item
+      if item
+        { message: item[:message], status: matching_status }
+      end
     end
 
     def send_command component, args
