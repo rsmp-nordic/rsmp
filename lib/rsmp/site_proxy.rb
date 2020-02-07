@@ -211,6 +211,24 @@ module RSMP
       end
     end
 
+    def wait_for_alarm options={}
+      raise ArgumentError unless options[:component]
+      matching_alarm = nil
+      item = @archive.capture(@task,options.merge(type: "Alarm", with_message: true, num: 1)) do |item|
+        # TODO check components
+        matching_alarm = nil
+        alarm = item[:message]
+        next if options[:aCId] && options[:aCId] != alarm.attribute("aCId")
+        next if options[:aSp] && options[:aSp] != alarm.attribute("aSp")
+        next if options[:aS] && options[:aS] != alarm.attribute("aS")
+        matching_alarm = alarm
+        break
+      end
+      if item
+        { message: item[:message], status: matching_alarm }
+      end
+    end
+
     def send_command component, args
       raise NotReady unless @state == :ready
       message = RSMP::CommandRequest.new({
