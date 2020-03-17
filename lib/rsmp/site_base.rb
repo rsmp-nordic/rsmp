@@ -13,8 +13,10 @@ module RSMP
 
     def setup_components settings
       return unless settings
-      settings.each_pair do |id,settings|
-        @components[id] = build_component(id,settings)
+      settings.each_pair do |type,components_by_type|
+        components_by_type.each_pair do |id,settings|
+          @components[id] = build_component(id:id, type:type, settings:settings)
+        end
       end
     end
 
@@ -22,8 +24,8 @@ module RSMP
       @components[component.c_id] = component
     end
 
-    def build_component id, settings={}
-      Component.new id: id, node: self, grouped: true
+    def build_component id:, type:, settings:{}
+      Component.new id:id, node: self, grouped: true
     end
 
     def find_component component_id

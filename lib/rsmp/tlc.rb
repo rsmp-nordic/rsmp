@@ -200,8 +200,8 @@ module RSMP
       end
     end
 
-    def build_component id, settings={}
-      component = case settings['type']
+    def build_component id:, type:, settings:{}
+      component = case type
       when 'main'
         @main = TrafficController.new node: self, id: id, cycle_time: settings['cycle_time']
       when 'signal_group'

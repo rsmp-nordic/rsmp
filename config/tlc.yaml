@@ -3,24 +3,19 @@ supervisors:
   - ip: 127.0.0.1
     port: 12111
 
-sxl: traffic_light_controller
-
-rsmp_versions:
-  - 3.1.1
-  - 3.1.2
-  - 3.1.3
-  - 3.1.4
-
 components:
-  TC:
-    type: main
-    cycle_time: 6
-  A1:
-    type: signal_group
-    plan: 'GGyrrr'
-  B1:
-    type: signal_group
-    plan: 'rrrGGy'
+  main:
+    TC:
+      cycle_time: 6
+  signal_group:
+    A1:
+      plan: '11NBBB'
+    A2:
+      plan: '1NBBBB'
+    B1:
+      plan: 'BBB11N'
+    B2:
+      plan: 'BBB1NB'
 
 watchdog_interval: 1
 watchdog_timeout: 2

@@ -12,8 +12,8 @@ rsmp_versions:
   - 3.1.4
 
 components:
-  C1:
-    type: main
+  main:
+    C1:
 
 watchdog_interval: 1
 watchdog_timeout: 2
