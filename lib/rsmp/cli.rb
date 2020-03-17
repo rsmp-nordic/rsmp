@@ -18,7 +18,7 @@ module RSMP
 			if options[:config]
 				if File.exist? options[:config]
 					settings = YAML.load_file options[:config]
-					log_settings = settings.delete 'log'
+					log_settings = settings.delete('log') || {}
 				else
 					puts "Error: Config #{options[:config]} not found"
 					exit
@@ -29,9 +29,9 @@ module RSMP
 				settings['site_id'] = options[:id]
 			end
 
-		if options[:supervisors]
-			options[:supervisors].split(',').each do |supervisor|
-				settings[:supervisors] ||= []
+			if options[:supervisors]
+				options[:supervisors].split(',').each do |supervisor|
+					settings[:supervisors] ||= []
 					ip, port = supervisor.split ':'
 					ip = '127.0.0.1' if ip.empty?
 					port = '12111' if port.empty?

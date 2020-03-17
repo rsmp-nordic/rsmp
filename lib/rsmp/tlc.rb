@@ -10,9 +10,9 @@ module RSMP
       @cycle_time = cycle_time
       @signal_groups = []
       @plan = 0
-      @dark_mode = 'False'
-      @yellow_flash = 'False'
-      @booting = 'False'
+      @dark_mode = false
+      @yellow_flash = false
+      @booting = false
       @police_key = 0
     end
 
@@ -32,19 +32,27 @@ module RSMP
       @signal_groups.each do |group|
         group.move pos
       end
-      output_states
-
       if pos == 0
         aggrated_status_changed
       end
     end
 
     def output_states
-      #print "\t#{pos.to_s.ljust(3)} #{format_signal_group_status}\r"
+      str = @signal_groups.map do |group|
+        s = "#{group.c_id}:#{group.state}"
+        if group.state =~ /^[1-9]$/
+          s.colorize(:green)
+      elsif group.state =~ /^[NOP]$/
+          s.colorize(:yellow)
+        else
+          s.colorize(:red)
+        end
+      end.join ' '
+      print "\t#{pos.to_s.ljust(3)} #{str}\r"
     end
 
     def format_signal_group_status
-      @signal_groups.map { |group|group.state }.join
+      @signal_groups.map { |group| group.state }.join
     end
 
     def handle_command command_code, arg
@@ -68,7 +76,7 @@ module RSMP
 
     def handle_m0002 arg
       verify_security_code arg['securityCode']
-      if arg['status'] = 'True'
+      if from_rsmp_bool(arg['status'])
         switch_plan arg['timeplan']
       else
         switch_plan 0   # TODO use clock/calender
@@ -96,38 +104,59 @@ module RSMP
       log "Switching to mode #{mode}", level: :info
       case mode
       when 'NormalControl'
-        @yellow_flash = 'False'
-        @dark_mode = 'False'
+        @yellow_flash = false
+        @dark_mode = false
       when 'YellowFlash'
-        @yellow_flash = 'True'
-        @dark_mode = 'False'
+        @yellow_flash = true
+        @dark_mode = false
       when 'Dark'
-        @yellow_flash = 'False'
-        @dark_mode = 'True'
+        @yellow_flash = false
+        @dark_mode = true
       end
       mode
+    end
+
+    def to_rmsp_bool bool
+      if bool
+        'True'
+      else
+        'False'
+      end
+    end
+
+    def from_rsmp_bool str
+      str == 'True'
     end
 
     def get_status status_code, status_name=nil
       case status_code
       when 'S0001'
-        return format_signal_group_status, "recent"
+        case status_name
+        when 'signalgroupstatus'
+          return format_signal_group_status, "recent"
+        when 'cyclecounter'
+          return @pos.to_s, 'recent'
+        when 'basecyclecounter'
+          return @pos.to_s, 'recent'
+        when 'stage'
+          return 0.to_s, 'recent'
+        end
       when 'S0005'
-        return @booting, "recent"
+        return to_rmsp_bool(@booting), "recent"
       when 'S0007'
-        if @dark_mode == 'True'
-          return 'False', "recent"
+        if @dark_mode
+          return to_rmsp_bool(false), "recent"
         else
-          return 'True', "recent"
+          return to_rmsp_bool(true), "recent"
         end
       when 'S0009'
-        return @fixed_time_control.to_s, "recent"
+        return to_rmsp_bool(@fixed_time_control), "recent"
       when 'S0013'
-        return @police_key.to_s, "recent"
+        return @police_key, "recent"
       when 'S0014'
-        return @plan.to_s, "recent"
+        return @plan.to_i, "recent"
       when 'S0011'
-        return @yellow_flash, "recent"
+        return to_rmsp_bool(@yellow_flash), "recent"
       else
         raise InvalidMessage.new "unknown status code #{status_code}"
       end

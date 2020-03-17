@@ -163,6 +163,12 @@ The ```site``` command will start an RSMP site, which will try to connect to one
 2019-11-11 12:22:00 UTC  RN+SU0001  C1  <--  8280  Sent AggregatedStatus
 ```
 
+
+Use the the --type switch to select a specific type of site. Messages will be validated against the corresponding SXL JSON schema. Without any type specified, messages will be validated against the core RSMP schema only.
+
+Use the ```tlc``` site type to run an emulation of a traffic light controller. This type of site implements enough of functionality to pass all the rsmp_validator tests. You can setup signal group components, in the config file.
+
+
 ### CLI help and options.
 Use ```--help <command>``` to get a list of available options.
 
