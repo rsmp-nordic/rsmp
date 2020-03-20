@@ -181,7 +181,7 @@ module RSMP
       log "Received #{message.type}", message: message, level: :log
       sS = message.attributes["sS"].map do |arg|
         value, quality =  @site.get_status arg['sCI'], arg['n']
-        { "s" => value, "q" => quality }.merge arg
+        { "s" => value.to_s, "q" => quality.to_s }.merge arg
       end
       response = StatusResponse.new({
         "cId"=>component_id,

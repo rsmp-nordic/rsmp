@@ -6,20 +6,37 @@ module RSMP
     attr_reader :pos, :cycle_time
     def initialize node:, id:, cycle_time:
       super node: node, id: id, grouped: true
+      @signal_groups = []
+      @detector_logics = []
+      @plans = []
       @pos = 0
       @cycle_time = cycle_time
-      @signal_groups = []
       @plan = 0
       @dark_mode = false
       @yellow_flash = false
       @booting = false
+      @control_mode = 'control'
       @police_key = 0
+      @intersection = 0
+      @is_starting = false
+      @emergency_stage = false
+      @emergency_stage_num = 0
+      @traffic_situation = 0
+      @num_traffic_situations = 1
+      @manual_control = false
+      @fixed_time_control = false
+      @isolated_control = false
+      @yellow_flash = false
+      @all_red = false
     end
 
     def add_signal_group group
       @signal_groups << group
     end
 
+    def add_detector_logic logic
+      @detector_logics << logic
+    end
     def timer now
       pos = now.to_i % @cycle_time
       if pos != @pos
@@ -130,35 +147,417 @@ module RSMP
 
     def get_status status_code, status_name=nil
       case status_code
-      when 'S0001'
-        case status_name
-        when 'signalgroupstatus'
-          return format_signal_group_status, "recent"
-        when 'cyclecounter'
-          return @pos.to_s, 'recent'
-        when 'basecyclecounter'
-          return @pos.to_s, 'recent'
-        when 'stage'
-          return 0.to_s, 'recent'
-        end
-      when 'S0005'
-        return to_rmsp_bool(@booting), "recent"
-      when 'S0007'
-        if @dark_mode
-          return to_rmsp_bool(false), "recent"
-        else
-          return to_rmsp_bool(true), "recent"
-        end
-      when 'S0009'
-        return to_rmsp_bool(@fixed_time_control), "recent"
-      when 'S0013'
-        return @police_key, "recent"
-      when 'S0014'
-        return @plan.to_i, "recent"
-      when 'S0011'
-        return to_rmsp_bool(@yellow_flash), "recent"
+      when 'S0001', 'S0002', 'S0003', 'S0004', 'S0005', 'S0006', 'S0007',
+           'S0008', 'S0009', 'S0010', 'S0011', 'S0012', 'S0013', 'S0014',
+           'S0015', 'S0016', 'S0017', 'S0018', 'S0019', 'S0020', 'S0021',
+           'S0022', 'S0023', 'S0024', 'S0025', 'S0026', 'S0027', 'S0028',
+           'S0029',
+           'S0091', 'S0092', 'S0095', 'S0096',
+           'S0201', 'S0202', 'S0203', 'S0204', 'S0205', 'S0206', 'S0207',
+           'S0208'
+        return send("handle_#{status_code.downcase}", status_code, status_name)
       else
         raise InvalidMessage.new "unknown status code #{status_code}"
+      end
+    end
+
+    def make_status value, q='recent'
+      case value
+      when true, false
+        return to_rmsp_bool(value), q
+      else
+        return value, q
+      end
+    end
+
+    def handle_s0001 status_code, status_name=nil
+      case status_name
+      when 'signalgroupstatus'
+        return make_status format_signal_group_status
+      when 'cyclecounter'
+        make_status @pos.to_s
+      when 'basecyclecounter'
+        make_status @pos.to_s
+      when 'stage'
+        make_status 0.to_s
+      end
+    end
+
+    def handle_s0002 status_code, status_name=nil
+      case status_name
+      when 'detectorlogicstatus'
+        make_status 0.to_s
+      end
+    end
+
+    def handle_s0003 status_code, status_name=nil
+      case status_name
+      when 'inputstatus'
+        make_status 0.to_s
+      when 'extendedinputstatus'
+        make_status 0.to_s
+      end
+    end
+
+    def handle_s0004 status_code, status_name=nil
+      case status_name
+      when 'outputstatus'
+        make_status 0
+      when 'extendedoutputstatus'
+        make_status 0
+      end
+    end
+
+    def handle_s0005 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status @is_starting
+      end
+    end
+
+    def handle_s0006 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status @emergency_stage
+      when 'emergencystage'
+        make_status @emergency_stage_num
+      end
+    end
+
+    def handle_s0007 status_code, status_name=nil
+      case status_name
+      when 'intersection'
+        make_status @intersection
+      when 'status'
+        make_status @dark_mode
+      end
+    end
+
+    def handle_s0008 status_code, status_name=nil
+      case status_name
+      when 'intersection'
+        make_status @intersection
+      when 'status'
+        make_status @manual_control
+      end
+    end
+
+    def handle_s0009 status_code, status_name=nil
+      case status_name
+      when 'intersection'
+        make_status @intersection
+      when 'status'
+        make_status @fixed_time_control
+      end
+    end
+
+    def handle_s0010 status_code, status_name=nil
+      case status_name
+      when 'intersection'
+        make_status @intersection
+      when 'status'
+        make_status @isolated_control
+      end
+    end
+
+    def handle_s0011 status_code, status_name=nil
+      case status_name
+      when 'intersection'
+        make_status @intersection
+      when 'status'
+        make_status @yellow_flash
+      end
+    end
+
+    def handle_s0012 status_code, status_name=nil
+      case status_name
+      when 'intersection'
+        make_status @intersection
+      when 'status'
+        make_status @all_red
+      end
+    end
+
+    def handle_s0013 status_code, status_name=nil
+      case status_name
+      when 'intersection'
+        make_status @intersection
+      when 'status'
+        make_status @police_key
+      end
+    end
+
+    def handle_s0014 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status @plan
+      end
+    end
+
+    def handle_s0015 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status @traffic_situation
+      end
+    end
+
+    def handle_s0016 status_code, status_name=nil
+      case status_name
+      when 'number'
+        make_status @detector_logics.size
+      end
+    end
+
+    def handle_s0017 status_code, status_name=nil
+      case status_name
+      when 'number'
+        make_status @signal_groups.size
+      end
+    end
+
+    def handle_s0018 status_code, status_name=nil
+      case status_name
+      when 'number'
+        make_status @plans.size
+      end
+    end
+
+    def handle_s0019 status_code, status_name=nil
+      case status_name
+      when 'number'
+        make_status @num_traffic_situations
+      end
+    end
+
+    def handle_s0020 status_code, status_name=nil
+      case status_name
+      when 'intersection'
+        make_status @intersection
+      when 'controlmode'
+        make_status @control_mode
+      end
+    end
+
+    def handle_s0021 status_code, status_name=nil
+      case status_name
+      when 'detectorlogics'
+        make_status @detector_logics.map { |logic| logic.manual.to_s }.join
+      end
+    end
+
+    def handle_s0022 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status '1'
+      end
+    end
+
+    def handle_s0023 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status '1-1-0'
+      end
+    end
+
+    def handle_s0024 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status '1-0'
+      end
+    end
+
+    def handle_s0025 status_code, status_name=nil
+      case status_name
+      when 'minToGEstimate'
+        make_status RSMP.now_string
+      when 'maxToGEstimate'
+        make_status RSMP.now_string
+      when 'likelyToGEstimate'
+        make_status RSMP.now_string
+      when 'ToGConfidence'
+        make_status 0
+      when 'minToREstimate'
+        make_status RSMP.now_string
+      when 'maxToREstimate'
+        make_status RSMP.now_string
+      when 'likelyToREstimate'
+        make_status RSMP.now_string
+      when 'ToRConfidence'
+        make_status 0
+      end
+    end
+
+    def handle_s0026 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status '0-00'
+      end
+    end
+
+    def handle_s0027 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status '00-00-00-00'
+      end
+    end
+
+    def handle_s0028 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status '00-00'
+      end
+    end
+
+    def handle_s0029 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status ''
+      end
+    end
+
+    def handle_s0091 status_code, status_name=nil
+      case status_name
+      when 'user'
+        make_status 'nobody'
+      when 'status'
+        make_status 'logout'
+      end
+    end
+
+    def handle_s0092 status_code, status_name=nil
+      case status_name
+      when 'user'
+        make_status 'nobody'
+      when 'status'
+        make_status 'logout'
+      end
+    end
+
+    def handle_s0095 status_code, status_name=nil
+      case status_name
+      when 'status'
+        make_status RSMP::VERSION
+      end
+    end
+
+    def handle_s0096 status_code, status_name=nil
+      case status_name
+      when 'year'
+        make_status RSMP.now_object.year.to_s.rjust(4, "0")
+      when 'month'
+        make_status RSMP.now_object.month.to_s.rjust(2, "0")
+      when 'day'
+        make_status RSMP.now_object.day.to_s.rjust(2, "0")
+      when 'hour'
+        make_status RSMP.now_object.hour.to_s.rjust(2, "0")
+      when 'minute'
+        make_status RSMP.now_object.min.to_s.rjust(2, "0")
+      when 'second'
+        make_status RSMP.now_object.sec.to_s.rjust(2, "0")
+      end
+    end
+
+    def handle_s0201 status_code, status_name=nil
+      case status_name
+      when 'starttime'
+        make_status RSMP.now_string
+      when 'vehicles'
+        make_status 0
+      end
+    end
+
+    def handle_s0202 status_code, status_name=nil
+      case status_name
+      when 'starttime'
+        make_status RSMP.now_string
+      when 'speed'
+        make_status 0
+      end
+    end
+
+    def handle_s0203 status_code, status_name=nil
+      case status_name
+      when 'starttime'
+        make_status RSMP.now_string
+      when 'occupancy'
+        make_status 0
+      end
+    end
+
+    def handle_s0204 status_code, status_name=nil
+      case status_name
+      when 'starttime'
+        make_status RSMP.now_string
+      when 'P'
+        make_status 0
+      when 'PS'
+        make_status 0
+      when 'L'
+        make_status 0
+      when 'LS'
+        make_status 0
+      when 'B'
+        make_status 0
+      when 'SP'
+        make_status 0
+      when 'MC'
+        make_status 0
+      when 'C'
+        make_status 0
+      when 'F'
+        make_status 0
+      end
+    end
+
+    def handle_s0205 status_code, status_name=nil
+      case status_name
+      when 'start'
+        make_status RSMP.now_string
+      when 'vehicles'
+        make_status 0
+      end
+    end
+
+    def handle_s0206 status_code, status_name=nil
+      case status_name
+      when 'start'
+        make_status RSMP.now_string
+      when 'speed'
+        make_status 0
+      end
+    end
+
+    def handle_s0207 status_code, status_name=nil
+      case status_name
+      when 'start'
+        make_status RSMP.now_string
+      when 'occupancy'
+        make_status 0
+      end
+    end
+
+    def handle_s0208 status_code, status_name=nil
+      case status_name
+      when 'start'
+        make_status RSMP.now_string
+      when 'P'
+        make_status 0
+      when 'PS'
+        make_status 0
+      when 'L'
+        make_status 0
+      when 'LS'
+        make_status 0
+      when 'B'
+        make_status 0
+      when 'SP'
+        make_status 0
+      when 'MC'
+        make_status 0
+      when 'C'
+        make_status 0
+      when 'F'
+        make_status 0
       end
     end
 
@@ -189,6 +588,16 @@ module RSMP
     end
   end
 
+  class DetectorLogic < Component
+    attr_reader :state, :manual
+
+    def initialize node:, id:
+      super node: node, id: id, grouped: false
+      @state = 0
+      @manual = 0
+      end
+  end
+
   class Tlc < Site
     def initialize options={}
       super options
@@ -208,6 +617,10 @@ module RSMP
         group = SignalGroup.new node: self, id: id, plan: settings['plan']
         @main.add_signal_group group
         group
+      when 'detector_logic'
+        logic = DetectorLogic.new node: self, id: id
+        @main.add_detector_logic logic
+        logic
       end
     end
 

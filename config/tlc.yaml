@@ -16,7 +16,8 @@ components:
       plan: 'BBB11N'
     B2:
       plan: 'BBB1NB'
-
+  detector_logic:
+    DL1:
 watchdog_interval: 1
 watchdog_timeout: 2
 acknowledgement_timeout: 1
