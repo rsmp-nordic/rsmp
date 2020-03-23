@@ -155,10 +155,12 @@ module RSMP
     end
 
     def process_command_request message
-      log "Received #{message.type}", message: message, level: :log 
+      log "Received #{message.type}", message: message, level: :log
+      component_id = message.attributes["cId"]
+      component = @site.find_component component_id
       commands = simplify_command_requests message.attributes["arg"]
       commands.each_pair do |command_code,arg|
-        @site.handle_command(command_code,arg).merge('cCI'=>command_code)
+        component.handle_command command_code,arg
       end
 
       rvs = message.attributes["arg"].map do |item|
@@ -167,7 +169,7 @@ module RSMP
         item
       end
       response = CommandResponse.new({
-        "cId"=>message.attributes["cId"],
+        "cId"=>component_id,
         "cTS"=>RSMP.now_string,
         "rvs"=>rvs
       })
@@ -180,7 +182,7 @@ module RSMP
       component = @site.find_component component_id
       log "Received #{message.type}", message: message, level: :log
       sS = message.attributes["sS"].map do |arg|
-        value, quality =  @site.get_status arg['sCI'], arg['n']
+        value, quality =  component.get_status arg['sCI'], arg['n']
         { "s" => value.to_s, "q" => quality.to_s }.merge arg
       end
       response = StatusResponse.new({
@@ -283,11 +285,12 @@ module RSMP
 
     def send_status_updates update_list
       now = RSMP.now_string
-      update_list.each_pair do |component,by_code|
+      update_list.each_pair do |component_id,by_code|
+        component = @site.find_component component_id
         sS = []
         by_code.each_pair do |code,names|
           names.map do |status_name|
-            value,quality = @site.get_status code, status_name
+            value,quality = component.get_status code, status_name
             sS << { "sCI" => code,
                      "n" => status_name,
                      "s" => value.to_s,
@@ -295,7 +298,7 @@ module RSMP
           end
         end
         update = StatusUpdate.new({
-          "cId"=>component,
+          "cId"=>component_id,
           "sTs"=>now,
           "sS"=>sS
         })

@@ -19,8 +19,8 @@ module RSMP
       @police_key = 0
       @intersection = 0
       @is_starting = false
-      @emergency_stage = false
-      @emergency_stage_num = 0
+      @emergency_route = false
+      @emergency_route_number = 0
       @traffic_situation = 0
       @num_traffic_situations = 1
       @manual_control = false
@@ -28,6 +28,11 @@ module RSMP
       @isolated_control = false
       @yellow_flash = false
       @all_red = false
+
+      @num_inputs = 8
+      @inputs = '0'*@num_inputs
+      @input_activations = '0'*@num_inputs
+      @input_results = '0'*@num_inputs
     end
 
     def add_signal_group group
@@ -78,6 +83,14 @@ module RSMP
         handle_m0001 arg
       when 'M0002'
         handle_m0002 arg
+      when 'M0003'
+        handle_m0003 arg
+      when 'M0004'
+        handle_m0004 arg
+      when 'M0005'
+        handle_m0005 arg
+      when 'M0006'
+        handle_m0006 arg
       when 'M0007'
         handle_m0007 arg
       else
@@ -86,25 +99,52 @@ module RSMP
     end
 
     def handle_m0001 arg
-      verify_security_code arg['securityCode']
+      @node.verify_security_code arg['securityCode']
       switch_mode arg['status']
-      arg
     end
 
     def handle_m0002 arg
-      verify_security_code arg['securityCode']
-      if from_rsmp_bool(arg['status'])
+      @node.verify_security_code arg['securityCode']
+      if RSMP::Tlc.from_rsmp_bool(arg['status'])
         switch_plan arg['timeplan']
       else
         switch_plan 0   # TODO use clock/calender
       end
-      arg
     end
 
+    def handle_m0003 arg
+      @node.verify_security_code arg['securityCode']
+      @traffic_situation = arg['traficsituation'].to_i
+    end
+
+    def handle_m0004 arg
+      @node.verify_security_code arg['securityCode']
+      #@node.restart
+    end
+
+    def handle_m0005 arg
+      @node.verify_security_code arg['securityCode']
+      @emergency_route = arg['status'] == 'True'
+      @emergency_route_number = arg['emergencyroute'].to_i
+    end
+
+    def handle_m0006 arg
+      @node.verify_security_code arg['securityCode']
+      input = arg['input'].to_i
+      return unless input>=0 && input<@num_inputs
+      @input_activations[input] = (arg['status']=='True' ? '1' : '0')
+      result = @input_activations[input]=='1' || @inputs[input]=='1'
+      @input_results[input] = (result ? '1' : '0')
+    end
+
+    def set_input i, value
+      return unless i>=0 && i<@num_inputs
+      @inputs[i] = (arg['value'] ? '1' : '0')
+    end
+    
     def handle_m0007 arg
-      verify_security_code arg['securityCode']
+      @node.verify_security_code arg['securityCode']
       set_fixed_time_control arg['status']
-      arg
     end
 
     def set_fixed_time_control status
@@ -114,10 +154,9 @@ module RSMP
     def switch_plan plan
       log "Switching to plan #{plan}", level: :info
       @plan = plan.to_i
-      plan
     end
 
-   def switch_mode mode
+    def switch_mode mode
       log "Switching to mode #{mode}", level: :info
       case mode
       when 'NormalControl'
@@ -133,435 +172,337 @@ module RSMP
       mode
     end
 
-    def to_rmsp_bool bool
-      if bool
-        'True'
-      else
-        'False'
-      end
-    end
-
-    def from_rsmp_bool str
-      str == 'True'
-    end
-
-    def get_status status_code, status_name=nil
-      case status_code
+    def get_status code, name=nil
+      case code
       when 'S0001', 'S0002', 'S0003', 'S0004', 'S0005', 'S0006', 'S0007',
            'S0008', 'S0009', 'S0010', 'S0011', 'S0012', 'S0013', 'S0014',
            'S0015', 'S0016', 'S0017', 'S0018', 'S0019', 'S0020', 'S0021',
-           'S0022', 'S0023', 'S0024', 'S0025', 'S0026', 'S0027', 'S0028',
+           'S0022', 'S0023', 'S0024', 'S0026', 'S0027', 'S0028',
            'S0029',
            'S0091', 'S0092', 'S0095', 'S0096',
-           'S0201', 'S0202', 'S0203', 'S0204', 'S0205', 'S0206', 'S0207',
-           'S0208'
-        return send("handle_#{status_code.downcase}", status_code, status_name)
+           'S0205', 'S0206', 'S0207', 'S0208'
+        return send("handle_#{code.downcase}", code, name)
       else
-        raise InvalidMessage.new "unknown status code #{status_code}"
-      end
-    end
-
-    def make_status value, q='recent'
-      case value
-      when true, false
-        return to_rmsp_bool(value), q
-      else
-        return value, q
+        raise InvalidMessage.new "unknown status code #{code}"
       end
     end
 
     def handle_s0001 status_code, status_name=nil
       case status_name
       when 'signalgroupstatus'
-        return make_status format_signal_group_status
+        return RSMP::Tlc.make_status format_signal_group_status
       when 'cyclecounter'
-        make_status @pos.to_s
+        RSMP::Tlc.make_status @pos.to_s
       when 'basecyclecounter'
-        make_status @pos.to_s
+        RSMP::Tlc.make_status @pos.to_s
       when 'stage'
-        make_status 0.to_s
+        RSMP::Tlc.make_status 0.to_s
       end
     end
 
     def handle_s0002 status_code, status_name=nil
       case status_name
       when 'detectorlogicstatus'
-        make_status 0.to_s
+        RSMP::Tlc.make_status @detector_logics.map { |dl| dl.forced ? '1' : '0' }.join
       end
     end
 
     def handle_s0003 status_code, status_name=nil
       case status_name
       when 'inputstatus'
-        make_status 0.to_s
+        RSMP::Tlc.make_status @input_results
       when 'extendedinputstatus'
-        make_status 0.to_s
+        RSMP::Tlc.make_status 0.to_s
       end
     end
 
     def handle_s0004 status_code, status_name=nil
       case status_name
       when 'outputstatus'
-        make_status 0
+        RSMP::Tlc.make_status 0
       when 'extendedoutputstatus'
-        make_status 0
+        RSMP::Tlc.make_status 0
       end
     end
 
     def handle_s0005 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status @is_starting
+        RSMP::Tlc.make_status @is_starting
       end
     end
 
     def handle_s0006 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status @emergency_stage
+        RSMP::Tlc.make_status @emergency_route
       when 'emergencystage'
-        make_status @emergency_stage_num
+        RSMP::Tlc.make_status @emergency_route_number
       end
     end
 
     def handle_s0007 status_code, status_name=nil
       case status_name
       when 'intersection'
-        make_status @intersection
+        RSMP::Tlc.make_status @intersection
       when 'status'
-        make_status @dark_mode
+        RSMP::Tlc.make_status !@dark_mode
       end
     end
 
     def handle_s0008 status_code, status_name=nil
       case status_name
       when 'intersection'
-        make_status @intersection
+        RSMP::Tlc.make_status @intersection
       when 'status'
-        make_status @manual_control
+        RSMP::Tlc.make_status @manual_control
       end
     end
 
     def handle_s0009 status_code, status_name=nil
       case status_name
       when 'intersection'
-        make_status @intersection
+        RSMP::Tlc.make_status @intersection
       when 'status'
-        make_status @fixed_time_control
+        RSMP::Tlc.make_status @fixed_time_control
       end
     end
 
     def handle_s0010 status_code, status_name=nil
       case status_name
       when 'intersection'
-        make_status @intersection
+        RSMP::Tlc.make_status @intersection
       when 'status'
-        make_status @isolated_control
+        RSMP::Tlc.make_status @isolated_control
       end
     end
 
     def handle_s0011 status_code, status_name=nil
       case status_name
       when 'intersection'
-        make_status @intersection
+        RSMP::Tlc.make_status @intersection
       when 'status'
-        make_status @yellow_flash
+        RSMP::Tlc.make_status @yellow_flash
       end
     end
 
     def handle_s0012 status_code, status_name=nil
       case status_name
       when 'intersection'
-        make_status @intersection
+        RSMP::Tlc.make_status @intersection
       when 'status'
-        make_status @all_red
+        RSMP::Tlc.make_status @all_red
       end
     end
 
     def handle_s0013 status_code, status_name=nil
       case status_name
       when 'intersection'
-        make_status @intersection
+        RSMP::Tlc.make_status @intersection
       when 'status'
-        make_status @police_key
+        RSMP::Tlc.make_status @police_key
       end
     end
 
     def handle_s0014 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status @plan
+        RSMP::Tlc.make_status @plan
       end
     end
 
     def handle_s0015 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status @traffic_situation
+        RSMP::Tlc.make_status @traffic_situation
       end
     end
 
     def handle_s0016 status_code, status_name=nil
       case status_name
       when 'number'
-        make_status @detector_logics.size
+        RSMP::Tlc.make_status @detector_logics.size
       end
     end
 
     def handle_s0017 status_code, status_name=nil
       case status_name
       when 'number'
-        make_status @signal_groups.size
+        RSMP::Tlc.make_status @signal_groups.size
       end
     end
 
     def handle_s0018 status_code, status_name=nil
       case status_name
       when 'number'
-        make_status @plans.size
+        RSMP::Tlc.make_status @plans.size
       end
     end
 
     def handle_s0019 status_code, status_name=nil
       case status_name
       when 'number'
-        make_status @num_traffic_situations
+        RSMP::Tlc.make_status @num_traffic_situations
       end
     end
 
     def handle_s0020 status_code, status_name=nil
       case status_name
       when 'intersection'
-        make_status @intersection
+        RSMP::Tlc.make_status @intersection
       when 'controlmode'
-        make_status @control_mode
+        RSMP::Tlc.make_status @control_mode
       end
     end
 
     def handle_s0021 status_code, status_name=nil
       case status_name
       when 'detectorlogics'
-        make_status @detector_logics.map { |logic| logic.manual.to_s }.join
+        RSMP::Tlc.make_status @detector_logics.map { |logic| logic.forced=='True' ? '1' : '0'}.join
       end
     end
 
     def handle_s0022 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status '1'
+        RSMP::Tlc.make_status '1'
       end
     end
 
     def handle_s0023 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status '1-1-0'
+        RSMP::Tlc.make_status '1-1-0'
       end
     end
 
     def handle_s0024 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status '1-0'
-      end
-    end
-
-    def handle_s0025 status_code, status_name=nil
-      case status_name
-      when 'minToGEstimate'
-        make_status RSMP.now_string
-      when 'maxToGEstimate'
-        make_status RSMP.now_string
-      when 'likelyToGEstimate'
-        make_status RSMP.now_string
-      when 'ToGConfidence'
-        make_status 0
-      when 'minToREstimate'
-        make_status RSMP.now_string
-      when 'maxToREstimate'
-        make_status RSMP.now_string
-      when 'likelyToREstimate'
-        make_status RSMP.now_string
-      when 'ToRConfidence'
-        make_status 0
+        RSMP::Tlc.make_status '1-0'
       end
     end
 
     def handle_s0026 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status '0-00'
+        RSMP::Tlc.make_status '0-00'
       end
     end
 
     def handle_s0027 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status '00-00-00-00'
+        RSMP::Tlc.make_status '00-00-00-00'
       end
     end
 
     def handle_s0028 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status '00-00'
+        RSMP::Tlc.make_status '00-00'
       end
     end
 
     def handle_s0029 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status ''
+        RSMP::Tlc.make_status ''
       end
     end
 
     def handle_s0091 status_code, status_name=nil
       case status_name
       when 'user'
-        make_status 'nobody'
+        RSMP::Tlc.make_status 'nobody'
       when 'status'
-        make_status 'logout'
+        RSMP::Tlc.make_status 'logout'
       end
     end
 
     def handle_s0092 status_code, status_name=nil
       case status_name
       when 'user'
-        make_status 'nobody'
+        RSMP::Tlc.make_status 'nobody'
       when 'status'
-        make_status 'logout'
+        RSMP::Tlc.make_status 'logout'
       end
     end
 
     def handle_s0095 status_code, status_name=nil
       case status_name
       when 'status'
-        make_status RSMP::VERSION
+        RSMP::Tlc.make_status RSMP::VERSION
       end
     end
 
     def handle_s0096 status_code, status_name=nil
       case status_name
       when 'year'
-        make_status RSMP.now_object.year.to_s.rjust(4, "0")
+        RSMP::Tlc.make_status RSMP.now_object.year.to_s.rjust(4, "0")
       when 'month'
-        make_status RSMP.now_object.month.to_s.rjust(2, "0")
+        RSMP::Tlc.make_status RSMP.now_object.month.to_s.rjust(2, "0")
       when 'day'
-        make_status RSMP.now_object.day.to_s.rjust(2, "0")
+        RSMP::Tlc.make_status RSMP.now_object.day.to_s.rjust(2, "0")
       when 'hour'
-        make_status RSMP.now_object.hour.to_s.rjust(2, "0")
+        RSMP::Tlc.make_status RSMP.now_object.hour.to_s.rjust(2, "0")
       when 'minute'
-        make_status RSMP.now_object.min.to_s.rjust(2, "0")
+        RSMP::Tlc.make_status RSMP.now_object.min.to_s.rjust(2, "0")
       when 'second'
-        make_status RSMP.now_object.sec.to_s.rjust(2, "0")
-      end
-    end
-
-    def handle_s0201 status_code, status_name=nil
-      case status_name
-      when 'starttime'
-        make_status RSMP.now_string
-      when 'vehicles'
-        make_status 0
-      end
-    end
-
-    def handle_s0202 status_code, status_name=nil
-      case status_name
-      when 'starttime'
-        make_status RSMP.now_string
-      when 'speed'
-        make_status 0
-      end
-    end
-
-    def handle_s0203 status_code, status_name=nil
-      case status_name
-      when 'starttime'
-        make_status RSMP.now_string
-      when 'occupancy'
-        make_status 0
-      end
-    end
-
-    def handle_s0204 status_code, status_name=nil
-      case status_name
-      when 'starttime'
-        make_status RSMP.now_string
-      when 'P'
-        make_status 0
-      when 'PS'
-        make_status 0
-      when 'L'
-        make_status 0
-      when 'LS'
-        make_status 0
-      when 'B'
-        make_status 0
-      when 'SP'
-        make_status 0
-      when 'MC'
-        make_status 0
-      when 'C'
-        make_status 0
-      when 'F'
-        make_status 0
+        RSMP::Tlc.make_status RSMP.now_object.sec.to_s.rjust(2, "0")
       end
     end
 
     def handle_s0205 status_code, status_name=nil
       case status_name
       when 'start'
-        make_status RSMP.now_string
+        RSMP::Tlc.make_status RSMP.now_string
       when 'vehicles'
-        make_status 0
+        RSMP::Tlc.make_status 0
       end
     end
 
     def handle_s0206 status_code, status_name=nil
       case status_name
       when 'start'
-        make_status RSMP.now_string
+        RSMP::Tlc.make_status RSMP.now_string
       when 'speed'
-        make_status 0
+        RSMP::Tlc.make_status 0
       end
     end
 
     def handle_s0207 status_code, status_name=nil
       case status_name
       when 'start'
-        make_status RSMP.now_string
+        RSMP::Tlc.make_status RSMP.now_string
       when 'occupancy'
-        make_status 0
+        RSMP::Tlc.make_status 0
       end
     end
 
     def handle_s0208 status_code, status_name=nil
       case status_name
       when 'start'
-        make_status RSMP.now_string
+        RSMP::Tlc.make_status RSMP.now_string
       when 'P'
-        make_status 0
+        RSMP::Tlc.make_status 0
       when 'PS'
-        make_status 0
+        RSMP::Tlc.make_status 0
       when 'L'
-        make_status 0
+        RSMP::Tlc.make_status 0
       when 'LS'
-        make_status 0
+        RSMP::Tlc.make_status 0
       when 'B'
-        make_status 0
+        RSMP::Tlc.make_status 0
       when 'SP'
-        make_status 0
+        RSMP::Tlc.make_status 0
       when 'MC'
-        make_status 0
+        RSMP::Tlc.make_status 0
       when 'C'
-        make_status 0
+        RSMP::Tlc.make_status 0
       when 'F'
-        make_status 0
+        RSMP::Tlc.make_status 0
       end
-    end
-
-    def verify_security_code code
     end
 
   end
@@ -586,16 +527,128 @@ module RSMP
     def move pos
       @state = get_state pos
     end
+
+    def get_status code, name=nil
+      case code
+      when 'S0025'
+        return send("handle_#{code.downcase}", code, name)
+      else
+        raise InvalidMessage.new "unknown status code #{code}"
+      end
+    end
+
+    def handle_s0025 status_code, status_name=nil
+      case status_name
+      when 'minToGEstimate'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'maxToGEstimate'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'likelyToGEstimate'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'ToGConfidence'
+        RSMP::Tlc.make_status 0
+      when 'minToREstimate'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'maxToREstimate'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'likelyToREstimate'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'ToRConfidence'
+        RSMP::Tlc.make_status 0
+      end
+    end
   end
 
   class DetectorLogic < Component
-    attr_reader :state, :manual
+    attr_reader :status, :forced, :value
 
     def initialize node:, id:
       super node: node, id: id, grouped: false
-      @state = 0
-      @manual = 0
+      @forced = 0
+      @value = 0
+    end
+
+    def get_status code, name=nil
+      case code
+      when 'S0201', 'S0202', 'S0203', 'S0204'
+        return send("handle_#{code.downcase}", code, name)
+      else
+        raise InvalidMessage.new "unknown status code #{code}"
       end
+    end
+
+    def handle_s0201 status_code, status_name=nil
+      case status_name
+      when 'starttime'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'vehicles'
+        RSMP::Tlc.make_status 0
+      end
+    end
+
+    def handle_s0202 status_code, status_name=nil
+      case status_name
+      when 'starttime'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'speed'
+        RSMP::Tlc.make_status 0
+      end
+    end
+
+    def handle_s0203 status_code, status_name=nil
+      case status_name
+      when 'starttime'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'occupancy'
+        RSMP::Tlc.make_status 0
+      end
+    end
+
+    def handle_s0204 status_code, status_name=nil
+      case status_name
+      when 'starttime'
+        RSMP::Tlc.make_status RSMP.now_string
+      when 'P'
+        RSMP::Tlc.make_status 0
+      when 'PS'
+        RSMP::Tlc.make_status 0
+      when 'L'
+        RSMP::Tlc.make_status 0
+      when 'LS'
+        RSMP::Tlc.make_status 0
+      when 'B'
+        RSMP::Tlc.make_status 0
+      when 'SP'
+        RSMP::Tlc.make_status 0
+      when 'MC'
+        RSMP::Tlc.make_status 0
+      when 'C'
+        RSMP::Tlc.make_status 0
+      when 'F'
+        RSMP::Tlc.make_status 0
+      end
+    end
+
+    def handle_command command_code, arg
+      case command_code
+      when 'M0008'
+        handle_m0008 arg
+      else
+        raise UnknownCommand.new "Unknown command #{command_code}"
+      end
+    end
+
+    def handle_m0008 arg
+      @node.verify_security_code arg['securityCode']
+      force_detector_logic arg['status']=='True', arg['value']='True'
+      arg
+    end
+
+    def force_detector_logic status, value
+      @forced = status
+      @value = value
+    end
+
   end
 
   class Tlc < Site
@@ -664,14 +717,28 @@ module RSMP
       @main.timer now
     end
 
-    def handle_command command_code, arg
-      return unless @main
-      @main.handle_command command_code, arg
+    def verify_security_code code
     end
 
-    def get_status status_code, status_name=nil
-      return unless @main
-      @main.get_status status_code, status_name
+    def self.to_rmsp_bool bool
+      if bool
+        'True'
+      else
+        'False'
+      end
+    end
+
+    def self.from_rsmp_bool str
+      str == 'True'
+    end
+
+    def self.make_status value, q='recent'
+      case value
+      when true, false
+        return to_rmsp_bool(value), q
+      else
+        return value, q
+      end
     end
 
   end

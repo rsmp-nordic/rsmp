@@ -1,6 +1,6 @@
 module RSMP
   class Component
-    attr_reader :c_id, :alarms, :statuses, :aggregated_status, :aggregated_status_bools, :grouped
+    attr_reader :c_id, :node, :alarms, :statuses, :aggregated_status, :aggregated_status_bools, :grouped
 
     AGGREGATED_STATUS_KEYS = [ :local_control,
                                :communication_distruption,
@@ -58,11 +58,17 @@ module RSMP
     def alarm code:, status:
     end
 
-    def status code:, value:
-    end
-
     def log str, options
       @node.log str, options
     end
+
+    def handle_command command_code, arg
+      raise UnknownCommand.new "Command #{command_code} not implemented by #{self.class}"
+    end
+
+    def get_status status_code, status_name=nil
+      raise UnknownStatus.new "Status #{status_code}/#{status_name} not implemented by #{self.class}"
+    end
+
   end
 end
