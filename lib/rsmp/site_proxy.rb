@@ -196,8 +196,8 @@ module RSMP
           next if options[:sCI] && options[:sCI] != status['sCI']
           next if options[:n] && options[:n] != status['n']
           next if options[:q] && options[:q] != status['q']
-          if options[:regex]
-            next if options[:s] && status['s'] !~ /#{options[:s]}/
+          if options[:s].is_a? Regexp
+            next if options[:s] && status['s'] !~ options[:s]
           else
             next if options[:s] && options[:s] != status['s']
           end
