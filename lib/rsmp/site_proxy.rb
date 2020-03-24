@@ -81,7 +81,7 @@ module RSMP
       component = @components[c_id]
       if component == nil
         if @site_settings == nil || @site_settings['components'] == nil
-          component = build_component c_id
+          component = build_component(id:c_id, type:nil)
           @components[c_id] = component
           log "Adding component #{c_id} to site #{@site_id}", level: :info
         else
