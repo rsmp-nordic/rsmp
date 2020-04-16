@@ -50,6 +50,10 @@ module RSMP
       end
     end
 
+    def process_deferred
+      supervisor.process_deferred
+    end
+
     def version_accepted message
       log "Received Version message for site #{@site_id} using RSMP #{@rsmp_version}", message: message, level: :log
       start_timer
@@ -285,7 +289,6 @@ module RSMP
       @site_id = site_id
       site_ids_changed
     end
-
 
   end
 end

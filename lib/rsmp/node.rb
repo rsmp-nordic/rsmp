@@ -5,10 +5,26 @@
 
 module RSMP
   class Node < Base
-    attr_reader :archive, :logger, :task
+    attr_reader :archive, :logger, :task, :deferred
 
     def initialize options
       super options
+      @deferred = []
+    end
+
+    def defer item
+      @deferred << item
+    end
+
+    def process_deferred
+      cloned = @deferred.clone    # clone in case do_deferred restarts the current task
+      @deferred.clear
+      cloned.each do |item|
+        do_deferred item
+      end
+    end
+
+    def do_deferred item
     end
 
     def start

@@ -141,5 +141,6 @@ module RSMP
         proxy.stop
       end
     end
+
   end
 end

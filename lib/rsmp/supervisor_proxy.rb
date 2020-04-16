@@ -80,6 +80,10 @@ module RSMP
       dont_acknowledge message, '', e.to_s
     end
 
+    def process_deferred
+      site.process_deferred
+    end
+
     def acknowledged_first_ingoing message
       # TODO
       # aggregateds status should only be send for later version of rsmp

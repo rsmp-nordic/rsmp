@@ -119,11 +119,10 @@ module RSMP
 
     def handle_m0004 arg
       @node.verify_security_code arg['securityCode']
-      # restarting the node means we will disconnect and reconnect.
-      # note that this will happen immediately, and no
-      # command response will therefore be sent
-      log "Restarting TLC", level: :info
-      @node.restart
+      # don't restart immeediately, since we need to first send command response
+      # instead, defer an action, which will be handled by the TLC site
+      log "Sheduling restart of TLC", level: :info
+      @node.defer :restart
     end
 
     def handle_m0005 arg
@@ -742,6 +741,14 @@ module RSMP
         return to_rmsp_bool(value), q
       else
         return value, q
+      end
+    end
+
+    def do_deferred item
+      case item
+      when :restart
+        log "Restarting TLC", level: :info
+        restart
       end
     end
 

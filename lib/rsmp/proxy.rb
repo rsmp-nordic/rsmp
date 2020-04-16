@@ -239,6 +239,7 @@ module RSMP
       message.validate sxl
       expect_version_message(message) unless @version_determined
       process_message message
+      process_deferred
       message
     rescue InvalidPacket => e
       warning "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}"
