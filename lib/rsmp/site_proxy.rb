@@ -252,6 +252,7 @@ module RSMP
 
     def wait_for_command_response options
       raise ArgumentError unless options[:component]
+      raise ArgumentError unless options[:message]
       item = @archive.capture(@task,options.merge(
         num: 1,
         type: ['CommandResponse','MessageNotAck'],
