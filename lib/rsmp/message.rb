@@ -50,6 +50,10 @@ module RSMP
         message = Watchdog.new attributes
       when "Alarm"
         message = Alarm.new attributes
+      when "AlarmRequest"
+        message = CommandRequest.new attributes
+      when "AlarmAcknowledged"
+        message = CommandResponse.new attributes
       when "CommandRequest"
         message = CommandRequest.new attributes
       when "CommandResponse"
@@ -190,6 +194,22 @@ module RSMP
   end
 
   class Alarm < Message
+    def initialize attributes = {}
+      super({
+        "type" => "Alarm",
+      }.merge attributes)
+    end
+  end
+
+  class AlarmRequest < Message
+    def initialize attributes = {}
+      super({
+        "type" => "Alarm",
+      }.merge attributes)
+    end
+  end
+
+  class AlarmAcknowledged < Message
     def initialize attributes = {}
       super({
         "type" => "Alarm",

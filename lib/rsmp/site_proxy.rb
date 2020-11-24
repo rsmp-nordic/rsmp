@@ -233,6 +233,36 @@ module RSMP
       end
     end
 
+    def send_alarm_acknowledgement component, alarm_code
+      message = RSMP::AlarmAcknowledged.new({
+          "ntsOId" => '',
+          "xNId" => '',
+          "cId" => component,
+          "aCId" => alarm_code,
+          "xACId" => '',
+          "xNACId" => '',
+          "aSp" => 'Acknowledge'
+      })
+      send_message message
+      message
+    end
+
+    def wait_for_alarm_acknowledgement_response options
+      raise ArgumentError unless options[:component]
+      item = @archive.capture(@task,options.merge(
+        num: 1,
+        type: ['AlarmAcknowledgedResponse','MessageNotAck'],
+        with_message: true
+      )) do |item|
+        if item[:message].type == 'MessageNotAck'
+          next item[:message].attribute('oMId') == options[:message].m_id
+        elsif item[:message].type == 'AlarmAcknowledgedResponse'
+          next item[:message].attribute('cId') == options[:message].attribute('cId')
+        end
+      end
+      item[:message] if item
+    end
+
     def send_command component, args
       raise NotReady unless @state == :ready
       message = RSMP::CommandRequest.new({
