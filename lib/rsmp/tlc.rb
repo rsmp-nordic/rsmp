@@ -79,20 +79,8 @@ module RSMP
 
     def handle_command command_code, arg
       case command_code
-      when 'M0001'
-        handle_m0001 arg
-      when 'M0002'
-        handle_m0002 arg
-      when 'M0003'
-        handle_m0003 arg
-      when 'M0004'
-        handle_m0004 arg
-      when 'M0005'
-        handle_m0005 arg
-      when 'M0006'
-        handle_m0006 arg
-      when 'M0007'
-        handle_m0007 arg
+      when 'M0001', 'M0002', 'M0003', 'M0004', 'M0005', 'M0006', 'M0007'
+        return send("handle_#{command_code.downcase}", arg)
       else
         raise UnknownCommand.new "Unknown command #{command_code}"
       end
@@ -529,6 +517,31 @@ module RSMP
 
     def move pos
       @state = get_state pos
+    end
+
+    def handle_command command_code, arg
+      case command_code
+      when 'M0010', 'M0011'
+        return send("handle_#{command_code.downcase}", arg)
+      else
+        raise UnknownCommand.new "Unknown command #{command_code}"
+      end
+    end
+
+    # Start of signal group. Orders a signal group to green
+    def handle_m0010 arg
+      @node.verify_security_code arg['securityCode']
+      if RSMP::Tlc.from_rsmp_bool arg['status']
+        log "Start signal group #{c_id}, go to green", level: :info
+      end
+    end
+
+    # Stop of signal group. Orders a signal group to red
+    def handle_m0011 arg
+      @node.verify_security_code arg['securityCode']
+      if RSMP::Tlc.from_rsmp_bool arg['status']
+        log "Stop signal group #{c_id}, go to red", level: :info
+      end
     end
 
     def get_status code, name=nil
