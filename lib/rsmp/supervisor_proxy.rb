@@ -217,10 +217,11 @@ module RSMP
       update_list[component] ||= {} 
 
       subs = @status_subscriptions[component]
+      now = RSMP::now_object
 
       message.attributes["sS"].each do |arg|
         sCI = arg["sCI"]
-        subcription = {interval: arg["uRt"].to_i, last_sent_at: nil}
+        subcription = {interval: arg["uRt"].to_i, last_sent_at: now}
         subs[sCI] ||= {}
         subs[sCI][arg["n"]] = subcription
 
