@@ -190,7 +190,7 @@ module RSMP
     end
 
     def wait_for_status_update options={}
-      raise ArgumentError unless options[:component]
+      raise ArgumentError.new("component argument is missing") unless options[:component]
       matching_status = nil
       item = @archive.capture(@task,options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
         # TODO check components
@@ -215,8 +215,48 @@ module RSMP
       end
     end
 
+    def status_match? query, item
+      return false if query[:sCI] && query[:sCI] != item['sCI']
+      return false if query[:n] && query[:n] != item['n']
+      return false if query[:q] && query[:q] != item['q']
+      if query[:s].is_a? Regexp
+        return false if query[:s] && item['s'] !~ query[:s]
+      else
+        return false if query[:s] && item['s'] != query[:s]
+      end
+      true
+    end
+
+    def wait_for_list_of_status_updates options={}
+      raise ArgumentError.new("component argument is missing") unless options[:component]
+      raise ArgumentError.new("status_list argument is missing") unless options[:status_list]
+      want = options[:status_list].clone
+      got = {}
+      # wait for a status update
+      item = @archive.capture(@task,options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
+        found = []
+        # look through querues
+        want.each_with_index do |query,i|
+          # look through status items in message
+          item[:message].attributes['sS'].each do |input|
+            ok = status_match? query, input
+            if ok
+              got[query] = input
+              found << i   # record which queries where matched succesfully
+            end
+          end
+        end
+        # remove queries that where matched
+        found.sort.reverse.each do |i|
+          want.delete_at i
+        end
+        want.empty? # any queries left to match?
+      end
+      got
+    end
+
     def wait_for_alarm options={}
-      raise ArgumentError unless options[:component]
+      raise ArgumentError.new("component argument is missing") unless options[:component]
       matching_alarm = nil
       item = @archive.capture(@task,options.merge(type: "Alarm", with_message: true, num: 1)) do |item|
         # TODO check components
@@ -248,7 +288,7 @@ module RSMP
     end
 
     def wait_for_alarm_acknowledgement_response options
-      raise ArgumentError unless options[:component]
+      raise ArgumentError.new("component argument is missing") unless options[:component]
       item = @archive.capture(@task,options.merge(
         num: 1,
         type: ['AlarmAcknowledgedResponse','MessageNotAck'],
@@ -281,8 +321,8 @@ module RSMP
     end
 
     def wait_for_command_response options
-      raise ArgumentError unless options[:component]
-      raise ArgumentError unless options[:message]
+      raise ArgumentError.new("component argument is missing") unless options[:component]
+      raise ArgumentError.new("message argument is missing") unless options[:message]
       item = @archive.capture(@task,options.merge(
         num: 1,
         type: ['CommandResponse','MessageNotAck'],
