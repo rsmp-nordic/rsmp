@@ -4,13 +4,21 @@ module RSMP
 
   class TrafficController < Component
     attr_reader :pos, :cycle_time
+
     def initialize node:, id:, cycle_time:
       super node: node, id: id, grouped: true
       @signal_groups = []
       @detector_logics = []
       @plans = []
-      @pos = 0
       @cycle_time = cycle_time
+      @num_traffic_situations = 1
+      @num_inputs = 8
+
+      reset
+    end
+
+    def reset
+      @pos = 0
       @plan = 0
       @dark_mode = false
       @yellow_flash = false
@@ -22,14 +30,12 @@ module RSMP
       @emergency_route = false
       @emergency_route_number = 0
       @traffic_situation = 0
-      @num_traffic_situations = 1
       @manual_control = false
       @fixed_time_control = false
       @isolated_control = false
       @yellow_flash = false
       @all_red = false
 
-      @num_inputs = 8
       @inputs = '0'*@num_inputs
       @input_activations = '0'*@num_inputs
       @input_results = '0'*@num_inputs
@@ -79,7 +85,11 @@ module RSMP
 
     def handle_command command_code, arg
       case command_code
-      when 'M0001', 'M0002', 'M0003', 'M0004', 'M0005', 'M0006', 'M0007'
+      when 'M0001', 'M0002', 'M0003', 'M0004', 'M0005', 'M0006', 'M0007',
+           'M0012', 'M0013', 'M0014', 'M0015', 'M0016', 'M0017', 'M0018',
+           'M0019', 'M0020', 'M0021', 'M0022',
+           'M0103', 'M0104'
+
         return send("handle_#{command_code.downcase}", arg)
       else
         raise UnknownCommand.new "Unknown command #{command_code}"
@@ -122,10 +132,49 @@ module RSMP
     def handle_m0006 arg
       @node.verify_security_code arg['securityCode']
       input = arg['input'].to_i
-      return unless input>=0 && input<@num_inputs
-      @input_activations[input] = (arg['status']=='True' ? '1' : '0')
-      result = @input_activations[input]=='1' || @inputs[input]=='1'
-      @input_results[input] = (result ? '1' : '0')
+      idx = input - 1
+      return unless idx>=0 && input<@num_inputs
+      @input_activations[idx] = (arg['status']=='True' ? '1' : '0')
+      result = @input_activations[idx]=='1' || @inputs[idx]=='1'
+      @input_results[idx] = (result ? '1' : '0')
+    end
+
+    def handle_m0012 arg
+    end
+
+    def handle_m0013 arg
+    end
+
+    def handle_m0014 arg
+    end
+
+    def handle_m0015 arg
+    end
+
+    def handle_m0016 arg
+    end
+
+    def handle_m0017 arg
+    end
+
+    def handle_m0018 arg
+    end
+
+    def handle_m0019 arg
+    end
+
+    def handle_m0020 arg
+    end
+
+    def handle_m0021 arg
+    end
+
+    def handle_m0103 arg
+      @node.verify_security_code arg['securityCode']
+    end
+
+    def handle_m0104 arg
+      @node.verify_security_code arg['securityCode']
     end
 
     def set_input i, value
@@ -169,8 +218,8 @@ module RSMP
            'S0008', 'S0009', 'S0010', 'S0011', 'S0012', 'S0013', 'S0014',
            'S0015', 'S0016', 'S0017', 'S0018', 'S0019', 'S0020', 'S0021',
            'S0022', 'S0023', 'S0024', 'S0026', 'S0027', 'S0028',
-           'S0029',
-           'S0091', 'S0092', 'S0095', 'S0096',
+           'S0029', 'S0030', 'S0031',
+           'S0091', 'S0092', 'S0095', 'S0096', 'S0097',
            'S0205', 'S0206', 'S0207', 'S0208'
         return send("handle_#{code.downcase}", code, name)
       else
@@ -402,6 +451,20 @@ module RSMP
       end
     end
 
+    def handle_s0030 status_code, status_name=nil
+      case status_name
+      when 'status'
+        RSMP::Tlc.make_status ''
+      end
+    end
+
+    def handle_s0031 status_code, status_name=nil
+      case status_name
+      when 'status'
+        RSMP::Tlc.make_status ''
+      end
+    end
+
     def handle_s0091 status_code, status_name=nil
       case status_name
       when 'user'
@@ -441,6 +504,15 @@ module RSMP
         RSMP::Tlc.make_status RSMP.now_object.min.to_s.rjust(2, "0")
       when 'second'
         RSMP::Tlc.make_status RSMP.now_object.sec.to_s.rjust(2, "0")
+      end
+    end
+
+    def handle_s0097 status_code, status_name=nil
+      case status_name
+      when 'version'
+        RSMP::Tlc.make_status '1'
+      when 'hash'
+        RSMP::Tlc.make_status '1'
       end
     end
 
@@ -670,7 +742,6 @@ module RSMP
   class Tlc < Site
     def initialize options={}
       super options
-
       @sxl = 'traffic_light_controller'
 
       unless @main
