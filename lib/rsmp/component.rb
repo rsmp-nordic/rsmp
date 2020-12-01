@@ -23,6 +23,7 @@ module RSMP
     def clear_aggregated_status
       @aggregated_status = []
       @aggregated_status_bools = Array.new(8,false)
+      @aggregated_status_bools[5] = true
     end
 
     def set_aggregated_status status
