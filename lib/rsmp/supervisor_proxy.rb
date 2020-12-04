@@ -38,6 +38,11 @@ module RSMP
       end
     end
 
+    def stop
+      super
+      @last_status_sent = nil
+    end
+
     def connect
       return if @socket
       @endpoint = Async::IO::Endpoint.tcp(@ip, @port)
@@ -255,18 +260,40 @@ module RSMP
       status_update_timer now if ready?
     end
 
+    def fetch_last_sent_status component, code, name
+      if @last_status_sent && @last_status_sent[component] && @last_status_sent[component][code]
+        @last_status_sent[component][code][name]
+      else
+        nil
+      end
+    end
+
+    def store_last_sent_status component, code, name, value
+      @last_status_sent ||= {}
+      @last_status_sent[component] ||= {}
+      @last_status_sent[component][code] ||= {}
+      @last_status_sent[component][code][name] = value
+    end
+
     def status_update_timer now
       update_list = {}
       # go through subscriptons and build a similarly organized list,
       # that only contains what should be send
 
       @status_subscriptions.each_pair do |component,by_code|
+        component_object = @site.find_component component
         by_code.each_pair do |code,by_name|
           by_name.each_pair do |name,subscription|
+            current = nil
             if subscription[:interval] == 0 
               # send as soon as the data changes
-              if rand(100) >= 90
+              if component_object
+                current, age = *(component_object.get_status code, name)
+              end
+              last_sent = fetch_last_sent_status component, code, name
+              if current != last_sent
                 should_send = true
+                store_last_sent_status component, code, name, current
               end
             else
               # send at regular intervals
@@ -277,8 +304,8 @@ module RSMP
             if should_send
               subscription[:last_sent_at] = now
               update_list[component] ||= {}
-              update_list[component][code] ||= []
-              update_list[component][code] << name
+              update_list[component][code] ||= {}
+              update_list[component][code][name] = current
            end
           end
         end
@@ -294,8 +321,12 @@ module RSMP
         component = @site.find_component component_id
         sS = []
         by_code.each_pair do |code,names|
-          names.map do |status_name|
-            value,quality = component.get_status code, status_name
+          names.map do |status_name,value|
+            if value
+              quality = 'recent'
+            else
+              value,quality = component.get_status code, status_name
+            end
             sS << { "sCI" => code,
                      "n" => status_name,
                      "s" => value.to_s,
