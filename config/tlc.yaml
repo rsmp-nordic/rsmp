@@ -21,9 +21,6 @@ components:
 watchdog_interval: 0.1
 watchdog_timeout: 0.2
 acknowledgement_timeout: 0.1
-command_response_timeout: 0.1
-status_response_timeout: 0.1
-status_update_timeout: 0.1
 reconnect_interval: 0.1
 
 log:
