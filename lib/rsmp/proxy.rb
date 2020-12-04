@@ -444,26 +444,13 @@ module RSMP
     def version_acknowledged
     end
 
-    def wait_for_acknowledgement original, timeout, options={}
+    def wait_for_acknowledgement original, timeout
       raise ArgumentError unless original
       RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
-        message.is_a?(MessageAck) &&
-        message.attributes["oMId"] == original.m_id
-      end
-    end
-
-    def wait_for_not_acknowledged original, timeout
-      raise ArgumentError unless original
-      RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
-        message.is_a?(MessageNotAck) &&
-        message.attributes["oMId"] == original.m_id
-      end
-    end
-
-    def wait_for_acknowledgements timeout
-      return if @awaiting_acknowledgement.empty?
-      RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
-        @awaiting_acknowledgement.empty?
+        if message.is_a?(MessageNotAck) && message.attributes["oMId"] == original.m_id
+          raise RSMP::MessageRejected.new(message.attributes['rea'])
+        end
+        message.is_a?(MessageAck) && message.attributes["oMId"] == original.m_id
       end
     end
 
