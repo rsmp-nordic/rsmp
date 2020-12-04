@@ -6,22 +6,6 @@ module RSMP
   class Probe
     attr_reader :condition, :items, :done
 
-    # block should send a message and return message just sent
-    def self.collect_response proxy, options={}, &block
-      from = proxy.archive.current_index
-      sent = yield
-      raise RuntimeError unless sent && sent[:message].is_a?(RSMP::Message)
-      item = proxy.archive.capture(options.merge(from: from+1, num: 1, with_message: true)) do |item|
-        ["CommandResponse","StatusResponse","MessageNotAck"].include?(item[:message].type)
-      end
-      if item
-        item[:message] 
-      else
-        nil
-      end
-    end
-
-
     def initialize archive
       raise ArgumentError.new("Archive expected") unless archive.is_a? Archive
       @archive = archive
@@ -105,6 +89,9 @@ module RSMP
       end
       return if @options[:level] && item[:level] != @options[:level]
       return false if @options[:with_message] && !(item[:direction] && item[:message])
+      if @options[:component]
+        return false if item[:message].attribute('cId') != @options[:component]
+      end
       if @block
         return false if @block.call(item) == false
       end
