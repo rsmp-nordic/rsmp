@@ -2,7 +2,7 @@
 
 module RSMP  
   class Proxy < Base
-    attr_reader :state, :archive, :connection_info, :sxl
+    attr_reader :state, :archive, :connection_info, :sxl, :task
 
     def initialize options
       super options
@@ -178,11 +178,9 @@ module RSMP
     end
 
     def check_watchdog_timeout now
-
       timeout = @settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       left = latest - now
-      #log "Check watchdog, time:#{timeout}, last:#{@latest_watchdog_received}, now: #{now}, latest:#{latest}, left #{left}, fail:#{left<0}", level: :debug
       if left < 0
         log "No Watchdog within #{timeout} seconds", level: :error
         stop
