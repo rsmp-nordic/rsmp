@@ -227,7 +227,7 @@ module RSMP
       true
     end
 
-    def wait_for_list_of_status_updates options={}
+    def wait_for_status_updates options={}
       raise ArgumentError.new("component argument is missing") unless options[:component]
       raise ArgumentError.new("status_list argument is missing") unless options[:status_list]
       want = options[:status_list].clone
@@ -320,21 +320,48 @@ module RSMP
       acknowledge message
     end
 
-    def wait_for_command_response options
-      raise ArgumentError.new("component argument is missing") unless options[:component]
-      raise ArgumentError.new("message argument is missing") unless options[:message]
-      item = @archive.capture(@task,options.merge(
-        num: 1,
-        type: ['CommandResponse','MessageNotAck'],
-        with_message: true
-      )) do |item|
-        if item[:message].type == 'MessageNotAck'
-          next item[:message].attribute('oMId') == options[:message].m_id
-        elsif item[:message].type == 'CommandResponse'
-          next item[:message].attribute('cId') == options[:message].attribute('cId')
-        end
+    def command_match? query, item
+      return false if query[:sCI] && query[:sCI] != item['sCI']
+      return false if query[:n] && query[:n] != item['n']
+      if query[:s].is_a? Regexp
+        return false if query[:v] && item['v'] !~ query[:v]
+      else
+        return false if query[:v] && item['v'] != query[:v]
       end
-      item[:message] if item
+      true
+    end
+
+    def wait_for_command_responses options={}
+      raise ArgumentError.new("request argument is missing") unless options[:request]
+      raise ArgumentError.new("component argument is missing") unless options[:component]
+      raise ArgumentError.new("command_list argument is missing") unless options[:command_list]
+      want = options[:command_list].clone
+      got = {}
+      # wait for a command response
+      item = @archive.capture(@task,options.merge({
+        type: ['CommandResponse'],
+        with_message: true,
+        num: 1
+      })) do |item|
+        found = []
+        # look through querues
+        want.each_with_index do |query,i|
+          # look through status items in message
+          item[:message].attributes['rvs'].each do |input|
+            ok = command_match? query, input
+            if ok
+              got[query] = input
+              found << i   # record which queries where matched succesfully
+            end
+          end
+        end
+        # remove queries that where matched
+        found.sort.reverse.each do |i|
+          want.delete_at i
+        end
+        want.empty? # any queries left to match?
+        end
+      got
     end
 
     def set_watchdog_interval interval
