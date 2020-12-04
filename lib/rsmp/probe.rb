@@ -90,7 +90,7 @@ module RSMP
       return if @options[:level] && item[:level] != @options[:level]
       return false if @options[:with_message] && !(item[:direction] && item[:message])
       if @options[:component]
-        return false if item[:message].attribute('cId') != @options[:component]
+        return false if item[:message].attributes['cId'] && item[:message].attributes['cId'] != @options[:component]
       end
       if @block
         return false if @block.call(item) == false
