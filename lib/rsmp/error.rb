@@ -23,7 +23,7 @@ module RSMP
 	class MissingWatchdog < Error
 	end
 
-	class MissingAcknowledgment < Error
+	class MessageRejected < Error
 	end
 
 	class MissingAttribute < InvalidMessage
