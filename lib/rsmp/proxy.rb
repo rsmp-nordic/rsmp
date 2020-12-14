@@ -120,10 +120,24 @@ module RSMP
         task.annotate "timer"
         next_time = Time.now.to_f
         loop do
-          now = RSMP.now_object
-          break if timer(now) == false
-        rescue StandardError => e
-          log ["#{name} exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+          begin
+            now = RSMP.now_object
+            break if timer(now) == false
+          rescue EOFError => e
+            log "Connection closed: #{e}", level: :warning
+            break
+          rescue IOError => e
+            log "IOError", level: :warning
+            break
+          rescue Errno::ECONNRESET
+            log "Connection reset by peer", level: :warning
+            break
+          rescue Errno::EPIPE => e
+            log "Broken pipe", level: :warning
+          rescue StandardError => e
+            log "Error: #{e}", level: :debug
+            break
+          end
         ensure
           next_time += interval
           duration = next_time - Time.now.to_f
@@ -153,6 +167,7 @@ module RSMP
         end
       end
     rescue StandardError => e
+      log "Watchdog error: #{e}", level: :error
       log ["Watchdog error: #{e}",e.backtrace].flatten.join("\n"), level: :error
     end
 
@@ -214,7 +229,7 @@ module RSMP
 
     def buffer_message message
       # TODO
-      log "Cannot send #{message.type} because the connection is closed.", message: message, level: :error
+      #log "Cannot send #{message.type} because the connection is closed.", message: message, level: :error
     end
 
     def log_send message, reason=nil
@@ -452,6 +467,8 @@ module RSMP
         end
         message.is_a?(MessageAck) && message.attributes["oMId"] == original.m_id
       end
+    rescue Async::TimeoutError
+      raise RSMP::TimeoutError.new("Acknowledgement for #{original.type} #{original.m_id} not received within #{timeout}s")
     end
 
     def node
