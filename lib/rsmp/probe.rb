@@ -14,6 +14,7 @@ module RSMP
     end
 
     def capture task, options={}, &block
+      raise ArgumentError.new("timeout option is missing") unless options[:timeout]
       @options = options
       @block = block
       @num = options[:num]
@@ -21,8 +22,6 @@ module RSMP
       if options[:earliest]
         from = find_timestamp_index options[:earliest]
         backscan from
-      elsif options[:from]
-        backscan options[:from]
       end
 
       # if backscan didn't find enough items, then
@@ -46,6 +45,7 @@ module RSMP
     end
 
     def find_timestamp_index earliest
+      return 0 if earliest == :start
       (0..@archive.items.size).bsearch do |i|        # use binary search to find item index
         @archive.items[i][:timestamp] >= earliest
       end
