@@ -20,7 +20,7 @@ components:
     DL1:
 watchdog_interval: 0.1
 watchdog_timeout: 0.2
-acknowledgement_timeout: 0.1
+acknowledgement_timeout: 0.2
 reconnect_interval: 0.1
 
 log:
