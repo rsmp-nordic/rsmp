@@ -127,16 +127,38 @@ module RSMP
       @supervisor.site_ids_changed
     end
 
-    def request_status component, status_list, timeout=nil
-      raise NotReady unless @state == :ready
+    def fetch_status parent_task, options
+      wait_for_status_responses(parent_task,options) do
+        request_status options
+      end
+    end
+
+    # Convert from a short ruby hash:
+    # {:S0001=>[:signalgroupstatus, :cyclecounter, :basecyclecounter, :stage]}
+    # to an rsmp-style list:
+    # [{"sCI"=>"S0001", "n"=>"signalgroupstatus"}, {"sCI"=>"S0001", "n"=>"cyclecounter"}, {"sCI"=>"S0001", "n"=>"basecyclecounter"}, {"sCI"=>"S0001", "n"=>"stage"}]
+    #
+    # If the input is already an array, jsut return it
+    def convert_status_list list
+      return list if list.is_a? Array
+      out = list.map do |status_code_id,names|
+        names.map do |name|
+          { 'sCI' => status_code_id.to_s, 'n' => name.to_s }
+        end
+      end.flatten
+      out
+    end
+
+    def request_status options
+      raise NotReady unless ready?
       message = RSMP::StatusRequest.new({
           "ntsOId" => '',
           "xNId" => '',
-          "cId" => component,
-          "sS" => status_list
+          "cId" => options[:component],
+          "sS" => convert_status_list(options[:status_list])
       })
       send_message message
-      return message, wait_for_status_response(message: message, timeout: timeout)
+      message
     end
 
     def process_status_response message
@@ -144,24 +166,8 @@ module RSMP
       acknowledge message
     end
 
-    def wait_for_status_response options
-      raise ArgumentError unless options[:message]
-      item = @archive.capture(@task, options.merge(
-        type: ['StatusResponse','MessageNotAck'],
-        with_message: true,
-        num: 1
-      )) do |item|
-        if item[:message].type == 'MessageNotAck'
-          next item[:message].attribute('oMId') == options[:message].m_id
-        elsif item[:message].type == 'StatusResponse'
-          next item[:message].attribute('cId') == options[:message].attribute('cId')
-        end
-      end
-      item[:message] if item
-    end
-
-    def subscribe_to_status component, status_list, timeout
-      raise NotReady unless @state == :ready
+    def subscribe_to_status component, status_list
+      raise NotReady unless ready?
       message = RSMP::StatusSubscribe.new({
           "ntsOId" => '',
           "xNId" => '',
@@ -169,11 +175,11 @@ module RSMP
           "sS" => status_list
       })
       send_message message
-      return message, wait_for_status_update(component: component, timeout: timeout)[:message]
+      return message
     end
 
     def unsubscribe_to_status component, status_list
-      raise NotReady unless @state == :ready
+      raise NotReady unless ready?
       message = RSMP::StatusUnsubscribe.new({
           "ntsOId" => '',
           "xNId" => '',
@@ -227,32 +233,54 @@ module RSMP
       true
     end
 
-    def wait_for_status_updates options={}
+    def wait_for_status_updates_or_responses parent_task,type, options={}, &block
       raise ArgumentError.new("component argument is missing") unless options[:component]
       raise ArgumentError.new("status_list argument is missing") unless options[:status_list]
-      want = options[:status_list].clone
-      got = {}
-      # wait for a status update
-      item = @archive.capture(@task,options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
-        found = []
-        # look through querues
-        want.each_with_index do |query,i|
-          # look through status items in message
-          item[:message].attributes['sS'].each do |input|
-            ok = status_match? query, input
-            if ok
-              got[query] = input
-              found << i   # record which queries where matched succesfully
+
+      task = parent_task.async do |task|
+        task.annotate "wait for status update/response"
+        want = convert_status_list options[:status_list]
+        got = {}
+        # wait for a status update
+        item = @archive.capture(task,options.merge(type: [type,'MessageNotAck'], with_message: true, num: 1)) do |item|
+          message = item[:message]
+          if message.is_a? MessageNotAck
+            got = message
+            true    # abort and return the MessageNotAck
+          else
+            found = []
+            # look through querues
+            want.each_with_index do |query,i|
+              # look through status items in message
+              item[:message].attributes['sS'].each do |input|
+                ok = status_match? query, input
+                if ok
+                  got[query] = input
+                  found << i   # record which queries where matched succesfully
+                end
+              end
             end
+            # remove queries that where matched
+            found.sort.reverse.each do |i|
+              want.delete_at i
+            end
+            want.empty? # any queries left to match?
           end
         end
-        # remove queries that where matched
-        found.sort.reverse.each do |i|
-          want.delete_at i
-        end
-        want.empty? # any queries left to match?
+        got
+      rescue Async::TimeoutError
+        raise "Did not receive status within #{options[:timeout]}s"
       end
-      got
+      yield
+      task.wait
+    end
+
+    def wait_for_status_updates parent_task, options={}, &block
+      wait_for_status_updates_or_responses parent_task, 'StatusUpdate', options, &block
+    end
+
+    def wait_for_status_responses parent_task, options={}, &block
+      wait_for_status_updates_or_responses parent_task, 'StatusResponse', options, &block
     end
 
     def wait_for_alarm options={}
@@ -303,13 +331,14 @@ module RSMP
       item[:message] if item
     end
 
-    def send_command component, args
-      raise NotReady unless @state == :ready
+    def send_command component, args, options={}
+      raise NotReady unless ready?
       message = RSMP::CommandRequest.new({
           "ntsOId" => '',
           "xNId" => '',
           "cId" => component,
-          "arg" => args
+          "arg" => args,
+          "m_id" => options[:m_id]
       })
       send_message message
       message
@@ -331,37 +360,40 @@ module RSMP
       true
     end
 
-    def wait_for_command_responses options={}
-      raise ArgumentError.new("request argument is missing") unless options[:request]
-      raise ArgumentError.new("component argument is missing") unless options[:component]
-      raise ArgumentError.new("command_list argument is missing") unless options[:command_list]
-      want = options[:command_list].clone
-      got = {}
-      # wait for a command response
-      item = @archive.capture(@task,options.merge({
-        type: ['CommandResponse'],
-        with_message: true,
-        num: 1
-      })) do |item|
-        found = []
-        # look through querues
-        want.each_with_index do |query,i|
-          # look through status items in message
-          item[:message].attributes['rvs'].each do |input|
-            ok = command_match? query, input
-            if ok
-              got[query] = input
-              found << i   # record which queries where matched succesfully
+    def wait_for_command_responses options={}, &block
+      task = @task.async do
+        raise ArgumentError.new("component argument is missing") unless options[:component]
+        raise ArgumentError.new("command_list argument is missing") unless options[:command_list]
+        want = options[:command_list].clone
+        got = {}
+        # wait for a command response
+        item = @archive.capture(@task,options.merge({
+          type: ['CommandResponse'],
+          with_message: true,
+          num: 1
+        })) do |item|
+          found = []
+          # look through querues
+          want.each_with_index do |query,i|
+            # look through items in message
+            item[:message].attributes['rvs'].each do |input|
+              ok = command_match? query, input
+              if ok
+                got[query] = input
+                found << i   # record which queries where matched succesfully
+              end
             end
           end
-        end
-        # remove queries that where matched
-        found.sort.reverse.each do |i|
-          want.delete_at i
-        end
-        want.empty? # any queries left to match?
-        end
-      got
+          # remove queries that where matched
+          found.sort.reverse.each do |i|
+            want.delete_at i
+          end
+          want.empty? # any queries left to match?
+          end
+        got
+      end
+      block.call if block
+      task.wait
     end
 
     def set_watchdog_interval interval
