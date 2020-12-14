@@ -6,6 +6,8 @@ module RSMP
     attr_reader :items
     attr_accessor :probes
 
+    @@index = 0
+
     def initialize
       @items = []
       @probes = ProbeCollection.new
@@ -27,6 +29,14 @@ module RSMP
       cleaned
     end
 
+    def self.increase_index
+      @@index += 1
+    end
+
+    def self.current_index
+      @@index
+    end
+
     def by_level levels
       items.select { |item| levels.include? item[:level] }
     end
@@ -35,12 +45,8 @@ module RSMP
       items.map { |item| item[:str] }
     end
 
-    def current_index
-      @items.size
-    end
-
     def add item
-      item[:index] = @items.size
+      item[:index] = RSMP::Archive.increase_index
       @items << item
       probe item
     end
