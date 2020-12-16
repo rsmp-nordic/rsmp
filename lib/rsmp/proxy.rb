@@ -18,7 +18,7 @@ module RSMP
     def run
       start
       @reader.wait if @reader
-      stop
+      stop unless [:stopped, :stopping].include? @state
     end
 
     def ready?
@@ -179,7 +179,7 @@ module RSMP
       @awaiting_acknowledgement.clone.each_pair do |m_id, message|
         latest = message.timestamp + timeout
         if now > latest
-          log "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds, closing connection", level: :error
+          log "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds", level: :error
           stop
         end
       end
@@ -190,7 +190,7 @@ module RSMP
       latest = @latest_watchdog_received + timeout
       left = latest - now
       if left < 0
-        log "No Watchdog within #{timeout} seconds, closing connection", level: :error
+        log "No Watchdog within #{timeout} seconds", level: :error
         stop
       end
     end

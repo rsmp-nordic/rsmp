@@ -40,6 +40,7 @@ module RSMP
     end
 
     def stop
+      log "Closing connection to supervisor", level: :info
       super
       @last_status_sent = nil
     end

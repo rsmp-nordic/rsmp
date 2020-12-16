@@ -23,6 +23,11 @@ module RSMP
       start_reader
     end
 
+    def stop
+      log "Closing connection to site", level: :info
+      super
+    end
+
     def connection_complete
       super
       log "Connection to site #{@site_id} established", level: :info
