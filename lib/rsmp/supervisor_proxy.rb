@@ -28,6 +28,7 @@ module RSMP
       super
       connect
       @logger.unmute @ip, @port
+      log "Connected to superviser at #{@ip}:#{@port}", level: :info
       start_reader
       send_version @site_settings['site_id'], @site_settings["rsmp_versions"]
     rescue Errno::ECONNREFUSED
