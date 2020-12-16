@@ -195,32 +195,6 @@ module RSMP
       acknowledge message
     end
 
-    def wait_for_status_update options={}
-      raise ArgumentError.new("component argument is missing") unless options[:component]
-      matching_status = nil
-      item = @archive.capture(@task,options.merge(type: "StatusUpdate", with_message: true, num: 1)) do |item|
-        # TODO check components
-        matching_status = nil
-        sS = item[:message].attributes['sS']
-        sS.each do |status|
-          next if options[:sCI] && options[:sCI] != status['sCI']
-          next if options[:n] && options[:n] != status['n']
-          next if options[:q] && options[:q] != status['q']
-          if options[:s].is_a? Regexp
-            next if options[:s] && status['s'] !~ options[:s]
-          else
-            next if options[:s] && options[:s] != status['s']
-          end
-          matching_status = status
-          break
-        end
-        matching_status != nil
-      end
-      if item
-        { message: item[:message], status: matching_status }
-      end
-    end
-
     def status_match? query, item
       return false if query[:sCI] && query[:sCI] != item['sCI']
       return false if query[:n] && query[:n] != item['n']
