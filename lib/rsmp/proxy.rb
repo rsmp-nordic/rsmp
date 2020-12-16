@@ -122,21 +122,19 @@ module RSMP
         loop do
           begin
             now = RSMP.now_object
-            break if timer(now) == false
+            timer(now)
           rescue EOFError => e
-            log "Connection closed: #{e}", level: :warning
-            break
+            log "Timer: Connection closed: #{e}", level: :warning
           rescue IOError => e
-            log "IOError", level: :warning
-            break
+            log "Timer: IOError", level: :warning
           rescue Errno::ECONNRESET
-            log "Connection reset by peer", level: :warning
-            break
+            log "Timer: Connection reset by peer", level: :warning
           rescue Errno::EPIPE => e
-            log "Broken pipe", level: :warning
+            log "Timer: Broken pipe", level: :warning
           rescue StandardError => e
             log "Error: #{e}", level: :debug
-            break
+          #rescue StandardError => e
+          #  log ["Timer error: #{e}",e.backtrace].flatten.join("\n"), level: :error
           end
         ensure
           next_time += interval
@@ -147,12 +145,12 @@ module RSMP
     end
 
     def timer now
-      check_watchdog_send_time now
-      return false if check_ack_timeout now
-      return false if check_watchdog_timeout now
+      watchdog_send_timer now
+      check_ack_timeout now
+      check_watchdog_timeout now
     end
 
-    def check_watchdog_send_time now
+    def watchdog_send_timer now
       return unless @watchdog_started  
       return if @settings["watchdog_interval"] == :never
       
@@ -166,9 +164,6 @@ module RSMP
           send_watchdog now
         end
       end
-    rescue StandardError => e
-      log "Watchdog error: #{e}", level: :error
-      log ["Watchdog error: #{e}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def send_watchdog now=nil
@@ -184,12 +179,10 @@ module RSMP
       @awaiting_acknowledgement.clone.each_pair do |m_id, message|
         latest = message.timestamp + timeout
         if now > latest
-          log "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds", level: :error
+          log "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds, closing connection", level: :error
           stop
-          return true
         end
       end
-      false
     end
 
     def check_watchdog_timeout now
@@ -197,11 +190,9 @@ module RSMP
       latest = @latest_watchdog_received + timeout
       left = latest - now
       if left < 0
-        log "No Watchdog within #{timeout} seconds", level: :error
+        log "No Watchdog within #{timeout} seconds, closing connection", level: :error
         stop
-        return true
       end
-      false
     end
 
     def stop_tasks
