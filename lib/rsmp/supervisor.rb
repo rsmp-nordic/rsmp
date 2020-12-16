@@ -129,6 +129,7 @@ module RSMP
       @proxies.push proxy
       
       proxy.run     # will run until the site disconnects
+    ensure
       @proxies.delete proxy
       site_ids_changed
 
