@@ -2,7 +2,7 @@
 
 module RSMP  
   class Proxy < Base
-    attr_reader :state, :archive, :connection_info, :sxl
+    attr_reader :state, :archive, :connection_info, :sxl, :task
 
     def initialize options
       super options
@@ -18,7 +18,7 @@ module RSMP
     def run
       start
       @reader.wait if @reader
-      stop
+      stop unless [:stopped, :stopping].include? @state
     end
 
     def ready?
@@ -120,10 +120,22 @@ module RSMP
         task.annotate "timer"
         next_time = Time.now.to_f
         loop do
-          now = RSMP.now_object
-          break if timer(now) == false
-        rescue StandardError => e
-          log ["#{name} exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+          begin
+            now = RSMP.now_object
+            timer(now)
+          rescue EOFError => e
+            log "Timer: Connection closed: #{e}", level: :warning
+          rescue IOError => e
+            log "Timer: IOError", level: :warning
+          rescue Errno::ECONNRESET
+            log "Timer: Connection reset by peer", level: :warning
+          rescue Errno::EPIPE => e
+            log "Timer: Broken pipe", level: :warning
+          rescue StandardError => e
+            log "Error: #{e}", level: :debug
+          #rescue StandardError => e
+          #  log ["Timer error: #{e}",e.backtrace].flatten.join("\n"), level: :error
+          end
         ensure
           next_time += interval
           duration = next_time - Time.now.to_f
@@ -133,12 +145,12 @@ module RSMP
     end
 
     def timer now
-      check_watchdog_send_time now
-      return false if check_ack_timeout now
-      return false if check_watchdog_timeout now
+      watchdog_send_timer now
+      check_ack_timeout now
+      check_watchdog_timeout now
     end
 
-    def check_watchdog_send_time now
+    def watchdog_send_timer now
       return unless @watchdog_started  
       return if @settings["watchdog_interval"] == :never
       
@@ -152,8 +164,6 @@ module RSMP
           send_watchdog now
         end
       end
-    rescue StandardError => e
-      log ["Watchdog error: #{e}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def send_watchdog now=nil
@@ -171,24 +181,18 @@ module RSMP
         if now > latest
           log "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds", level: :error
           stop
-          return true
         end
       end
-      false
     end
 
     def check_watchdog_timeout now
-
       timeout = @settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       left = latest - now
-      #log "Check watchdog, time:#{timeout}, last:#{@latest_watchdog_received}, now: #{now}, latest:#{latest}, left #{left}, fail:#{left<0}", level: :debug
       if left < 0
         log "No Watchdog within #{timeout} seconds", level: :error
         stop
-        return true
       end
-      false
     end
 
     def stop_tasks
@@ -216,7 +220,7 @@ module RSMP
 
     def buffer_message message
       # TODO
-      log "Cannot send #{message.type} because the connection is closed.", message: message, level: :error
+      #log "Cannot send #{message.type} because the connection is closed.", message: message, level: :error
     end
 
     def log_send message, reason=nil
@@ -446,27 +450,16 @@ module RSMP
     def version_acknowledged
     end
 
-    def wait_for_acknowledgement original, timeout, options={}
+    def wait_for_acknowledgement original, timeout
       raise ArgumentError unless original
       RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
-        message.is_a?(MessageAck) &&
-        message.attributes["oMId"] == original.m_id
+        if message.is_a?(MessageNotAck) && message.attributes["oMId"] == original.m_id
+          raise RSMP::MessageRejected.new(message.attributes['rea'])
+        end
+        message.is_a?(MessageAck) && message.attributes["oMId"] == original.m_id
       end
-    end
-
-    def wait_for_not_acknowledged original, timeout
-      raise ArgumentError unless original
-      RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
-        message.is_a?(MessageNotAck) &&
-        message.attributes["oMId"] == original.m_id
-      end
-    end
-
-    def wait_for_acknowledgements timeout
-      return if @awaiting_acknowledgement.empty?
-      RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
-        @awaiting_acknowledgement.empty?
-      end
+    rescue Async::TimeoutError
+      raise RSMP::TimeoutError.new("Acknowledgement for #{original.type} #{original.m_id} not received within #{timeout}s")
     end
 
     def node

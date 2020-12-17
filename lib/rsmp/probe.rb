@@ -6,22 +6,6 @@ module RSMP
   class Probe
     attr_reader :condition, :items, :done
 
-    # block should send a message and return message just sent
-    def self.collect_response proxy, options={}, &block
-      from = proxy.archive.current_index
-      sent = yield
-      raise RuntimeError unless sent && sent[:message].is_a?(RSMP::Message)
-      item = proxy.archive.capture(options.merge(from: from+1, num: 1, with_message: true)) do |item|
-        ["CommandResponse","StatusResponse","MessageNotAck"].include?(item[:message].type)
-      end
-      if item
-        item[:message] 
-      else
-        nil
-      end
-    end
-
-
     def initialize archive
       raise ArgumentError.new("Archive expected") unless archive.is_a? Archive
       @archive = archive
@@ -30,6 +14,7 @@ module RSMP
     end
 
     def capture task, options={}, &block
+      raise ArgumentError.new("timeout option is missing") unless options[:timeout]
       @options = options
       @block = block
       @num = options[:num]
@@ -37,8 +22,6 @@ module RSMP
       if options[:earliest]
         from = find_timestamp_index options[:earliest]
         backscan from
-      elsif options[:from]
-        backscan options[:from]
       end
 
       # if backscan didn't find enough items, then
@@ -62,6 +45,7 @@ module RSMP
     end
 
     def find_timestamp_index earliest
+      return 0 if earliest == :start
       (0..@archive.items.size).bsearch do |i|        # use binary search to find item index
         @archive.items[i][:timestamp] >= earliest
       end
@@ -105,6 +89,9 @@ module RSMP
       end
       return if @options[:level] && item[:level] != @options[:level]
       return false if @options[:with_message] && !(item[:direction] && item[:message])
+      if @options[:component]
+        return false if item[:message].attributes['cId'] && item[:message].attributes['cId'] != @options[:component]
+      end
       if @block
         return false if @block.call(item) == false
       end

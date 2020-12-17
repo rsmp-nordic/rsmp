@@ -9,6 +9,7 @@ module RSMP
 
     def initialize options
       super options
+      @task = options[:task]
       @deferred = []
     end
 
@@ -27,13 +28,21 @@ module RSMP
     def do_deferred item
     end
 
+    def do_start task
+      task.annotate self.class.to_s
+      @task = task
+      start_action
+      idle
+    end
+
     def start
       starting
-      Async do |task|
-        task.annotate self.class
-        @task = task
-        start_action
-        idle
+      if @task
+        do_start @task
+      else
+        Async do |task|
+          do_start task
+        end
       end
     rescue Errno::EADDRINUSE => e
       log "Cannot start: #{e.to_s}", level: :error

@@ -110,7 +110,9 @@ module RSMP
           if @site_settings["reconnect_interval"] != :no
             # sleep until waken by reconnect() or the reconnect interval passed
             proxy.set_state :wait_for_reconnect
-            task.with_timeout(@site_settings["reconnect_interval"]) { @sleep_condition.wait }
+            task.with_timeout(@site_settings["reconnect_interval"]) do
+              @sleep_condition.wait
+            end
           else
             proxy.set_state :cannot_connect
             break
