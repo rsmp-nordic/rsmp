@@ -230,7 +230,7 @@ module RSMP
     def handle_s0001 status_code, status_name=nil
       case status_name
       when 'signalgroupstatus'
-        return RSMP::Tlc.make_status format_signal_group_status
+        RSMP::Tlc.make_status format_signal_group_status
       when 'cyclecounter'
         RSMP::Tlc.make_status @pos.to_s
       when 'basecyclecounter'

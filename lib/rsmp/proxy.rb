@@ -2,6 +2,8 @@
 
 module RSMP  
   class Proxy < Base
+    include Wait
+
     attr_reader :state, :archive, :connection_info, :sxl, :task
 
     def initialize options
@@ -246,10 +248,10 @@ module RSMP
       process_deferred
       message
     rescue InvalidPacket => e
-      warning "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}"
+      log "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}", level: :warning
       nil
     rescue MalformedMessage => e
-      warning "Received malformed message, #{e.message}", Malformed.new(attributes)
+      log "Received malformed message, #{e.message}", message: Malformed.new(attributes), level: :warning
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
       nil
     rescue SchemaError => e
@@ -340,7 +342,7 @@ module RSMP
     def wait_for_state state, timeout
       states = [state].flatten
       return if states.include?(@state)
-      RSMP::Wait.wait_for(@task,@state_condition,timeout) do |s|
+      wait_for(@state_condition,timeout) do |s|
         states.include?(@state)
       end
       @state
@@ -452,7 +454,7 @@ module RSMP
 
     def wait_for_acknowledgement original, timeout
       raise ArgumentError unless original
-      RSMP::Wait.wait_for(@task,@acknowledgement_condition,timeout) do |message|
+      wait_for(@acknowledgement_condition,timeout) do |message|
         if message.is_a?(MessageNotAck) && message.attributes["oMId"] == original.m_id
           raise RSMP::MessageRejected.new(message.attributes['rea'])
         end

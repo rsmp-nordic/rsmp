@@ -184,11 +184,12 @@ module RSMP
         "cTS"=>RSMP.now_string,
         "rvs"=>rvs
       })
+      #dont_acknowledge message
       acknowledge message
       send_message response
     end
 
-    def process_status_request message
+    def process_status_request message, options={}
       component_id = message.attributes["cId"]
       component = @site.find_component component_id
       log "Received #{message.type}", message: message, level: :log
@@ -199,7 +200,8 @@ module RSMP
       response = StatusResponse.new({
         "cId"=>component_id,
         "sTs"=>RSMP.now_string,
-        "sS"=>sS
+        "sS"=>sS,
+        "mId" => options[:m_id]
       })
       acknowledge message
       send_message response
