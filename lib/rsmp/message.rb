@@ -27,6 +27,9 @@ module RSMP
 
     @@schemas = load_schemas
 
+    def self.make_m_id
+      SecureRandom.uuid()
+    end
 
     def self.parse_attributes json
       raise ArgumentError unless json
@@ -50,10 +53,6 @@ module RSMP
         message = Watchdog.new attributes
       when "Alarm"
         message = Alarm.new attributes
-      when "AlarmRequest"
-        message = CommandRequest.new attributes
-      when "AlarmAcknowledged"
-        message = CommandResponse.new attributes
       when "CommandRequest"
         message = CommandRequest.new attributes
       when "CommandResponse"
@@ -84,8 +83,12 @@ module RSMP
       @attributes["mId"]
     end
 
+    def self.shorten_m_id m_id, length=4
+      m_id[0..length-1]
+    end
+
     def m_id_short
-      @attributes["mId"][0..3]
+      Message.shorten_m_id @attributes["mId"]
     end
 
     def attribute key
@@ -130,7 +133,7 @@ module RSMP
 
     def ensure_message_id
       # if message id is empty, generate a new one
-      @attributes["mId"] ||= SecureRandom.uuid()
+      @attributes["mId"] ||= Message.make_m_id
     end
 
     def validate sxl=nil

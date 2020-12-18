@@ -5,6 +5,8 @@
 
 module RSMP
   class Node < Base
+    include Wait
+
     attr_reader :archive, :logger, :task, :deferred
 
     def initialize options
