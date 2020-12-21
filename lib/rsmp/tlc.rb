@@ -97,12 +97,12 @@ module RSMP
     end
 
     def handle_m0001 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 2, arg['securityCode']
       switch_mode arg['status']
     end
 
     def handle_m0002 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 2, arg['securityCode']
       if RSMP::Tlc.from_rsmp_bool(arg['status'])
         switch_plan arg['timeplan']
       else
@@ -111,12 +111,12 @@ module RSMP
     end
 
     def handle_m0003 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 2, arg['securityCode']
       @traffic_situation = arg['traficsituation'].to_i
     end
 
     def handle_m0004 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 2, arg['securityCode']
       # don't restart immeediately, since we need to first send command response
       # instead, defer an action, which will be handled by the TLC site
       log "Sheduling restart of TLC", level: :info
@@ -124,13 +124,13 @@ module RSMP
     end
 
     def handle_m0005 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 2, arg['securityCode']
       @emergency_route = arg['status'] == 'True'
       @emergency_route_number = arg['emergencyroute'].to_i
     end
 
     def handle_m0006 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 2, arg['securityCode']
       input = arg['input'].to_i
       idx = input - 1
       return unless idx>=0 && input<@num_inputs
@@ -139,42 +139,58 @@ module RSMP
       @input_results[idx] = (result ? '1' : '0')
     end
 
+    def handle_m0007 arg
+      @node.verify_security_code 2, arg['securityCode']
+      set_fixed_time_control arg['status']
+    end
+
     def handle_m0012 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0013 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0014 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0015 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0016 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0017 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0018 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0019 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0020 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0021 arg
+      @node.verify_security_code 2, arg['securityCode']
     end
 
     def handle_m0103 arg
-      @node.verify_security_code arg['securityCode']
+      level = {'Level1'=>1,'Level2'=>2}[arg['status']]
+      @node.change_security_code level, arg['oldSecurityCode'], arg['newSecurityCode']
     end
 
     def handle_m0104 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 1, arg['securityCode']
     end
 
     def set_input i, value
@@ -182,11 +198,6 @@ module RSMP
       @inputs[i] = (arg['value'] ? '1' : '0')
     end
     
-    def handle_m0007 arg
-      @node.verify_security_code arg['securityCode']
-      set_fixed_time_control arg['status']
-    end
-
     def set_fixed_time_control status
       @fixed_time_control = status
     end
@@ -602,7 +613,7 @@ module RSMP
 
     # Start of signal group. Orders a signal group to green
     def handle_m0010 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 2, arg['securityCode']
       if RSMP::Tlc.from_rsmp_bool arg['status']
         log "Start signal group #{c_id}, go to green", level: :info
       end
@@ -610,7 +621,7 @@ module RSMP
 
     # Stop of signal group. Orders a signal group to red
     def handle_m0011 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 2, arg['securityCode']
       if RSMP::Tlc.from_rsmp_bool arg['status']
         log "Stop signal group #{c_id}, go to red", level: :info
       end
@@ -727,7 +738,7 @@ module RSMP
     end
 
     def handle_m0008 arg
-      @node.verify_security_code arg['securityCode']
+      @node.verify_security_code 2, arg['securityCode']
       force_detector_logic arg['status']=='True', arg['value']='True'
       arg
     end
@@ -743,7 +754,7 @@ module RSMP
     def initialize options={}
       super options
       @sxl = 'traffic_light_controller'
-
+      @security_codes = options[:site_settings]['security_codes']
       unless @main
         raise ConfigurationError.new "TLC must have a main component"
       end
@@ -804,7 +815,16 @@ module RSMP
       @main.timer now
     end
 
-    def verify_security_code code
+    def verify_security_code level, code
+      raise ArgumentError.new("Level must be 1-2, got #{level}") unless (1..2).include?(level)
+      if @security_codes[level] != code
+        raise MessageRejected.new("Wrong security code for level #{level}")
+      end
+    end
+
+    def change_security_code level, old_code, new_code
+      verify_security_code level, old_code
+      @security_codes[level] = new_code
     end
 
     def self.to_rmsp_bool bool
