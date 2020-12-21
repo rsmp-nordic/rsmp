@@ -781,33 +781,43 @@ module RSMP
     end
 
     def start_timer
-      name = "tlc timer"
+      task_name = "tlc timer"
       interval = 1 #@settings["timer_interval"] || 1
-      log "Starting #{name} with interval #{interval} seconds", level: :debug
+      log "Starting #{task_name} with interval #{interval} seconds", level: :debug
 
       @timer = @task.async do |task|
-        task.annotate "timer"
+        task.annotate task_name
         next_time = Time.now.to_f
         loop do
-          now = RSMP.now_object
-          break if timer(now) == false
-        rescue StandardError => e
-          log ["#{name} exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+          begin
+            now = RSMP.now_object
+            timer(now) if ready?
+          rescue EOFError => e
+            log "TLC timer: Connection closed: #{e}", level: :warning
+          rescue IOError => e
+            log "TLC timer: IOError", level: :warning
+          rescue Errno::ECONNRESET
+            log "TLC timer: Connection reset by peer", level: :warning
+          rescue Errno::EPIPE => e
+            log "TLC timer: Broken pipe", level: :warning
+          rescue StandardError => e
+            log "TLC timer: #{e}", level: :debug
+          end
         ensure
           # adjust sleep duration to avoid drift. so wake up always happens on the 
           # same fractional second.
-          # note that Time.now is not monotonic. If the clock si changed,
+          # note that Time.now is not monotonic. If the clock is changed,
           # either manaully or via NTP, the sleep interval might jump.
           # an alternative is to use ::Process.clock_gettime(::Process::CLOCK_MONOTONIC),
           # to get the current time. this ensures a constant interval, but
           # if the clock is changed, the wake up would then happen on a different 
           # fractional second
-
           next_time += interval
           duration = next_time - Time.now.to_f
           task.sleep duration
         end
       end
+
     end
 
     def timer now
