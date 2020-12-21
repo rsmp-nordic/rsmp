@@ -143,15 +143,14 @@ module RSMP
     # to an rsmp-style list:
     # [{"sCI"=>"S0001", "n"=>"signalgroupstatus"}, {"sCI"=>"S0001", "n"=>"cyclecounter"}, {"sCI"=>"S0001", "n"=>"basecyclecounter"}, {"sCI"=>"S0001", "n"=>"stage"}]
     #
-    # If the input is already an array, jsut return it
+    # If the input is already an array, just return it
     def convert_status_list list
-      return list if list.is_a? Array
-      out = list.map do |status_code_id,names|
+      return list.clone if list.is_a? Array
+      list.map do |status_code_id,names|
         names.map do |name|
           { 'sCI' => status_code_id.to_s, 'n' => name.to_s }
         end
       end.flatten
-      out
     end
 
     def request_status options
@@ -178,7 +177,7 @@ module RSMP
           "ntsOId" => '',
           "xNId" => '',
           "cId" => component,
-          "sS" => status_list,
+          "sS" => convert_status_list(status_list),
           'mId'=>options[:m_id]
       })
       send_message message
@@ -191,7 +190,7 @@ module RSMP
           "ntsOId" => '',
           "xNId" => '',
           "cId" => component,
-          "sS" => status_list
+          "sS" => convert_status_list(status_list)
       })
       send_message message
       message
