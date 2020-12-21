@@ -79,7 +79,8 @@ module RSMP
         else
           super message
       end
-    rescue UnknownComponent, UnknownCommand, UnknownStatus, MessageRejected => e
+    rescue UnknownComponent, UnknownCommand, UnknownStatus,
+           MessageRejected, MissingAttribute => e
       dont_acknowledge message, '', e.to_s
     end
 
