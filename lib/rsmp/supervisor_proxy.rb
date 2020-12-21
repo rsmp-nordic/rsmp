@@ -79,11 +79,7 @@ module RSMP
         else
           super message
       end
-    rescue UnknownComponent => e
-      dont_acknowledge message, '', e.to_s
-    rescue UnknownCommand => e
-      dont_acknowledge message, '', e.to_s
-    rescue UnknownStatus => e
+    rescue UnknownComponent, UnknownCommand, UnknownStatus, MessageRejected => e
       dont_acknowledge message, '', e.to_s
     end
 
@@ -184,7 +180,6 @@ module RSMP
         "cTS"=>RSMP.now_string,
         "rvs"=>rvs
       })
-      #dont_acknowledge message
       acknowledge message
       send_message response
     end
