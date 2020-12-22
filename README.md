@@ -178,7 +178,7 @@ Use ```--config <path>``` to point to a .yaml config file, controlling things li
 ### RSpec
 RSpec tests are located in spec/. The tests will start supervisor and sites to test communication, but will do so on port 13111, rather than the usual port 12111, to avoid inferference with other RMSP processes running locally.
 
-Note that these tests are NOT intented for testing external equipment or systems. The tests are for validating the code in this repository. To test external equipment or systems.
+Note that these tests are NOT intented for testing external equipment or systems. The tests are for validating the code in this repository. To test external equipment or systems use the rsmp_validator tool.
 
 ```console
 $ rspec
