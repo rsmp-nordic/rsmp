@@ -1,10 +1,10 @@
 # Things shared between sites and site proxies
 
 module RSMP
-  module SiteBase
+  module Components
     attr_reader :components
     
-    def initialize_site
+    def initialize_components
       @components = {}
     end
 

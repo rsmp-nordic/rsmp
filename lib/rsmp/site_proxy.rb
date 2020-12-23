@@ -2,13 +2,13 @@
 
 module RSMP  
   class SiteProxy < Proxy
-    include SiteBase
+    include Components
 
     attr_reader :supervisor, :site_id
 
     def initialize options
       super options
-      initialize_site
+      initialize_components
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
       @site_id = nil

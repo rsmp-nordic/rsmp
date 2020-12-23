@@ -4,12 +4,12 @@
 
 module RSMP
   class Site < Node
-    include SiteBase
+    include Components
 
     attr_reader :rsmp_versions, :site_settings, :logger, :proxies
 
     def initialize options={}
-      initialize_site
+      initialize_components
       handle_site_settings options
       super options
       @proxies = []

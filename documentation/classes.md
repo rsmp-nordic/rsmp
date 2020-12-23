@@ -57,6 +57,6 @@ A connection to a remote Site. Handles RSMP messaging specific to a site, includ
 
 Status and command requests are delegated to the appropriate components.
 
-## SiteBase
+## Components
 Things shared between Site and SiteProxy, mainly handling components.
 
