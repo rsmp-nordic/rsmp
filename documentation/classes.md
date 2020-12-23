@@ -1,24 +1,24 @@
+
+# Overview
+```
+	 Node - - - include Logging, Wait
+	/   \
+Super    Site
+
+
+         Proxy - - - include Logging, Wait 
+        /    \
+SiteProxy     SupervisorProxy
+```
+
+# Modules
+## Logging
+Handle logging.
+
+## Wait
+Handles waiting for different types of messages and responses.
+
 # Classes
-
-## Class tree:
-```
-
-		   .------ Base -------.
-		  /                     \
-	     /                       \
-	    / 	  SiteBase module     \
-	Node 	  /	 	        \ 	   Proxy
-	/   \    /	 	         \    /    \
-Super    Site             SiteProxy	    SupervisorProxy
-
-```
-
-
-## Base
-The Base class handle logging.
-
-Node and Site inherit from Base.
-
 ## Node
 A Node has an async task. A node can be started and stopped.
 

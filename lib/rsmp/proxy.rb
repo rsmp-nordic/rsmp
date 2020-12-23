@@ -1,13 +1,14 @@
-# Base class for a connection to a remote site or supervisor.
+# Logging class for a connection to a remote site or supervisor.
 
 module RSMP  
-  class Proxy < Base
+  class Proxy
+    include Logging
     include Wait
 
     attr_reader :state, :archive, :connection_info, :sxl, :task
 
     def initialize options
-      super options
+      initialize_logging options
       @settings = options[:settings]
       @task = options[:task]
       @socket = options[:socket]

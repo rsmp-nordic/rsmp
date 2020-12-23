@@ -4,13 +4,14 @@
 # We connect to the supervisor.
 
 module RSMP
-  class Node < Base
+  class Node
     include Wait
+    include Logging
 
     attr_reader :archive, :logger, :task, :deferred
 
     def initialize options
-      super options
+      initialize_logging options
       @task = options[:task]
       @deferred = []
     end

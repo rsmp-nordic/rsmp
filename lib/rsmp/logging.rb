@@ -3,10 +3,10 @@
 #
 
 module RSMP
-  class Base
+  module Logging
     attr_reader :archive, :logger
 
-    def initialize options
+    def initialize_logging options
       @archive = options[:archive] || RSMP::Archive.new
       @logger = options[:logger] || RSMP::Logger.new(options[:log_settings]) 
     end
