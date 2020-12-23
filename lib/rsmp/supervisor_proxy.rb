@@ -14,7 +14,6 @@ module RSMP
       @ip = options[:ip]
       @port = options[:port]
       @status_subscriptions = {}
-      @status_subscriptions_mutex = Mutex.new
       @sxl = @site_settings['sxl']
       @synthetic_id = Supervisor.build_id_from_ip_port @ip, @port
     end
