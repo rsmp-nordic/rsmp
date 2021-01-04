@@ -343,7 +343,7 @@ module RSMP
     def wait_for_state state, timeout
       states = [state].flatten
       return if states.include?(@state)
-      wait_for(@state_condition,timeout) do |s|
+      wait_for(@state_condition,timeout) do
         states.include?(@state)
       end
       @state

@@ -3,6 +3,7 @@
 module RSMP  
   class SiteProxy < Proxy
     include Components
+    include SiteProxyWait
 
     attr_reader :supervisor, :site_id
 
@@ -53,6 +54,11 @@ module RSMP
         else
           super message
       end
+    end
+
+    def process_command_response message
+      log "Received #{message.type}", message: message, level: :log
+      acknowledge message
     end
 
     def process_deferred
@@ -213,24 +219,6 @@ module RSMP
       true
     end
 
-    def wait_for_alarm options={}
-      raise ArgumentError.new("component argument is missing") unless options[:component]
-      matching_alarm = nil
-      item = @archive.capture(@task,options.merge(type: "Alarm", with_message: true, num: 1)) do |item|
-        # TODO check components
-        matching_alarm = nil
-        alarm = item[:message]
-        next if options[:aCId] && options[:aCId] != alarm.attribute("aCId")
-        next if options[:aSp] && options[:aSp] != alarm.attribute("aSp")
-        next if options[:aS] && options[:aS] != alarm.attribute("aS")
-        matching_alarm = alarm
-        break
-      end
-      if item
-        { message: item[:message], status: matching_alarm }
-      end
-    end
-
     def send_alarm_acknowledgement component, alarm_code
       message = RSMP::AlarmAcknowledged.new({
           "ntsOId" => '',
@@ -243,22 +231,6 @@ module RSMP
       })
       send_message message
       message
-    end
-
-    def wait_for_alarm_acknowledgement_response options
-      raise ArgumentError.new("component argument is missing") unless options[:component]
-      item = @archive.capture(@task,options.merge(
-        num: 1,
-        type: ['AlarmAcknowledgedResponse','MessageNotAck'],
-        with_message: true
-      )) do |item|
-        if item[:message].type == 'MessageNotAck'
-          next item[:message].attribute('oMId') == options[:message].m_id
-        elsif item[:message].type == 'AlarmAcknowledgedResponse'
-          next item[:message].attribute('cId') == options[:message].attribute('cId')
-        end
-      end
-      item[:message] if item
     end
 
     def send_command component, args, options={}
