@@ -45,23 +45,7 @@ module RSMP
       end
     end
 
-    def wait_for_alarm_acknowledgement_response options
-      raise ArgumentError.new("component argument is missing") unless options[:component]
-      item = @archive.capture(@task,options.merge(
-        num: 1,
-        type: ['AlarmAcknowledgedResponse','MessageNotAck'],
-        with_message: true
-      )) do |item|
-        if item[:message].type == 'MessageNotAck'
-          next item[:message].attribute('oMId') == options[:message].m_id
-        elsif item[:message].type == 'AlarmAcknowledgedResponse'
-          next item[:message].attribute('cId') == options[:message].attribute('cId')
-        end
-      end
-      item[:message] if item
-    end
-
-    
+ 
     private
 
     def wait_for_status_updates_or_responses parent_task, type, options={}, &block
