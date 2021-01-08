@@ -120,14 +120,14 @@ module RSMP
       proxy = build_proxy({
         supervisor: self,
         task: @task,
-        settings: @supervisor_settings[:sites],
+        settings: @supervisor_settings['sites'],
+        collect: @supervisor_settings['collect'],
         socket: socket,
         info: info,
         logger: @logger,
         archive: @archive
       })
       @proxies.push proxy
-      
       proxy.run     # will run until the site disconnects
     ensure
       @proxies.delete proxy

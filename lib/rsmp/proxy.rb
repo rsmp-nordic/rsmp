@@ -4,8 +4,9 @@ module RSMP
   class Proxy
     include Logging
     include Wait
+    include Distributor
 
-    attr_reader :state, :archive, :connection_info, :sxl, :task
+    attr_reader :state, :archive, :connection_info, :sxl, :task, :collector
 
     def initialize options
       initialize_logging options
@@ -15,7 +16,23 @@ module RSMP
       @ip = options[:ip]
       @connection_info = options[:info]
       @sxl = nil
+      initialize_distributor
+
+      prepare_collection options[:collect]
+
       clear
+    end
+
+    def prepare_collection num
+      if num
+        @collector = RSMP::Collector.new self, num: num
+        add_receiver @collector
+      end
+    end
+
+    def collect task, options, &block
+      probe = RSMP::Collector.new self, options
+      probe.collect task, &block
     end
 
     def run
@@ -247,6 +264,7 @@ module RSMP
       expect_version_message(message) unless @version_determined
       process_message message
       process_deferred
+      distribute( message: message )
       message
     rescue InvalidPacket => e
       log "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}", level: :warning

@@ -17,7 +17,7 @@ module RSMP
 
       # wait for command responses in an async task
       task = parent_task.async do |task|
-        capture_command_responses task, 'CommandResponse', options, m_id
+        collect_command_responses task, 'CommandResponse', options, m_id
       end
 
        # call block, it should send command request using the given m_id
@@ -30,7 +30,7 @@ module RSMP
     def wait_for_alarm options={}
       raise ArgumentError.new("component argument is missing") unless options[:component]
       matching_alarm = nil
-      item = @archive.capture(@task,options.merge(type: "Alarm", with_message: true, num: 1)) do |item|
+      item = collect(@task,options.merge(type: "Alarm", with_message: true, num: 1)) do |item|
         # TODO check components
         matching_alarm = nil
         alarm = item[:message]
@@ -55,7 +55,7 @@ module RSMP
 
       # wait for command responses in an async task
       task = parent_task.async do |task|
-        capture_status_updates_or_responses task, type, options, m_id
+        collect_status_updates_or_responses task, type, options, m_id
       end
 
        # call block, it should send command request using the given m_id
@@ -65,12 +65,12 @@ module RSMP
       task.wait
     end
 
-    def capture_status_updates_or_responses task, type, options, m_id
+    def collect_status_updates_or_responses task, type, options, m_id
       task.annotate "wait for status update/response"
       want = convert_status_list options[:status_list]
       result = {}
       # wait for a status update
-      item = @archive.capture(task,options.merge({
+      item = collect(task,options.merge({
         type: [type,'MessageNotAck'],
         num: 1
       })) do |item|
@@ -109,11 +109,11 @@ module RSMP
       raise RSMP::TimeoutError.new "Did not received status #{type_str} in reply to #{m_id} within #{options[:timeout]}s"
     end
 
-    def capture_command_responses parent_task, type, options, m_id
+    def collect_command_responses parent_task, type, options, m_id
       task.annotate "wait for command response"
       want = options[:command_list].clone
       result = {}
-      item = @archive.capture(parent_task,options.merge({
+      item = collect(parent_task,options.merge({
         type: [type,'MessageNotAck'],
         num: 1
       })) do |item|
@@ -163,4 +163,5 @@ module RSMP
       true
     end
   end
+
 end

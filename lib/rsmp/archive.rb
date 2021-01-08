@@ -4,13 +4,11 @@
 module RSMP
   class Archive
     attr_reader :items
-    attr_accessor :probes
 
     @@index = 0
 
     def initialize
       @items = []
-      @probes = ProbeCollection.new
     end
 
     def self.prepare_item item
@@ -48,19 +46,9 @@ module RSMP
     def add item
       item[:index] = RSMP::Archive.increase_index
       @items << item
-      probe item
-    end
-
-    def capture task, options, &block
-      probe = RSMP::Probe.new self
-      probe.capture task, options, &block
     end
     
     private
-
-    def probe item
-      @probes.process item
-    end
 
     def find options, &block
       # search backwards from newest to older, stopping once messages
