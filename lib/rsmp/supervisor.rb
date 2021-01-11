@@ -117,17 +117,17 @@ module RSMP
           level: :info,
           timestamp: RSMP.now_object
 
+      settings = @supervisor_settings['sites'][info[:ip]] || @supervisor_settings['sites'][:any]
       proxy = build_proxy({
         supervisor: self,
         task: @task,
-        settings: @supervisor_settings[:sites],
+        settings: settings,
         socket: socket,
         info: info,
         logger: @logger,
         archive: @archive
       })
       @proxies.push proxy
-      
       proxy.run     # will run until the site disconnects
     ensure
       @proxies.delete proxy

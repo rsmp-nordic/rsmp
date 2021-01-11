@@ -9,7 +9,7 @@ Super    Site - - include Components
 
               Proxy - - include Logging, Wait
               /    \
-SupervisorProxy    SiteProxy - - include Components
+SupervisorProxy    SiteProxy - - include Components, SiteProxyWait
 ```
 
 ## Modules
@@ -17,7 +17,10 @@ SupervisorProxy    SiteProxy - - include Components
 Handle logging.
 
 ### Wait
-Handles waiting for different types of messages and responses.
+Handles waiting for an async condition and block.
+
+### SiteProxyWait
+Handles waiting for different types of messages and responses from a remote site.
 
 ### Components
 Component handling.

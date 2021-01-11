@@ -1,12 +1,9 @@
-# RSMP site
-#
-# Handles a single connection to a supervisor.
-# We connect to the supervisor.
+# Base class for sites and supervisors
 
 module RSMP
   class Node
-    include Wait
     include Logging
+    include Wait
 
     attr_reader :archive, :logger, :task, :deferred
 

@@ -4,8 +4,9 @@ module RSMP
   class Proxy
     include Logging
     include Wait
+    include Notifier
 
-    attr_reader :state, :archive, :connection_info, :sxl, :task
+    attr_reader :state, :archive, :connection_info, :sxl, :task, :collector
 
     def initialize options
       initialize_logging options
@@ -15,7 +16,23 @@ module RSMP
       @ip = options[:ip]
       @connection_info = options[:info]
       @sxl = nil
+      initialize_distributor
+
+      prepare_collection options[:settings]['collect']
+
       clear
+    end
+
+    def prepare_collection num
+      if num
+        @collector = RSMP::Collector.new self, num: num, ingoing: true, outgoing: true
+        add_listener @collector
+      end
+    end
+
+    def collect task, options, &block
+      probe = RSMP::Collector.new self, options
+      probe.collect task, &block
     end
 
     def run
@@ -214,6 +231,7 @@ module RSMP
       message.direction = :out
       expect_acknowledgement message
       @protocol.write_lines message.json
+      notify message: message
       log_send message, reason
     rescue EOFError, IOError
       buffer_message message
@@ -244,6 +262,7 @@ module RSMP
       attributes = Message.parse_attributes json
       message = Message.build attributes, json
       message.validate sxl
+      notify message: message
       expect_version_message(message) unless @version_determined
       process_message message
       process_deferred
@@ -343,7 +362,7 @@ module RSMP
     def wait_for_state state, timeout
       states = [state].flatten
       return if states.include?(@state)
-      wait_for(@state_condition,timeout) do |s|
+      wait_for(@state_condition,timeout) do
         states.include?(@state)
       end
       @state
