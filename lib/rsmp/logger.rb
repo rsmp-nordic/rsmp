@@ -82,7 +82,6 @@ module RSMP
     end
 
     def colorize level, str
-      #p String.color_samples
       if @settings["color"] == false || @settings["color"] == nil
         str
       elsif @settings["color"] == true
