@@ -3,12 +3,12 @@
 # and the client wakes up.
 
 module RSMP
-  class Collector < Receiver
+  class Collector < Listener
     attr_reader :condition, :items, :done
 
     def initialize proxy, options={}
       #raise ArgumentError.new("timeout option is missing") unless options[:timeout]
-      super proxy
+      super proxy, options
       @items = []
       @condition = Async::Notification.new
       @done = false
@@ -26,7 +26,9 @@ module RSMP
       end
     end
 
-    def collect task, &block
+    def collect task, options={}, &block
+      @num = options[:num] if options[:num]
+      @options[:timeout] = options[:timeout] if options[:timeout]
       @block = block
 
       siphon do
@@ -48,14 +50,16 @@ module RSMP
       @done = false
     end
 
-    def receive item
+    def notify item
       raise ArgumentError unless item
       return true if @done
+      return if item[:message].direction == :in && @ingoing == false
+      return if item[:message].direction == :out && @outgoing == false
       if matches? item
         @items << item
         if @num && @items.size >= @num
           @done = true
-          @proxy.remove_receiver self
+          @proxy.remove_listener self
           @condition.signal
         end
       end

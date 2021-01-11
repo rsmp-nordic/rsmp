@@ -117,11 +117,11 @@ module RSMP
           level: :info,
           timestamp: RSMP.now_object
 
+      settings = @supervisor_settings['sites'][info[:ip]] || @supervisor_settings['sites'][:any]
       proxy = build_proxy({
         supervisor: self,
         task: @task,
-        settings: @supervisor_settings['sites'],
-        collect: @supervisor_settings['collect'],
+        settings: settings,
         socket: socket,
         info: info,
         logger: @logger,

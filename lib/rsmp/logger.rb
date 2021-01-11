@@ -124,8 +124,9 @@ module RSMP
       end
     end 
 
-    def dump archive, force:false
-      log = archive.items.map do |item|
+    def dump archive, force:false, num:nil
+      num ||= archive.items.size
+      log = archive.items.last(num).map do |item|
         str = build_output item
         str = colorize item[:level], str
       end

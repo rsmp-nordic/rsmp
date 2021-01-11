@@ -4,7 +4,7 @@ module RSMP
   class Proxy
     include Logging
     include Wait
-    include Distributor
+    include Notifier
 
     attr_reader :state, :archive, :connection_info, :sxl, :task, :collector
 
@@ -18,15 +18,15 @@ module RSMP
       @sxl = nil
       initialize_distributor
 
-      prepare_collection options[:collect]
+      prepare_collection options[:settings]['collect']
 
       clear
     end
 
     def prepare_collection num
       if num
-        @collector = RSMP::Collector.new self, num: num
-        add_receiver @collector
+        @collector = RSMP::Collector.new self, num: num, ingoing: true, outgoing: true
+        add_listener @collector
       end
     end
 
@@ -231,6 +231,7 @@ module RSMP
       message.direction = :out
       expect_acknowledgement message
       @protocol.write_lines message.json
+      notify message: message
       log_send message, reason
     rescue EOFError, IOError
       buffer_message message
@@ -261,10 +262,10 @@ module RSMP
       attributes = Message.parse_attributes json
       message = Message.build attributes, json
       message.validate sxl
+      notify message: message
       expect_version_message(message) unless @version_determined
       process_message message
       process_deferred
-      distribute( message: message )
       message
     rescue InvalidPacket => e
       log "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}", level: :warning
