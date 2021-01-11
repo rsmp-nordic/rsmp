@@ -7,8 +7,9 @@ module RSMP
 
     @@index = 0
 
-    def initialize
+    def initialize  max=100
       @items = []
+      @max = max
     end
 
     def self.prepare_item item
@@ -46,6 +47,9 @@ module RSMP
     def add item
       item[:index] = RSMP::Archive.increase_index
       @items << item
+      if @items.size > @max
+        @items.shift
+      end
     end
     
     private
