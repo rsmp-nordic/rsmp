@@ -125,18 +125,29 @@ module RSMP
 
     def handle_m0005 arg
       @node.verify_security_code 2, arg['securityCode']
-      @emergency_route = arg['status'] == 'True'
+      @emergency_route = (arg['status'] == 'True')
       @emergency_route_number = arg['emergencyroute'].to_i
+
+      if @emergency_route
+        log "Switching to emergency route #{@emergency_route_number}", level: :info
+      else
+        log "Switching off emergency route", level: :info
+      end
     end
 
     def handle_m0006 arg
       @node.verify_security_code 2, arg['securityCode']
       input = arg['input'].to_i
       idx = input - 1
-      return unless idx>=0 && input<@num_inputs
+      return unless idx>=0 && input<@num_inputs # TODO should NotAck
       @input_activations[idx] = (arg['status']=='True' ? '1' : '0')
       result = @input_activations[idx]=='1' || @inputs[idx]=='1'
       @input_results[idx] = (result ? '1' : '0')
+      if @input_activations[idx]
+        log "Activate input #{idx}", level: :info
+      else
+        log "Deactivate input #{idx}", level: :info
+      end
     end
 
     def handle_m0007 arg
@@ -203,8 +214,13 @@ module RSMP
     end
 
     def switch_plan plan
-      log "Switching to plan #{plan}", level: :info
-      @plan = plan.to_i
+      plan_nr = plan.to_i
+      if plan_nr == 0
+        log "Switching to plan selection by time table", level: :info
+      else
+        log "Switching to plan #{plan_nr}", level: :info
+      end
+      @plan = plan_nr
     end
 
     def switch_mode mode
