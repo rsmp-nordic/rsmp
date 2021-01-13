@@ -138,38 +138,33 @@ module RSMP
       @supervisor.site_ids_changed
     end
 
-    def fetch_status parent_task, options
-      wait_for_status_responses(parent_task,options) do |m_id|
-        request_status options.merge(m_id: m_id)
-      end
-    end
-
-    # Convert from a short ruby hash:
-    # {:S0001=>[:signalgroupstatus, :cyclecounter, :basecyclecounter, :stage]}
-    # to an rsmp-style list:
-    # [{"sCI"=>"S0001", "n"=>"signalgroupstatus"}, {"sCI"=>"S0001", "n"=>"cyclecounter"}, {"sCI"=>"S0001", "n"=>"basecyclecounter"}, {"sCI"=>"S0001", "n"=>"stage"}]
-    #
-    # If the input is already an array, just return it
-    def convert_status_list list
-      return list.clone if list.is_a? Array
-      list.map do |status_code_id,names|
-        names.map do |name|
-          { 'sCI' => status_code_id.to_s, 'n' => name.to_s }
-        end
-      end.flatten
-    end
-
-    def request_status options
+    def request_status component, status_list, options={}
       raise NotReady unless ready?
+      m_id = options[:m_id] || RSMP::Message.make_m_id
+
+      # additional items can be used when verifying the response,
+      # but must to remove from the request
+      request_list = status_list.map { |item| item.slice('sCI','n') }
+
       message = RSMP::StatusRequest.new({
           "ntsOId" => '',
           "xNId" => '',
-          "cId" => options[:component],
-          "sS" => convert_status_list(options[:status_list]),
-          "mId" => options[:m_id]
+          "cId" => component,
+          "sS" => request_list,
+          "mId" => m_id
       })
-      send_message message
-      message
+      if options[:collect]
+        result = nil
+        task = @task.async do |task|
+          collect_options = options[:collect].merge status_list: status_list
+          collect_status_responses task, collect_options, m_id
+        end
+        send_message message
+        return message, task.wait
+      else
+        send_message message
+        message
+      end
     end
 
     def process_status_response message
@@ -179,15 +174,31 @@ module RSMP
 
     def subscribe_to_status component, status_list, options={}
       raise NotReady unless ready?
+      m_id = options[:m_id] || RSMP::Message.make_m_id
+      
+      # additional items can be used when verifying the response,
+      # but must to remove from the subscribe message
+      subscribe_list = status_list.map { |item| item.slice('sCI','n','uRt') }
+
       message = RSMP::StatusSubscribe.new({
           "ntsOId" => '',
           "xNId" => '',
           "cId" => component,
-          "sS" => convert_status_list(status_list),
-          'mId'=>options[:m_id]
+          "sS" => subscribe_list,
+          'mId' => m_id
       })
-      send_message message
-      return message
+      if options[:collect]
+        result = nil
+        task = @task.async do |task|
+          collect_options = options[:collect].merge status_list: status_list
+          collect_status_updates task, collect_options, m_id
+        end
+        send_message message
+        return message, task.wait
+      else
+        send_message message
+        message
+      end
     end
 
     def unsubscribe_to_status component, status_list
@@ -196,7 +207,7 @@ module RSMP
           "ntsOId" => '',
           "xNId" => '',
           "cId" => component,
-          "sS" => convert_status_list(status_list)
+          "sS" => status_list
       })
       send_message message
       message
@@ -205,18 +216,6 @@ module RSMP
     def process_status_update message
       log "Received #{message.type}", message: message, level: :log
       acknowledge message
-    end
-
-    def status_match? query, item
-      return false if query[:sCI] && query[:sCI] != item['sCI']
-      return false if query[:n] && query[:n] != item['n']
-      return false if query[:q] && query[:q] != item['q']
-      if query[:s].is_a? Regexp
-        return false if query[:s] && item['s'] !~ query[:s]
-      else
-        return false if query[:s] && item['s'] != query[:s]
-      end
-      true
     end
 
     def send_alarm_acknowledgement component, alarm_code
@@ -233,17 +232,28 @@ module RSMP
       message
     end
 
-    def send_command component, args, options={}
+    def send_command component, command_list, options={}
       raise NotReady unless ready?
+      m_id = options[:m_id] || RSMP::Message.make_m_id
       message = RSMP::CommandRequest.new({
           "ntsOId" => '',
           "xNId" => '',
           "cId" => component,
-          "arg" => args,
-          "mId" => options[:m_id]
+          "arg" => command_list,
+          "mId" => m_id
       })
-      send_message message
-      message
+      if options[:collect]
+        result = nil
+        task = @task.async do |task|
+          collect_options = options[:collect].merge command_list: command_list
+          collect_command_responses task, collect_options, m_id
+        end
+        send_message message
+        return message, task.wait
+      else
+        send_message message
+        message
+      end
     end
 
     def set_watchdog_interval interval
