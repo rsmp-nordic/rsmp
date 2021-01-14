@@ -89,11 +89,11 @@ module RSMP
       end
       result
     rescue Async::TimeoutError
-      raise RSMP::TimeoutError.new "Did not receive command response to #{m_id} within #{options[:timeout]}s"
+      raise RSMP::TimeoutError.new "Did not receive correct command response to #{m_id} within #{options[:timeout]}s"
     end
 
     def collect_status_updates_or_responses task, type, options, m_id
-      want = options[:status_list]
+      want = options[:status_list].clone
       result = {}
       # wait for a status update
       item = collect(task,options.merge({
@@ -136,7 +136,7 @@ module RSMP
       result
     rescue Async::TimeoutError
       type_str = {'StatusUpdate'=>'update', 'StatusResponse'=>'response'}[type]
-      raise RSMP::TimeoutError.new "Did not received status #{type_str} in reply to #{m_id} within #{options[:timeout]}s"
+      raise RSMP::TimeoutError.new "Did not received correct status #{type_str} in reply to #{m_id} within #{options[:timeout]}s"
     end
 
     def status_match? query, item
