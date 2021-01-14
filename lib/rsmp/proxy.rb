@@ -14,6 +14,7 @@ module RSMP
       @task = options[:task]
       @socket = options[:socket]
       @ip = options[:ip]
+      @port = options[:port]
       @connection_info = options[:info]
       @sxl = nil
       initialize_distributor

@@ -15,7 +15,7 @@ module RSMP
     end
 
     def log str, options={}
-      default = { str:str, level: :log, author: author }
+      default = { str:str, level: :log, author: author, ip: @ip, port: @port }
       prepared = RSMP::Archive.prepare_item default.merge(options)
       @archive.add prepared
       @logger.log prepared

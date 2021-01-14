@@ -13,6 +13,7 @@ module RSMP
         'component'=>false,
         'level'=>false,
         'ip'=>false,
+        'port'=>false,
         'index'=>false,
         'timestamp'=>true,
         'json'=>false,
@@ -139,6 +140,7 @@ module RSMP
       parts << item[:author].to_s.ljust(13) if @settings["author"] == true
       parts << item[:timestamp].to_s.ljust(24) unless @settings["timestamp"] == false
       parts << item[:ip].to_s.ljust(22) unless @settings["ip"] == false
+      parts << item[:port].to_s.ljust(8) unless @settings["port"] == false
       parts << item[:site_id].to_s.ljust(13) unless @settings["site_id"] == false
       parts << item[:component_id].to_s.ljust(18) unless @settings["component"] == false
       

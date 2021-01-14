@@ -120,6 +120,8 @@ module RSMP
       settings = @supervisor_settings['sites'][info[:ip]] || @supervisor_settings['sites'][:any]
       proxy = build_proxy({
         supervisor: self,
+        ip: info[:ip],
+        port: info[:port],
         task: @task,
         settings: settings,
         socket: socket,
