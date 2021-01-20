@@ -68,23 +68,19 @@ module RSMP
             false
           end
         else
-          found = []
           # look through querues
           want.each_with_index do |query,i|
             # look through items in message
             item[:message].attributes['rvs'].each do |input|
-              ok = command_match? query, input
-              if ok
+              matching = command_match? query, input
+              if matching == true
                 result[query] = input
-                found << i   # record which queries where matched succesfully
+              elsif matching == false
+                result.delete query
               end
             end
           end
-          # remove queries that where matched
-          found.sort.reverse.each do |i|
-            want.delete_at i
-          end
-          want.empty? # any queries left to match?
+          result.size == want.size # any queries left to match?
         end
       end
       result
@@ -119,18 +115,15 @@ module RSMP
           want.each_with_index do |query,i|
             # look through status items in message
             item[:message].attributes['sS'].each do |input|
-              ok = status_match? query, input
-              if ok
+              matching = status_match? query, input
+              if matching == true
                 result[query] = input
-                found << i   # record which queries where matched succesfully
+              elsif matching == false
+                result.delete query
               end
             end
           end
-          # remove queries that where matched
-          found.sort.reverse.each do |i|
-            want.delete_at i
-          end
-          want.empty? # any queries left to match?
+          result.size == want.size # any queries left to match?
         end
       end
       result
@@ -140,8 +133,8 @@ module RSMP
     end
 
     def status_match? query, item
-      return false if query['sCI'] && query['sCI'] != item['sCI']
-      return false if query['n'] && query['n'] != item['n']
+      return nil if query['sCI'] && query['sCI'] != item['sCI']
+      return nil if query['n'] && query['n'] != item['n']
       return false if query['q'] && query['q'] != item['q']
       if query['s'].is_a? Regexp
         return false if query['s'] && item['s'] !~ query['s']
@@ -152,8 +145,8 @@ module RSMP
     end
 
     def command_match? query, item
-      return false if query['cCI'] && query['cCI'] != item['cCI']
-      return false if query['n'] && query['n'] != item['n']
+      return nil if query['cCI'] && query['cCI'] != item['cCI']
+      return nil if query['n'] && query['n'] != item['n']
       if query['v'].is_a? Regexp
         return false if query['v'] && item['v'] !~ query['v']
       else
