@@ -20,9 +20,9 @@ module RSMP
       end
     end
 
-    def wait_for_alarm options={}
+    def wait_for_alarm parent_task, options={}
       matching_alarm = nil
-      item = collect(@task,options.merge(type: "Alarm", with_message: true, num: 1)) do |item|
+      item = collect(parent_task,options.merge(type: "Alarm", with_message: true, num: 1)) do |item|
         # TODO check components
         matching_alarm = nil
         alarm = item[:message]
