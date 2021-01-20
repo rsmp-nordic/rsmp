@@ -39,6 +39,7 @@ module RSMP
     def run
       start
       @reader.wait if @reader
+    ensure
       stop unless [:stopped, :stopping].include? @state
     end
 
