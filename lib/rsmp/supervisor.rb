@@ -20,7 +20,7 @@ module RSMP
     def handle_supervisor_settings options
       @supervisor_settings = {
         'port' => 12111,
-        'rsmp_versions' => ['3.1.1','3.1.2','3.1.3','3.1.4'],
+        'rsmp_versions' => ['3.1.1','3.1.2','3.1.3','3.1.4','3.1.5'],
         'timer_interval' => 0.1,
         'watchdog_interval' => 1,
         'watchdog_timeout' => 2,
@@ -171,8 +171,6 @@ module RSMP
       site = find_site site_id
       return site if site
       wait_for(@site_id_condition,timeout) { find_site site_id }
-    rescue Async::TimeoutError
-      nil
     end
 
     def wait_for_site_disconnect site_id, timeout
