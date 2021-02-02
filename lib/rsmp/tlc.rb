@@ -13,7 +13,7 @@ module RSMP
       @cycle_time = cycle_time
       @num_traffic_situations = 1
       @num_inputs = 8
-
+      @clock_adjustment = 0
       reset
     end
 
@@ -39,6 +39,18 @@ module RSMP
       @inputs = '0'*@num_inputs
       @input_activations = '0'*@num_inputs
       @input_results = '0'*@num_inputs
+    end
+
+    def clock
+      RSMP.now_object + @clock_adjustment
+    end
+
+    def clock_string
+      RSMP.now_string clock
+    end
+
+    def set_clock time_utc
+      @clock_adjustment = time_utc - RSMP.now_object
     end
 
     def add_signal_group group
@@ -202,6 +214,15 @@ module RSMP
 
     def handle_m0104 arg
       @node.verify_security_code 1, arg['securityCode']
+      set_clock Time.new(
+        arg['year'],
+        arg['month'],
+        arg['day'],
+        arg['hour'],
+        arg['minute'],
+        arg['second'],
+        'UTC'
+      )
     end
 
     def set_input i, value
@@ -518,19 +539,20 @@ module RSMP
     end
 
     def handle_s0096 status_code, status_name=nil
+      now = clock
       case status_name
       when 'year'
-        RSMP::Tlc.make_status RSMP.now_object.year.to_s.rjust(4, "0")
+        RSMP::Tlc.make_status now.year.to_s.rjust(4, "0")
       when 'month'
-        RSMP::Tlc.make_status RSMP.now_object.month.to_s.rjust(2, "0")
+        RSMP::Tlc.make_status now.month.to_s.rjust(2, "0")
       when 'day'
-        RSMP::Tlc.make_status RSMP.now_object.day.to_s.rjust(2, "0")
+        RSMP::Tlc.make_status now.day.to_s.rjust(2, "0")
       when 'hour'
-        RSMP::Tlc.make_status RSMP.now_object.hour.to_s.rjust(2, "0")
+        RSMP::Tlc.make_status now.hour.to_s.rjust(2, "0")
       when 'minute'
-        RSMP::Tlc.make_status RSMP.now_object.min.to_s.rjust(2, "0")
+        RSMP::Tlc.make_status now.min.to_s.rjust(2, "0")
       when 'second'
-        RSMP::Tlc.make_status RSMP.now_object.sec.to_s.rjust(2, "0")
+        RSMP::Tlc.make_status now.sec.to_s.rjust(2, "0")
       end
     end
 
@@ -546,7 +568,7 @@ module RSMP
     def handle_s0205 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status clock_string
       when 'vehicles'
         RSMP::Tlc.make_status 0
       end
@@ -555,7 +577,7 @@ module RSMP
     def handle_s0206 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status clock_string
       when 'speed'
         RSMP::Tlc.make_status 0
       end
@@ -564,7 +586,7 @@ module RSMP
     def handle_s0207 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status clock_string
       when 'occupancy'
         RSMP::Tlc.make_status 0
       end
@@ -573,7 +595,7 @@ module RSMP
     def handle_s0208 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status clock_string
       when 'P'
         RSMP::Tlc.make_status 0
       when 'PS'
@@ -653,21 +675,22 @@ module RSMP
     end
 
     def handle_s0025 status_code, status_name=nil
+      now = @node.main.clock_string
       case status_name
       when 'minToGEstimate'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status now
       when 'maxToGEstimate'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status now
       when 'likelyToGEstimate'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status now
       when 'ToGConfidence'
         RSMP::Tlc.make_status 0
       when 'minToREstimate'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status now
       when 'maxToREstimate'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status now
       when 'likelyToREstimate'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status now
       when 'ToRConfidence'
         RSMP::Tlc.make_status 0
       end
@@ -695,7 +718,7 @@ module RSMP
     def handle_s0201 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status @node.main.clock_string
       when 'vehicles'
         RSMP::Tlc.make_status 0
       end
@@ -704,7 +727,7 @@ module RSMP
     def handle_s0202 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status @node.main.clock_string
       when 'speed'
         RSMP::Tlc.make_status 0
       end
@@ -713,7 +736,7 @@ module RSMP
     def handle_s0203 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status @node.main.clock_string
       when 'occupancy'
         RSMP::Tlc.make_status 0
       end
@@ -722,7 +745,7 @@ module RSMP
     def handle_s0204 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status RSMP.now_string
+        RSMP::Tlc.make_status @node.main.clock_string
       when 'P'
         RSMP::Tlc.make_status 0
       when 'PS'
@@ -767,6 +790,7 @@ module RSMP
   end
 
   class Tlc < Site
+    attr_accessor :main
     def initialize options={}
       super options
       @sxl = 'traffic_light_controller'
