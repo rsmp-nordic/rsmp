@@ -214,7 +214,7 @@ module RSMP
 
     def handle_m0104 arg
       @node.verify_security_code 1, arg['securityCode']
-      set_clock Time.new(
+      clock = Time.new(
         arg['year'],
         arg['month'],
         arg['day'],
@@ -223,6 +223,8 @@ module RSMP
         arg['second'],
         'UTC'
       )
+      log "Setting clock to #{clock}", level: :info
+      set_clock clock
     end
 
     def set_input i, value
