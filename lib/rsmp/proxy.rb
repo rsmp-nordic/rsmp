@@ -159,6 +159,7 @@ module RSMP
             log "Timer: Broken pipe", level: :warning
           rescue StandardError => e
             log ["Timer: #{e}",e.backtrace].flatten.join("\n"), level: :error
+            notify_error e
           end
         ensure
           next_time += interval
@@ -240,7 +241,9 @@ module RSMP
     rescue EOFError, IOError
       buffer_message message
     rescue SchemaError => e
-      log "Error sending #{message.type}, schema validation failed: #{e.message}", message: message, level: :error
+      str = "Error sending #{message.type}, schema validation failed: #{e.message}"
+      log str, message: message, level: :error
+      notify_error e.exception("#{str} #{message.json}")
     end
 
     def buffer_message message
@@ -274,28 +277,28 @@ module RSMP
     rescue InvalidPacket => e
       str = "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}"
       log str, level: :warning
-      notify_error e.exception str
+      notify_error e.exception(str)
       nil
     rescue MalformedMessage => e
       str = "Received malformed message, #{e.message}"
       log str, message: Malformed.new(attributes), level: :warning
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
-      notify_error e.exception str
+      notify_error e.exception(str)
       nil
     rescue SchemaError => e
-      str = "invalid #{message.type}, schema errors: #{e.message}"
+      str = "Invalid #{message.type}, schema errors: #{e.message}"
       dont_acknowledge message, str
-      notify_error e.exception "#{str} #{message.json}"
+      notify_error e.exception("#{str} #{message.json}")
       message
     rescue InvalidMessage => e
       str = "Received", "invalid #{message.type}, #{e.message}"
       dont_acknowledge message, str
-      notify_error e.exception "#{str} #{message.json}"
+      notify_error e.exception("#{str} #{message.json}")
       message
     rescue FatalError => e
       str = "Rejected #{message.type},"
       dont_acknowledge message, str, "#{e.message}"
-      notify_error e.exception "#{str} #{message.json}"
+      notify_error e.exception("#{str} #{message.json}")
       stop
       message
     end

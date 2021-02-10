@@ -105,6 +105,7 @@ module RSMP
         log "Reader exception: #{e.to_s}", level: :error
       rescue StandardError => e
         log ["Reader exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
+        notify_error e
       ensure
         begin
           if @site_settings["reconnect_interval"] != :no
