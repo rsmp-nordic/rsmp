@@ -1,19 +1,28 @@
-# A probe checks incoming messages and store matches
-# Once it has collected what it needs, it triggers a condition variable
-# and the client wakes up.
+# Collects matching ingoing and/or outgoing messages and
+# wakes up the client once the desired amount has been collected.
+# Can listen for ingoing and/or outgoing messages.
 
 module RSMP
   class Collector < Listener
     attr_reader :condition, :items, :done
 
     def initialize proxy, options={}
-      #raise ArgumentError.new("timeout option is missing") unless options[:timeout]
       super proxy, options
+      @ingoing = options[:ingoing] == nil ? true  : options[:ingoing]
+      @outgoing = options[:outgoing] == nil ? false : options[:outgoing]
       @items = []
       @condition = Async::Notification.new
       @done = false
       @options = options
       @num = options[:num]
+    end
+
+    def ingoing?
+      ingoing == true
+    end
+
+    def outgoing?
+      outgoing == true
     end
 
     def wait
@@ -31,7 +40,7 @@ module RSMP
       @options[:timeout] = options[:timeout] if options[:timeout]
       @block = block
 
-      siphon do
+      listen do
         task.with_timeout(@options[:timeout]) do
           @condition.wait
         end
