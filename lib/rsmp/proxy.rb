@@ -272,25 +272,30 @@ module RSMP
       process_deferred
       message
     rescue InvalidPacket => e
-      log "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}", level: :warning
-      notify_error e
+      str = "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}"
+      log str, level: :warning
+      notify_error e.exception str
       nil
     rescue MalformedMessage => e
-      log "Received malformed message, #{e.message}", message: Malformed.new(attributes), level: :warning
+      str = "Received malformed message, #{e.message}"
+      log str, message: Malformed.new(attributes), level: :warning
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
-      notify_error e
+      notify_error e.exception str
       nil
     rescue SchemaError => e
-      dont_acknowledge message, "Received", "invalid #{message.type}, schema errors: #{e.message}"
-      notify_error e
+      str = "invalid #{message.type}, schema errors: #{e.message}"
+      dont_acknowledge message, str
+      notify_error e.exception "#{str} #{message.json}"
       message
     rescue InvalidMessage => e
-      dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
-      notify_error e
+      str = "Received", "invalid #{message.type}, #{e.message}"
+      dont_acknowledge message, str
+      notify_error e.exception "#{str} #{message.json}"
       message
     rescue FatalError => e
-      dont_acknowledge message, "Rejected #{message.type},", "#{e.message}"
-      notify_error e
+      str = "Rejected #{message.type},"
+      dont_acknowledge message, str, "#{e.message}"
+      notify_error e.exception "#{str} #{message.json}"
       stop
       message
     end
