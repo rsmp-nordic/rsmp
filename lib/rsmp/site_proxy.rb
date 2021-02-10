@@ -288,5 +288,9 @@ module RSMP
       site_ids_changed
     end
 
+    def notify_error e
+      @supervisor.notify_error e if @supervisor
+    end
+
   end
 end

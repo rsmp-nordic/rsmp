@@ -120,10 +120,14 @@ module RSMP
       rescue Errno::EPIPE
         log "Broken pipe", level: :warning
       rescue SystemCallError => e # all ERRNO errors
-        log "Proxy exception: #{e.to_s}", level: :error
+        log "Proxy: #{e.to_s}", exception: e, level: :error
       rescue StandardError => e
-        log ["Proxy exception: #{e.inspect}",e.backtrace].flatten.join("\n"), level: :error
+        log "Proxy: #{e.to_s}", exception: e, level: :error
+        notify_error e
       end
+    end
+
+    def notify_error e
     end
 
     def start_watchdog
@@ -154,9 +158,7 @@ module RSMP
           rescue Errno::EPIPE => e
             log "Timer: Broken pipe", level: :warning
           rescue StandardError => e
-            log "Error: #{e}", level: :debug
-          #rescue StandardError => e
-          #  log ["Timer error: #{e}",e.backtrace].flatten.join("\n"), level: :error
+            log ["Timer: #{e}",e.backtrace].flatten.join("\n"), level: :error
           end
         ensure
           next_time += interval
@@ -271,19 +273,24 @@ module RSMP
       message
     rescue InvalidPacket => e
       log "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}", level: :warning
+      notify_error e
       nil
     rescue MalformedMessage => e
       log "Received malformed message, #{e.message}", message: Malformed.new(attributes), level: :warning
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
+      notify_error e
       nil
     rescue SchemaError => e
       dont_acknowledge message, "Received", "invalid #{message.type}, schema errors: #{e.message}"
+      notify_error e
       message
     rescue InvalidMessage => e
       dont_acknowledge message, "Received", "invalid #{message.type}, #{e.message}"
+      notify_error e
       message
     rescue FatalError => e
       dont_acknowledge message, "Rejected #{message.type},", "#{e.message}"
+      notify_error e
       stop
       message
     end
