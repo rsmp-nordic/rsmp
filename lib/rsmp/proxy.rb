@@ -32,8 +32,8 @@ module RSMP
     end
 
     def collect task, options, &block
-      probe = RSMP::Collector.new self, options
-      probe.collect task, &block
+      collector = RSMP::Collector.new self, options
+      collector.collect task, &block
     end
 
     def run

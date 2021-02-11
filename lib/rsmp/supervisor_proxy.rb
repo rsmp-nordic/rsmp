@@ -65,6 +65,8 @@ module RSMP
         when StatusUpdate
         when AggregatedStatus
           will_not_handle message
+        when AggregatedStatusRequest
+          process_aggregated_status_request message
         when CommandRequest
           process_command_request message
         when CommandResponse
@@ -159,6 +161,14 @@ module RSMP
         sorted[item['cCI']][item['n']] = item['v']
       end
       sorted
+    end
+
+    def process_aggregated_status_request message
+      log "Received #{message.type}", message: message, level: :log
+      component_id = message.attributes["cId"]
+      component = @site.find_component component_id
+      acknowledge message
+      send_aggregated_status component
     end
 
     def process_command_request message

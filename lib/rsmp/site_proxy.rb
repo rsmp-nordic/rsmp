@@ -43,6 +43,8 @@ module RSMP
           will_not_handle message
         when AggregatedStatus
           process_aggregated_status message
+        when AggregatedStatusRequest
+          will_not_handle message
         when Alarm
           process_alarm message
         when CommandResponse
@@ -78,6 +80,29 @@ module RSMP
         if @site_settings
           setup_components @site_settings['components']
         end
+      end
+    end
+
+    def request_aggregated_status component, options={}
+      raise NotReady unless ready?
+      m_id = options[:m_id] || RSMP::Message.make_m_id
+
+      message = RSMP::AggregatedStatusRequest.new({
+          "ntsOId" => '',
+          "xNId" => '',
+          "cId" => component,
+          "mId" => m_id
+      })
+      if options[:collect]
+        result = nil
+        task = @task.async do |task|
+          result = wait_for_aggregated_status task, options[:collect]
+        end
+        send_message message
+        return message, task.wait
+      else
+        send_message message
+        message
       end
     end
 

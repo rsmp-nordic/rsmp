@@ -49,6 +49,8 @@ module RSMP
         message = Version.new attributes
       when "AggregatedStatus"
         message = AggregatedStatus.new attributes
+      when "AggregatedStatusRequest"
+        message = AggregatedStatusRequest.new attributes
       when "Watchdog"
         message = Watchdog.new attributes
       when "Alarm"
@@ -192,6 +194,14 @@ module RSMP
     def initialize attributes = {}
       super({
         "type" => "AggregatedStatus",
+      }.merge attributes)
+    end
+  end
+
+  class AggregatedStatusRequest < Message
+    def initialize attributes = {}
+      super({
+        "type" => "AggregatedStatusRequest",
       }.merge attributes)
     end
   end

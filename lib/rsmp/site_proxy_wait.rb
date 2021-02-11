@@ -170,5 +170,30 @@ module RSMP
       task.wait
     end
 
+    def wait_for_aggregated_status parent_task, options={}
+      collect(parent_task,options.merge({
+        type: ['AggregatedStatus','MessageNotAck'],
+        num: 1
+      })) do |item|
+        message = item[:message]
+        if message.is_a?(MessageNotAck)
+          if message.attribute('oMId') == m_id
+            # set result to an exception, but don't raise it.
+            # this will be returned by the task and stored as the task result
+            # when the parent task call wait() on the task, the exception
+            # will be raised in the parent task, and caught by rspec.
+            # rspec will then show the error and record the test as failed
+            m_id_short = RSMP::Message.shorten_m_id m_id, 8
+            result = RSMP::MessageRejected.new "Aggregated status request #{m_id_short} was rejected: #{message.attribute('rea')}"
+            next true   # done, no more messages wanted
+          else
+            false
+          end
+        else
+          true
+        end
+      end
+    end
+
   end
 end
