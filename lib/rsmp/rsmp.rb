@@ -1,7 +1,6 @@
 # RSMP module
 
 module RSMP
-  WRAPPING_DELIMITER = "\f"
 
   def self.now_object
     # date using UTC time zone
