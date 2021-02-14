@@ -15,7 +15,7 @@ module RSMP
   end
 
   def self.now_string time=nil
-    time ||= Time.now
+    time ||= Time.now.utc
     now_object_to_string time
   end
 
