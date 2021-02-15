@@ -26,6 +26,10 @@ module RSMP
       clear
     end
 
+    def clock
+      node.clock
+    end
+
     def prepare_collection num
       if num
         @collector = RSMP::Collector.new self, num: num, ingoing: true, outgoing: true
@@ -142,14 +146,14 @@ module RSMP
       name = "timer"
       interval = @settings["timer_interval"] || 1
       log "Starting #{name} with interval #{interval} seconds", level: :debug
-      @latest_watchdog_received = RSMP.now_object
+      @latest_watchdog_received = Clock.now
 
       @timer = @task.async do |task|
         task.annotate "timer"
         next_time = Time.now.to_f
         loop do
           begin
-            now = RSMP.now_object
+            now = Clock.now
             timer(now)
           rescue EOFError => e
             log "Timer: Connection closed: #{e}", level: :warning
@@ -193,9 +197,8 @@ module RSMP
       end
     end
 
-    def send_watchdog now=nil
-      now = RSMP.now_object unless nil
-      message = Watchdog.new( {"wTs" => RSMP.now_object_to_string(now)})
+    def send_watchdog now=Clock.now
+      message = Watchdog.new( {"wTs" => Clock.to_s(now)})
       send_message message
       @latest_watchdog_send_at = now
     end
@@ -474,7 +477,7 @@ module RSMP
 
     def process_watchdog message
       log "Received #{message.type}", message: message, level: :log
-      @latest_watchdog_received = RSMP.now_object
+      @latest_watchdog_received = Clock.now
       acknowledge message
     end
 

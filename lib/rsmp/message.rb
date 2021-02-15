@@ -127,7 +127,9 @@ module RSMP
     end
 
     def initialize attributes = {}
-      @timestamp = RSMP.now_object
+      @timestamp = Time.now   # this timestamp is for internal use, and does not the clock
+                              # in the node, which can be set by an rsmp supervisor
+
       @attributes = { "mType"=> "rSMsg" }.merge attributes
 
       ensure_message_id

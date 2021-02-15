@@ -125,7 +125,7 @@ module RSMP
 
     def send_aggregated_status component
       message = AggregatedStatus.new({
-        "aSTS" => RSMP.now_string,
+        "aSTS" => clock.to_s,
         "cId" =>  component.c_id,
         "fP" => 'NormalControl',
         "fS" => nil,
@@ -187,7 +187,7 @@ module RSMP
       end
       response = CommandResponse.new({
         "cId"=>component_id,
-        "cTS"=>RSMP.now_string,
+        "cTS"=>clock.to_s,
         "rvs"=>rvs
       })
       acknowledge message
@@ -204,7 +204,7 @@ module RSMP
       end
       response = StatusResponse.new({
         "cId"=>component_id,
-        "sTs"=>RSMP.now_string,
+        "sTs"=>clock.to_s,
         "sS"=>sS,
         "mId" => options[:m_id]
       })
@@ -231,7 +231,7 @@ module RSMP
       update_list[component] ||= {} 
 
       subs = @status_subscriptions[component]
-      now = RSMP::now_object
+      now = Time.now  # internal timestamp
 
       message.attributes["sS"].each do |arg|
         sCI = arg["sCI"]
@@ -325,7 +325,7 @@ module RSMP
     end
 
     def send_status_updates update_list
-      now = RSMP.now_string
+      now = clock.to_s
       update_list.each_pair do |component_id,by_code|
         component = @site.find_component component_id
         sS = []
@@ -353,7 +353,7 @@ module RSMP
 
     def send_alarm
       message = Alarm.new({
-        "aSTS"=>RSMP.now_string,
+        "aSTS"=>clock.to_s,
         "fP"=>nil,
         "fS"=>nil,
         "se"=>@site.aggregated_status_bools

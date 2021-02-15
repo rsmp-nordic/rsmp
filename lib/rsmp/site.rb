@@ -6,9 +6,10 @@ module RSMP
   class Site < Node
     include Components
 
-    attr_reader :rsmp_versions, :site_settings, :logger, :proxies
+    attr_reader :rsmp_versions, :site_settings, :logger, :proxies, :clock
 
     def initialize options={}
+      @clock = Clock.new
       initialize_components
       handle_site_settings options
       super options
@@ -136,7 +137,7 @@ module RSMP
     def starting
       log "Starting site #{@site_settings["site_id"]}",
           level: :info,
-          timestamp: RSMP.now_object
+          timestamp: @clock.now
     end
 
     def alarm

@@ -82,7 +82,7 @@ module RSMP
       remote_hostname = socket.remote_address.ip_address
       remote_ip = socket.remote_address.ip_address
 
-      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:RSMP.now_string()}
+      info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:Clock.now}
       if accept? socket, info
         connect socket, info
       else
@@ -101,7 +101,7 @@ module RSMP
     def starting
       log "Starting supervisor on port #{@supervisor_settings["port"]}", 
           level: :info,
-          timestamp: RSMP.now_object
+          timestamp: @clock.now
     end
 
     def accept? socket, info
@@ -125,7 +125,7 @@ module RSMP
           ip: info[:ip],
           port: info[:port],
           level: :info,
-          timestamp: RSMP.now_object
+          timestamp: Clock.now
 
       settings = @supervisor_settings['sites'][info[:ip]] || @supervisor_settings['sites'][:any]
       proxy = build_proxy({
@@ -158,9 +158,9 @@ module RSMP
 
     def close socket, info
       if info
-        log "Connection to #{format_ip_and_port(info)} closed", ip: info[:ip], level: :info, timestamp: RSMP.now_object
+        log "Connection to #{format_ip_and_port(info)} closed", ip: info[:ip], level: :info, timestamp: Clock.now
       else
-        log "Connection closed", level: :info, timestamp: RSMP.now_object
+        log "Connection closed", level: :info, timestamp: Clock.now
       end
 
       socket.close

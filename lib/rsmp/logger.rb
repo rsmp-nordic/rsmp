@@ -138,7 +138,7 @@ module RSMP
       parts = []
       parts << item[:index].to_s.ljust(7) if @settings["index"] == true
       parts << item[:author].to_s.ljust(13) if @settings["author"] == true
-      parts << item[:timestamp].to_s.ljust(24) unless @settings["timestamp"] == false
+      parts << Clock.to_s(item[:timestamp]).ljust(24) unless @settings["timestamp"] == false
       parts << item[:ip].to_s.ljust(22) unless @settings["ip"] == false
       parts << item[:port].to_s.ljust(8) unless @settings["port"] == false
       parts << item[:site_id].to_s.ljust(13) unless @settings["site_id"] == false

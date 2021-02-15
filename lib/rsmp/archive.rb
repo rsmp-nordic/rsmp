@@ -15,11 +15,8 @@ module RSMP
     def self.prepare_item item
       raise ArgumentError unless item.is_a? Hash
     
-      now_obj = RSMP.now_object
-      now_str = RSMP.now_string(now_obj)
-
       cleaned = item.select { |k,v| [:author,:level,:ip,:port,:site_id,:component_id,:str,:message,:exception].include? k }
-      cleaned[:timestamp] = now_obj
+      cleaned[:timestamp] = Clock.now
       if item[:message]
         cleaned[:direction] = item[:message].direction 
         cleaned[:component_id] = item[:message].attributes['cId'] 

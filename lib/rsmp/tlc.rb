@@ -13,7 +13,6 @@ module RSMP
       @cycle_time = cycle_time
       @num_traffic_situations = 1
       @num_inputs = 8
-      @clock_adjustment = 0
       reset
     end
 
@@ -42,16 +41,9 @@ module RSMP
     end
 
     def clock
-      RSMP.now_object + @clock_adjustment
+      node.clock
     end
 
-    def clock_string
-      RSMP.now_string clock
-    end
-
-    def set_clock time_utc
-      @clock_adjustment = time_utc - RSMP.now_object
-    end
 
     def add_signal_group group
       @signal_groups << group
@@ -60,8 +52,12 @@ module RSMP
     def add_detector_logic logic
       @detector_logics << logic
     end
+
     def timer now
-      pos = now.to_i % @cycle_time
+      # TODO
+      # We should use a monotone timer, to avoid jumps
+      # in case the user sets the system time
+      pos = Time.now.to_i % @cycle_time
       if pos != @pos
         @pos = pos
         move pos
@@ -214,7 +210,7 @@ module RSMP
 
     def handle_m0104 arg
       @node.verify_security_code 1, arg['securityCode']
-      clock = Time.new(
+      time = Time.new(
         arg['year'],
         arg['month'],
         arg['day'],
@@ -223,8 +219,8 @@ module RSMP
         arg['second'],
         'UTC'
       )
-      log "Setting clock to #{clock}", level: :info
-      set_clock clock
+      @node.clock.set time
+      log "Clock set to #{time}, (adjustment is #{@node.clock.adjustment}s)", level: :info
     end
 
     def set_input i, value
@@ -541,7 +537,7 @@ module RSMP
     end
 
     def handle_s0096 status_code, status_name=nil
-      now = clock
+      now = clock.now
       case status_name
       when 'year'
         RSMP::Tlc.make_status now.year.to_s.rjust(4, "0")
@@ -570,7 +566,7 @@ module RSMP
     def handle_s0205 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status clock_string
+        RSMP::Tlc.make_status clock.to_s
       when 'vehicles'
         RSMP::Tlc.make_status 0
       end
@@ -579,7 +575,7 @@ module RSMP
     def handle_s0206 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status clock_string
+        RSMP::Tlc.make_status clock.to_s
       when 'speed'
         RSMP::Tlc.make_status 0
       end
@@ -588,7 +584,7 @@ module RSMP
     def handle_s0207 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status clock_string
+        RSMP::Tlc.make_status clock.to_s
       when 'occupancy'
         RSMP::Tlc.make_status 0
       end
@@ -597,7 +593,7 @@ module RSMP
     def handle_s0208 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status clock_string
+        RSMP::Tlc.make_status clock.to_s
       when 'P'
         RSMP::Tlc.make_status 0
       when 'PS'
@@ -677,7 +673,7 @@ module RSMP
     end
 
     def handle_s0025 status_code, status_name=nil
-      now = @node.main.clock_string
+      now = @node.clock.to_s
       case status_name
       when 'minToGEstimate'
         RSMP::Tlc.make_status now
@@ -720,7 +716,7 @@ module RSMP
     def handle_s0201 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status @node.main.clock_string
+        RSMP::Tlc.make_status @node.clock.to_s
       when 'vehicles'
         RSMP::Tlc.make_status 0
       end
@@ -729,7 +725,7 @@ module RSMP
     def handle_s0202 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status @node.main.clock_string
+        RSMP::Tlc.make_status @node.clock.to_s
       when 'speed'
         RSMP::Tlc.make_status 0
       end
@@ -738,7 +734,7 @@ module RSMP
     def handle_s0203 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status @node.main.clock_string
+        RSMP::Tlc.make_status @node.clock.to_s
       when 'occupancy'
         RSMP::Tlc.make_status 0
       end
@@ -747,7 +743,7 @@ module RSMP
     def handle_s0204 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status @node.main.clock_string
+        RSMP::Tlc.make_status @node.clock.to_s
       when 'P'
         RSMP::Tlc.make_status 0
       when 'PS'
@@ -832,8 +828,7 @@ module RSMP
         next_time = Time.now.to_f
         loop do
           begin
-            now = RSMP.now_object
-            timer(now)
+            timer(@clock.now)
           rescue EOFError => e
             log "TLC timer: Connection closed: #{e}", level: :warning
           rescue IOError => e
@@ -847,7 +842,7 @@ module RSMP
           ensure
             # adjust sleep duration to avoid drift. so wake up always happens on the
             # same fractional second.
-            # note that Time.now is not monotonic. If the clock si changed,
+            # note that Time.now is not monotonic. If the clock is changed,
             # either manaully or via NTP, the sleep interval might jump.
             # an alternative is to use ::Process.clock_gettime(::Process::CLOCK_MONOTONIC),
             # to get the current time. this ensures a constant interval, but
