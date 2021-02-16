@@ -386,6 +386,8 @@ module RSMP
         states.include?(@state)
       end
       @state
+    rescue Async::TimeoutError
+      raise RSMP::TimeoutError.new "Did not reach state #{state} within #{timeout}s"
     end
 
     def send_version site_id, rsmp_versions

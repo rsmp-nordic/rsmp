@@ -170,12 +170,14 @@ module RSMP
       site = find_site site_id
       return site if site
       wait_for(@site_id_condition,timeout) { find_site site_id }
+    rescue Async::TimeoutError
+      raise RSMP::TimeoutError.new "Site '#{site_id}'' did not connect within #{timeout}s"
     end
 
     def wait_for_site_disconnect site_id, timeout
       wait_for(@site_id_condition,timeout) { true unless find_site site_id }
     rescue Async::TimeoutError
-      false
+      raise RSMP::TimeoutError.new "Site '#{site_id}'' did not disconnect within #{timeout}s"
     end
 
     def check_site_id site_id
@@ -184,7 +186,7 @@ module RSMP
     end
 
     def check_site_already_connected site_id
-      raise FatalError.new "Site #{site_id} already connected" if find_site(site_id)
+      raise FatalError.new "Site '#{site_id}'' already connected" if find_site(site_id)
     end
 
     def find_allowed_site_setting site_id
