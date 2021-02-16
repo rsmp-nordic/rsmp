@@ -15,9 +15,11 @@ module RSMP
       @error_condition = Async::Notification.new
     end
 
-    def notify_error e
+    def notify_error e, options={}
+      if options[:level] == :internal
+        log ["#{e.to_s} in task: #{Async::Task.current.to_s}",e.backtrace].flatten.join("\n"), level: :error
+      end
       @error_condition.signal e
-      log ["#{e} in task: #{Async::Task.current.to_s}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def defer item

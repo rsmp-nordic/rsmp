@@ -320,8 +320,6 @@ module RSMP
         end
       end
       send_status_updates update_list
-    rescue StandardError => e
-      log ["Status update exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def send_status_updates update_list

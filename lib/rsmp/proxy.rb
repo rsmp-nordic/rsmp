@@ -126,14 +126,14 @@ module RSMP
       rescue Errno::EPIPE
         log "Broken pipe", level: :warning
       rescue SystemCallError => e # all ERRNO errors
-        notify_error e
+        notify_error e, level: :internal
       rescue StandardError => e
-        notify_error e
+        notify_error e, level: :internal
       end
     end
 
-    def notify_error e
-      node.notify_error e
+    def notify_error e, options={}
+      node.notify_error e, options
     end
 
     def start_watchdog
@@ -164,7 +164,7 @@ module RSMP
           rescue Errno::EPIPE => e
             log "Timer: Broken pipe", level: :warning
           rescue StandardError => e
-            notify_error e
+            notify_error e, level: :internal
           end
         ensure
           next_time += interval
@@ -245,7 +245,7 @@ module RSMP
     rescue EOFError, IOError
       buffer_message message
     rescue SchemaError => e
-      str = "Error sending #{message.type}, schema validation failed: #{e.message}"
+      str = "Could not send #{message.type} because schema validation failed: #{e.message}"
       log str, message: message, level: :error
       notify_error e.exception("#{str} #{message.json}")
     end
@@ -280,29 +280,30 @@ module RSMP
       message
     rescue InvalidPacket => e
       str = "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}"
-      log str, level: :warning
       notify_error e.exception(str)
+      log str, level: :warning
       nil
     rescue MalformedMessage => e
       str = "Received malformed message, #{e.message}"
+      notify_error e.exception(str)
       log str, message: Malformed.new(attributes), level: :warning
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
-      notify_error e.exception(str)
       nil
     rescue SchemaError => e
-      str = "Invalid #{message.type}, schema errors: #{e.message}"
-      dont_acknowledge message, str
+      str = "Received invalid #{message.type}, schema errors: #{e.message}"
+      log str, message: message, level: :warning
       notify_error e.exception("#{str} #{message.json}")
+      dont_acknowledge message, str
       message
     rescue InvalidMessage => e
       str = "Received", "invalid #{message.type}, #{e.message}"
-      dont_acknowledge message, str
       notify_error e.exception("#{str} #{message.json}")
+      dont_acknowledge message, str
       message
     rescue FatalError => e
       str = "Rejected #{message.type},"
-      dont_acknowledge message, str, "#{e.message}"
       notify_error e.exception("#{str} #{message.json}")
+      dont_acknowledge message, str, "#{e.message}"
       stop
       message
     end

@@ -67,7 +67,7 @@ module RSMP
           task.annotate "site proxy"
           connect_to_supervisor task, supervisor_settings
         rescue StandardError => e
-          notify_error e
+          notify_error e, level: :internal
         end
       end
     end
@@ -104,10 +104,11 @@ module RSMP
       rescue IOError => e
         log "Stream error: #{e}", level: :warning
       rescue SystemCallError => e # all ERRNO errors
-        log "Reader exception: #{e.to_s}", level: :error
+        log "Error: #{e.to_s}", level: :error
+        notify_error e, level: :internal
       rescue StandardError => e
-        log ["Reader exception: #{e}",e.backtrace].flatten.join("\n"), level: :error
-        notify_error e
+        log ["Error: #{e}",e.backtrace].flatten.join("\n"), level: :error
+        notify_error e, level: :internal
       ensure
         begin
           if @site_settings["reconnect_interval"] != :no

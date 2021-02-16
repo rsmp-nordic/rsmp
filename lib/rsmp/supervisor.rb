@@ -54,12 +54,12 @@ module RSMP
       @endpoint.accept do |socket|
         handle_connection(socket)
       rescue StandardError => e
-        notify_error e
+        notify_error e, level: :internal
       end
     rescue SystemCallError => e # all ERRNO errors
-      notify_error e
+      notify_error e, level: :internal
     rescue StandardError => e
-      notify_error e
+      notify_error e, level: :internal
     end
 
     def stop
@@ -83,11 +83,11 @@ module RSMP
         reject socket, info
       end
     rescue SystemCallError => e # all ERRNO errors
-      log "Connection: #{e.to_s}", lexception: e, evel: :error
-      notify_error e
+      log "Connection: #{e.to_s}", exception: e, evel: :error
+      notify_error e, level: :internal
     rescue StandardError => e
       log "Connection: #{e.to_s}", exception: e, level: :error
-      notify_error e
+      notify_error e, level: :internal
     ensure
       close socket, info
     end

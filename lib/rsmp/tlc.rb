@@ -838,7 +838,7 @@ module RSMP
           rescue Errno::EPIPE => e
             log "Broken pipe", level: :warning
           rescue StandardError => e
-            notify_error e
+            notify_error e, level: :internal
           ensure
             # adjust sleep duration to avoid drift. so wake up always happens on the
             # same fractional second.
