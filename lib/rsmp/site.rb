@@ -6,10 +6,9 @@ module RSMP
   class Site < Node
     include Components
 
-    attr_reader :rsmp_versions, :site_settings, :logger, :proxies, :clock
+    attr_reader :rsmp_versions, :site_settings, :logger, :proxies
 
     def initialize options={}
-      @clock = Clock.new
       initialize_components
       handle_site_settings options
       super options
@@ -65,8 +64,10 @@ module RSMP
     def start_action
       @site_settings["supervisors"].each do |supervisor_settings|
         @task.async do |task|
-          task.annotate "site_proxy"
+          task.annotate "site proxy"
           connect_to_supervisor task, supervisor_settings
+        rescue StandardError => e
+          notify_error e
         end
       end
     end

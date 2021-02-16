@@ -5,12 +5,19 @@ module RSMP
     include Logging
     include Wait
 
-    attr_reader :archive, :logger, :task, :deferred
+    attr_reader :archive, :logger, :task, :deferred, :error_condition, :clock
 
     def initialize options
       initialize_logging options
       @task = options[:task]
       @deferred = []
+      @clock = Clock.new
+      @error_condition = Async::Notification.new
+    end
+
+    def notify_error e
+      @error_condition.signal e
+      log ["#{e} in task: #{Async::Task.current.to_s}",e.backtrace].flatten.join("\n"), level: :error
     end
 
     def defer item

@@ -97,6 +97,8 @@ module RSMP
         result = nil
         task = @task.async do |task|
           result = wait_for_aggregated_status task, options[:collect]
+        rescue StandardError => e
+          notify_error e
         end
         send_message message
         return message, task.wait
@@ -183,6 +185,8 @@ module RSMP
         task = @task.async do |task|
           collect_options = options[:collect].merge status_list: status_list
           collect_status_responses task, collect_options, m_id
+        rescue StandardError => e
+          notify_error e
         end
         send_message message
         return message, task.wait
@@ -217,6 +221,8 @@ module RSMP
         task = @task.async do |task|
           collect_options = options[:collect].merge status_list: status_list
           collect_status_updates task, collect_options, m_id
+        rescue StandardError => e
+          notify_error e
         end
         send_message message
         return message, task.wait
@@ -272,6 +278,8 @@ module RSMP
         task = @task.async do |task|
           collect_options = options[:collect].merge command_list: command_list
           collect_command_responses task, collect_options, m_id
+        rescue StandardError => e
+          notify_error e
         end
         send_message message
         return message, task.wait

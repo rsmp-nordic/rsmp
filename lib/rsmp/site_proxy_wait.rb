@@ -161,6 +161,8 @@ module RSMP
       # wait for command responses in an async task
       task = parent_task.async do |task|
         collect_block.call task, m_id
+      rescue StandardError => e
+        notify_error e
       end
 
        # call block, it should send command request using the given m_id

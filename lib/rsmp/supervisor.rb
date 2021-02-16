@@ -5,14 +5,12 @@
 module RSMP
   class Supervisor < Node
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :proxies, :logger
-    attr_reader :error_condition
 
     def initialize options={}
       handle_supervisor_settings options
       super options
       @proxies = []
       @site_id_condition = Async::Notification.new
-      @error_condition = Async::Notification.new
     end
 
     def site_id
@@ -55,17 +53,13 @@ module RSMP
       @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
       @endpoint.accept do |socket|
         handle_connection(socket)
+      rescue StandardError => e
+        notify_error e
       end
     rescue SystemCallError => e # all ERRNO errors
-      log "Exception: #{e.to_s}", exception: e, level: :error
       notify_error e
     rescue StandardError => e
-      log "Exception: #{e.to_s}", exception: e, level: :error
       notify_error e
-    end
-
-    def notify_error e
-      @error_condition.signal e
     end
 
     def stop

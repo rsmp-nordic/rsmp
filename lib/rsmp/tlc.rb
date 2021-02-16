@@ -830,15 +830,15 @@ module RSMP
           begin
             timer(@clock.now)
           rescue EOFError => e
-            log "TLC timer: Connection closed: #{e}", level: :warning
+            log "Connection closed: #{e}", level: :warning
           rescue IOError => e
-            log "TLC timer: IOError", level: :warning
+            log "IOError", level: :warning
           rescue Errno::ECONNRESET
-            log "TLC timer: Connection reset by peer", level: :warning
+            log "Connection reset by peer", level: :warning
           rescue Errno::EPIPE => e
-            log "TLC timer: Broken pipe", level: :warning
+            log "Broken pipe", level: :warning
           rescue StandardError => e
-            log "TLC timer: #{e}", level: :debug
+            notify_error e
           ensure
             # adjust sleep duration to avoid drift. so wake up always happens on the
             # same fractional second.

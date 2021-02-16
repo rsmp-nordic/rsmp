@@ -126,14 +126,14 @@ module RSMP
       rescue Errno::EPIPE
         log "Broken pipe", level: :warning
       rescue SystemCallError => e # all ERRNO errors
-        log "Proxy: #{e.to_s}", exception: e, level: :error
+        notify_error e
       rescue StandardError => e
-        log "Proxy: #{e.to_s}", exception: e, level: :error
         notify_error e
       end
     end
 
     def notify_error e
+      node.notify_error e
     end
 
     def start_watchdog
@@ -164,7 +164,6 @@ module RSMP
           rescue Errno::EPIPE => e
             log "Timer: Broken pipe", level: :warning
           rescue StandardError => e
-            log ["Timer: #{e}",e.backtrace].flatten.join("\n"), level: :error
             notify_error e
           end
         ensure
