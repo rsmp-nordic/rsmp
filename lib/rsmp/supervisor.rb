@@ -51,13 +51,11 @@ module RSMP
 
     def start_action
       @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
-      @endpoint.accept do |socket|
+      @endpoint.accept do |socket|  # creates async tasks
         handle_connection(socket)
       rescue StandardError => e
         notify_error e, level: :internal
       end
-    rescue SystemCallError => e # all ERRNO errors
-      notify_error e, level: :internal
     rescue StandardError => e
       notify_error e, level: :internal
     end
@@ -82,9 +80,6 @@ module RSMP
       else
         reject socket, info
       end
-    rescue SystemCallError => e # all ERRNO errors
-      log "Connection: #{e.to_s}", exception: e, evel: :error
-      notify_error e, level: :internal
     rescue StandardError => e
       log "Connection: #{e.to_s}", exception: e, level: :error
       notify_error e, level: :internal

@@ -103,11 +103,7 @@ module RSMP
         proxy.run       # run until disconnected
       rescue IOError => e
         log "Stream error: #{e}", level: :warning
-      rescue SystemCallError => e # all ERRNO errors
-        log "Error: #{e.to_s}", level: :error
-        notify_error e, level: :internal
       rescue StandardError => e
-        log ["Error: #{e}",e.backtrace].flatten.join("\n"), level: :error
         notify_error e, level: :internal
       ensure
         begin

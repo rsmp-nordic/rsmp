@@ -125,8 +125,6 @@ module RSMP
         log "Connection reset by peer", level: :warning
       rescue Errno::EPIPE
         log "Broken pipe", level: :warning
-      rescue SystemCallError => e # all ERRNO errors
-        notify_error e, level: :internal
       rescue StandardError => e
         notify_error e, level: :internal
       end
