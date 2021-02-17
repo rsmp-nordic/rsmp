@@ -4,25 +4,30 @@
 
 module RSMP
   class Collector < Listener
-    attr_reader :condition, :items, :done
+
+    attr_reader :condition, :messages, :done
 
     def initialize proxy, options={}
       super proxy, options
       @ingoing = options[:ingoing] == nil ? true  : options[:ingoing]
       @outgoing = options[:outgoing] == nil ? false : options[:outgoing]
-      @items = []
+      @messages = []
       @condition = Async::Notification.new
       @done = false
       @options = options
       @num = options[:num]
     end
 
+    def inspect
+      "#<#{self.class.name}:#{self.object_id}, #{inspector(:@messages)}>"
+    end
+
     def ingoing?
-      ingoing == true
+      @ingoing == true
     end
 
     def outgoing?
-      outgoing == true
+      @outgoing == true
     end
 
     def wait
@@ -46,27 +51,27 @@ module RSMP
         end
       end
 
-      #if @num == 1
-      #  @items = @items.first       # if one item was requested, return item instead of array
-      #else
-      #  @items = @items.first @num  # return array, but ensure we never return more than requested
-      #end
-      #@items
+      if @num == 1
+        @messages = @messages.first       # if one message was requested, return it instead of array
+      else
+        @messages = @messages.first @num  # return array, but ensure we never return more than requested
+      end
+      @messages
     end
 
     def reset
-      @items.clear
+      @message.clear
       @done = false
     end
 
-    def notify item
-      raise ArgumentError unless item
+    def notify message
+      raise ArgumentError unless message
       return true if @done
-      return if item[:message].direction == :in && @ingoing == false
-      return if item[:message].direction == :out && @outgoing == false
-      if matches? item
-        @items << item
-        if @num && @items.size >= @num
+      return if message.direction == :in && @ingoing == false
+      return if message.direction == :out && @outgoing == false
+      if matches? message
+        @messages << message
+        if @num && @messages.size >= @num
           @done = true
           @proxy.remove_listener self
           @condition.signal
@@ -74,24 +79,22 @@ module RSMP
       end
     end
 
-    def matches? item
-      raise ArgumentError unless item
+    def matches? message
+      raise ArgumentError unless message
 
       if @options[:type]
-        return false if item[:message] == nil
+        return false if message == nil
         if @options[:type].is_a? Array
-          return false unless @options[:type].include? item[:message].type
+          return false unless @options[:type].include? message.type
         else
-          return false unless item[:message].type == @options[:type]
+          return false unless message.type == @options[:type]
         end
       end
-      return if @options[:level] && item[:level] != @options[:level]
-      return false if @options[:with_message] && !(item[:direction] && item[:message])
       if @options[:component]
-        return false if item[:message].attributes['cId'] && item[:message].attributes['cId'] != @options[:component]
+        return false if message.attributes['cId'] && message.attributes['cId'] != @options[:component]
       end
       if @block
-        return false if @block.call(item) == false
+        return false if @block.call(message) == false
       end
       true
     end

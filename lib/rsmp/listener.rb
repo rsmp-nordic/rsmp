@@ -3,12 +3,13 @@
 
 module RSMP
   class Listener
+    include Inspect
 
     def initialize proxy, options={}
       @proxy = proxy
     end
 
-    def notify item
+    def notify message
     end
 
     def listen &block

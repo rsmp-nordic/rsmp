@@ -4,6 +4,7 @@ module RSMP
   class Node
     include Logging
     include Wait
+    include Inspect
 
     attr_reader :archive, :logger, :task, :deferred, :error_condition, :clock
 

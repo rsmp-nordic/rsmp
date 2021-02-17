@@ -1,6 +1,7 @@
 # rsmp messages
 module RSMP
   class Message
+    include Inspect
 
     attr_reader :now, :attributes, :out, :timestamp
     attr_accessor :json, :direction

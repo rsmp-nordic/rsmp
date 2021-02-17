@@ -2,6 +2,11 @@
 
 module RSMP
   module Notifier
+    include Inspect
+
+    def inspect
+      "#<#{self.class.name}:#{self.object_id}, #{inspector(:@listeners)}>"
+    end
 
     def initialize_distributor
       @listeners = []
@@ -17,8 +22,8 @@ module RSMP
       @listeners.delete listener
     end
 
-    def notify item
-      @listeners.each { |listener| listener.notify item }
+    def notify message
+      @listeners.each { |listener| listener.notify message }
     end
   end
 end

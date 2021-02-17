@@ -22,10 +22,10 @@ module RSMP
 
     def wait_for_alarm parent_task, options={}
       matching_alarm = nil
-      item = collect(parent_task,options.merge(type: "Alarm", with_message: true, num: 1)) do |item|
+      message = collect(parent_task,options.merge(type: "Alarm", with_message: true, num: 1)) do |message|
         # TODO check components
         matching_alarm = nil
-        alarm = item[:message]
+        alarm = message
         next if options[:aCId] && options[:aCId] != alarm.attribute("aCId")
         next if options[:aSp] && options[:aSp] != alarm.attribute("aSp")
         next if options[:aS] && options[:aS] != alarm.attribute("aS")
@@ -33,7 +33,7 @@ module RSMP
         break
       end
       if item
-        { message: item[:message], status: matching_alarm }
+        { message: message, status: matching_alarm }
       end
     end
 
@@ -49,11 +49,10 @@ module RSMP
       task.annotate "wait for command response"
       want = options[:command_list].clone
       result = {}
-      item = collect(parent_task,options.merge({
+      collect(parent_task,options.merge({
         type: ['CommandResponse','MessageNotAck'],
         num: 1
-      })) do |item|
-        message = item[:message]
+      })) do |message|
         if message.is_a?(MessageNotAck)
           if message.attribute('oMId') == m_id
             # set result to an exception, but don't raise it.
@@ -71,7 +70,7 @@ module RSMP
           # look through querues
           want.each_with_index do |query,i|
             # look through items in message
-            item[:message].attributes['rvs'].each do |input|
+            message.attributes['rvs'].each do |input|
               matching = command_match? query, input
               if matching == true
                 result[query] = input
@@ -92,11 +91,10 @@ module RSMP
       want = options[:status_list].clone
       result = {}
       # wait for a status update
-      item = collect(task,options.merge({
+      collect(task,options.merge({
         type: [type,'MessageNotAck'],
         num: 1
-      })) do |item|
-        message = item[:message]
+      })) do |message|
         if message.is_a?(MessageNotAck)
           if message.attribute('oMId') == m_id
             # set result to an exception, but don't raise it.
@@ -114,7 +112,7 @@ module RSMP
           # look through querues
           want.each_with_index do |query,i|
             # look through status items in message
-            item[:message].attributes['sS'].each do |input|
+            message.attributes['sS'].each do |input|
               matching = status_match? query, input
               if matching == true
                 result[query] = input
@@ -176,8 +174,7 @@ module RSMP
       collect(parent_task,options.merge({
         type: ['AggregatedStatus','MessageNotAck'],
         num: 1
-      })) do |item|
-        message = item[:message]
+      })) do |message|
         if message.is_a?(MessageNotAck)
           if message.attribute('oMId') == m_id
             # set result to an exception, but don't raise it.

@@ -10,6 +10,7 @@ require 'json_schemer'
 require 'async/queue'
 
 require 'rsmp/rsmp'
+require 'rsmp/inspect'
 require 'rsmp/logging'
 require 'rsmp/wait'
 require 'rsmp/node'

@@ -1,5 +1,7 @@
 module RSMP
   class Component
+    include Inspect
+
     attr_reader :c_id, :node, :alarms, :statuses, :aggregated_status, :aggregated_status_bools, :grouped
 
     AGGREGATED_STATUS_KEYS = [ :local_control,

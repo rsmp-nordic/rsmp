@@ -7,6 +7,7 @@ module RSMP
     include Logging
     include Wait
     include Notifier
+    include Inspect
 
     attr_reader :state, :archive, :connection_info, :sxl, :task, :collector
 
@@ -24,6 +25,12 @@ module RSMP
       prepare_collection options[:settings]['collect']
 
       clear
+    end
+
+    def inspect
+      "#<#{self.class.name}:#{self.object_id}, #{inspector(
+        :@acknowledgements,:@settings,:@site_settings
+        )}>"
     end
 
     def clock
@@ -238,7 +245,7 @@ module RSMP
       message.direction = :out
       expect_acknowledgement message
       @protocol.write_lines message.json
-      notify message: message
+      notify message
       log_send message, reason
     rescue EOFError, IOError
       buffer_message message
@@ -271,7 +278,7 @@ module RSMP
       attributes = Message.parse_attributes json
       message = Message.build attributes, json
       message.validate sxl
-      notify message: message
+      notify message
       expect_version_message(message) unless @version_determined
       process_message message
       process_deferred

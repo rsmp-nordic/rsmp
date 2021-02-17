@@ -3,6 +3,8 @@
 
 module RSMP
   class Archive
+    include Inspect
+
     attr_reader :items
 
     @@index = 0
@@ -10,6 +12,10 @@ module RSMP
     def initialize  max=100
       @items = []
       @max = max
+    end
+
+    def inspect
+      "#<#{self.class.name}:#{self.object_id}, #{inspector(:@items)}>"
     end
 
     def self.prepare_item item

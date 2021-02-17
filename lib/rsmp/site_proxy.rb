@@ -15,6 +15,11 @@ module RSMP
       @site_id = nil
     end
 
+    def inspect
+      "#<#{self.class.name}:#{self.object_id}, #{inspector(
+        :@acknowledgements,:@settings,:@site_settings,:@components
+        )}>"
+    end
     def node
       supervisor
     end
@@ -96,7 +101,7 @@ module RSMP
       if options[:collect]
         result = nil
         task = @task.async do |task|
-          result = wait_for_aggregated_status task, options[:collect]
+          wait_for_aggregated_status task, options[:collect]
         end
         send_message message
         return message, task.wait
