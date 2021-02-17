@@ -3,7 +3,8 @@ module RSMP
   class Message
     include Inspect
 
-    attr_reader :now, :attributes, :out, :timestamp
+    attr_reader :now, :attributes, :out
+    attr_reader :timestamp # this is an internal timestamp recording when we receive/send
     attr_accessor :json, :direction
 
     def self.load_schemas

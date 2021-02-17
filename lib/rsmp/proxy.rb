@@ -202,7 +202,7 @@ module RSMP
     end
 
     def send_watchdog now=Clock.now
-      message = Watchdog.new( {"wTs" => Clock.to_s(now)})
+      message = Watchdog.new( {"wTs" => clock.to_s})
       send_message message
       @latest_watchdog_send_at = now
     end
