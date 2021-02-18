@@ -13,19 +13,13 @@ module RSMP
       @@schemas = {}
 
       core_schema_path = File.join(schema_path,'core','rsmp.json')
-      puts "core_schema_path: #{core_schema_path}"
-      core_schema_uri = URI.parse("file:///#{core_schema_path}")
-      puts "uri: #{core_schema_uri}"
+      core_scheme_string = File.read "/#{core_schema_path}"
 
-      @@schemas[nil] = JSONSchemer.schema( core_schema_uri )
+      @@schemas[nil] = JSONSchemer.schema core_scheme_string
 
       tlc_schema_path = File.join(schema_path,'tlc','sxl.json')
-      tlc_schema_uri = URI.parse("file:///#{tlc_schema_path}")
-      
-      # hack to make it append '/'' when you call realpath
-      tlc_schema_path.define_singleton_method(:realpath) { "/#{super()}" }
-      
-      @@schemas['traffic_light_controller'] = JSONSchemer.schema( tlc_schema_uri )
+      tlc_schema_string = File.read "/#{tlc_schema_path}"
+      @@schemas['traffic_light_controller'] = JSONSchemer.schema tlc_schema_string
   
       @@schemas
     end
