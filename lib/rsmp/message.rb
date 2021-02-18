@@ -13,9 +13,16 @@ module RSMP
       @@schemas = {}
 
       core_schema_path = File.join(schema_path,'core','rsmp.json')
+
+      # hack to make it append '/'' when you call realpath
+      core_schema_path.define_singleton_method(:realpath) { "/#{super()}" }
       @@schemas[nil] = JSONSchemer.schema( Pathname.new(core_schema_path) )
 
       tlc_schema_path = File.join(schema_path,'tlc','sxl.json')
+      
+      # hack to make it append '/'' when you call realpath
+      tlc_schema_path.define_singleton_method(:realpath) { "/#{super()}" }
+      
       @@schemas['traffic_light_controller'] = JSONSchemer.schema( Pathname.new(tlc_schema_path) )
   
       @@schemas
