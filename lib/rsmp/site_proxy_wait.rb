@@ -49,6 +49,7 @@ module RSMP
       task.annotate "wait for command response"
       want = options[:command_list].clone
       result = {}
+      messages = []
       collect(parent_task,options.merge({
         type: ['CommandResponse','MessageNotAck'],
         num: 1
@@ -67,6 +68,7 @@ module RSMP
             false
           end
         else
+          add = false
           # look through querues
           want.each_with_index do |query,i|
             # look through items in message
@@ -74,15 +76,17 @@ module RSMP
               matching = command_match? query, input
               if matching == true
                 result[query] = input
+                add = true
               elsif matching == false
                 result.delete query
               end
             end
           end
+          messages << message if add
           result.size == want.size # any queries left to match?
         end
       end
-      result
+      return result, messages
     rescue Async::TimeoutError
       raise RSMP::TimeoutError.new "Did not receive correct command response to #{m_id} within #{options[:timeout]}s"
     end
@@ -90,6 +94,7 @@ module RSMP
     def collect_status_updates_or_responses task, type, options, m_id
       want = options[:status_list].clone
       result = {}
+      messages = []
       # wait for a status update
       collect(task,options.merge({
         type: [type,'MessageNotAck'],
@@ -109,6 +114,7 @@ module RSMP
           false
         else
           found = []
+          add = false
           # look through querues
           want.each_with_index do |query,i|
             # look through status items in message
@@ -116,15 +122,17 @@ module RSMP
               matching = status_match? query, input
               if matching == true
                 result[query] = input
+                add = true
               elsif matching == false
                 result.delete query
               end
             end
           end
+          messages << message if add
           result.size == want.size # any queries left to match?
         end
       end
-      result
+      return result, messages
     rescue Async::TimeoutError
       type_str = {'StatusUpdate'=>'update', 'StatusResponse'=>'response'}[type]
       raise RSMP::TimeoutError.new "Did not received correct status #{type_str} in reply to #{m_id} within #{options[:timeout]}s"

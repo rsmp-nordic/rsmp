@@ -190,7 +190,7 @@ module RSMP
           collect_status_responses task, collect_options, m_id
         end
         send_message message
-        return message, task.wait
+        return message, *task.wait
       else
         send_message message
         message
@@ -279,7 +279,7 @@ module RSMP
           collect_command_responses task, collect_options, m_id
         end
         send_message message
-        return message, task.wait
+        return message, *task.wait
       else
         send_message message
         message
