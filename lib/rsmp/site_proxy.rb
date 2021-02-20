@@ -190,7 +190,13 @@ module RSMP
           collect_status_responses task, collect_options, m_id
         end
         send_message message
-        return message, *task.wait
+
+        # task.wait return the result of the task. if the task raised an exception
+        # it will be reraised. but that mechanish does not work if multiple values
+        # are returned. so manually raise if first element is an exception
+        result = task.wait
+        raise result.first if result.first.is_a? Exception
+        return message, *result
       else
         send_message message
         message
@@ -224,7 +230,13 @@ module RSMP
           collect_status_updates task, collect_options, m_id
         end
         send_message message
-        return message, task.wait
+
+        # task.wait return the result of the task. if the task raised an exception
+        # it will be reraised. but that mechanish does not work if multiple values
+        # are returned. so manually raise if first element is an exception
+        result = task.wait
+        raise result.first if result.first.is_a? Exception
+        return message, *result
       else
         send_message message
         message
@@ -279,7 +291,13 @@ module RSMP
           collect_command_responses task, collect_options, m_id
         end
         send_message message
-        return message, *task.wait
+
+        # task.wait return the result of the task. if the task raised an exception
+        # it will be reraised. but that mechanish does not work if multiple values
+        # are returned. so manually raise if first element is an exception
+        result = task.wait
+        raise result.first if result.first.is_a? Exception
+        return message, *result
       else
         send_message message
         message
