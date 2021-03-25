@@ -1,3 +1,10 @@
+GIT
+  remote: https://github.com/rsmp-nordic/rsmp_schemer
+  revision: dc7504b4bfc2d7531b6caaccd2bdf2459d0d3f82
+  specs:
+    rsmp_schemer (0.1.0)
+      json_schemer (~> 0.2.18)
+
 PATH
   remote: .
   specs:
@@ -5,7 +12,6 @@ PATH
       async (~> 1.28.7)
       async-io (~> 1.30.2)
       colorize (~> 0.8.1)
-      json_schemer (~> 0.2.18)
       thor (~> 1.0.1)
 
 GEM
@@ -91,6 +97,7 @@ DEPENDENCIES
   cucumber (~> 3.1.2)
   rake (~> 13.0.1)
   rsmp!
+  rsmp_schemer!
   rspec (~> 3.9.0)
   rspec-expectations (~> 3.9.1)
   timecop (~> 0.9.1)
