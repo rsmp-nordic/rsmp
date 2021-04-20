@@ -36,7 +36,7 @@ module RSMP
 
     def connection_complete
       super
-      log "Connection to site #{@site_id} established", level: :info
+      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{@site_sxl_version}", level: :info
     end
 
     def process_message message
@@ -73,7 +73,7 @@ module RSMP
     end
 
     def version_accepted message
-      log "Received Version message for site #{@site_id} using RSMP #{@rsmp_version}", message: message, level: :log
+      log "Received Version message for site #{@site_id}", message: message, level: :log
       start_timer
       acknowledge message
       send_version @site_id, @settings['rsmp_versions']
@@ -83,6 +83,7 @@ module RSMP
         @site_settings = @settings['sites'][@site_id]
         @site_settings =@settings['sites'][:any] unless @site_settings
         if @site_settings
+          @sxl = @site_settings['sxl']
           setup_components @site_settings['components']
         end
       end

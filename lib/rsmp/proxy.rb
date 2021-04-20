@@ -1,5 +1,7 @@
 # Logging class for a connection to a remote site or supervisor.
 
+require 'rubygems'
+
 module RSMP  
   class Proxy
     WRAPPING_DELIMITER = "\f"
@@ -238,11 +240,20 @@ module RSMP
       super str, options.merge(ip: @ip, port: @port, site_id: @site_id)
     end
 
+    def get_schemas
+      # normally we have an sxl, but during connection, it hasn't been established yet
+      # at these times we only validate against the core schema
+      # TODO
+      # what schema should we use to validate the intial Version and MessageAck messages?
+      schemas = { core: '3.1.5' }
+      schemas[sxl] = sxl_version if sxl
+      schemas
+    end
+
     def send_message message, reason=nil
       raise IOError unless @protocol
       message.generate_json
-      message.validate sxl
-      message.direction = :out
+      message.validate get_schemas
       expect_acknowledgement message
       @protocol.write_lines message.json
       notify message
@@ -277,7 +288,7 @@ module RSMP
     def process_packet json
       attributes = Message.parse_attributes json
       message = Message.build attributes, json
-      message.validate sxl
+      message.validate get_schemas
       notify message
       expect_version_message(message) unless @version_determined
       process_message message
@@ -352,7 +363,7 @@ module RSMP
       # find versions that both we and the client support
       candidates = message.versions & @settings["rsmp_versions"]
       if candidates.any?
-        @rsmp_version = candidates.sort.last  # pick latest version
+        @rsmp_version = candidates.sort_by { |v| Gem::Version.new(v) }.last  # pick latest version
       else
         raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{@settings["rsmp_versions"].join(',')}] supported."
       end

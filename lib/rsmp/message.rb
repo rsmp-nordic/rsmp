@@ -1,3 +1,5 @@
+require 'rsmp_schemer'
+
 # rsmp messages
 module RSMP
   class Message
@@ -6,28 +8,6 @@ module RSMP
     attr_reader :now, :attributes, :out
     attr_reader :timestamp # this is an internal timestamp recording when we receive/send
     attr_accessor :json, :direction
-
-    def self.load_schemas
-      # path to files in submodule folder
-      schema_path = File.join(File.dirname(__dir__),'rsmp_schema','schema')
-      @@schemas = {}
-
-      core_schema_path = File.join(schema_path,'core','rsmp.json')
-      @@schemas[nil] = JSONSchemer.schema( Pathname.new(core_schema_path) )
-
-      tlc_schema_path = File.join(schema_path,'tlc','sxl.json')
-      @@schemas['traffic_light_controller'] = JSONSchemer.schema( Pathname.new(tlc_schema_path) )
-  
-      @@schemas
-    end
-
-    def self.get_schema sxl=nil
-      schema = @@schemas[sxl]
-      raise SchemaError.new("Unknown schema #{sxl}") unless schema
-      schema
-    end
-
-    @@schemas = load_schemas
 
     def self.make_m_id
       SecureRandom.uuid()
@@ -142,13 +122,10 @@ module RSMP
       @attributes["mId"] ||= Message.make_m_id
     end
 
-    def validate sxl=nil
-      schema = Message.get_schema(sxl)
-      unless schema.valid? attributes
-        errors = schema.validate attributes
-        error_string = errors.map do |item|
-          [item['data_pointer'],item['type'],item['details']].compact.join(' ')
-        end.join(", ")
+    def validate schemas
+      errors = RSMP::Schemer.validate attributes, schemas
+      if errors
+        error_string = errors.compact.join(', ').strip
         raise SchemaError.new error_string
       end
     end

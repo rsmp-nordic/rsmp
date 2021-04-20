@@ -54,7 +54,7 @@ module RSMP
 
     def connection_complete
       super
-      log "Connection to supervisor established", level: :info
+      log "Connection to supervisor established, using core #{@rsmp_version}, #{sxl} #{sxl_version}", level: :info
       start_watchdog
     end
 

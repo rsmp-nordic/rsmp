@@ -26,17 +26,6 @@ Gem::Specification.new do |spec|
     `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
   end
 
-  # Add schema files in rsmp_schema submodule
-  gem_dir = Pathname.new(__dir__).expand_path
-  submodule_path = File.expand_path 'lib/rsmp_schema/schema'
-  Dir.chdir(submodule_path) do
-    submodule_relative_path = Pathname.new(submodule_path).relative_path_from(gem_dir)
-    `git ls-files`.split($\).each do |filename|
-      # for each git file, prepend relative submodule path and add to spec
-      spec.files << submodule_relative_path.join(filename).to_s
-    end
-  end
-
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]

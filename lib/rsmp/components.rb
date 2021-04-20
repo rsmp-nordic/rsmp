@@ -25,7 +25,7 @@ module RSMP
     end
 
     def build_component id:, type:, settings:{}
-      Component.new id:id, node: self, grouped: true
+      Component.new id:id, node: self, grouped: type=='main'
     end
 
     def find_component component_id

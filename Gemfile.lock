@@ -1,6 +1,5 @@
-GIT
-  remote: https://github.com/rsmp-nordic/rsmp_schemer
-  revision: dc7504b4bfc2d7531b6caaccd2bdf2459d0d3f82
+PATH
+  remote: ../rsmp_schemer
   specs:
     rsmp_schemer (0.1.0)
       json_schemer (~> 0.2.18)
