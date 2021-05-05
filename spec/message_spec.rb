@@ -3,7 +3,7 @@ Bundler.require(:default, :development)
 def build json
 	attributes = RSMP::Message.parse_attributes(json)
 	message = RSMP::Message.build(attributes,json)
-	message.validate unless message.is_a? RSMP::Unknown
+	message.validate(core:'3.1.5',tlc:'1.0.15') unless message.is_a? RSMP::Unknown
 	message
 end
 
