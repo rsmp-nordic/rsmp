@@ -32,4 +32,7 @@ require 'rsmp/logger'
 require 'rsmp/archive'
 require 'rsmp/tlc'
 
+require 'rsmp/convert/import/yaml'
+require 'rsmp/convert/export/json_schema'
+
 require 'rsmp/version'
