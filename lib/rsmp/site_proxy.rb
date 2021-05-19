@@ -107,10 +107,10 @@ module RSMP
         task = @task.async do |task|
           wait_for_aggregated_status task, options[:collect]
         end
-        send_message message
+        send_message message, validate: options[:validate]
         return message, task.wait
       else
-        send_message message
+        send_message message, validate: options[:validate]
         message
       end
     end
@@ -193,7 +193,7 @@ module RSMP
           collect_options = options[:collect].merge status_list: status_list
           collect_status_responses task, collect_options, m_id
         end
-        send_message message
+        send_message message, validate: options[:validate]
 
         # task.wait return the result of the task. if the task raised an exception
         # it will be reraised. but that mechanish does not work if multiple values
@@ -202,7 +202,7 @@ module RSMP
         raise result.first if result.first.is_a? Exception
         return message, *result
       else
-        send_message message
+        send_message message, validate: options[:validate]
         message
       end
     end
@@ -233,7 +233,7 @@ module RSMP
           collect_options = options[:collect].merge status_list: status_list
           collect_status_updates task, collect_options, m_id
         end
-        send_message message
+        send_message message, validate: options[:validate]
 
         # task.wait return the result of the task. if the task raised an exception
         # it will be reraised. but that mechanish does not work if multiple values
@@ -242,12 +242,12 @@ module RSMP
         raise result.first if result.first.is_a? Exception
         return message, *result
       else
-        send_message message
+        send_message message, validate: options[:validate]
         message
       end
     end
 
-    def unsubscribe_to_status component, status_list
+    def unsubscribe_to_status component, status_list, options={}
       raise NotReady unless ready?
       message = RSMP::StatusUnsubscribe.new({
           "ntsOId" => '',
@@ -255,7 +255,7 @@ module RSMP
           "cId" => component,
           "sS" => status_list
       })
-      send_message message
+      send_message message, validate: options[:validate]
       message
     end
 
@@ -264,7 +264,7 @@ module RSMP
       acknowledge message
     end
 
-    def send_alarm_acknowledgement component, alarm_code
+    def send_alarm_acknowledgement component, alarm_code, options={}
       message = RSMP::AlarmAcknowledged.new({
           "ntsOId" => '',
           "xNId" => '',
@@ -274,7 +274,7 @@ module RSMP
           "xNACId" => '',
           "aSp" => 'Acknowledge'
       })
-      send_message message
+      send_message message, validate: options[:validate]
       message
     end
 
@@ -294,7 +294,7 @@ module RSMP
           collect_options = options[:collect].merge command_list: command_list
           collect_command_responses task, collect_options, m_id
         end
-        send_message message
+        send_message message, validate: options[:validate]
 
         # task.wait return the result of the task. if the task raised an exception
         # it will be reraised. but that mechanish does not work if multiple values
@@ -303,7 +303,7 @@ module RSMP
         raise result.first if result.first.is_a? Exception
         return message, *result
       else
-        send_message message
+        send_message message, validate: options[:validate]
         message
       end
     end

@@ -250,10 +250,11 @@ module RSMP
       schemas
     end
 
-    def send_message message, reason=nil
+    def send_message message, reason=nil, validate: true
       raise IOError unless @protocol
+      message.direction = :out
       message.generate_json
-      message.validate get_schemas
+      message.validate get_schemas unless validate==false
       expect_acknowledgement message
       @protocol.write_lines message.json
       notify message
