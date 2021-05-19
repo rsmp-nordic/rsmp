@@ -34,7 +34,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "async-io", "~> 1.30.2"
   spec.add_dependency "colorize", "~> 0.8.1"
   spec.add_dependency "thor", "~> 1.0.1"
-  #spec.add_dependency "json_schemer", "~> 0.2.18"
+  spec.add_dependency "rsmp_schemer", "~> 0.2.0"
 
   spec.add_development_dependency "bundler", "~> 2.2.3"
   spec.add_development_dependency "rake", "~> 13.0.1"

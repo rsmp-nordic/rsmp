@@ -556,10 +556,11 @@ module RSMP
 
     def handle_s0097 status_code, status_name=nil
       case status_name
-      when 'version'
+      when 'checksum'
         RSMP::Tlc.make_status '1'
-      when 'hash'
-        RSMP::Tlc.make_status '1'
+      when 'timestamp'
+        now = @node.clock.to_s
+        RSMP::Tlc.make_status now
       end
     end
 

@@ -57,6 +57,10 @@ module RSMP
         end
       end
       site_class.new(site_settings:settings, log_settings: log_settings).start
+    rescue RSMP::Schemer::UnknownSchemaTypeError => e
+      puts "Cannot start site: #{e}"
+    rescue RSMP::Schemer::UnknownSchemaVersionError => e
+      puts "Cannot start site: #{e}"
     end
 
     desc "supervisor", "Run RSMP supervisor"
@@ -101,6 +105,8 @@ module RSMP
       end
 
       RSMP::Supervisor.new(supervisor_settings:settings,log_settings:log_settings).start
+    rescue RSMP::ConfigurationError => e
+      puts "Cannot start supervisor: #{e}"
     end
 
     desc "convert", "Convert SXL from YAML to JSON Schema"

@@ -1,16 +1,11 @@
 PATH
-  remote: ../rsmp_schemer
-  specs:
-    rsmp_schemer (0.1.0)
-      json_schemer (~> 0.2.18)
-
-PATH
   remote: .
   specs:
     rsmp (0.1.26)
       async (~> 1.28.7)
       async-io (~> 1.30.2)
       colorize (~> 0.8.1)
+      rsmp_schemer (~> 0.2.0)
       thor (~> 1.0.1)
 
 GEM
@@ -69,6 +64,8 @@ GEM
     nio4r (2.5.7)
     rake (13.0.1)
     regexp_parser (2.1.1)
+    rsmp_schemer (0.2.0)
+      json_schemer (~> 0.2.18)
     rspec (3.9.0)
       rspec-core (~> 3.9.0)
       rspec-expectations (~> 3.9.0)
@@ -96,7 +93,6 @@ DEPENDENCIES
   cucumber (~> 3.1.2)
   rake (~> 13.0.1)
   rsmp!
-  rsmp_schemer!
   rspec (~> 3.9.0)
   rspec-expectations (~> 3.9.1)
   timecop (~> 0.9.1)

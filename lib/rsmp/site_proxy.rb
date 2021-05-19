@@ -36,7 +36,7 @@ module RSMP
 
     def connection_complete
       super
-      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{@site_sxl_version}", level: :info
+      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, sxl #{@sxl} #{@site_sxl_version}", level: :info
     end
 
     def process_message message
@@ -73,20 +73,23 @@ module RSMP
     end
 
     def version_accepted message
+      if @settings['sites']
+        @site_settings = @settings['sites'][@site_id]
+        @site_settings = @settings['sites'][:unknown] unless @site_settings
+        if @site_settings
+          @sxl = @site_settings['sxl']
+          setup_components @site_settings['components']
+        else
+          dont_acknowledge message, 'Rejected', "No config found for site #{@site_id}"
+        end
+      end
+
       log "Received Version message for site #{@site_id}", message: message, level: :log
       start_timer
       acknowledge message
       send_version @site_id, @settings['rsmp_versions']
       @version_determined = true
 
-      if @settings['sites']
-        @site_settings = @settings['sites'][@site_id]
-        @site_settings =@settings['sites'][:any] unless @site_settings
-        if @site_settings
-          @sxl = @site_settings['sxl']
-          setup_components @site_settings['components']
-        end
-      end
     end
 
     def request_aggregated_status component, options={}
@@ -310,6 +313,14 @@ module RSMP
     end
 
     def check_sxl_version message
+
+      # check that we have a schema for specified sxl type and version
+      # note that the type comes from the site config, while the version
+      # comes from the Version message send by the site
+      type = 'tlc'
+      version = message.attribute 'SXL'
+      RSMP::Schemer::find_schema type, version 
+
       # store sxl version requested by site
       # TODO should check agaist site settings
       @site_sxl_version = message.attribute 'SXL'
@@ -327,6 +338,8 @@ module RSMP
       check_rsmp_version message
       check_sxl_version message
       version_accepted message
+    rescue RSMP::Schemer::UnknownSchemaError => e
+      dont_acknowledge message, "Rejected #{message.type} message,", "#{e}"
     end
 
     def check_site_ids message

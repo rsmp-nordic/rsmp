@@ -28,7 +28,7 @@ module RSMP
         ],
         'rsmp_versions' => ['3.1.1','3.1.2','3.1.3','3.1.4','3.1.5'],
         'sxl' => 'tlc',
-        'sxl_version' => '1.0.7',
+        'sxl_version' => '1.0.15',
         'timer_interval' => 0.1,
         'watchdog_interval' => 1,
         'watchdog_timeout' => 2,
@@ -54,7 +54,16 @@ module RSMP
                   :acknowledgement_timeout,:command_response_timeout]
       check_required_settings @site_settings, required
 
+      check_sxl_version
+
       setup_components @site_settings['components']
+    end
+
+    def check_sxl_version
+      sxl = @site_settings['sxl']
+      version = @site_settings['sxl_version']
+
+      RSMP::Schemer::find_schema sxl, version
     end
 
     def reconnect

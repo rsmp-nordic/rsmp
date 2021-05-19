@@ -32,7 +32,9 @@ module RSMP
         'site_ready_timeout' => 1,
         'stop_after_first_session' => false,
         'sites' => {
-          :any => {}
+          :unknown => {
+            'sxl' => 'tlc'
+          }
         }
       }
       
@@ -47,6 +49,23 @@ module RSMP
       check_required_settings @supervisor_settings, required
 
       @rsmp_versions = @supervisor_settings["rsmp_versions"]
+
+      check_site_sxl_types
+    end
+
+    def check_site_sxl_types
+      @supervisor_settings['sites'].each do |ip,settings|
+        unless settings
+          raise RSMP::ConfigurationError.new("Configuration for site '#{ip}' is empty")
+        end
+        sxl = settings['sxl']
+        unless sxl
+          raise RSMP::ConfigurationError.new("Configuration error for site '#{ip}': No SXL specified")
+        end
+        RSMP::Schemer.find_schema_type sxl if sxl
+      rescue RSMP::Schemer::UnknownSchemaError => e
+        raise RSMP::ConfigurationError.new("Configuration error for site '#{ip}': #{e}")
+      end
     end
 
     def start_action
@@ -80,6 +99,8 @@ module RSMP
       else
         reject socket, info
       end
+    rescue ConnectionError => e
+      log "Rejected connection from #{remote_ip}, #{e.to_s}", level: :info
     rescue StandardError => e
       log "Connection: #{e.to_s}", exception: e, level: :error
       notify_error e, level: :internal
@@ -116,7 +137,9 @@ module RSMP
           level: :info,
           timestamp: Clock.now
 
-      settings = @supervisor_settings['sites'][info[:ip]] || @supervisor_settings['sites'][:any]
+      settings = ip_to_site_settings info[:ip]
+      raise ConnectionError.new('unknown ip not allowed') unless settings
+
       proxy = build_proxy({
         supervisor: self,
         ip: info[:ip],
@@ -161,7 +184,7 @@ module RSMP
 
     def find_site site_id
       @proxies.each do |site|
-        return site if site_id == :any || site.site_id == site_id
+        return site if site_id == :unknown || site.site_id == site_id
       end
       nil
     end
@@ -192,11 +215,15 @@ module RSMP
     def find_allowed_site_setting site_id
       return {} unless @supervisor_settings['sites']
       @supervisor_settings['sites'].each_pair do |id,settings|
-        if id == :any || id == site_id
+        if id == :unknown || id == site_id
           return settings
         end
       end
       raise FatalError.new "site id #{site_id} rejected"
+    end
+
+    def ip_to_site_settings ip
+      @supervisor_settings['sites'][ip] || @supervisor_settings['sites'][:unknown]
     end
 
     def aggregated_status_changed site_proxy, component
