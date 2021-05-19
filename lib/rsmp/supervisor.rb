@@ -32,7 +32,7 @@ module RSMP
         'site_ready_timeout' => 1,
         'stop_after_first_session' => false,
         'sites' => {
-          :unknown => {
+          :any => {
             'sxl' => 'tlc'
           }
         }
@@ -62,7 +62,7 @@ module RSMP
         unless sxl
           raise RSMP::ConfigurationError.new("Configuration error for site '#{ip}': No SXL specified")
         end
-        RSMP::Schemer.find_schema_type sxl if sxl
+        RSMP::Schemer.find_schemas! sxl if sxl
       rescue RSMP::Schemer::UnknownSchemaError => e
         raise RSMP::ConfigurationError.new("Configuration error for site '#{ip}': #{e}")
       end
@@ -184,7 +184,7 @@ module RSMP
 
     def find_site site_id
       @proxies.each do |site|
-        return site if site_id == :unknown || site.site_id == site_id
+        return site if site_id == :any || site.site_id == site_id
       end
       nil
     end
@@ -215,7 +215,7 @@ module RSMP
     def find_allowed_site_setting site_id
       return {} unless @supervisor_settings['sites']
       @supervisor_settings['sites'].each_pair do |id,settings|
-        if id == :unknown || id == site_id
+        if id == :any || id == site_id
           return settings
         end
       end
@@ -223,7 +223,7 @@ module RSMP
     end
 
     def ip_to_site_settings ip
-      @supervisor_settings['sites'][ip] || @supervisor_settings['sites'][:unknown]
+      @supervisor_settings['sites'][ip] || @supervisor_settings['sites'][:any]
     end
 
     def aggregated_status_changed site_proxy, component

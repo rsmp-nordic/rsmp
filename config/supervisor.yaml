@@ -7,7 +7,7 @@ rsmp_versions:
   - 3.1.5
 
 sites:
-  :unknown:
+  :any:
     sxl: tlc
 
 watchdog_interval: 1

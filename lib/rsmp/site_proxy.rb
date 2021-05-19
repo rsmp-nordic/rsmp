@@ -75,7 +75,7 @@ module RSMP
     def version_accepted message
       if @settings['sites']
         @site_settings = @settings['sites'][@site_id]
-        @site_settings = @settings['sites'][:unknown] unless @site_settings
+        @site_settings = @settings['sites'][:any] unless @site_settings
         if @site_settings
           @sxl = @site_settings['sxl']
           setup_components @site_settings['components']
@@ -319,7 +319,7 @@ module RSMP
       # comes from the Version message send by the site
       type = 'tlc'
       version = message.attribute 'SXL'
-      RSMP::Schemer::find_schema type, version 
+      RSMP::Schemer::find_schema! type, version 
 
       # store sxl version requested by site
       # TODO should check agaist site settings
