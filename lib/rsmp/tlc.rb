@@ -88,7 +88,11 @@ module RSMP
     end
 
     def format_signal_group_status
-      @signal_groups.map { |group| group.state }.join
+      if @yellow_flash
+        'c' * @signal_groups.size
+      else
+        @signal_groups.map { |group| group.state }.join
+      end
     end
 
     def handle_command command_code, arg
