@@ -61,6 +61,8 @@ module RSMP
       puts "Cannot start site: #{e}"
     rescue RSMP::Schemer::UnknownSchemaVersionError => e
       puts "Cannot start site: #{e}"
+    rescue Psych::SyntaxError => e
+      puts "Cannot read config file #{e}"
     end
 
     desc "supervisor", "Run RSMP supervisor"

@@ -3,11 +3,6 @@ supervisors:
   - ip: 127.0.0.1
     port: 12111
 
-# if you leave it out, all know version will be allowed
-#rsmp_versions:
-#  - 3.1.4
-#  - 3.1.5
-
 sxl: tlc
 sxl_version: 1.0.15
 
