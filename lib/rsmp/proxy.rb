@@ -22,10 +22,10 @@ module RSMP
       @port = options[:port]
       @connection_info = options[:info]
       @sxl = nil
+      @site_settings = nil  # can't pick until we know the site id
       initialize_distributor
 
-      prepare_collection options[:settings]['collect']
-
+      prepare_collection @settings['collect']
       clear
     end
 
@@ -144,14 +144,14 @@ module RSMP
     end
 
     def start_watchdog
-      log "Starting watchdog with interval #{@settings["watchdog_interval"]} seconds", level: :debug
+      log "Starting watchdog with interval #{@site_settings["watchdog_interval"]} seconds", level: :debug
       send_watchdog
       @watchdog_started = true
     end
 
     def start_timer
       name = "timer"
-      interval = @settings["timer_interval"] || 1
+      interval = @site_settings["timer_interval"] || 1
       log "Starting #{name} with interval #{interval} seconds", level: :debug
       @latest_watchdog_received = Clock.now
 
@@ -189,7 +189,7 @@ module RSMP
 
     def watchdog_send_timer now
       return unless @watchdog_started  
-      return if @settings["watchdog_interval"] == :never
+      return if @site_settings["watchdog_interval"] == :never
       
       if @latest_watchdog_send_at == nil
         send_watchdog now
@@ -197,7 +197,7 @@ module RSMP
         # we add half the timer interval to pick the timer
         # event closes to the wanted wathcdog interval
         diff = now - @latest_watchdog_send_at
-        if (diff + 0.5*@settings["timer_interval"]) >= (@settings["watchdog_interval"])
+        if (diff + 0.5*@site_settings["timer_interval"]) >= (@site_settings["watchdog_interval"])
           send_watchdog now
         end
       end
@@ -210,7 +210,7 @@ module RSMP
     end
 
     def check_ack_timeout now
-      timeout = @settings["acknowledgement_timeout"]
+      timeout = @site_settings["acknowledgement_timeout"]
       # hash cannot be modify during iteration, so clone it
       @awaiting_acknowledgement.clone.each_pair do |m_id, message|
         latest = message.timestamp + timeout
@@ -222,7 +222,7 @@ module RSMP
     end
 
     def check_watchdog_timeout now
-      timeout = @settings["watchdog_timeout"]
+      timeout = @site_settings["watchdog_timeout"]
       latest = @latest_watchdog_received + timeout
       left = latest - now
       if left < 0
@@ -360,13 +360,20 @@ module RSMP
       dont_acknowledge message, "Received", "extraneous Version message"
     end
 
+    def rsmp_versions
+      return ['3.1.5'] if @site_settings["rsmp_versions"] == 'latest'
+      return ['3.1.1','3.1.2','3.1.3','3.1.4','3.1.5'] if @site_settings["rsmp_versions"] == 'all'
+      @site_settings["rsmp_versions"]
+    end
+
     def check_rsmp_version message
+      versions = rsmp_versions
       # find versions that both we and the client support
-      candidates = message.versions & @settings["rsmp_versions"]
+      candidates = message.versions & versions
       if candidates.any?
         @rsmp_version = candidates.sort_by { |v| Gem::Version.new(v) }.last  # pick latest version
       else
-        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{@settings["rsmp_versions"].join(',')}] supported."
+        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{versions.join(',')}] supported."
       end
     end
 
@@ -410,7 +417,15 @@ module RSMP
     end
 
     def send_version site_id, rsmp_versions
-      versions_array = [rsmp_versions].flatten.map {|v| {"vers" => v} }
+      if rsmp_versions=='latest'
+        versions = ['3.1.5']
+      elsif rsmp_versions=='all'
+        versions = ['3.1.1','3.1.2','3.1.3','3.1.4','3.1.5']
+      else
+        versions = [rsmp_versions].flatten
+      end
+      versions_array = versions.map {|v| {"vers" => v} }
+
       site_id_array = [site_id].flatten.map {|id| {"sId" => id} }
 
       version_response = Version.new({

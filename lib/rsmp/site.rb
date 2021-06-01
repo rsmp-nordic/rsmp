@@ -26,18 +26,13 @@ module RSMP
         'supervisors' => [
           { 'ip' => '127.0.0.1', 'port' => 12111 }
         ],
-        'rsmp_versions' => ['3.1.1','3.1.2','3.1.3','3.1.4','3.1.5'],
+        'rsmp_versions' => 'all',
         'sxl' => 'tlc',
         'sxl_version' => '1.0.15',
         'timer_interval' => 0.1,
         'watchdog_interval' => 1,
         'watchdog_timeout' => 2,
         'acknowledgement_timeout' => 2,
-        'command_response_timeout' => 1,
-        'status_response_timeout' => 1,
-        'status_update_timeout' => 1,
-        'site_connect_timeout' => 2,
-        'site_ready_timeout' => 1,
         'reconnect_interval' => 0.1,
         'send_after_connect' => true,
         'components' => {
@@ -51,7 +46,7 @@ module RSMP
       end
 
       required = [:supervisors,:rsmp_versions,:site_id,:watchdog_interval,:watchdog_timeout,
-                  :acknowledgement_timeout,:command_response_timeout]
+                  :acknowledgement_timeout]
       check_required_settings @site_settings, required
 
       check_sxl_version

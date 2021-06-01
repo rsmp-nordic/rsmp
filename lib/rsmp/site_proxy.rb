@@ -73,21 +73,10 @@ module RSMP
     end
 
     def version_accepted message
-      if @settings['sites']
-        @site_settings = @settings['sites'][@site_id]
-        @site_settings = @settings['sites'][:any] unless @site_settings
-        if @site_settings
-          @sxl = @site_settings['sxl']
-          setup_components @site_settings['components']
-        else
-          dont_acknowledge message, 'Rejected', "No config found for site #{@site_id}"
-        end
-      end
-
       log "Received Version message for site #{@site_id}", message: message, level: :log
       start_timer
       acknowledge message
-      send_version @site_id, @settings['rsmp_versions']
+      send_version @site_id, rsmp_versions
       @version_determined = true
 
     end
@@ -347,7 +336,33 @@ module RSMP
       site_id = message.attribute("siteId").map { |item| item["sId"] }.first
       @supervisor.check_site_id site_id
       @site_id = site_id
+      setup_site_settings
       site_ids_changed
+    end
+
+    def find_site_settings site_id
+      if @settings['sites'] && @settings['sites'][@site_id]
+        log "Using site settings for site id #{@site_id}", level: :debug
+        return @settings['sites'][@site_id]
+      end
+
+      settings = @settings['guest']
+      if @settings['guest']
+        log "Using site settings for guest", level: :debug
+        return @settings['guest']
+      end
+  
+      nil
+    end
+
+    def setup_site_settings
+      @site_settings = find_site_settings @site_id
+      if @site_settings
+        @sxl = @site_settings['sxl']
+        setup_components @site_settings['components']
+      else
+        dont_acknowledge message, 'Rejected', "No config found for site #{@site_id}"
+      end
     end
 
     def notify_error e, options={}

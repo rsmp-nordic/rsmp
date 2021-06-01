@@ -1,23 +1,10 @@
 port: 12111
-rsmp_versions:
-  - 3.1.1
-  - 3.1.2
-  - 3.1.3
-  - 3.1.4
-  - 3.1.5
-
-sites:
-  :any:
-    sxl: tlc
-
-watchdog_interval: 0.1
-watchdog_timeout: 0.2
-acknowledgement_timeout: 0.2
-store_messages: false
-command_response_timeout: 0.1
-status_response_timeout: 0.1
-status_update_timeout: 0.1
-
+guest:
+  sxl: tlc
+  timer_interval: 0.1
+  watchdog_interval: 0.1
+  watchdog_timeout: 0.2
+  acknowledgement_timeout: 0.2
 log:
   active: true
   color: true
