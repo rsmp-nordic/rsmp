@@ -36,7 +36,7 @@ module RSMP
 
     def connection_complete
       super
-      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, sxl #{@sxl} #{@site_sxl_version}", level: :info
+      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{@site_sxl_version}", level: :info
     end
 
     def process_message message

@@ -36,7 +36,7 @@ module RSMP
       }
 
       # merge options into defaults
-      @supervisor_settings = defaults.deep_merge(options[:supervisor_settings])
+      @supervisor_settings = defaults.deep_merge(options[:supervisor_settings] || {})
       @rsmp_versions = @supervisor_settings["rsmp_versions"]
       check_site_sxl_types
     end
