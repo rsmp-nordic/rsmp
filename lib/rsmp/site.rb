@@ -20,8 +20,8 @@ module RSMP
       @site_settings['site_id']
     end
 
-    def handle_site_settings options
-      @site_settings = {
+    def handle_site_settings options={}
+      defaults = {
         'site_id' => 'RN+SI0001',
         'supervisors' => [
           { 'ip' => '127.0.0.1', 'port' => 12111 }
@@ -29,28 +29,24 @@ module RSMP
         'rsmp_versions' => 'all',
         'sxl' => 'tlc',
         'sxl_version' => '1.0.15',
-        'timer_interval' => 0.1,
-        'watchdog_interval' => 1,
-        'watchdog_timeout' => 2,
-        'acknowledgement_timeout' => 2,
-        'reconnect_interval' => 0.1,
+        'intervals' => {
+          'timer_' => 0.1,
+          'watchdog' => 1,
+          'reconnect' => 0.1
+        },
+        'timeouts' => {
+          'watchdog' => 2,
+          'acknowledgement' => 2
+        },
         'send_after_connect' => true,
         'components' => {
           'C1' => {}
         }
       }
-      if options[:site_settings]
-        converted = options[:site_settings].map { |k,v| [k.to_s,v] }.to_h   #convert symbol keys to string keys
-        converted.compact!
-        @site_settings.merge! converted
-      end
-
-      required = [:supervisors,:rsmp_versions,:site_id,:watchdog_interval,:watchdog_timeout,
-                  :acknowledgement_timeout]
-      check_required_settings @site_settings, required
-
+      
+      @site_settings = defaults.deep_merge options[:site_settings]
+      pp @site_settings
       check_sxl_version
-
       setup_components @site_settings['components']
     end
 
@@ -110,10 +106,10 @@ module RSMP
         notify_error e, level: :internal
       ensure
         begin
-          if @site_settings["reconnect_interval"] != :no
+          if @site_settings['intervals']['watchdog'] != :no
             # sleep until waken by reconnect() or the reconnect interval passed
             proxy.set_state :wait_for_reconnect
-            task.with_timeout(@site_settings["reconnect_interval"]) do
+            task.with_timeout(@site_settings['intervals']['watchdog']) do
               @sleep_condition.wait
             end
           else

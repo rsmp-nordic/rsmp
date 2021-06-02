@@ -1,10 +1,12 @@
 port: 12111
 guest:
   sxl: tlc
-  timer_interval: 0.1
-  watchdog_interval: 0.1
-  watchdog_timeout: 0.2
-  acknowledgement_timeout: 0.2
+  intervals:
+    timer: 0.1
+    watchdog: 0.1
+  timeouts:
+    watchdog: 0.2
+    acknowledgement: 0.2
 log:
   active: true
   color: true
@@ -20,4 +22,3 @@ log:
   json: true
   acknowledgements: false
   watchdogs: false
-

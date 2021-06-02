@@ -32,8 +32,8 @@ module RSMP
       send_version @site_settings['site_id'], @site_settings["rsmp_versions"]
     rescue Errno::ECONNREFUSED
       log "No connection to supervisor at #{@ip}:#{@port}", level: :error
-      unless @site.site_settings["reconnect_interval"] == :no
-        log "Will try to reconnect again every #{@site.site_settings["reconnect_interval"]} seconds..", level: :info
+      unless @site.site_settings['intervals']['reconnect'] == :no
+        log "Will try to reconnect again every #{@site.site_settings['intervals']['reconnect']} seconds..", level: :info
         @logger.mute @ip, @port
       end
     end
@@ -110,7 +110,7 @@ module RSMP
     end
 
     def reconnect_delay
-      interval = @site_settings["reconnect_interval"]
+      interval = @site_settings['intervals']['watchdog']
       log "Waiting #{interval} seconds before trying to reconnect", level: :info
       @task.sleep interval
     end

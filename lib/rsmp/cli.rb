@@ -31,11 +31,11 @@ module RSMP
 
       if options[:supervisors]
         options[:supervisors].split(',').each do |supervisor|
-          settings[:supervisors] ||= []
+          settings['supervisors'] ||= []
           ip, port = supervisor.split ':'
           ip = '127.0.0.1' if ip.empty?
           port = '12111' if port.empty?
-          settings[:supervisors] << {"ip"=>ip, "port"=>port}
+          settings['supervisors'] << {"ip"=>ip, "port"=>port}
         end
       end
 

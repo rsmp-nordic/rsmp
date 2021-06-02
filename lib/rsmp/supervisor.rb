@@ -17,37 +17,27 @@ module RSMP
       @supervisor_settings['site_id']
     end
 
-    def handle_supervisor_settings options
+    def handle_supervisor_settings options={}
       defaults = {
         'port' => 12111,
         'ips' => 'all',
         'guest' => {
-          'timer_interval' => 1,
           'rsmp_versions' => 'all',
           'sxl' => 'tlc',
-          'watchdog_interval' => 1,
-          'watchdog_timeout' => 2,
-          'acknowledgement_timeout' => 2
+          'intervals' => {
+            'timer' => 1,
+            'watchdog' => 1
+          },
+          'timeouts' => {
+            'watchdog' => 2,
+            'acknowledgement' => 2
+          }
         }
       }
-      
 
       # merge options into defaults
-      if options[:supervisor_settings]
-        @supervisor_settings = defaults.merge(options[:supervisor_settings])
-      end
-
-      # merge guest options into defaults
-      if options[:supervisor_settings]['guest']
-        @supervisor_settings['guest'] = defaults['guest'].merge(options[:supervisor_settings]['guest']) 
-      end
-
-
-      required = [:port]
-      check_required_settings @supervisor_settings, required
-
+      @supervisor_settings = defaults.deep_merge(options[:supervisor_settings])
       @rsmp_versions = @supervisor_settings["rsmp_versions"]
-
       check_site_sxl_types
     end
 
@@ -101,7 +91,8 @@ module RSMP
         reject socket, info
       end
     rescue ConnectionError => e
-      log "Rejected connection from #{remote_ip}, #{e.to_s}", level: :info
+      log "Rejected connection from #{remote_ip}:#{remote_port}, #{e.to_s}", level: :warning
+      notify_error e
     rescue StandardError => e
       log "Connection: #{e.to_s}", exception: e, level: :error
       notify_error e, level: :internal
@@ -137,6 +128,15 @@ module RSMP
       raise ConnectionError.new('guest ip not allowed')
     end
 
+    def check_max_sites
+      max = @supervisor_settings['max_sites']
+      if max
+        if @proxies.size >= max
+          raise ConnectionError.new("maximum of #{max} sites already connected")
+        end
+      end
+    end
+
     def connect socket, info
       log "Site connected from #{format_ip_and_port(info)}",
           ip: info[:ip],
@@ -145,6 +145,7 @@ module RSMP
           timestamp: Clock.now
 
       authorize_ip info[:ip]
+      check_max_sites
 
       proxy = build_proxy({
         supervisor: self,

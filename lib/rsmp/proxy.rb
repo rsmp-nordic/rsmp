@@ -144,14 +144,14 @@ module RSMP
     end
 
     def start_watchdog
-      log "Starting watchdog with interval #{@site_settings["watchdog_interval"]} seconds", level: :debug
+      log "Starting watchdog with interval #{@site_settings['intervals']['watchdog']} seconds", level: :debug
       send_watchdog
       @watchdog_started = true
     end
 
     def start_timer
       name = "timer"
-      interval = @site_settings["timer_interval"] || 1
+      interval = @site_settings['intervals']['timer'] || 1
       log "Starting #{name} with interval #{interval} seconds", level: :debug
       @latest_watchdog_received = Clock.now
 
@@ -189,7 +189,7 @@ module RSMP
 
     def watchdog_send_timer now
       return unless @watchdog_started  
-      return if @site_settings["watchdog_interval"] == :never
+      return if @site_settings['intervals']['watchdog'] == :never
       
       if @latest_watchdog_send_at == nil
         send_watchdog now
@@ -197,7 +197,7 @@ module RSMP
         # we add half the timer interval to pick the timer
         # event closes to the wanted wathcdog interval
         diff = now - @latest_watchdog_send_at
-        if (diff + 0.5*@site_settings["timer_interval"]) >= (@site_settings["watchdog_interval"])
+        if (diff + 0.5*@site_settings['intervals']['timer']) >= (@site_settings['intervals']['watchdog'])
           send_watchdog now
         end
       end
@@ -210,7 +210,7 @@ module RSMP
     end
 
     def check_ack_timeout now
-      timeout = @site_settings["acknowledgement_timeout"]
+      timeout = @site_settings['timeouts']['acknowledgement']
       # hash cannot be modify during iteration, so clone it
       @awaiting_acknowledgement.clone.each_pair do |m_id, message|
         latest = message.timestamp + timeout
@@ -222,7 +222,7 @@ module RSMP
     end
 
     def check_watchdog_timeout now
-      timeout = @site_settings["watchdog_timeout"]
+      timeout = @site_settings['timeouts']['watchdog']
       latest = @latest_watchdog_received + timeout
       left = latest - now
       if left < 0

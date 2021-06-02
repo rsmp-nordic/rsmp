@@ -298,7 +298,7 @@ module RSMP
     end
 
     def set_watchdog_interval interval
-      @settings["watchdog_interval"] = interval
+      @settings['intervals']['watchdog'] = interval
     end
 
     def check_sxl_version message
