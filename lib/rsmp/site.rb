@@ -45,7 +45,6 @@ module RSMP
       }
       
       @site_settings = defaults.deep_merge options[:site_settings]
-      pp @site_settings
       check_sxl_version
       setup_components @site_settings['components']
     end
