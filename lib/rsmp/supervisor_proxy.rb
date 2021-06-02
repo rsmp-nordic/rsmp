@@ -110,7 +110,7 @@ module RSMP
     end
 
     def reconnect_delay
-      interval = @site_settings['intervals']['watchdog']
+      interval = @site_settings['intervals']['reconnect']
       log "Waiting #{interval} seconds before trying to reconnect", level: :info
       @task.sleep interval
     end
