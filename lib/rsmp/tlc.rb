@@ -798,7 +798,7 @@ module RSMP
       super options
       @sxl = 'traffic_light_controller'
       @security_codes = options[:site_settings]['security_codes']
-      @interval = options[:site_settings]['interval'] || 1
+      @interval = options[:site_settings]['intervals']['timer'] || 1
       unless @main
         raise ConfigurationError.new "TLC must have a main component"
       end

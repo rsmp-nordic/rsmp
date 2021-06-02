@@ -30,7 +30,7 @@ module RSMP
         'sxl' => 'tlc',
         'sxl_version' => '1.0.15',
         'intervals' => {
-          'timer_' => 0.1,
+          'timer' => 0.1,
           'watchdog' => 1,
           'reconnect' => 0.1
         },
