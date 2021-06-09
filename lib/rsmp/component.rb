@@ -28,7 +28,7 @@ module RSMP
       @aggregated_status_bools[5] = true
     end
 
-    def set_aggregated_status status
+    def set_aggregated_status status, options={}
       status = [status] if status.is_a? Symbol
       raise InvalidArgument unless status.is_a? Array
       input = status & AGGREGATED_STATUS_KEYS
@@ -36,7 +36,7 @@ module RSMP
         AGGREGATED_STATUS_KEYS.each_with_index do |key,index|
           @aggregated_status_bools[index] = status.include?(key)
         end
-        aggrated_status_changed
+        aggrated_status_changed options
       end
     end
 
@@ -54,8 +54,8 @@ module RSMP
       end
     end
 
-    def aggrated_status_changed
-      @node.aggrated_status_changed self
+    def aggrated_status_changed options={}
+      @node.aggrated_status_changed self, options
     end
  
     def alarm code:, status:

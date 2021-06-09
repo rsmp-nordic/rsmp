@@ -14,6 +14,7 @@ module RSMP
       super options
       @proxies = []
       @sleep_condition = Async::Notification.new
+      @proxies_condition = Async::Notification.new
     end
 
     def site_id
@@ -74,9 +75,9 @@ module RSMP
       SupervisorProxy.new settings
     end
 
-    def aggrated_status_changed component
+    def aggrated_status_changed component, options={}
       @proxies.each do |proxy|
-        proxy.send_aggregated_status component
+        proxy.send_aggregated_status component, options
       end
     end
 
@@ -91,9 +92,11 @@ module RSMP
         archive: @archive
       })
       @proxies << proxy
+      @proxies_condition.signal
       run_site_proxy task, proxy
     ensure
       @proxies.delete proxy
+      @proxies_condition.signal
     end
 
     def run_site_proxy task, proxy
@@ -142,5 +145,19 @@ module RSMP
       end
     end
 
+    def wait_for_supervisor ip, timeout
+      supervisor = find_supervisor ip
+      return supervisor if supervisor
+      wait_for(@proxy_condition,timeout) { find_supervisor ip }
+    rescue Async::TimeoutError
+      raise RSMP::TimeoutError.new "Supervisor '#{ip}' did not connect within #{timeout}s"
+    end
+
+    def find_supervisor ip
+      @proxies.each do |supervisor|
+        return supervisor if ip == :any || supervisor.ip == ip
+      end
+      nil
+    end
   end
 end

@@ -123,15 +123,28 @@ module RSMP
       @version_determined = true
     end
 
-    def send_aggregated_status component
+    def send_aggregated_status component, options={}
+      m_id = options[:m_id] || RSMP::Message.make_m_id
       message = AggregatedStatus.new({
         "aSTS" => clock.to_s,
         "cId" =>  component.c_id,
         "fP" => 'NormalControl',
         "fS" => nil,
-        "se" => component.aggregated_status_bools
+        "se" => component.aggregated_status_bools,
+        "mId" => m_id
       })
-      send_message message
+
+      if options[:collect]
+        result = nil
+        task = @task.async do |task|
+          wait_for_acknowledgement task, options[:collect], m_id
+        end
+        send_message message, validate: options[:validate]
+        return message, task.wait
+      else
+        send_message message, validate: options[:validate]
+        message
+      end
     end
 
     def process_aggregated_status message

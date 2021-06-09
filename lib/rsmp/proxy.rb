@@ -528,18 +528,6 @@ module RSMP
     def version_acknowledged
     end
 
-    def wait_for_acknowledgement original, timeout
-      raise ArgumentError unless original
-      wait_for(@acknowledgement_condition,timeout) do |message|
-        if message.is_a?(MessageNotAck) && message.attributes["oMId"] == original.m_id
-          raise RSMP::MessageRejected.new(message.attributes['rea'])
-        end
-        message.is_a?(MessageAck) && message.attributes["oMId"] == original.m_id
-      end
-    rescue Async::TimeoutError
-      raise RSMP::TimeoutError.new("Acknowledgement for #{original.type} #{original.m_id} not received within #{timeout}s")
-    end
-
     def node
       raise 'Must be overridden'
     end
@@ -547,5 +535,29 @@ module RSMP
     def author
       node.site_id
     end
+
+    def wait_for_acknowledgement parent_task, options={}, m_id
+      collect(parent_task,options.merge({
+        type: ['MessageAck','MessageNotAck'],
+        num: 1
+      })) do |message|
+        if message.is_a?(MessageNotAck)
+          if message.attribute('oMId') == m_id
+            # set result to an exception, but don't raise it.
+            # this will be returned by the task and stored as the task result
+            # when the parent task call wait() on the task, the exception
+            # will be raised in the parent task, and caught by rspec.
+            # rspec will then show the error and record the test as failed
+            m_id_short = RSMP::Message.shorten_m_id m_id, 8
+            result = RSMP::MessageRejected.new "Aggregated status request #{m_id_short} was rejected: #{message.attribute('rea')}"
+            next true   # done, no more messages wanted
+          end
+        elsif message.is_a?(MessageAck)
+          next true if message.attribute('oMId') == m_id
+        end
+        false
+      end
+    end
+
   end
 end

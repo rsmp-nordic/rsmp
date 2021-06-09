@@ -2,24 +2,6 @@
 module RSMP
   module SiteProxyWait
 
-    def wait_for_status_updates parent_task, options={}, &send_block
-      send_while_collecting parent_task, send_block do |task, m_id|
-        collect_status_updates_or_responses task, 'StatusUpdate', options, m_id
-      end
-    end
-
-    def wait_for_status_responses parent_task, options={}, &send_block
-      send_while_collecting parent_task, send_block do |task, m_id|
-        collect_status_updates_or_responses task, 'StatusResponse', options, m_id
-      end
-    end
-
-    def wait_for_command_responses parent_task, options={}, &send_block
-      send_while_collecting parent_task, send_block do |task, m_id|
-        collect_command_responses task, options, m_id
-      end
-    end
-
     def wait_for_alarm parent_task, options={}
       matching_alarm = nil
       message = collect(parent_task,options.merge(type: "Alarm", with_message: true, num: 1)) do |message|
@@ -159,23 +141,6 @@ module RSMP
         return false if query['v'] && item['v'] != query['v']
       end
       true
-    end
-
-    def send_while_collecting parent_task, send_block, &collect_block
-      m_id = RSMP::Message.make_m_id    # make message id so we can start waiting for it
-
-      # wait for command responses in an async task
-      task = parent_task.async do |task|
-        collect_block.call task, m_id
-      rescue StandardError => e
-        notify_error e, level: :internal
-      end
-
-       # call block, it should send command request using the given m_id
-      send_block.call m_id
-
-      # wait for the response and return it, raise exception if NotAck received, it it timed out
-      task.wait
     end
 
     def wait_for_aggregated_status parent_task, options={}

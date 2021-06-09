@@ -134,7 +134,7 @@ module RSMP
       acknowledge message
     end
 
-    def aggrated_status_changed component
+    def aggrated_status_changed component, options={}
       @supervisor.aggregated_status_changed self, component
     end
 
