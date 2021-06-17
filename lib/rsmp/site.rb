@@ -75,7 +75,7 @@ module RSMP
       SupervisorProxy.new settings
     end
 
-    def aggrated_status_changed component, options={}
+    def aggregated_status_changed component, options={}
       @proxies.each do |proxy|
         proxy.send_aggregated_status component, options
       end

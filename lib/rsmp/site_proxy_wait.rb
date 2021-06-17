@@ -143,7 +143,7 @@ module RSMP
       true
     end
 
-    def wait_for_aggregated_status parent_task, options={}
+    def wait_for_aggregated_status parent_task, options, m_id
       collect(parent_task,options.merge({
         type: ['AggregatedStatus','MessageNotAck'],
         num: 1

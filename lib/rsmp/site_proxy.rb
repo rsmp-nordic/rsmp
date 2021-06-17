@@ -94,7 +94,7 @@ module RSMP
       if options[:collect]
         result = nil
         task = @task.async do |task|
-          wait_for_aggregated_status task, options[:collect]
+          wait_for_aggregated_status task, options[:collect], m_id
         end
         send_message message, validate: options[:validate]
         return message, task.wait
@@ -134,7 +134,7 @@ module RSMP
       acknowledge message
     end
 
-    def aggrated_status_changed component, options={}
+    def aggregated_status_changed component, options={}
       @supervisor.aggregated_status_changed self, component
     end
 

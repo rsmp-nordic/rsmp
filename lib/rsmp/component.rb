@@ -36,7 +36,7 @@ module RSMP
         AGGREGATED_STATUS_KEYS.each_with_index do |key,index|
           @aggregated_status_bools[index] = status.include?(key)
         end
-        aggrated_status_changed options
+        aggregated_status_changed options
       end
     end
 
@@ -50,12 +50,12 @@ module RSMP
           @aggregated_status_bools[index] = on
           @aggregated_status << key if on
         end
-        aggrated_status_changed
+        aggregated_status_changed
       end
     end
 
-    def aggrated_status_changed options={}
-      @node.aggrated_status_changed self, options
+    def aggregated_status_changed options={}
+      @node.aggregated_status_changed self, options
     end
  
     def alarm code:, status:

@@ -69,7 +69,7 @@ module RSMP
         group.move pos
       end
       if pos == 0
-        aggrated_status_changed
+        aggregated_status_changed
       end
     end
 

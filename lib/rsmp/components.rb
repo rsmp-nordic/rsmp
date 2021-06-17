@@ -8,7 +8,7 @@ module RSMP
       @components = {}
     end
 
-    def aggrated_status_changed component, options={}
+    def aggregated_status_changed component, options={}
     end
 
     def setup_components settings
