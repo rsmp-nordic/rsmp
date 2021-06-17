@@ -64,7 +64,7 @@ GEM
     nio4r (2.5.7)
     rake (13.0.1)
     regexp_parser (2.1.1)
-    rsmp_schemer (0.2.0)
+    rsmp_schemer (0.2.1)
       json_schemer (~> 0.2.18)
     rspec (3.9.0)
       rspec-core (~> 3.9.0)
