@@ -54,7 +54,8 @@ module RSMP
 
     def connection_complete
       super
-      log "Connection to supervisor established, using core #{@rsmp_version}, #{sxl} #{sxl_version}", level: :info
+      sanitized_sxl_version = RSMP::Schemer.sanitize_version(sxl_version)
+      log "Connection to supervisor established, using core #{@rsmp_version}, #{sxl} #{sanitized_sxl_version}", level: :info
       start_watchdog
     end
 

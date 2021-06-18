@@ -36,7 +36,8 @@ module RSMP
 
     def connection_complete
       super
-      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{@site_sxl_version}", level: :info
+       sanitized_sxl_version = RSMP::Schemer.sanitize_version(@site_sxl_version)
+      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{sanitized_sxl_version}", level: :info
     end
 
     def process_message message
@@ -313,6 +314,8 @@ module RSMP
       # store sxl version requested by site
       # TODO should check agaist site settings
       @site_sxl_version = message.attribute 'SXL'
+    rescue RSMP::Schemer::UnknownSchemaError => e
+      dont_acknowledge message, "Rejected #{message.type} message,", "#{e}"
     end
 
     def sxl_version
@@ -327,8 +330,6 @@ module RSMP
       check_rsmp_version message
       check_sxl_version message
       version_accepted message
-    rescue RSMP::Schemer::UnknownSchemaError => e
-      dont_acknowledge message, "Rejected #{message.type} message,", "#{e}"
     end
 
     def check_site_ids message

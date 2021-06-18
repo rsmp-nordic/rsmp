@@ -162,6 +162,8 @@ module RSMP
           begin
             now = Clock.now
             timer(now)
+          rescue RSMP::Schemer::Error => e
+            puts "Timer: Schema error: #{e}"
           rescue EOFError => e
             log "Timer: Connection closed: #{e}", level: :warning
           rescue IOError => e
@@ -246,7 +248,7 @@ module RSMP
       # TODO
       # what schema should we use to validate the intial Version and MessageAck messages?
       schemas = { core: '3.1.5' }
-      schemas[sxl] = sxl_version if sxl
+      schemas[sxl] = RSMP::Schemer.sanitize_version(sxl_version) if sxl
       schemas
     end
 
@@ -261,7 +263,7 @@ module RSMP
       log_send message, reason
     rescue EOFError, IOError
       buffer_message message
-    rescue SchemaError => e
+    rescue SchemaError, RSMP::Schemer::Error => e
       str = "Could not send #{message.type} because schema validation failed: #{e.message}"
       log str, message: message, level: :error
       notify_error e.exception("#{str} #{message.json}")
@@ -306,7 +308,7 @@ module RSMP
       log str, message: Malformed.new(attributes), level: :warning
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
       nil
-    rescue SchemaError => e
+    rescue SchemaError, RSMP::Schemer::Error => e
       str = "Received invalid #{message.type}, schema errors: #{e.message}"
       log str, message: message, level: :warning
       notify_error e.exception("#{str} #{message.json}")
