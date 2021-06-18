@@ -49,7 +49,6 @@ module RSMP
           raise RSMP::ConfigurationError.new("Configuration for site '#{site_id}' is empty")
         end
         sxl = settings['sxl']
-        sxl = 'tlc' unless sxl    # temporary fix until configs are updated
         unless sxl
           raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': No SXL specified")
         end

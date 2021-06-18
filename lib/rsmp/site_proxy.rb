@@ -308,7 +308,7 @@ module RSMP
       # comes from the Version message send by the site
       type = 'tlc'
       version = message.attribute 'SXL'
-      RSMP::Schemer::find_schema! type, version 
+      RSMP::Schemer::find_schema! type, version, lenient: true
 
       # store sxl version requested by site
       # TODO should check agaist site settings
