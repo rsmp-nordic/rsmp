@@ -45,9 +45,11 @@ module RSMP
       @options[:timeout] = options[:timeout] if options[:timeout]
       @block = block
 
-      listen do
-        task.with_timeout(@options[:timeout]) do
-          @condition.wait
+      unless @done
+        listen do
+          task.with_timeout(@options[:timeout]) do
+            @condition.wait
+          end
         end
       end
 
