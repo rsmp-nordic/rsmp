@@ -7,6 +7,7 @@ module RSMP
       defaults = {
         'active'=>false,
         'path'=>nil,
+        'stream'=>nil,
         'author'=>false,
         'color'=>true,
         'site_id'=>true,
@@ -33,7 +34,9 @@ module RSMP
     end
 
     def setup_output_destination
-      if @settings['path']
+      if @settings['stream']
+        @stream = @settings['stream']
+      elsif @settings['path']
         @stream = File.open(@settings['path'],'a')  # appending
       else
         @stream = $stdout
@@ -85,20 +88,19 @@ module RSMP
     def colorize level, str
       if @settings["color"] == false || @settings["color"] == nil
         str
-      elsif @settings["color"] == true
-        case level
-        when  :error
-          str.colorize(:red)
-        when :warning
-          str.colorize(:light_yellow)
-        when :not_acknowledged
-          str.colorize(:cyan)
-        when :log
-          str.colorize(:light_blue)
-        when :statistics
-          str.colorize(:light_black)
-        when :test
-          str.colorize(:light_magenta)
+      elsif @settings["color"] == true || @settings["color"].is_a?(Hash)
+        colors = {
+          'info' => 'white',
+          'log' => 'light_blue',
+          'test' => 'light_magenta',
+          'statistics' => 'light_black',
+          'not_acknowledged' => 'cyan',
+          'warning' => 'light_yellow',
+          'error' => 'red'
+        }
+        colors.merge! @settings["color"] if @settings["color"].is_a?(Hash)
+        if colors[level.to_s]
+          str.colorize colors[level.to_s].to_sym
         else
           str
         end
@@ -111,7 +113,7 @@ module RSMP
       end
     end
 
-    def log item, force:false 
+    def log item, force:false
       if output?(item, force)
         output item[:level], build_output(item) 
       end
