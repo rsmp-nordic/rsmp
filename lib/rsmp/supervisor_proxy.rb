@@ -146,15 +146,6 @@ module RSMP
         send_message message, validate: options[:validate]
         message
       end
-
-      # send an invalid message
-      message = AggregatedStatus.new({
-        "aSTS" => clock.to_s,
-        "cId" =>  component.c_id,
-        "fP" => 'Invalid',
-      })
-      send_message message, validate: false
-
     end
 
     def process_aggregated_status message
