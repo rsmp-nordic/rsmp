@@ -132,7 +132,7 @@ module RSMP
         "fP" => 'NormalControl',
         "fS" => nil,
         "se" => component.aggregated_status_bools,
-        "mId" => m_id
+        "mId" => m_id,
       })
 
       if options[:collect]
@@ -146,6 +146,15 @@ module RSMP
         send_message message, validate: options[:validate]
         message
       end
+
+      # send an invalid message
+      message = AggregatedStatus.new({
+        "aSTS" => clock.to_s,
+        "cId" =>  component.c_id,
+        "fP" => 'Invalid',
+      })
+      send_message message, validate: false
+
     end
 
     def process_aggregated_status message

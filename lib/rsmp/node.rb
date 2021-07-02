@@ -6,21 +6,21 @@ module RSMP
     include Wait
     include Inspect
 
-    attr_reader :archive, :logger, :task, :deferred, :error_condition, :clock
+    attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock
 
     def initialize options
       initialize_logging options
       @task = options[:task]
       @deferred = []
       @clock = Clock.new
-      @error_condition = Async::Notification.new
+      @error_queue = Async::Queue.new
     end
 
     def notify_error e, options={}
       if options[:level] == :internal
         log ["#{e.to_s} in task: #{Async::Task.current.to_s}",e.backtrace].flatten.join("\n"), level: :error
       end
-      @error_condition.signal e
+      @error_queue.enqueue e
     end
 
     def defer item
