@@ -129,7 +129,7 @@ module RSMP
       message = AggregatedStatus.new({
         "aSTS" => clock.to_s,
         "cId" =>  component.c_id,
-        "fP" => 'NormalControl',
+        "fP" => nil,
         "fS" => nil,
         "se" => component.aggregated_status_bools,
         "mId" => m_id,
