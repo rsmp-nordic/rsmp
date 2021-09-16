@@ -23,6 +23,7 @@ module RSMP
       @connection_info = options[:info]
       @sxl = nil
       @site_settings = nil  # can't pick until we know the site id
+      @state = :stopped
       initialize_distributor
 
       prepare_collection @settings['collect']
