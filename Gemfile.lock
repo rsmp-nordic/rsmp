@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rsmp (0.2.1)
+    rsmp (0.2.2)
       async (~> 1.29.1)
       async-io (~> 1.32.1)
       colorize (~> 0.8.1)
@@ -24,12 +24,12 @@ GEM
       cucumber (>= 2.4, < 7.0)
       rspec-expectations (~> 3.4)
       thor (~> 1.0)
-    async (1.29.1)
+    async (1.29.2)
       console (~> 1.10)
       nio4r (~> 2.3)
       timers (~> 4.1)
-    async-io (1.32.1)
-      async (~> 1.14)
+    async-io (1.32.2)
+      async
     builder (3.2.4)
     childprocess (4.1.0)
     colorize (0.8.1)
@@ -88,7 +88,7 @@ GEM
     mime-types-data (3.2021.0225)
     minitest (5.14.4)
     multi_test (0.1.2)
-    nio4r (2.5.7)
+    nio4r (2.5.8)
     protobuf-cucumber (3.10.8)
       activesupport (>= 3.2)
       middleware
