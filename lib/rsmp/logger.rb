@@ -96,7 +96,8 @@ module RSMP
           'statistics' => 'light_black',
           'not_acknowledged' => 'cyan',
           'warning' => 'light_yellow',
-          'error' => 'red'
+          'error' => 'red',
+          'debug' => 'light_black'
         }
         colors.merge! @settings["color"] if @settings["color"].is_a?(Hash)
         if colors[level.to_s]
