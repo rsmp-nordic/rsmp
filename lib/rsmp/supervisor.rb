@@ -136,6 +136,13 @@ module RSMP
       end
     end
 
+    def peek_version_message protocol
+      json = protocol.peek_line
+      attributes = Message.parse_attributes json
+      message = Message.build attributes, json
+      message.attribute('siteId').first['sId']
+    end
+
     def connect socket, info
       log "Site connected from #{format_ip_and_port(info)}",
           ip: info[:ip],
@@ -144,25 +151,36 @@ module RSMP
           timestamp: Clock.now
 
       authorize_ip info[:ip]
-      check_max_sites
 
-      proxy = build_proxy({
+      stream = Async::IO::Stream.new socket
+      protocol = Async::IO::Protocol::Line.new stream, Proxy::WRAPPING_DELIMITER
+
+      settings = {
         supervisor: self,
         ip: info[:ip],
         port: info[:port],
         task: @task,
         settings: {'collect'=>@supervisor_settings['collect']},
         socket: socket,
+        stream: stream,
+        protocol: protocol,
         info: info,
         logger: @logger,
         archive: @archive
-      })
-      @proxies.push proxy
+      }
+
+      id = peek_version_message protocol
+      proxy = find_site id
+      if proxy
+        proxy.revive settings
+      else
+        check_max_sites
+        proxy = build_proxy settings
+        @proxies.push proxy
+      end
       proxy.run     # will run until the site disconnects
     ensure
-      @proxies.delete proxy
       site_ids_changed
-
       stop if @supervisor_settings['one_shot']
     end
 
@@ -188,7 +206,14 @@ module RSMP
       return find_site(site_id) != nil
     end
 
-    def find_site site_id
+    def find_site_from_ip_port ip, port
+      @proxies.each do |site|
+        return site if site.ip == ip && site.port == port
+      end
+      nil
+    end
+
+   def find_site site_id
       @proxies.each do |site|
         return site if site_id == :any || site.site_id == site_id
       end
@@ -210,12 +235,13 @@ module RSMP
     end
 
     def check_site_id site_id
-      check_site_already_connected site_id
+      #check_site_already_connected site_id
       return site_id_to_site_setting site_id
     end
 
     def check_site_already_connected site_id
-      raise FatalError.new "Site '#{site_id}' already connected" if find_site(site_id)
+      site = find_site(site_id)
+      raise FatalError.new "Site '#{site_id}' already connected" if site != nil && site != self
     end
 
     def site_id_to_site_setting site_id

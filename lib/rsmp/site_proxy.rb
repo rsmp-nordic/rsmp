@@ -15,6 +15,13 @@ module RSMP
       @site_id = nil
     end
 
+    def revive options
+      super options
+      @supervisor = options[:supervisor]
+      @settings = @supervisor.supervisor_settings.clone
+    end
+
+
     def inspect
       "#<#{self.class.name}:#{self.object_id}, #{inspector(
         :@acknowledgements,:@settings,:@site_settings,:@components
@@ -82,8 +89,12 @@ module RSMP
 
     end
 
+    def validate_ready action
+      raise NotReady.new("Can't #{action} because connection is not ready. (Currently #{@state})") unless ready?
+    end
+
     def request_aggregated_status component, options={}
-      raise NotReady unless ready?
+      validate_ready 'request aggregated status'
       m_id = options[:m_id] || RSMP::Message.make_m_id
 
       message = RSMP::AggregatedStatusRequest.new({
@@ -163,7 +174,7 @@ module RSMP
     end
 
     def request_status component, status_list, options={}
-      raise NotReady unless ready?
+      validate_ready 'request status'
       m_id = options[:m_id] || RSMP::Message.make_m_id
 
       # additional items can be used when verifying the response,
@@ -203,7 +214,7 @@ module RSMP
     end
 
     def subscribe_to_status component, status_list, options={}
-      raise NotReady unless ready?
+      validate_ready 'subscribe to status'
       m_id = options[:m_id] || RSMP::Message.make_m_id
       
       # additional items can be used when verifying the response,
@@ -238,7 +249,7 @@ module RSMP
     end
 
     def unsubscribe_to_status component, status_list, options={}
-      raise NotReady unless ready?
+      validate_ready 'unsubscribe to status'
       message = RSMP::StatusUnsubscribe.new({
           "ntsOId" => '',
           "xNId" => '',
@@ -269,7 +280,7 @@ module RSMP
     end
 
     def send_command component, command_list, options={}
-      raise NotReady unless ready?
+      validate_ready 'send command'
       m_id = options[:m_id] || RSMP::Message.make_m_id
       message = RSMP::CommandRequest.new({
           "ntsOId" => '',

@@ -11,23 +11,32 @@ module RSMP
     include Notifier
     include Inspect
 
-    attr_reader :state, :archive, :connection_info, :sxl, :task, :collector
+    attr_reader :state, :archive, :connection_info, :sxl, :task, :collector, :ip, :port
 
     def initialize options
       initialize_logging options
+      setup options
+      initialize_distributor
+      prepare_collection @settings['collect']
+      clear
+    end
+
+    def revive options
+      setup options
+    end
+
+    def setup options
       @settings = options[:settings]
       @task = options[:task]
       @socket = options[:socket]
+      @stream = options[:stream]
+      @protocol = options[:protocol]
       @ip = options[:ip]
       @port = options[:port]
       @connection_info = options[:info]
       @sxl = nil
       @site_settings = nil  # can't pick until we know the site id
       @state = :stopped
-      initialize_distributor
-
-      prepare_collection @settings['collect']
-      clear
     end
 
     def inspect
@@ -106,8 +115,8 @@ module RSMP
     def start_reader  
       @reader = @task.async do |task|
         task.annotate "reader"
-        @stream = Async::IO::Stream.new(@socket)
-        @protocol = Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+        @stream ||= Async::IO::Stream.new(@socket)
+        @protocol ||= Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
 
         while json = @protocol.read_line
           beginning = Time.now
