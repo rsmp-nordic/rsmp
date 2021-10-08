@@ -2,6 +2,75 @@
 module RSMP
   module SiteProxyWait
 
+    # Class for matching incoming messaging against a list of wanted statuses,
+    # and flagging when everything has been matched.
+    class StatusMatcher
+      attr_reader :result, :messages
+
+      # Initialize with a list a wanted statuses
+      def initialize want, options={}
+        @want = want.clone
+        @result = {}
+        @messages = []
+        @m_id = options[:m_id]
+      end
+
+      # Check for MessageNotAck
+      # If the original request identified by @m_id is rejected, we abort
+      def check_not_ack message
+        if message.is_a?(MessageNotAck)
+          if message.attribute('oMId') == @m_id
+            # Set result to an exception, but don't raise it.
+            # This will be returned by the async task and stored as the task result
+            # When the parent task call wait() on the task, the exception
+            # will be raised in the parent task, and caught by RSpec.
+            # RSpec will then show the error and record the test as failed
+            m_id_short = RSMP::Message.shorten_m_id @m_id, 8
+            @result = RSMP::MessageRejected.new("Status request #{m_id_short} was rejected: #{message.attribute('rea')}")
+            @messages = [message]
+            return true
+          end
+          return false
+        end
+      end
+
+      # Check if a messages is wanted.
+      # Returns true when we found all that we want.
+      def process message
+        ack_status = check_not_ack message
+        return ack_status if ack_status != nil
+
+        add = false
+        @want.each_with_index do |query,i|          # look through wanted
+          message.attributes['sS'].each do |input|  # look through status items in message
+            matching = status_match? query, input
+            if matching == true
+              @result[query] = input
+              add = true
+            elsif matching == false
+              @result.delete query
+            end
+          end
+        end
+        @messages << message if add
+        @result.size == @want.size      # queries left to match?
+      end
+
+      # Match an item against a query
+      def status_match? query, item
+        return nil if query['sCI'] && query['sCI'] != item['sCI']
+        return nil if query['n'] && query['n'] != item['n']
+        return false if query['q'] && query['q'] != item['q']
+        if query['s'].is_a? Regexp
+          return false if query['s'] && item['s'] !~ query['s']
+        else
+          return false if query['s'] && item['s'] != query['s']
+        end
+        true
+      end
+    end
+
+
     def wait_for_alarm parent_task, options={}
       matching_alarm = nil
       message = collect(parent_task,options.merge(type: "Alarm", with_message: true, num: 1)) do |message|
@@ -74,62 +143,15 @@ module RSMP
     end
 
     def collect_status_updates_or_responses task, type, options, m_id
-      want = options[:status_list].clone
-      result = {}
-      messages = []
-      # wait for a status update
-      collect(task,options.merge({
-        type: [type,'MessageNotAck'],
-        num: 1
-      })) do |message|
-        if message.is_a?(MessageNotAck)
-          if message.attribute('oMId') == m_id
-            # set result to an exception, but don't raise it.
-            # this will be returned by the task and stored as the task result
-            # when the parent task call wait() on the task, the exception
-            # will be raised in the parent task, and caught by rspec.
-            # rspec will then show the error and record the test as failed
-            m_id_short = RSMP::Message.shorten_m_id m_id, 8
-            result = RSMP::MessageRejected.new "Status request #{m_id_short} was rejected: #{message.attribute('rea')}"
-            next true   # done, no more messages wanted
-          end
-          false
-        else
-          found = []
-          add = false
-          # look through querues
-          want.each_with_index do |query,i|
-            # look through status items in message
-            message.attributes['sS'].each do |input|
-              matching = status_match? query, input
-              if matching == true
-                result[query] = input
-                add = true
-              elsif matching == false
-                result.delete query
-              end
-            end
-          end
-          messages << message if add
-          result.size == want.size # any queries left to match?
-        end
+      matcher = StatusMatcher.new options[:status_list], m_id: m_id
+      rejected = nil
+      collect(task,options.merge( type: [type,'MessageNotAck'], num: 1 )) do |message|
+        matcher.process message   # returns true when done (all queries matched)
       end
-      return result, messages
+      return matcher.result, matcher.messages
     rescue Async::TimeoutError
       type_str = {'StatusUpdate'=>'update', 'StatusResponse'=>'response'}[type]
       raise RSMP::TimeoutError.new "Did not received correct status #{type_str} in reply to #{m_id} within #{options[:timeout]}s"
-    end
-
-    def status_match? query, item
-      return nil if query['sCI'] && query['sCI'] != item['sCI']
-      return nil if query['n'] && query['n'] != item['n']
-      return false if query['q'] && query['q'] != item['q']
-      if query['s'].is_a? Regexp
-        return false if query['s'] && item['s'] !~ query['s']
-      else
-        return false if query['s'] && item['s'] != query['s']
-      end
-      true
     end
 
     def command_match? query, item
