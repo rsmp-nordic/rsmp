@@ -2,37 +2,88 @@
 module RSMP
   module SiteProxyWait
 
-    class Matcher
-      attr_reader :result, :messages
 
+    # Base class for matching incoming messages against a list of queries.
+    # Queries are specified as an array of hashes, e.g
+    # [
+    #   {"cCI"=>"M0104", "cO"=>"setDate", "n"=>"securityCode", "v"=>"1111"},
+    #   {"cCI"=>"M0104", "cO"=>"setDate", "n"=>"year", "v"=>"2020"},
+    #   {"cCI"=>"M0104", "cO"=>"setDate", "n"=>"month", "v"=>/\d+/}
+    #  ]
+    #
+    # Note that queries can contain regex patterns for values, like /\d+/ in the example above.
+    #
+    # When an input messages is received it typically contains several items, eg:
+    # [
+    #   {"cCI"=>"M0104", "n"=>"month", "v"=>"9", "age"=>"recent"},
+    #   {"cCI"=>"M0104", "n"=>"day", "v"=>"29", "age"=>"recent"},
+    #   {"cCI"=>"M0104", "n"=>"hour", "v"=>"17", "age"=>"recent"}
+    # ]
+    #
+    # Each of the input items is matched against each of the queries.
+    # If a match is found, it's stored in the @results hash, with the query as the key,
+    # and a mesage and status as the key. In the example above, this query:
+    #
+    # {"cCI"=>"M0104", "cO"=>"setDate", "n"=>"month", "v"=>"9"}
+    #
+    # matched this input:
+    # {"cCI"=>"M0104", "n"=>"month", "v"=>"9", "age"=>"recent"}
+    # 
+    #
+    # {
+    #   {"cCI"=>"M0104", "cO"=>"setDate", "n"=>"month", "v"=>/\d+/}:
+    #     { message, {"cCI"=>"M0104", "cO"=>"setDate", "n"=>"month", "v"=>"9"} }
+    # }
+    #
+    #
+
+    class Matcher
       # Initialize with a list a wanted statuses
       def initialize want, options={}
-        @want = want.clone
-        @result = {}
-        @messages = []
+        @queries = {}
+        want.each do |query|
+          @queries[query] = nil
+        end
         @m_id = options[:m_id]
+      end
+
+      def result
+        @queries
+      end
+
+      def messages
+        @queries.map { |query,result| result[:message] }.uniq
+      end
+
+      def items
+        @queries.map { |query,result| result[:item] }.uniq
+      end
+
+      # Queries left to match?
+      def done?
+        @queries.values.all? { |result| result != nil }
       end
 
       # Check if a messages is wanted.
       # Returns true when we found all that we want.
       def process message
         ack_status = check_not_ack message
-        return ack_status if ack_status != nil
-
-        add = false
-        @want.each_with_index do |query,i|          # look through wanted
-          get_items(message).each do |input|  # look through status items in message
-            matching = match? query, input
+        if ack_status != nil
+          return ack_status 
+        end
+        @queries.keys.each do |query|        # look through queries
+          get_items(message).each do |item|  # look through status items in message
+            matching = match? query, item
             if matching == true
-              @result[query] = input
-              add = true
+              @queries[query] = { message:message, item:item }
+              break
             elsif matching == false
-              @result.delete query
+              @queries[query] = nil
+              break
             end
           end
         end
-        @messages << message if add
-        @result.size == @want.size      # queries left to match?
+        done?      
       end
 
       # Check for MessageNotAck
@@ -46,8 +97,7 @@ module RSMP
             # will be raised in the parent task, and caught by RSpec.
             # RSpec will then show the error and record the test as failed
             m_id_short = RSMP::Message.shorten_m_id @m_id, 8
-            @result = RSMP::MessageRejected.new("#{type_str} #{m_id_short} was rejected: #{message.attribute('rea')}")
-            @messages = [message]
+            @queries = RSMP::MessageRejected.new("#{type_str} #{m_id_short} was rejected: #{message.attribute('rea')}")
             return true
           end
           return false
@@ -98,6 +148,7 @@ module RSMP
       # Match an item against a query
       def match? query, item
         return nil if query['sCI'] && query['sCI'] != item['sCI']
+        return nil if query['cO'] && query['cO'] != item['cO']
         return nil if query['n'] && query['n'] != item['n']
         return false if query['q'] && query['q'] != item['q']
         if query['s'].is_a? Regexp
@@ -140,7 +191,7 @@ module RSMP
       collect(parent_task,options.merge(type: ['CommandResponse','MessageNotAck'], num: 1)) do |message|
         matcher.process message   # returns true when done (all queries matched)
       end
-      return matcher.result, matcher.messages
+      return matcher
     rescue Async::TimeoutError
       raise RSMP::TimeoutError.new "Did not receive correct command response to #{m_id} within #{options[:timeout]}s"
     end
@@ -150,7 +201,7 @@ module RSMP
       collect(task,options.merge( type: [type,'MessageNotAck'], num: 1 )) do |message|
         matcher.process message   # returns true when done (all queries matched)
       end
-      return matcher.result, matcher.messages
+      return matcher
     rescue Async::TimeoutError
       type_str = {'StatusUpdate'=>'update', 'StatusResponse'=>'response'}[type]
       raise RSMP::TimeoutError.new "Did not received correct status #{type_str} in reply to #{m_id} within #{options[:timeout]}s"

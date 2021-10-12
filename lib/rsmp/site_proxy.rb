@@ -199,9 +199,10 @@ module RSMP
         # task.wait return the result of the task. if the task raised an exception
         # it will be reraised. but that mechanish does not work if multiple values
         # are returned. so manually raise if first element is an exception
-        result = task.wait
-        raise result.first if result.first.is_a? Exception
-        return message, *result
+        matcher = task.wait
+        result = matcher.result
+        raise result if result.is_a? Exception
+        return message, matcher
       else
         send_message message, validate: options[:validate]
         message
@@ -239,9 +240,10 @@ module RSMP
         # task.wait return the result of the task. if the task raised an exception
         # it will be reraised. but that mechanish does not work if multiple values
         # are returned. so manually raise if first element is an exception
-        result = task.wait
-        raise result.first if result.first.is_a? Exception
-        return message, *result
+        matcher = task.wait
+        result = matcher.result
+        raise result if result.is_a? Exception
+        return message, matcher
       else
         send_message message, validate: options[:validate]
         message
@@ -300,9 +302,10 @@ module RSMP
         # task.wait return the result of the task. if the task raised an exception
         # it will be reraised. but that mechanish does not work if multiple values
         # are returned. so manually raise if first element is an exception
-        result = task.wait
-        raise result.first if result.first.is_a? Exception
-        return message, *result
+        matcher = task.wait
+        result = matcher.result
+        raise result if result.is_a? Exception
+        return message, matcher
       else
         send_message message, validate: options[:validate]
         message
