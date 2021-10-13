@@ -15,7 +15,6 @@ module RSMP
       @condition = Async::Notification.new
       @done = false
       @options = options
-      @num = options[:num]
     end
 
     def inspect
@@ -34,15 +33,8 @@ module RSMP
       @condition.wait
     end
 
-    def collect_for task, duration
-      siphon do
-        task.sleep duration
-      end
-    end
-
     def collect task, options={}, &block
-      @num = options[:num] if options[:num]
-      @options[:timeout] = options[:timeout] if options[:timeout]
+      @options.merge! options
       @block = block
 
       unless @done
@@ -52,13 +44,12 @@ module RSMP
           end
         end
       end
+      result
+    end
 
-      if @num == 1
-        @messages = @messages.first       # if one message was requested, return it instead of array
-      else
-        @messages = @messages.first @num  # return array, but ensure we never return more than requested
-      end
-      @messages
+    def result
+      return @messages.first if @options[:num] == 1      # if one message was requested, return it instead of array
+      @messages.first @options[:num]  # return array, but ensure we never return more than requested
     end
 
     def reset
@@ -69,20 +60,34 @@ module RSMP
     def notify message
       raise ArgumentError unless message
       return true if @done
-      return if message.direction == :in && @ingoing == false
-      return if message.direction == :out && @outgoing == false
       if matches? message
-        @messages << message
-        if @num && @messages.size >= @num
-          @done = true
-          @proxy.remove_listener self
-          @condition.signal
+        keep message
+        if done?
+          complete 
+          true
         end
       end
     end
 
+    def done?
+      @options[:num] && @messages.size >= @options[:num]
+    end
+
+    def complete
+      @done = true
+      @proxy.remove_listener self
+      @condition.signal
+    end
+
+    def keep message
+      @messages << message
+    end
+
     def matches? message
       raise ArgumentError unless message
+
+      return if message.direction == :in && @ingoing == false
+      return if message.direction == :out && @outgoing == false
 
       if @options[:type]
         return false if message == nil
@@ -92,12 +97,15 @@ module RSMP
           return false unless message.type == @options[:type]
         end
       end
+
       if @options[:component]
         return false if message.attributes['cId'] && message.attributes['cId'] != @options[:component]
       end
+
       if @block
         return false if @block.call(message) == false
       end
+      
       true
     end
   end
