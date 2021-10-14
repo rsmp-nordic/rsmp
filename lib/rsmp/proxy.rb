@@ -59,6 +59,7 @@ module RSMP
     def collect task, options, &block
       collector = RSMP::Collector.new self, options
       collector.collect task, &block
+      collector
     end
 
     def run

@@ -3,7 +3,6 @@
 module RSMP  
   class SiteProxy < Proxy
     include Components
-    include SiteProxyWait
 
     attr_reader :supervisor, :site_id
 
@@ -104,9 +103,8 @@ module RSMP
           "mId" => m_id
       })
       if options[:collect]
-        result = nil
         task = @task.async do |task|
-          wait_for_aggregated_status task, options[:collect], m_id
+          wait_for_aggregated_status task, options[:collect].merge(m_id: m_id)
         end
         send_message message, validate: options[:validate]
         return message, task.wait
@@ -178,7 +176,7 @@ module RSMP
       m_id = options[:m_id] || RSMP::Message.make_m_id
 
       # additional items can be used when verifying the response,
-      # but must to remove from the request
+      # but must be removed from the request
       request_list = status_list.map { |item| item.slice('sCI','n') }
 
       message = RSMP::StatusRequest.new({
@@ -188,30 +186,21 @@ module RSMP
           "sS" => request_list,
           "mId" => m_id
       })
-      if options[:collect]
-        result = nil
-        task = @task.async do |task|
-          collect_options = options[:collect].merge status_list: status_list
-          collect_status_responses task, collect_options, m_id
-        end
-        send_message message, validate: options[:validate]
-
-        # task.wait return the result of the task. if the task raised an exception
-        # it will be reraised. but that mechanish does not work if multiple values
-        # are returned. so manually raise if first element is an exception
-        matcher = task.wait
-        result = matcher.result
-        raise result if result.is_a? Exception
-        return message, matcher
-      else
-        send_message message, validate: options[:validate]
-        message
+      send_while_collecting message, options do |task|
+        collect_status_responses task, status_list, options[:collect].merge(m_id: m_id)
       end
     end
 
     def process_status_response message
       log "Received #{message.type}", message: message, level: :log
       acknowledge message
+    end
+
+    def send_while_collecting message, options, &block
+      task = @task.async { |task| yield task } if options[:collect]
+      send_message message, validate: options[:validate]
+      return message, task.wait if task
+      message
     end
 
     def subscribe_to_status component, status_list, options={}
@@ -229,24 +218,8 @@ module RSMP
           "sS" => subscribe_list,
           'mId' => m_id
       })
-      if options[:collect]
-        result = nil
-        task = @task.async do |task|
-          collect_options = options[:collect].merge status_list: status_list
-          collect_status_updates task, collect_options, m_id
-        end
-        send_message message, validate: options[:validate]
-
-        # task.wait return the result of the task. if the task raised an exception
-        # it will be reraised. but that mechanish does not work if multiple values
-        # are returned. so manually raise if first element is an exception
-        matcher = task.wait
-        result = matcher.result
-        raise result if result.is_a? Exception
-        return message, matcher
-      else
-        send_message message, validate: options[:validate]
-        message
+      send_while_collecting message, options do |task|
+         collect_status_updates task, status_list, options[:collect].merge(m_id: m_id)
       end
     end
 
@@ -291,24 +264,8 @@ module RSMP
           "arg" => command_list,
           "mId" => m_id
       })
-      if options[:collect]
-        result = nil
-        task = @task.async do |task|
-          collect_options = options[:collect].merge command_list: command_list
-          collect_command_responses task, collect_options, m_id
-        end
-        send_message message, validate: options[:validate]
-
-        # task.wait return the result of the task. if the task raised an exception
-        # it will be reraised. but that mechanish does not work if multiple values
-        # are returned. so manually raise if first element is an exception
-        matcher = task.wait
-        result = matcher.result
-        raise result if result.is_a? Exception
-        return message, matcher
-      else
-        send_message message, validate: options[:validate]
-        message
+      send_while_collecting message, options do |task|
+        collect_command_responses task, command_list, options[:collect].merge(m_id: m_id)
       end
     end
 
@@ -384,5 +341,37 @@ module RSMP
       @supervisor.notify_error e, options if @supervisor
     end
 
+    def wait_for_alarm parent_task, options={}
+      matching_alarm = nil
+      message = collect(parent_task,options.merge(type: "Alarm", with_message: true, num: 1)) do |message|
+        # TODO check components
+        matching_alarm = nil
+        alarm = message
+        next if options[:aCId] && options[:aCId] != alarm.attribute("aCId")
+        next if options[:aSp] && options[:aSp] != alarm.attribute("aSp")
+        next if options[:aS] && options[:aS] != alarm.attribute("aS")
+        matching_alarm = alarm
+        break
+      end
+      if item
+        { message: message, status: matching_alarm }
+      end
+    end
+
+    def collect_status_updates task, status_list, options
+      StatusUpdateMatcher.new(self, status_list, options).collect task
+    end
+
+    def collect_status_responses task, status_list, options
+      StatusResponseMatcher.new(self, status_list, options).collect task
+    end
+
+    def collect_command_responses task, command_list, options
+      CommandResponseMatcher.new(self, command_list, options).collect task
+    end
+
+    def wait_for_aggregated_status task, options
+      AggregatedStatusMatcher.new(self, options).collect task
+    end
   end
 end
