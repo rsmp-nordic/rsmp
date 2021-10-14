@@ -6,13 +6,13 @@ module RSMP
     attr_reader :condition, :messages, :done
 
     def initialize proxy, options={}
-      raise unless options[:timeout]
       super proxy, options
-      @options = options
+      @options = options.clone
       @ingoing = options[:ingoing] == nil ? true  : options[:ingoing]
       @outgoing = options[:outgoing] == nil ? false : options[:outgoing]
       @condition = Async::Notification.new
       @title = options[:title] || [@options[:type]].flatten.join('/')
+      @options[:timeout] ||= 1
       reset
     end
 
@@ -47,7 +47,7 @@ module RSMP
     rescue Async::TimeoutError
       str = "Did not receive #{@title}"
       str << " in response to #{options[:m_id]}" if options[:m_id]
-      str << " within #{options[:timeout]}s"
+      str << " within #{@options[:timeout]}s"
       raise RSMP::TimeoutError.new str
     end
 
