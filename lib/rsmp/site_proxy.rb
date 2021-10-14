@@ -42,7 +42,7 @@ module RSMP
 
     def connection_complete
       super
-       sanitized_sxl_version = RSMP::Schemer.sanitize_version(@site_sxl_version)
+      sanitized_sxl_version = RSMP::Schemer.sanitize_version(@site_sxl_version)
       log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{sanitized_sxl_version}", level: :info
     end
 
@@ -85,7 +85,6 @@ module RSMP
       acknowledge message
       send_version @site_id, rsmp_versions
       @version_determined = true
-
     end
 
     def validate_ready action

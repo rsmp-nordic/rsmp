@@ -225,7 +225,12 @@ module RSMP
       return site if site
       wait_for(@site_id_condition,timeout) { find_site site_id }
     rescue Async::TimeoutError
-      raise RSMP::TimeoutError.new "Site '#{site_id}' did not connect within #{timeout}s"
+      if site_id == :any
+        str = "No site connected"
+      else
+        str = "Site '#{site_id}' did not connect"
+      end
+      raise RSMP::TimeoutError.new "#{str} within #{timeout}s"
     end
 
     def wait_for_site_disconnect site_id, timeout
