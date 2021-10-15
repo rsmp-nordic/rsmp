@@ -41,7 +41,9 @@ module RSMP
         },
         'send_after_connect' => true,
         'components' => {
-          'C1' => {}
+          'main' => {
+            'C1' => {}
+          }
         }
       }
       

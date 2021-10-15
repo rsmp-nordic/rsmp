@@ -11,7 +11,7 @@ module RSMP
       initialize_components
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
-      @site_id = nil
+      @site_id = options[:site_id]
     end
 
     def revive options
@@ -103,7 +103,7 @@ module RSMP
       })
       if options[:collect]
         task = @task.async do |task|
-          wait_for_aggregated_status task, options[:collect].merge(m_id: m_id)
+          collect_aggregated_status task, options[:collect].merge(m_id: m_id)
         end
         send_message message, validate: options[:validate]
         return message, task.wait
@@ -369,7 +369,7 @@ module RSMP
       CommandResponseMatcher.new(self, command_list, options).collect task
     end
 
-    def wait_for_aggregated_status task, options
+    def collect_aggregated_status task, options
       AggregatedStatusMatcher.new(self, options).collect task
     end
   end

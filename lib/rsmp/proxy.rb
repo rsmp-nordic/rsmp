@@ -124,7 +124,11 @@ module RSMP
           message = process_packet json
           duration = Time.now - beginning
           ms = (duration*1000).round(4)
-          per_second = (1.0 / duration).round
+          if duration > 0
+            per_second = (1.0 / duration).round
+          else
+            per_second = Float::INFINITY
+          end
           if message
             type = message.type
             m_id = Logger.shorten_message_id(message.m_id)
@@ -203,7 +207,6 @@ module RSMP
     def watchdog_send_timer now
       return unless @watchdog_started  
       return if @site_settings['intervals']['watchdog'] == :never
-      
       if @latest_watchdog_send_at == nil
         send_watchdog now
       else

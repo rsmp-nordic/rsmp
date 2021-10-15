@@ -13,6 +13,7 @@ module RSMP
       @condition = Async::Notification.new
       @title = options[:title] || [@options[:type]].flatten.join('/')
       @options[:timeout] ||= 1
+      @options[:num] ||= 1
       reset
     end
 
@@ -51,21 +52,21 @@ module RSMP
       raise RSMP::TimeoutError.new str
     end
 
+    # Get the collected messages.
+    # If one message was requested, return it as a plain object instead of array
     def result
-      return @messages.first if @options[:num] == 1      # if one message was requested, return it instead of array
-      @messages.first @options[:num]      # return array, but ensure we never return more than requested
+      return @messages.first if @options[:num] == 1     
+      @messages.first @options[:num] 
     end
 
+    # Clear all query results
     def reset
       @messages = []
       @error = nil
       @done = false
     end
 
-    # Check for MessageNotAck
-    # If the original request identified by @m_id is rejected, set the result to an exception,
-    # which will be returned by the async task and stored as the task result.
-    # When the parent task call wait() on the task, the exception will be raised in the parent task.
+    # Check if we receive a NotAck related to initiating request, identified by @m_id.
     def check_not_ack message
       return unless @options[:m_id]
       if message.is_a?(MessageNotAck)
@@ -81,6 +82,7 @@ module RSMP
     # Handle message. and return true when we're done collecting
     def notify message
       raise ArgumentError unless message
+      raise RuntimeError.new("can't process message when already done") if @done
       check_not_ack(message)
       return true if @done
       check_match message
@@ -98,24 +100,31 @@ module RSMP
       end
     end
 
+    # Have we collected the required number of messages?
     def done?
       @options[:num] && @messages.size >= @options[:num]
     end
 
+    # Called when we're done collecting. Remove ourself as a listener,
+    # se we don't receive message notifications anymore
     def complete
       @done = true
       @proxy.remove_listener self
       @condition.signal
     end
 
+    # Store a message in the result array
     def keep message
       @messages << message
     end
 
+    # Remove a message from the result array
     def forget message
       @messages.delete message
     end
 
+    # Check a message against our match criteria
+    # Return true if there's a match
     def match? message
       raise ArgumentError unless message
       return if message.direction == :in && @ingoing == false

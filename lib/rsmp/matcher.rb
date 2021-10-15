@@ -35,6 +35,7 @@ module RSMP
   #
   #
   class Matcher < Collector
+    attr_reader :queries
 
     # Initialize with a list a wanted statuses
     def initialize proxy, want, options={}
@@ -55,14 +56,25 @@ module RSMP
       @queries.map { |query,result| result[:message] }.uniq
     end
 
-    # get items from results
+    # Get items from results
     def items
       @queries.map { |query,result| result[:item] }.uniq
     end
 
-    # Queries left to match?
+    # Are there queries left to match?
     def done?
       @queries.values.all? { |result| result != nil }
+    end
+
+    # Get a simplified hash of queries, with values set to either true or false,
+    # indicating which queries have been matched.
+    def status
+      @queries.transform_values{ |v| v != nil }
+    end
+
+    # Get a simply array of bools, showing which queries ahve been matched.
+    def summary
+      @queries.values.map { |v| v != nil }
     end
 
     # Mark a query as matched, by linking it to the matched item and message
@@ -75,11 +87,12 @@ module RSMP
       @queries[query] = nil
     end
 
-    # Check if a messages is wanted.
-    # Returns true when we found all that we want.
+    # Check if a messages matches our criteria.
+    # We iterate through each of the status items or return values in the message
+    # Breaks as soon as where done matching all queries
     def check_match message
       return unless match?(message)
-      @queries.keys.each do |query|        # look through queries
+      @queries.keys.each do |query|       # look through queries
         get_items(message).each do |item|  # look through status items in message
           break if check_item_match message, query, item
         end
@@ -104,15 +117,16 @@ module RSMP
     def initialize proxy, want, options={}
       super proxy, want, options.merge(
         type: ['CommandResponse','MessageNotAck'],
-        title:'command request'
+        title:'command response'
       )
     end
 
+    # Get items, in our case the return values
     def get_items message
       message.attributes['rvs']
     end
 
-    # Match an item against a query
+    # Match a return value item against a query
     def match_item? query, item
       return nil if query['cCI'] && query['cCI'] != item['cCI']
       return nil if query['n'] && query['n'] != item['n']
@@ -131,11 +145,12 @@ module RSMP
       super proxy, want, options.merge
     end
 
+    # Get items, in our case status values
     def get_items message
       message.attributes['sS']
     end
 
-    # Match an item against a query
+    # Match a status value against a query
     def match_item? query, item
       return nil if query['sCI'] && query['sCI'] != item['sCI']
       return nil if query['cO'] && query['cO'] != item['cO']
@@ -155,7 +170,7 @@ module RSMP
     def initialize proxy, want, options={}
       super proxy, want, options.merge(
         type: ['StatusResponse','MessageNotAck'],
-        title: 'status request'
+        title: 'status response'
       )
     end
   end
@@ -165,7 +180,7 @@ module RSMP
     def initialize proxy, want, options={}
       super proxy, want, options.merge(
         type: ['StatusUpdate','MessageNotAck'],
-        title:'status subscription'
+        title:'status update'
       )
     end
   end
@@ -173,11 +188,8 @@ module RSMP
   # Class for waiting for an aggregated status response
   class AggregatedStatusMatcher < Collector
     def initialize proxy, options={}
-      super proxy, options.merge(
-        num: 1,
-        type: ['AggregatedStatus','MessageNotAck'],
-        title: 'aggregated status request'
-      )
+      required = { type: ['AggregatedStatus','MessageNotAck'], title: 'aggregated status' }
+      super proxy, options.merge(required)
     end
   end
 end

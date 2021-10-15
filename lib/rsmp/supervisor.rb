@@ -175,7 +175,7 @@ module RSMP
         proxy.revive settings
       else
         check_max_sites
-        proxy = build_proxy settings
+        proxy = build_proxy settings.merge(site_id:id)    # keep the id learned by peeking above
         @proxies.push proxy
       end
       proxy.run     # will run until the site disconnects
