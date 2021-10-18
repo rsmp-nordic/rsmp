@@ -305,8 +305,9 @@ module RSMP
     def should_validate_ingoing_message? message
       return false unless @site_settings
       skip = @site_settings.dig('skip_validation')
-      return true unless skip && skip.include?(message.class.to_s)
-      false
+      return false unless skip
+      klass = message.class.name.split('::').last
+      !skip.include?(klass)
     end
 
     def process_packet json
