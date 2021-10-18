@@ -302,10 +302,17 @@ module RSMP
       end
     end
 
+    def should_validate_ingoing_message? message
+      return false unless @site_settings
+      skip = @site_settings.dig('skip_validation')
+      return true unless skip && skip.include?(message.class.to_s)
+      false
+    end
+
     def process_packet json
       attributes = Message.parse_attributes json
       message = Message.build attributes, json
-      message.validate get_schemas
+      message.validate(get_schemas) if should_validate_ingoing_message?(message)
       notify message
       expect_version_message(message) unless @version_determined
       process_message message
