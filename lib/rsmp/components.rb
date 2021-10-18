@@ -13,10 +13,20 @@ module RSMP
 
     def setup_components settings
       return unless settings
+      check_main_component settings
       settings.each_pair do |type,components_by_type|
         components_by_type.each_pair do |id,settings|
           @components[id] = build_component(id:id, type:type, settings:settings)
         end
+      end
+    end
+
+    def check_main_component settings
+      unless settings['main'] && settings['main'].size >= 1
+        raise ConfigurationError.new("main component must be defined") 
+      end
+      if settings['main'].size > 1
+        raise ConfigurationError.new("only one main component can be defined, found #{settings['main'].keys.join(', ')}") 
       end
     end
 
