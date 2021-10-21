@@ -303,9 +303,9 @@ module RSMP
     end
 
     def should_validate_ingoing_message? message
-      return false unless @site_settings
+      return true unless @site_settings
       skip = @site_settings.dig('skip_validation')
-      return false unless skip
+      return true unless skip
       klass = message.class.name.split('::').last
       !skip.include?(klass)
     end
