@@ -83,7 +83,7 @@ module RSMP
 
     def aggregated_status_changed component, options={}
       @proxies.each do |proxy|
-        proxy.send_aggregated_status component, options
+        proxy.send_aggregated_status component, options if proxy.ready?
       end
     end
 
