@@ -363,16 +363,6 @@ module RSMP
       end
     end
 
-    def send_alarm
-      message = Alarm.new({
-        "aSTS"=>clock.to_s,
-        "fP"=>nil,
-        "fS"=>nil,
-        "se"=>@site.aggregated_status_bools
-      })
-      send_message message
-    end
-
     def sxl_version
       @site_settings['sxl_version']
     end

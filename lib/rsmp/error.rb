@@ -52,4 +52,7 @@ module RSMP
 
 	class ConfigurationError < Error
 	end
+
+	class RepeatedAlarmError < Error
+	end
 end

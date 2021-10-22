@@ -18,7 +18,6 @@ require 'rsmp/node'
 require 'rsmp/supervisor'
 require 'rsmp/components'
 require 'rsmp/notifier'
-
 require 'rsmp/listener'
 require 'rsmp/collector'
 require 'rsmp/matcher'

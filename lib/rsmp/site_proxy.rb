@@ -148,11 +148,17 @@ module RSMP
     end
 
     def process_alarm message
+      component = find_component message.attribute("cId")
+      status = ["ack","aS","sS"].map { |key| message.attribute(key) }.join(',')
+      component.handle_alarm message
       alarm_code = message.attribute("aCId")
       asp = message.attribute("aSp")
-      status = ["ack","aS","sS"].map { |key| message.attribute(key) }.join(',')
       log "Received #{message.type}, #{alarm_code} #{asp} [#{status}]", message: message, level: :log
       acknowledge message
+    rescue RSMP::RepeatedAlarmError => e
+      str = "Rejected #{message.type} message, "
+      dont_acknowledge message, str, "#{e}"
+      notify_error e.exception("#{str}#{e.message} #{message.json}")
     end
 
     def version_acknowledged
@@ -241,13 +247,8 @@ module RSMP
 
     def send_alarm_acknowledgement component, alarm_code, options={}
       message = RSMP::AlarmAcknowledged.new({
-          "ntsOId" => '',
-          "xNId" => '',
           "cId" => component,
           "aCId" => alarm_code,
-          "xACId" => '',
-          "xNACId" => '',
-          "aSp" => 'Acknowledge'
       })
       send_message message, validate: options[:validate]
       message

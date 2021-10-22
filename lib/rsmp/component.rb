@@ -57,9 +57,6 @@ module RSMP
     def aggregated_status_changed options={}
       @node.aggregated_status_changed self, options
     end
- 
-    def alarm code:, status:
-    end
 
     def log str, options
       @node.log str, options
@@ -73,5 +70,18 @@ module RSMP
       raise UnknownStatus.new "Status #{status_code}/#{status_name} not implemented by #{self.class}"
     end
 
+    def handle_alarm message
+      code = message.attribute('aCId')
+      alarm = @alarms[code]
+      if alarm
+        if alarm.differ? message
+          @alarms[code] = alarm
+        else
+          raise RepeatedAlarmError.new("no changes from previous alarm #{alarm.m_id_short}")
+        end
+      else
+        @alarms[code] = message
+      end
+    end
   end
 end

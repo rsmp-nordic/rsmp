@@ -36,7 +36,7 @@ module RSMP
       when "Watchdog"
         message = Watchdog.new attributes
       when "Alarm"
-        message = Alarm.new attributes
+        message = self.build_alarm attributes
       when "CommandRequest"
         message = CommandRequest.new attributes
       when "CommandResponse"
@@ -57,6 +57,23 @@ module RSMP
       message.json = json
       message.direction = :in
       message
+    end
+
+    def self.build_alarm attributes
+      case attributes["aSp"]
+      when 'Issue'
+        AlarmIssue.new attributes
+      when 'Request'
+        AlarmRequest.new attributes
+      when 'Acknowledge'
+        AlarmAcknowledged.new attributes
+      when 'Suspend'
+        AlarmSuspend.new attributes
+      when 'Resume'
+        AlarmResume.new attributes
+      else
+        Alarm.new attributes
+      end
     end
 
     def type
@@ -191,25 +208,63 @@ module RSMP
     def initialize attributes = {}
       super({
         "type" => "Alarm",
+        "ntsOId" => '',
+        "xNId" => '',
+        "xACId" => '',
+        "xNACId" => ''
+      }.merge attributes)
+    end
+
+    def differ? from
+      %w{aSp aCId ack aS sS aTs cat pri}.each do |key|
+        return true if attribute(key).downcase != from.attribute(key).downcase
+      end
+      return true if attribute('rvs') != from.attribute('rvs')
+      false
+    end
+  end
+
+  class AlarmIssue < Alarm
+    def initialize attributes = {}
+      super({
+        "aSp" => "Issue",
       }.merge attributes)
     end
   end
 
-  class AlarmRequest < Message
+  class AlarmRequest < Alarm
     def initialize attributes = {}
       super({
-        "type" => "Alarm",
+        "aSp" => "Request",
       }.merge attributes)
     end
   end
 
-  class AlarmAcknowledged < Message
+  class AlarmAcknowledged < Alarm
     def initialize attributes = {}
       super({
-        "type" => "Alarm",
+        "aSp" => "Acknowledge",
       }.merge attributes)
     end
   end
+
+  class AlarmSuspend < Alarm
+    def initialize attributes = {}
+      super({
+        "aSp" => "Suspend",
+      }.merge attributes)
+    end
+  end
+
+  class AlarmResume < Alarm
+    def initialize attributes = {}
+      super({
+        "aSp" => "Resume",
+      }.merge attributes)
+    end
+  end
+
+
 
   class Watchdog < Message
     def initialize attributes = {}
