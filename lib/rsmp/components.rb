@@ -38,10 +38,23 @@ module RSMP
       Component.new id:id, node: self, grouped: type=='main'
     end
 
-    def find_component component_id
+    def infer_component_type component_id
+      { klass: Component, grouped: false }
+    end
+
+    def find_component component_id, build: true
       component = @components[component_id]
-      raise UnknownComponent.new("Component #{component_id} not found") unless component
-      component
+      return component if component
+      if build
+        inferred = infer_component_type component_id
+        component = inferred[:klass].new node: self, id: component_id
+        @components[ component_id] = component
+        class_name = component.class.name.split('::').last
+        log "Inferred component #{component_id} of type #{class_name} for site #{@site_id}", level: :info
+        component
+      else
+        raise UnknownComponent.new("Component #{component_id} not found") unless component
+      end
     end
 
   end

@@ -121,21 +121,27 @@ module RSMP
       end
     end
 
+    def infer_component_type component_id
+      if component_id =~ /TC/
+        { klass: TrafficController, grouped: true }
+      elsif component_id =~ /DL/
+        { klass: DetectorLogic, goruped: false }
+      elsif component_id =~ /SG/
+        { klass: SignalGroup, grouped: false }
+      else
+        super
+      end
+    end
+
     def process_aggregated_status message
       se = message.attribute("se")
       validate_aggregated_status(message,se) == false
       c_id = message.attributes["cId"]
-      component = @components[c_id]
-      if component == nil
-        if @site_settings == nil || @site_settings['components'] == nil
-          component = build_component(id:c_id, type:nil)
-          @components[c_id] = component
-          log "Adding component #{c_id} to site #{@site_id}", level: :info
-        else
-          reason = "component #{c_id} not found"
-          dont_acknowledge message, "Ignoring #{message.type}:", reason
-          return
-        end
+      component = find_component c_id
+      unless component
+        reason = "component #{c_id} not found"
+        dont_acknowledge message, "Ignoring #{message.type}:", reason
+        return
       end
 
       component.set_aggregated_status_bools se

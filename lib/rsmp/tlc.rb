@@ -5,7 +5,7 @@ module RSMP
   class TrafficController < Component
     attr_reader :pos, :cycle_time
 
-    def initialize node:, id:, cycle_time:
+    def initialize node:, id:, cycle_time: 10
       super node: node, id: id, grouped: true
       @signal_groups = []
       @detector_logics = []
