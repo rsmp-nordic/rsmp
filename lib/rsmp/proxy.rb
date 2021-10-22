@@ -73,6 +73,11 @@ module RSMP
       @state == :ready
     end
 
+    def connected?
+      @state == :starting || @state == :ready
+    end
+
+
     def start
       set_state :starting
     end
@@ -118,7 +123,6 @@ module RSMP
         task.annotate "reader"
         @stream ||= Async::IO::Stream.new(@socket)
         @protocol ||= Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
-
         while json = @protocol.read_line
           beginning = Time.now
           message = process_packet json
@@ -267,6 +271,7 @@ module RSMP
     end
 
     def send_message message, reason=nil, validate: true
+      raise NotReady unless connected?
       raise IOError unless @protocol
       message.direction = :out
       message.generate_json
