@@ -276,8 +276,8 @@ module RSMP
       message.direction = :out
       message.generate_json
       message.validate get_schemas unless validate==false
-      expect_acknowledgement message
       @protocol.write_lines message.json
+      expect_acknowledgement message
       notify message
       log_send message, reason
     rescue EOFError, IOError
