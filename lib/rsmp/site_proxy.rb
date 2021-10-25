@@ -121,18 +121,6 @@ module RSMP
       end
     end
 
-    def infer_component_type component_id
-      if component_id =~ /TC/
-        TrafficController
-      elsif component_id =~ /DL/
-        DetectorLogic
-      elsif component_id =~ /SG/
-        SignalGroup
-      else
-        super
-      end
-    end
-
     def process_aggregated_status message
       se = message.attribute("se")
       validate_aggregated_status(message,se) == false
