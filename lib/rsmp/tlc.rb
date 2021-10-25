@@ -625,13 +625,15 @@ module RSMP
   class SignalGroup < Component
     attr_reader :plan, :state
 
-    def initialize node:, id:, plan:
+    # plan is a string, with each character representing a signal phase at a particular second  in the cycle
+    def initialize node:, id:, plan: nil
       super node: node, id: id, grouped: false
       @plan = plan
       move 0
     end
 
     def get_state pos
+      return 'a' unless @plan  # if no plan, use phase a, which means disabled/dark
       if pos > @plan.length
         '.'
       else

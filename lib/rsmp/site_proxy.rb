@@ -123,11 +123,11 @@ module RSMP
 
     def infer_component_type component_id
       if component_id =~ /TC/
-        { klass: TrafficController, grouped: true }
+        TrafficController
       elsif component_id =~ /DL/
-        { klass: DetectorLogic, goruped: false }
+        DetectorLogic
       elsif component_id =~ /SG/
-        { klass: SignalGroup, grouped: false }
+        SignalGroup
       else
         super
       end

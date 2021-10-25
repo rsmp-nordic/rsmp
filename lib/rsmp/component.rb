@@ -13,7 +13,7 @@ module RSMP
                                :rest,
                                :not_connected ]
 
-    def initialize node:, id:, grouped:
+    def initialize node:, id:, grouped: false
       @c_id = id
       @node = node
       @grouped = grouped
