@@ -335,20 +335,12 @@ module RSMP
       @supervisor.notify_error e, options if @supervisor
     end
 
-    def wait_for_alarm parent_task, options={}
-      matching_alarm = nil
-      message = collect(parent_task,options.merge(type: "Alarm", with_message: true, num: 1)) do |message|
-        # TODO check components
-        matching_alarm = nil
-        alarm = message
+    def collect_alarms parent_task, options={}
+      collect(parent_task,options.merge(type: "Alarm")) do |alarm|
         next if options[:aCId] && options[:aCId] != alarm.attribute("aCId")
         next if options[:aSp] && options[:aSp] != alarm.attribute("aSp")
         next if options[:aS] && options[:aS] != alarm.attribute("aS")
-        matching_alarm = alarm
-        break
-      end
-      if item
-        { message: message, status: matching_alarm }
+        true
       end
     end
 
