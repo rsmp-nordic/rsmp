@@ -293,7 +293,8 @@ module RSMP
     def handle_s0002 status_code, status_name=nil
       case status_name
       when 'detectorlogicstatus'
-        RSMP::Tlc.make_status @detector_logics.map { |dl| dl.forced ? '1' : '0' }.join
+        RSMP::Tlc.make_status @detector_logics.each { |dl| p dl.value }
+        RSMP::Tlc.make_status @detector_logics.map { |dl| dl.value ? '1' : '0' }.join
       end
     end
 
@@ -703,7 +704,7 @@ module RSMP
   end
 
   class DetectorLogic < Component
-    attr_reader :status, :forced, :value
+    attr_reader :forced, :value
 
     def initialize node:, id:
       super node: node, id: id, grouped: false
@@ -783,13 +784,20 @@ module RSMP
 
     def handle_m0008 arg
       @node.verify_security_code 2, arg['securityCode']
-      force_detector_logic arg['status']=='True', arg['value']='True'
+      status = arg['status']=='True'
+      mode = arg['mode']=='True'
+      force_detector_logic status, mode
       arg
     end
 
-    def force_detector_logic status, value
-      @forced = status
+    def force_detector_logic forced, value
+      @forced = forced
       @value = value
+      if @forced
+        log "Forcing to #{value}", level: :info
+      else
+        log "Releasing", level: :info
+      end
     end
 
   end
