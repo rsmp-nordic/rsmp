@@ -52,11 +52,14 @@ module RSMP
       raise RSMP::TimeoutError.new str
     end
 
+    # Get the collected message.
+    def message
+      @messages.first
+    end
+
     # Get the collected messages.
-    # If one message was requested, return it as a plain object instead of array
-    def result
-      return @messages.first if @options[:num] == 1     
-      @messages.first @options[:num] 
+    def messages
+      @messages
     end
 
     # Clear all query results
