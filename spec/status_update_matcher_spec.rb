@@ -3,8 +3,10 @@ RSpec.describe StatusUpdateMatcher do
   #include RSMP::SpecHelper::ConnectionHelper
   class MockProxy
     include Notifier
+    include Logging
     def initialize
       initialize_distributor
+      initialize_logging({})
     end
   end
 
@@ -18,11 +20,19 @@ RSpec.describe StatusUpdateMatcher do
       )
     end
 
-    let(:want) {
+    let(:ok) {
       {
         s5: {"sCI" => "S0005","n" => "status","s" => "False"},
         s7: {"sCI" => "S0007","n" => "status","s" => "True"},
         s11: {"sCI" => "S0011","n" => "status","s" => "False"},
+      }
+    }
+
+    let(:want) {
+      {
+        s5: {"sCI" => "S0005","n" => "status","s" => "False"},
+        s7: {"sCI" => "S0007","n" => "status","s" => /^True(,True)*$/},
+        s11: {"sCI" => "S0011","n" => "status","s" => /^False(,False)*$/},
       }
     }
 
@@ -42,7 +52,7 @@ RSpec.describe StatusUpdateMatcher do
         expect(collector.summary).to eq([false,false,false])
         expect(collector.done).to be(false)
         
-        collector.notify build_status_message(want.values)
+        collector.notify build_status_message(ok.values)
         expect(collector.summary).to eq([true,true,true])
         expect(collector.done).to be(true)
       end.wait
@@ -53,15 +63,15 @@ RSpec.describe StatusUpdateMatcher do
         expect(collector.summary).to eq([false,false,false])
         expect(collector.done).to be(false)
 
-        collector.notify build_status_message(want[:s5])
+        collector.notify build_status_message(ok[:s5])
         expect(collector.summary).to eq([true,false,false])
         expect(collector.done).to be(false)
 
-        collector.notify build_status_message(want[:s7])
+        collector.notify build_status_message(ok[:s7])
         expect(collector.summary).to eq([true,true,false])
         expect(collector.done).to be(false)
 
-        collector.notify build_status_message(want[:s11])
+        collector.notify build_status_message(ok[:s11])
         expect(collector.summary).to eq([true,true,true])
         expect(collector.done).to be(true)
       end.wait
@@ -72,11 +82,11 @@ RSpec.describe StatusUpdateMatcher do
         expect(collector.done).to be(false)
         expect(collector.summary).to eq([false,false,false])
 
-        collector.notify build_status_message(want[:s5])      # set s5
+        collector.notify build_status_message(ok[:s5])      # set s5
         expect(collector.summary).to eq([true,false,false])
         expect(collector.done).to be(false)
 
-        collector.notify build_status_message(want[:s7])
+        collector.notify build_status_message(ok[:s7])
         expect(collector.summary).to eq([true,true,false])
         expect(collector.done).to be(false)
 
@@ -84,21 +94,21 @@ RSpec.describe StatusUpdateMatcher do
         expect(collector.summary).to eq([false,true,false])
         expect(collector.done).to be(false)
 
-        collector.notify build_status_message(want[:s11])
+        collector.notify build_status_message(ok[:s11])
         expect(collector.summary).to eq([false,true,true])
         expect(collector.done).to be(false)
 
-        collector.notify build_status_message(want[:s5])      # set s5 againt
+        collector.notify build_status_message(ok[:s5])      # set s5 againt
         expect(collector.summary).to eq([true,true,true])
         expect(collector.done).to be(true)
       end.wait
     end
 
-    it 'raises if notified adfter being complete' do
+    it 'raises if notified after being complete' do
       Async do
-        collector.notify build_status_message(want.values)
+        collector.notify build_status_message(ok.values)
         expect(collector.done).to be(true)
-        expect { collector.notify build_status_message(want.values) }.to raise_error(RuntimeError) 
+        expect { collector.notify build_status_message(ok.values) }.to raise_error(RuntimeError)
       end.wait
     end
   end

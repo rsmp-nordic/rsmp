@@ -23,9 +23,9 @@ module RSMP
       return nil if @want['n'] && @want['n'] != item['n']
       return false if @want['q'] && @want['q'] != item['q']
       if @want['s'].is_a? Regexp
-        return false if @want['s'] && item['s'] !~ @want['s']
+        return false if item['s'] !~ @want['s']
       else
-        return false if @want['s'] && item['s'] != @want['s']
+        return false if item['s'] != @want['s']
       end
       true
     end

@@ -78,7 +78,7 @@ module RSMP
     # Get a simplified hash of queries, with values set to either true or false,
     # indicating which queries have been matched.
     def status
-      @queries.map { |query| [query.query,query.done?] }.to_h
+      @queries.map { |query| [query.want, query.done?] }.to_h
     end
 
     # Get a simply array of bools, showing which queries ahve been matched.
@@ -93,9 +93,17 @@ module RSMP
       return unless match?(message)
       @queries.each do |query|       # look through queries
         get_items(message).each do |item|  # look through status items in message
-          break if query.check_match(item,message) != nil #check_item_match message, query, item
+          matched = query.check_match(item,message)
+          if matched != nil
+            type = {true=>'positive',false=>'negative'}[matched]
+            @proxy.log "Query #{query.want} has #{type} match with item #{item}. Summary: #{summary}, done: #{done?}", message: message, level: :info
+            break matched
+          end
         end
       end
+#      @proxy.log "match", level: :info
+      false
     end
+
   end
 end
