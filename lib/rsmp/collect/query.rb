@@ -22,10 +22,8 @@ module RSMP
       @message = message
       @got = item
       matched = match? item
-      if matched != nil
-        @done = matched
-        true
-      end
+      @done = matched if matched != nil
+      matched
     end
 
     def match? item

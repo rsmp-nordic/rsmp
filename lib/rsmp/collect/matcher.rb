@@ -52,7 +52,7 @@ module RSMP
     def query_result want
       query = @queries.find { |q| q.want == want}
       raise unless query
-      query.item
+      query.got
     end
 
     # Get an array of the last item received for each query
@@ -96,13 +96,13 @@ module RSMP
           matched = query.check_match(item,message)
           if matched != nil
             type = {true=>'positive',false=>'negative'}[matched]
-            @proxy.log "Query #{query.want} has #{type} match with item #{item}. Summary: #{summary}, done: #{done?}", message: message, level: :info
+            @proxy.log "Query #{query.want} has #{type} match with item #{item}, reached #{summary}", message: message, level: :info
             break matched
           end
         end
       end
 #      @proxy.log "match", level: :info
-      false
+      nil
     end
 
   end
