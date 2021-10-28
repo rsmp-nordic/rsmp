@@ -35,10 +35,11 @@ module RSMP
   class Matcher < Collector
     attr_reader :queries
 
-    # Initialize with a list a wanted statuses
+    # Initialize with a list of wanted statuses
     def initialize proxy, want, options={}
       super proxy, options.merge( ingoing: true, outgoing: false)
-      @queries = want.map { |wanted_item| build_query wanted_item }
+      @queries = want.map { |item| build_query item }
+      @want = want
     end
 
     # Build a query object.
@@ -54,7 +55,12 @@ module RSMP
       query.item
     end
 
-    # get the first message. Useful when you only collected one mesage
+    # Get an array of the last item received for each query
+    def reached
+      @queries.map { |query| query.got }.compact
+    end
+
+    # get the first message. Useful when you only collect one mesage
     def message
       @queries.first.message
     end
@@ -62,11 +68,6 @@ module RSMP
     # Get messages from results
     def messages
       @queries.map { |query| query.message }.uniq
-    end
-
-    # Get items from results
-    def items
-      @queries.map { |query| query.item }.uniq
     end
 
     # Are there queries left to match?

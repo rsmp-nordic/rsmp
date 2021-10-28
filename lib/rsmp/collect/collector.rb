@@ -1,6 +1,6 @@
 module RSMP
 
-  # Collects ingoing and/or outgoing messages.
+  # Collects ingoing and/or outgoing messages from a notifier.
   # Can filter by message type and wakes up the client once the desired number of messages has been collected.
   class Collector < Listener
     attr_reader :condition, :messages, :done
@@ -17,22 +17,29 @@ module RSMP
       reset
     end
 
+    # Inspect formatter that shows the message we have collected
     def inspect
       "#<#{self.class.name}:#{self.object_id}, #{inspector(:@messages)}>"
     end
 
+    # Want ingoing messages?
     def ingoing?
       @ingoing == true
     end
 
+    # Want outgoing messages?
     def outgoing?
       @outgoing == true
     end
 
+    # Block until all messages have been collected
     def wait
       @condition.wait
     end
 
+    # Collect message
+    # Will block until all messages have been collected,
+    # or we time out 
     def collect task, options={}, &block
       @options.merge! options
       @block = block
@@ -46,9 +53,9 @@ module RSMP
       return @error if @error
       self
     rescue Async::TimeoutError
-      str = "Did not receive #{@title}"
+      str = "#{@title.capitalize} collection"
       str << " in response to #{options[:m_id]}" if options[:m_id]
-      str << " within #{@options[:timeout]}s"
+      str << " didn't complete within #{@options[:timeout]}s"
       raise RSMP::TimeoutError.new str
     end
 
