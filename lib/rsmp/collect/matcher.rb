@@ -81,7 +81,7 @@ module RSMP
       @queries.map { |query| [query.want, query.done?] }.to_h
     end
 
-    # Get a simply array of bools, showing which queries ahve been matched.
+    # Get a simply array of bools, showing which queries have been matched.
     def summary
       @queries.map { |query| query.done? }
     end
@@ -95,14 +95,12 @@ module RSMP
         get_items(message).each do |item|  # look through status items in message
           matched = query.check_match(item,message)
           if matched != nil
-            type = {true=>'positive',false=>'negative'}[matched]
-            @proxy.log "Query #{query.want} has #{type} match with item #{item}, reached #{summary}", message: message, level: :info
-            break matched
+            type = {true=>'match',false=>'mismatch'}[matched]
+            @proxy.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
           end
         end
       end
-#      @proxy.log "match", level: :info
-      nil
+      @proxy.log "#{@title.capitalize} collect reached #{summary}", level: :debug
     end
 
   end
