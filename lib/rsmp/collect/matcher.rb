@@ -87,16 +87,16 @@ module RSMP
     end
 
     # Check if a messages matches our criteria.
-    # We iterate through each of the status items or return values in the message
-    # Breaks as soon as where done matching all queries
+    # Match each query against each item in the message
     def check_match message
       return unless match?(message)
       @queries.each do |query|       # look through queries
-        get_items(message).each do |item|  # look through status items in message
+        get_items(message).each do |item|  # look through items in message
           matched = query.check_match(item,message)
           if matched != nil
             type = {true=>'match',false=>'mismatch'}[matched]
             @proxy.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
+            break
           end
         end
       end

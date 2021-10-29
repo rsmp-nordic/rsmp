@@ -17,12 +17,14 @@ module RSMP
     end
 
     # Check an item and set @done to true if it matches
-    # Always store the item and corresponding message.
+    # Store the item and corresponding message if there's a positive or negative match
     def check_match item, message
-      @message = message
-      @got = item
       matched = match? item
-      @done = matched if matched != nil
+      if matched != nil
+        @message = message
+        @got = item
+        @done = matched
+      end
       matched
     end
 
