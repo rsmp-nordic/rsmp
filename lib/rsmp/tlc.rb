@@ -293,7 +293,6 @@ module RSMP
     def handle_s0002 status_code, status_name=nil
       case status_name
       when 'detectorlogicstatus'
-        RSMP::Tlc.make_status @detector_logics.each { |dl| p dl.value }
         RSMP::Tlc.make_status @detector_logics.map { |dl| dl.value ? '1' : '0' }.join
       end
     end
