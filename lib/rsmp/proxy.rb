@@ -266,7 +266,7 @@ module RSMP
       # TODO
       # what schema should we use to validate the intial Version and MessageAck messages?
       schemas = { core: '3.1.5' }
-      schemas[sxl] = RSMP::Schemer.sanitize_version(sxl_version) if sxl
+      schemas[sxl] = RSMP::Schemer.sanitize_version(sxl_version) if sxl && sxl_version
       schemas
     end
 
