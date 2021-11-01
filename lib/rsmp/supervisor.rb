@@ -7,7 +7,7 @@ module RSMP
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :proxies, :logger
 
     def initialize options={}
-      handle_supervisor_settings options[:supervisor_settings]
+      handle_supervisor_settings( options[:supervisor_settings] || {} )
       super options
       @proxies = []
       @site_id_condition = Async::Notification.new
@@ -17,7 +17,7 @@ module RSMP
       @supervisor_settings['site_id']
     end
 
-    def handle_supervisor_settings supervisor_settings={}
+    def handle_supervisor_settings supervisor_settings
       defaults = {
         'port' => 12111,
         'ips' => 'all',
