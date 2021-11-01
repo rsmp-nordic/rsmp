@@ -111,5 +111,32 @@ RSpec.describe StatusUpdateMatcher do
         expect { collector.notify build_status_message(ok.values) }.to raise_error(RuntimeError)
       end.wait
     end
+
+    it 'extra status updates are ignored' do
+      Async do |task|
+        # proxy should have no listeners initially
+        expect(proxy.listeners.size).to eq(0)
+
+        # start collection
+        collect_task = task.async do
+          collector.collect task
+        end
+
+        # collector should have inserted inself as a listener on the proxy
+        expect(proxy.listeners.size).to eq(1)
+        expect(collector.done).to be(false)
+
+        # send required values
+        proxy.notify build_status_message(ok.values)
+
+        # should be done, and should have rmeoved itself as a listener
+        expect(collector.done).to be(true)
+        expect(proxy.listeners.size).to eq(0)
+
+        # additional messages should there not reach the collector, and should not affect the result
+        proxy.notify build_status_message(reject.values)
+        expect(collector.done?).to be(true)
+      end.wait
+    end
   end
 end

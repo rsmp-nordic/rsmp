@@ -2,6 +2,8 @@
 
 module RSMP
   module Notifier
+    attr_reader :listeners
+
     include Inspect
 
     def inspect
