@@ -246,7 +246,7 @@ module RSMP
 
     def check_site_already_connected site_id
       site = find_site(site_id)
-      raise FatalError.new "Site '#{site_id}' already connected" if site != nil && site != self
+      raise HandshakeError.new "Site '#{site_id}' already connected" if site != nil && site != self
     end
 
     def site_id_to_site_setting site_id
@@ -256,7 +256,7 @@ module RSMP
           return settings
         end
       end
-      raise FatalError.new "site id #{site_id} unknown"
+      raise HandshakeError.new "site id #{site_id} unknown"
     end
 
     def ip_to_site_settings ip

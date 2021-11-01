@@ -12,6 +12,9 @@ module RSMP
     def notify message
     end
 
+    def notify_error error
+    end
+
     def listen &block
       @proxy.add_listener self
       yield

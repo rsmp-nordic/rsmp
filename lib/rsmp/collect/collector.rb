@@ -123,6 +123,18 @@ module RSMP
       @condition.signal
     end
 
+    def notify_error error
+      @error = error
+      cancel
+    end
+
+    # Abort collection
+    def cancel
+      @done = false
+      @proxy.remove_listener self
+      @condition.signal
+    end
+
     # Store a message in the result array
     def keep message
       @messages << message

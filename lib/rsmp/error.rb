@@ -32,6 +32,9 @@ module RSMP
 	class FatalError < Error
 	end
 
+	class HandshakeError < FatalError
+	end
+
 	class NotReady < Error
 	end
 

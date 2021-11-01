@@ -102,6 +102,5 @@ module RSMP
       end
       @proxy.log "#{@title.capitalize} collect reached #{summary}", level: :debug
     end
-
   end
 end

@@ -15,7 +15,8 @@ module RSMP::SpecHelper::ConnectionHelper
         'intervals' => {
           'timer' => 0.001,
           'watchdog' => 0.001
-        }
+        },
+        'one_shot' => true
       }
       site_settings = {
         'site_id' => 'RN+SI0001',

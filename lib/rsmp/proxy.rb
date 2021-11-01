@@ -402,7 +402,7 @@ module RSMP
       if candidates.any?
         @rsmp_version = candidates.sort_by { |v| Gem::Version.new(v) }.last  # pick latest version
       else
-        raise FatalError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{versions.join(',')}] supported."
+        raise HandshakeError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{versions.join(',')}] supported."
       end
     end
 
@@ -546,7 +546,7 @@ module RSMP
 
     def expect_version_message message
       unless message.is_a?(Version) || message.is_a?(MessageAck) || message.is_a?(MessageNotAck)
-        raise FatalError.new "Version must be received first"
+        raise HandshakeError.new "Version must be received first"
       end
     end
 

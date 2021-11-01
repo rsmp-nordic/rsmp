@@ -48,5 +48,14 @@ RSpec.describe RSMP::Proxy do
         expect { collect_task.wait }.to raise_error(RSMP::TimeoutError) 
       end
     end
+
+    it 'cancels' do
+      with_site_connected do |task, supervisor, site, site_proxy, supervisor_proxy|
+        # an aggreagated status is send by the site right after connection, so ask for more
+        collect_task = task.async { site_proxy.collect_aggregated_status task, num: 2, timeout: 0.1 }
+        site_proxy.notify_error RSMP::HandshakeError.new('oh no')
+        expect { collect_task.wait }.to raise_error(RSMP::HandshakeError) 
+      end
+    end
   end
 end

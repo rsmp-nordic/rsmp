@@ -27,5 +27,9 @@ module RSMP
     def notify message
       @listeners.each { |listener| listener.notify message }
     end
+
+    def distribute_error error
+      @listeners.each { |listener| listener.notify_error error }
+    end
   end
 end
