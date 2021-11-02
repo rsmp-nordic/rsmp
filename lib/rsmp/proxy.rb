@@ -86,6 +86,7 @@ module RSMP
       return if @state == :stopped
       set_state :stopping
       stop_tasks
+      notify_error ConnectionError.new("Connection was closed")
     ensure
       close_socket
       clear
@@ -237,6 +238,7 @@ module RSMP
         if now > latest
           log "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds", level: :error
           stop
+          notify_error MissingAcknowledgment.new('No ack')
         end
       end
     end
@@ -338,17 +340,17 @@ module RSMP
     rescue SchemaError, RSMP::Schemer::Error => e
       str = "Received invalid #{message.type}, schema errors: #{e.message}"
       log str, message: message, level: :warning
-      notify_error e.exception("#{str} #{message.json}")
+      notify_error e.exception("#{str} #{message.json}"), message: message
       dont_acknowledge message, str
       message
     rescue InvalidMessage => e
       str = "Received", "invalid #{message.type}, #{e.message}"
-      notify_error e.exception("#{str} #{message.json}")
+      notify_error e.exception("#{str} #{message.json}"), message: message
       dont_acknowledge message, str
       message
     rescue FatalError => e
       str = "Rejected #{message.type},"
-      notify_error e.exception("#{str} #{message.json}")
+      notify_error e.exception("#{str} #{message.json}"), message: message
       dont_acknowledge message, str, "#{e.message}"
       stop
       message

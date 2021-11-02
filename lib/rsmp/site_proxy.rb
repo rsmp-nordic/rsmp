@@ -333,7 +333,7 @@ module RSMP
 
     def notify_error e, options={}
       @supervisor.notify_error e, options if @supervisor
-      distribute_error e
+      distribute_error e, options
     end
 
     def collect_alarms parent_task, options={}

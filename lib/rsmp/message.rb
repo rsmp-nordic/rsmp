@@ -142,7 +142,7 @@ module RSMP
     def validate schemas
       errors = RSMP::Schemer.validate attributes, schemas
       if errors
-        error_string = errors.compact.join(', ').strip
+        error_string = errors.map {|item| item.reject {|e| e=='' } }.compact.join(', ').strip
         raise SchemaError.new error_string
       end
     end

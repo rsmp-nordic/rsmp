@@ -12,7 +12,7 @@ module RSMP
     def notify message
     end
 
-    def notify_error error
+    def notify_error error, options={}
     end
 
     def listen &block

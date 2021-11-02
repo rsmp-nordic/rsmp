@@ -20,7 +20,8 @@ module RSMP
         'json'=>false,
         'debug'=>false,
         'statistics'=>false,
-        'hide_ip_and_port' => false
+        'hide_ip_and_port' => false,
+        'acknowledgements' => false
       }
       if settings
         @settings = defaults.merge settings

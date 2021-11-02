@@ -7,16 +7,22 @@ module RSMP::SpecHelper::ConnectionHelper
     error = nil
     Async do |task|
       # run site and supervisor in separate tasks
+
+      time_scale = 0.01
       supervisor_settings = {
         'port' => 13111,      # don't use default port 12111, to avoid interferance from other sites
         'guest' => {
-          'sxl' => 'tlc'
+          'sxl' => 'tlc',
+          'intervals' => {
+            'timer' => time_scale,
+            'watchdog' => time_scale
+          },
+          'timeouts' => {
+            'watchdog' => 4*time_scale,
+            'acknowledgement' => 4*time_scale
+          },
         },
-        'intervals' => {
-          'timer' => 0.001,
-          'watchdog' => 0.001
-        },
-        'one_shot' => true
+    #   'one_shot' => true
       }
       site_settings = {
         'site_id' => 'RN+SI0001',
@@ -24,17 +30,23 @@ module RSMP::SpecHelper::ConnectionHelper
           { 'ip' => 'localhost', 'port' => 13111 }
         ],
         'intervals' => {
-          'timer' => 0.001,
-          'watchdog' => 0.001
-        }
-      }
+          'timer' => time_scale,
+          'watchdog' => time_scale
+        },
+       'timeouts' => {
+          'watchdog' => 4*time_scale,
+          'acknowledgement' => 4*time_scale
+        },
+       }
       log_settings = {
         'active' => false,
         'hide_ip_and_port' => true,
         'debug' => true,
-        'json' => false
+        'json' => false,
+        'watchdogs' => false,
+        'acknowledgements' => false
       }
-      supervisor = RSMP::Supervisor.new(supervisor_settings: supervisor_settings,log_settings: log_settings)
+      supervisor = RSMP::Supervisor.new(supervisor_settings: supervisor_settings,log_settings: log_settings.merge('active'=>false))
       site = RSMP::Site.new(site_settings: site_settings,log_settings: log_settings.merge('active'=>false))
       task.async { supervisor.start }
       task.async { site.start }

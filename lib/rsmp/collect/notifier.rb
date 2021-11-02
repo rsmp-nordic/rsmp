@@ -28,8 +28,8 @@ module RSMP
       @listeners.each { |listener| listener.notify message }
     end
 
-    def distribute_error error
-      @listeners.each { |listener| listener.notify_error error }
+    def distribute_error error, options={}
+      @listeners.each { |listener| listener.notify_error error, options }
     end
   end
 end

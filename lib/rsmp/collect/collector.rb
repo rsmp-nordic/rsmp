@@ -7,7 +7,12 @@ module RSMP
 
     def initialize proxy, options={}
       super proxy, options
-      @options = options.clone
+      @options = {
+        cancel: {
+          schema_error: true,
+          disconnect: false,
+        }
+      }.deep_merge options
       @ingoing = options[:ingoing] == nil ? true  : options[:ingoing]
       @outgoing = options[:outgoing] == nil ? false : options[:outgoing]
       @condition = Async::Notification.new
@@ -123,13 +128,37 @@ module RSMP
       @condition.signal
     end
 
-    def notify_error error
-      @error = error
-      cancel
+    # The proxy experienced some error.
+    # Check if this should cause us to cancel.
+    def notify_error error, options={}
+      case error
+      when RSMP::SchemaError
+        notify_schema_error error, options
+      when RSMP::ConnectionError
+        notify_disconnect error, options
+      end
     end
 
+    # Cancel if we received e schema error for a message type we're collecting
+    def notify_schema_error error, options
+      return unless @options.dig(:cancel,:schema_error)
+      message = options[:message]
+      return unless message
+      klass = message.class.name.split('::').last
+      return unless [@options[:type]].flatten.include? klass
+      @proxy.log "Collect cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
+      cancel error
+    end
+
+    # Cancel if we received e notificaiton about a disconnect
+    def notify_disconnect error, options
+      return unless @options.dig(:cancel,:disconnect)
+      @proxy.log "Collect cancelled due to a connection error: #{error.to_s}", level: :debug
+      cancel error
+    end
     # Abort collection
-    def cancel
+    def cancel error
+      @error = error if error
       @done = false
       @proxy.remove_listener self
       @condition.signal

@@ -38,6 +38,7 @@ log:
   ip: false
   site_id: true
   level: false
+  debug: true
   text: true
   direction: true
   json: true
