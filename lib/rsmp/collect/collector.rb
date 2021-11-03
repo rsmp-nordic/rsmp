@@ -156,6 +156,7 @@ module RSMP
       @proxy.log "Collect cancelled due to a connection error: #{error.to_s}", level: :debug
       cancel error
     end
+
     # Abort collection
     def cancel error
       @error = error if error
