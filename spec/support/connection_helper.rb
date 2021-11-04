@@ -52,14 +52,14 @@ module RSMP::SpecHelper::ConnectionHelper
       task.async { site.start }
 
       # wait for site to connect
-      site_proxy = supervisor.wait_for_site "RN+SI0001", 0.1
+      site_proxy = supervisor.wait_for_site "RN+SI0001", 50*time_scale
       expect(site_proxy).to be_an(RSMP::SiteProxy)
       expect(site_proxy.site_id).to eq("RN+SI0001")
-      expect { site_proxy.wait_for_state(:ready, 0.1) }.not_to raise_error
+      site_proxy.wait_for_state :ready, 50*time_scale
 
       supervisor_proxy = site.proxies.first
       expect(supervisor_proxy).to be_an(RSMP::SupervisorProxy)
-      expect(supervisor_proxy.ready?).to be_truthy
+      supervisor_proxy.wait_for_state :ready, 50*time_scale
 
       # run test code
       yield task, supervisor, site, site_proxy, supervisor_proxy

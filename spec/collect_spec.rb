@@ -48,7 +48,9 @@ RSpec.describe RSMP::Proxy do
         expect { collect_task.wait }.to raise_error(RSMP::TimeoutError) 
       end
     end
+  end
 
+  define "#collect_status_updates" do
     it 'cancels if a schema error is received' do
       with_site_connected do |task, supervisor, site, site_proxy, supervisor_proxy|
         status_list = [

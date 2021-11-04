@@ -317,13 +317,23 @@ module RSMP
       !skip.include?(klass)
     end
 
+    def process_deferred
+      node.process_deferred
+    end
+
+    def verify_sequence message
+      expect_version_message(message) unless @version_determined
+    end
+
     def process_packet json
       attributes = Message.parse_attributes json
       message = Message.build attributes, json
       message.validate(get_schemas) if should_validate_ingoing_message?(message)
-      expect_version_message(message) unless @version_determined
-      process_message message
-      notify message
+      verify_sequence message
+      deferred_notify do
+        notify message
+        process_message message
+      end
       process_deferred
       message
     rescue InvalidPacket => e
@@ -589,6 +599,5 @@ module RSMP
         false
       end
     end
-
   end
 end
