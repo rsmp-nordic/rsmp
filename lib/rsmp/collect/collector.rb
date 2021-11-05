@@ -87,7 +87,7 @@ module RSMP
       if message.is_a?(MessageNotAck)
         if message.attribute('oMId') == @options[:m_id]
           m_id_short = RSMP::Message.shorten_m_id @options[:m_id], 8
-          @error = RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected: #{message.attribute('rea')}")
+          @error = RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
           complete
         end
         false

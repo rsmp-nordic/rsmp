@@ -590,7 +590,7 @@ module RSMP
             # will be raised in the parent task, and caught by rspec.
             # rspec will then show the error and record the test as failed
             m_id_short = RSMP::Message.shorten_m_id m_id, 8
-            result = RSMP::MessageRejected.new "Aggregated status request #{m_id_short} was rejected: #{message.attribute('rea')}"
+            result = RSMP::MessageRejected.new "Aggregated status request #{m_id_short} was rejected with '#{message.attribute('rea')}'"
             next true   # done, no more messages wanted
           end
         elsif message.is_a?(MessageAck)
