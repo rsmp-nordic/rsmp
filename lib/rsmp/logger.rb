@@ -5,6 +5,7 @@ module RSMP
     
     def initialize settings={}
       defaults = {
+        'prefix'=>nil,
         'active'=>false,
         'path'=>nil,
         'stream'=>nil,
@@ -140,6 +141,7 @@ module RSMP
   
     def build_output item
       parts = []
+      parts << "#{@settings['prefix']} " if @settings['prefix']
       parts << item[:index].to_s.ljust(7) if @settings["index"] == true
       parts << item[:author].to_s.ljust(13) if @settings["author"] == true
       parts << Clock.to_s(item[:timestamp]).ljust(24) unless @settings["timestamp"] == false
