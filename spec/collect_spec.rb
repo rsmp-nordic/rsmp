@@ -4,7 +4,7 @@ RSpec.describe RSMP::Proxy do
   describe '#collect' do
     it 'gets a Watchdog' do
       with_site_connected do |task, supervisor, site, site_proxy, supervisor_proxy|
-        collector = site_proxy.collect task, type: "Watchdog", timeout: 0.1
+        collector = site_proxy.collect task, type: "Watchdog", timeout: 0.1, cancel: {disconnect: true}
         expect(collector).to be_an(RSMP::Collector)
         messages = collector.messages
         expect(messages).to be_an(Array)
@@ -15,7 +15,7 @@ RSpec.describe RSMP::Proxy do
 
     it 'gets two Watchdogs' do
       with_site_connected do |task, supervisor, site, site_proxy, supervisor_proxy|
-        collector = site_proxy.collect task, type: "Watchdog", num: 2, timeout: 0.1
+        collector = site_proxy.collect task, type: "Watchdog", num: 2, timeout: 0.1, cancel: {disconnect: true}
         messages = collector.messages
         expect(messages).to be_an(Array)
         expect(messages.size).to eq(2)
@@ -35,7 +35,7 @@ RSpec.describe RSMP::Proxy do
   describe "#collect_aggregated_status" do
     it 'gets an AggregatedStatus' do
       with_site_connected do |task, supervisor, site, site_proxy, supervisor_proxy|
-        collect_task = task.async { site_proxy.collect_aggregated_status task, timeout: 0.1 }
+        collect_task = task.async { site_proxy.collect_aggregated_status task, timeout: 0.1, cancel: {disconnect: true} }
         collector = collect_task.wait
         expect(collector.messages.first).to be_an(RSMP::AggregatedStatus)
       end
@@ -44,7 +44,7 @@ RSpec.describe RSMP::Proxy do
     it 'times out' do
       with_site_connected do |task, supervisor, site, site_proxy, supervisor_proxy|
         # an aggreagated status is send by the site right after connection, so ask for more
-        collect_task = task.async { site_proxy.collect_aggregated_status task, num: 1000, timeout: 0.1 }
+        collect_task = task.async { site_proxy.collect_aggregated_status task, num: 1000, timeout: 0.1, cancel: {disconnect: true} }
         expect { collect_task.wait }.to raise_error(RSMP::TimeoutError) 
       end
     end

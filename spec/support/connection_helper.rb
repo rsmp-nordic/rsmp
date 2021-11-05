@@ -18,8 +18,8 @@ module RSMP::SpecHelper::ConnectionHelper
             'watchdog' => time_scale
           },
           'timeouts' => {
-            'watchdog' => 4*time_scale,
-            'acknowledgement' => 4*time_scale
+            'watchdog' => 10*time_scale,
+            'acknowledgement' => 10*time_scale
           },
         },
     #   'one_shot' => true
@@ -34,32 +34,38 @@ module RSMP::SpecHelper::ConnectionHelper
           'watchdog' => time_scale
         },
        'timeouts' => {
-          'watchdog' => 4*time_scale,
-          'acknowledgement' => 4*time_scale
+          'watchdog' => 10*time_scale,
+          'acknowledgement' => 10*time_scale
         },
        }
       log_settings = {
         'active' => false,
-        'hide_ip_and_port' => true,
+        'hide_ip_and_port' => false,
         'debug' => true,
         'json' => false,
-        'watchdogs' => false,
-        'acknowledgements' => false
+        'watchdogs' => true,
+        'acknowledgements' => true
       }
-      supervisor = RSMP::Supervisor.new(supervisor_settings: supervisor_settings,log_settings: log_settings.merge('active'=>false))
-      site = RSMP::Site.new(site_settings: site_settings,log_settings: log_settings.merge('active'=>false))
+      supervisor = RSMP::Supervisor.new(
+        supervisor_settings: supervisor_settings,
+        log_settings: log_settings.merge('active'=>false)
+      )
+      site = RSMP::Site.new(
+        site_settings: site_settings,
+        log_settings: log_settings.merge('active'=>false,'prefix'=>' '*20)
+      )
       task.async { supervisor.start }
       task.async { site.start }
 
       # wait for site to connect
-      site_proxy = supervisor.wait_for_site "RN+SI0001", 50*time_scale
+      site_proxy = supervisor.wait_for_site "RN+SI0001", 100*time_scale
       expect(site_proxy).to be_an(RSMP::SiteProxy)
       expect(site_proxy.site_id).to eq("RN+SI0001")
-      site_proxy.wait_for_state :ready, 50*time_scale
+      site_proxy.wait_for_state :ready, 100*time_scale
 
       supervisor_proxy = site.proxies.first
       expect(supervisor_proxy).to be_an(RSMP::SupervisorProxy)
-      supervisor_proxy.wait_for_state :ready, 50*time_scale
+      supervisor_proxy.wait_for_state :ready, 100*time_scale
 
       # run test code
       yield task, supervisor, site, site_proxy, supervisor_proxy
