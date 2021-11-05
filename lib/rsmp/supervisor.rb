@@ -172,7 +172,12 @@ module RSMP
       id = peek_version_message protocol
       proxy = find_site id
       if proxy
-        proxy.revive settings
+        if proxy.connected?
+          raise ConnectionError.new("Site #{id} alredy connected from port #{proxy.port}")
+        else
+          p proxy.state
+          proxy.revive settings
+        end
       else
         check_max_sites
         proxy = build_proxy settings.merge(site_id:id)    # keep the id learned by peeking above
