@@ -365,6 +365,7 @@ module RSMP
       stop
       message
     ensure
+      clear_deferred_notify
       node.clear_deferred
     end
 

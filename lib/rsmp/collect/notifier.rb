@@ -16,6 +16,10 @@ module RSMP
       @notify_queue = []
     end
 
+    def clear_deferred_notify &block
+      @notify_queue = []
+    end
+
     def deferred_notify &block
       was, @defer_notify = @defer_notify, true
       yield
