@@ -364,6 +364,8 @@ module RSMP
       dont_acknowledge message, str, "#{e.message}"
       stop
       message
+    ensure
+      node.clear_deferred
     end
 
     def process_message message

@@ -38,6 +38,10 @@ module RSMP
     def do_deferred item
     end
 
+    def clear_deferred
+      @deferred.clear
+    end    
+
     def do_start task
       task.annotate self.class.to_s
       @task = task
