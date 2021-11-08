@@ -175,7 +175,6 @@ module RSMP
         if proxy.connected?
           raise ConnectionError.new("Site #{id} alredy connected from port #{proxy.port}")
         else
-          p proxy.state
           proxy.revive settings
         end
       else

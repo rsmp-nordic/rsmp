@@ -1,4 +1,9 @@
 module RSMP
+
+  # Class that represents an RMSP component.
+  # Currently this class is used by both SiteProxy and SupervisorProxy, and can
+  # therefore represent either a local or remote (proxy) component.
+
   class Component
     include Inspect
 
@@ -19,6 +24,7 @@ module RSMP
       @grouped = grouped
       @alarms = {}
       @statuses = {}
+      @subscribes = {}
       clear_aggregated_status
     end
 
@@ -83,5 +89,74 @@ module RSMP
         @alarms[code] = message
       end
     end
+
+    # Handle an incoming status respone, by storing the values
+    def handle_status_response message
+      store_status message, check_repeated: false
+    end
+
+    # Handle an incoming status update, by storing the values
+    def handle_status_update message
+      store_status message, check_repeated: true
+    end
+
+    # Our proxy subscribed to status updates
+    # Store update rates, so we can check for repeated alarm if we asked for updates only
+    # when there's a change, not on a regular interval.
+    # After subscribing, an update status us send regarless of whether values changes,
+    # and we store that.
+    def handle_status_subscribe status_list
+      status_list.each do |item|
+        sCI, n, uRt = item['sCI'], item['n'], item['uRt']
+
+        # record the update rate, so we can check for repeated status values if rate is zero
+        @subscribes[sCI] ||= {}
+        @subscribes[sCI][n] = {'uRt'=>uRt}
+
+        # record that we expect an upeate, even though the value might not change
+        @statuses[sCI] ||= {}
+        @statuses[sCI][n] ||= {}
+        @statuses[sCI][n][:initial] = true
+      end
+      #pp @subscribes
+    end
+
+    # Our proxy unsubscribed to status updates.
+    # Update our list of update rates.
+    def handle_status_unsubscribe status_list
+      status_list.each do |item|
+        sCI, n = item['sCI'], item['n']
+        if @subscribes[sCI]
+          @subscribes[sCI].delete n
+        end
+        if @subscribes[sCI].empty?
+          @subscribes.delete sCI
+        end
+
+        # remove any mark that would allow the next update to be a repeat
+        item = @statuses.dig sCI, n
+        item.delete(:initial) if item
+      end
+    end
+
+    # Store the latest status update values, optionally
+    # checking that we're not receiving unchanged values if we're subscribed
+    # wit updates only on change
+    def store_status message, check_repeated:
+      message.attribute('sS').each do |item|
+        sCI, n, s, q = item['sCI'], item['n'], item['s'], item['q']
+        uRt = @subscribes.dig(sCI,n,'uRt')
+        new_values = {'s'=>s,'q'=>q}
+        old_values = @statuses.dig(sCI,n)
+        if check_repeated && uRt.to_i == 0
+          if new_values == old_values
+            raise RSMP::RepeatedStatusError.new "no change for #{sCI} '#{n}'"
+          end
+        end
+        @statuses[sCI] ||= {}
+        @statuses[sCI][n] = new_values
+      end
+    end
+
   end
 end

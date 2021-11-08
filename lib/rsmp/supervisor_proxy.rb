@@ -225,7 +225,6 @@ module RSMP
     def process_status_subcribe message
       log "Received #{message.type}", message: message, level: :log
 
-
       # @status_subscriptions is organized by component/code/name, for example:
       #
       # {"AA+BBCCC=DDDEE002"=>{"S001"=>["number"]}}
@@ -234,21 +233,14 @@ module RSMP
       # for each component, containing all the requested statuses
 
       update_list = {}
-
       component = message.attributes["cId"]
-      
       @status_subscriptions[component] ||= {}
       update_list[component] ||= {} 
-
-      subs = @status_subscriptions[component]
       now = Time.now  # internal timestamp
 
       message.attributes["sS"].each do |arg|
         sCI = arg["sCI"]
         subcription = {interval: arg["uRt"].to_i, last_sent_at: now}
-        subs[sCI] ||= {}
-        subs[sCI][arg["n"]] = subcription
-
         update_list[component][sCI] ||= []
         update_list[component][sCI] << arg["n"]
       end
@@ -287,11 +279,15 @@ module RSMP
       end
     end
 
-    def store_last_sent_status component, code, name, value
+    def store_last_sent_status message
+      component_id = message.attribute('cId')
       @last_status_sent ||= {}
-      @last_status_sent[component] ||= {}
-      @last_status_sent[component][code] ||= {}
-      @last_status_sent[component][code][name] = value
+      @last_status_sent[component_id] ||= {}
+      message.attribute('sS').each do |item|
+        sCI, n, s = item['sCI'], item['n'], item['s']
+        @last_status_sent[component_id][sCI] ||= {}
+        @last_status_sent[component_id][sCI][n] = s
+      end
     end
 
     def status_update_timer now
@@ -312,7 +308,6 @@ module RSMP
               last_sent = fetch_last_sent_status component, code, name
               if current != last_sent
                 should_send = true
-                store_last_sent_status component, code, name, current
               end
             else
               # send at regular intervals
@@ -356,6 +351,7 @@ module RSMP
           "sS"=>sS
         })
         send_message update
+        store_last_sent_status update
       end
     end
 

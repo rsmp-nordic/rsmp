@@ -58,4 +58,7 @@ module RSMP
 
 	class RepeatedAlarmError < Error
 	end
+
+	class RepeatedStatusError < Error
+	end
 end

@@ -68,6 +68,10 @@ module RSMP
         else
           super message
       end
+    rescue RSMP::RepeatedAlarmError, RSMP::RepeatedStatusError => e
+      str = "Rejected #{message.type} message,"
+      dont_acknowledge message, str, "#{e}"
+      notify_error e.exception("#{str}#{e.message} #{message.json}")
     end
 
     def process_command_response message
@@ -145,10 +149,6 @@ module RSMP
       asp = message.attribute("aSp")
       log "Received #{message.type}, #{alarm_code} #{asp} [#{status}]", message: message, level: :log
       acknowledge message
-    rescue RSMP::RepeatedAlarmError => e
-      str = "Rejected #{message.type} message, "
-      dont_acknowledge message, str, "#{e}"
-      notify_error e.exception("#{str}#{e.message} #{message.json}")
     end
 
     def version_acknowledged
@@ -187,6 +187,8 @@ module RSMP
     end
 
     def process_status_response message
+      component = find_component message.attribute("cId")
+      component.handle_status_response message
       log "Received #{message.type}", message: message, level: :log
       acknowledge message
     end
@@ -198,7 +200,7 @@ module RSMP
       message
     end
 
-    def subscribe_to_status component, status_list, options={}
+    def subscribe_to_status component_id, status_list, options={}
       validate_ready 'subscribe to status'
       m_id = options[:m_id] || RSMP::Message.make_m_id
       
@@ -206,10 +208,13 @@ module RSMP
       # but must to remove from the subscribe message
       subscribe_list = status_list.map { |item| item.slice('sCI','n','uRt') }
 
+      component = find_component component_id
+      component.handle_status_subscribe subscribe_list
+
       message = RSMP::StatusSubscribe.new({
           "ntsOId" => '',
           "xNId" => '',
-          "cId" => component,
+          "cId" => component_id,
           "sS" => subscribe_list,
           'mId' => m_id
       })
@@ -218,12 +223,15 @@ module RSMP
       end
     end
 
-    def unsubscribe_to_status component, status_list, options={}
+    def unsubscribe_to_status component_id, status_list, options={}
+      component = find_component component_id
+      component.handle_status_subscribe status_list
+
       validate_ready 'unsubscribe to status'
       message = RSMP::StatusUnsubscribe.new({
           "ntsOId" => '',
           "xNId" => '',
-          "cId" => component,
+          "cId" => component_id,
           "sS" => status_list
       })
       send_message message, validate: options[:validate]
@@ -231,6 +239,8 @@ module RSMP
     end
 
     def process_status_update message
+      component = find_component message.attribute("cId")
+      component.handle_status_update message
       log "Received #{message.type}", message: message, level: :log
       acknowledge message
     end
