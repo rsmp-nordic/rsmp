@@ -159,9 +159,9 @@ module RSMP
       unless @settings["id"] == false
         length = 4
         if item[:message]
-          parts << Logger.shorten_message_id(item[:message].m_id,length)+' '
+          parts << Logger.shorten_message_id(item[:message].m_id,length).ljust(length)
         else
-          parts << " "*(length+1)
+          parts << ''.ljust(length)
         end
       end
       parts << item[:str].to_s.strip unless @settings["text"] == false
@@ -172,8 +172,10 @@ module RSMP
         parts << item[:exception].backtrace.join("\n")
       end
 
-      out = parts.join(' ').chomp(' ')
-      out
+      parts.map do |s|
+        next '-'.ljust(s.length) if s !~ /\S/  # replace the first char with a dash if string is all whitespace
+        s
+      end.join(' ').rstrip
     end
 
   end

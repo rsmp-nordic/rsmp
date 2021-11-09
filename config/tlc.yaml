@@ -40,7 +40,7 @@ log:
   level: false
   debug: true
   text: true
-  direction: true
+  direction: false
   json: true
   acknowledgements: false
   watchdogs: false
