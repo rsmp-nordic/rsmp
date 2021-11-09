@@ -34,9 +34,10 @@ log:
   color: true
   timestamp: true
   id: true
-  component: true
+  component_id: true
   ip: false
-  site_id: true
+  site_id: 9
+  component_id: 3
   level: false
   debug: true
   text: true

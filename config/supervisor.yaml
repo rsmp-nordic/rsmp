@@ -15,7 +15,8 @@ log:
   component: true
   ip: false
   port: true
-  site_id: true
+  site_id: 9
+  component_id: 3
   text: true
   direction: false
   level: false

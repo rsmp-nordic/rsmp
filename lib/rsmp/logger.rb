@@ -5,33 +5,60 @@ module RSMP
     
     def initialize settings={}
       defaults = {
-        'prefix'=>nil,
         'active'=>false,
         'path'=>nil,
         'stream'=>nil,
-        'author'=>false,
         'color'=>true,
-        'site_id'=>true,
-        'component'=>false,
-        'level'=>false,
-        'ip'=>false,
-        'port'=>false,
-        'index'=>false,
-        'timestamp'=>true,
-        'json'=>false,
         'debug'=>false,
         'statistics'=>false,
         'hide_ip_and_port' => false,
-        'acknowledgements' => false
+        'acknowledgements' => false,
+        'json'=>false,
+        'tabs'=>'-',
+
+        'prefix'=>false,
+        'index'=>false,
+        'author'=>false,
+        'timestamp'=>true,
+        'ip'=>false,
+        'port'=>false,
+        'site_id'=>true,
+        'component_id'=>true,
+        'direction'=>false,
+        'level'=>false,
+        'id'=>false,
+        'str'=>true,
       }
+
+      default_lengths = {
+        'index'=>7,
+        'author'=>13,
+        'timestamp'=>24,
+        'ip'=>22,
+        'port'=>5,
+        'site_id'=>19,
+        'component_id'=>19,
+        'direction'=>4,
+        'level'=>7,
+        'id'=>4,
+      }
+
       if settings
         @settings = defaults.merge settings
       else
         @settings = defaults
       end
 
-      @muted = {}
+      # copy default length for items that are set to true
+      @settings = @settings.map do |key,value|
+        if value == true && default_lengths[key]
+          [ key, default_lengths[key] ]
+        else
+          [ key, value ]
+        end
+      end.to_h
 
+      @muted = {}
       setup_output_destination
     end
 
@@ -138,45 +165,39 @@ module RSMP
       end
       log.join("\n")
     end
-  
-    def build_output item
-      parts = []
-      parts << "#{@settings['prefix']} " if @settings['prefix']
-      parts << item[:index].to_s.ljust(7) if @settings["index"] == true
-      parts << item[:author].to_s.ljust(13) if @settings["author"] == true
-      parts << Clock.to_s(item[:timestamp]).ljust(24) unless @settings["timestamp"] == false
-      parts << item[:ip].to_s.ljust(22) unless @settings["ip"] == false
-      parts << item[:port].to_s.ljust(8) unless @settings["port"] == false
-      parts << item[:site_id].to_s.ljust(13) unless @settings["site_id"] == false
-      parts << item[:component_id].to_s.ljust(18) unless @settings["component"] == false
+
+    def build_part parts, item, key, &block
+      skey = key.to_s
+      return unless @settings[skey]
       
-      directions = {in:"-->",out:"<--"}
-      parts << directions[item[:direction]].to_s.ljust(4) unless @settings["direction"] == false
+      part = item[key]
+      part = yield part if block
+      part = part.to_s
+      part = part.ljust @settings[skey] if @settings[skey].is_a?(Integer)
 
-      parts << item[:level].to_s.capitalize.ljust(7) unless @settings["level"] == false
-
-      
-      unless @settings["id"] == false
-        length = 4
-        if item[:message]
-          parts << Logger.shorten_message_id(item[:message].m_id,length).ljust(length)
-        else
-          parts << ''.ljust(length)
-        end
-      end
-      parts << item[:str].to_s.strip unless @settings["text"] == false
-      parts << item[:message].json unless @settings["json"] == false || item[:message] == nil
-
-      if item[:exception]
-        parts << "#{item[:exception].class.to_s}\n"
-        parts << item[:exception].backtrace.join("\n")
-      end
-
-      parts.map do |s|
-        next '-'.ljust(s.length) if s !~ /\S/  # replace the first char with a dash if string is all whitespace
-        s
-      end.join(' ').rstrip
+      # replace the first char with a dash if string is all whitespace
+      part = @settings['tabs'].ljust(part.length) if @settings['tabs'] && part !~ /\S/
+      parts << part
     end
 
+    def build_output item
+      parts = []
+      build_part( parts, item, :prefix ) { @settings['prefix'] if @settings['prefix'] != false}
+      build_part( parts, item, :index )
+      build_part( parts, item, :author )
+      build_part( parts, item, :timestamp ) { |part| Clock.to_s part }
+      build_part( parts, item, :ip )
+      build_part( parts, item, :port )
+      build_part( parts, item, :site_id )
+      build_part( parts, item, :component_id )
+      build_part( parts, item, :direction ) { |part| {in:"-->",out:"<--"}[part] }
+      build_part( parts, item, :level ) { |part| part.capitalize }
+      build_part( parts, item, :id ) { Logger.shorten_message_id(item[:message].m_id,4) if item[:message] }
+      build_part( parts, item, :str )
+      build_part( parts, item, :json ) { item[:message].json if item[:message] }
+      build_part( parts, item, :exception ) { |e| [e.class,e.backtrace].flatten.join("\n") }
+
+      parts.join('  ').chomp(@settings['tabs']).rstrip
+    end
   end
 end
