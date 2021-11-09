@@ -350,7 +350,7 @@ module RSMP
     rescue SchemaError, RSMP::Schemer::Error => e
       str = "Received invalid #{message.type}, schema errors: #{e.message}"
       log str, message: message, level: :warning
-      notify_error e.exception("#{str} #{message.json}"), message: message
+      notify_error e.exception(str), message: message
       dont_acknowledge message, str
       message
     rescue InvalidMessage => e
@@ -360,12 +360,11 @@ module RSMP
       message
     rescue FatalError => e
       str = "Rejected #{message.type},"
-      notify_error e.exception("#{str} #{message.json}"), message: message
+      notify_error e.exception(str), message: message
       dont_acknowledge message, str, "#{e.message}"
       stop
       message
     ensure
-      clear_deferred_notify
       node.clear_deferred
     end
 

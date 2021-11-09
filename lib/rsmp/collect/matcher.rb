@@ -70,6 +70,13 @@ module RSMP
       @queries.map { |query| query.message }.uniq
     end
 
+    # Return progress as completes queries vs. total number of queries
+    def progress
+      need = @queries.size
+      reached =  @queries.count { |query| query.done? }
+      { need: need, reached: reached }
+    end
+
     # Are there queries left to match?
     def done?
       @queries.all? { |query| query.done? }

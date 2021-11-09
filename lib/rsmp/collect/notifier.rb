@@ -26,6 +26,7 @@ module RSMP
       dequeue_notify
     ensure
       @defer_notify = was
+      @notify_queue = []
     end
 
     def dequeue_notify

@@ -61,7 +61,16 @@ module RSMP
       str = "#{@title.capitalize} collection"
       str << " in response to #{options[:m_id]}" if options[:m_id]
       str << " didn't complete within #{@options[:timeout]}s"
+      reached = progress
+      str << ", reached #{progress[:reached]}/#{progress[:need]}"
       raise RSMP::TimeoutError.new str
+    end
+
+    # Return progress as collected vs. number requested
+    def progress
+      need = @options[:num]
+      reached =  @messages.size
+      { need: need, got: reached }
     end
 
     # Get the collected message.
