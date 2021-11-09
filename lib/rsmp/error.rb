@@ -41,6 +41,9 @@ module RSMP
 	class TimeoutError < Error
 	end
 
+	class DisonnectError < Error
+	end
+
 	class ConnectionError < Error
 	end
 

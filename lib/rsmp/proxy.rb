@@ -86,7 +86,7 @@ module RSMP
       return if @state == :stopped
       set_state :stopping
       stop_tasks
-      notify_error ConnectionError.new("Connection was closed")
+      notify_error DisonnectError.new("Connection was closed")
     ensure
       close_socket
       clear

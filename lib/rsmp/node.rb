@@ -14,9 +14,18 @@ module RSMP
       @deferred = []
       @clock = Clock.new
       @error_queue = Async::Queue.new
+      @ignore_errors = []
+    end
+
+    def ignore_errors classes, &block
+      was, @ignore_errors = @ignore_errors, [classes].flatten
+      yield
+    ensure
+      @ignore_errors = was
     end
 
     def notify_error e, options={}
+      return if @ignore_errors.find { |klass| e.is_a? klass }
       if options[:level] == :internal
         log ["#{e.to_s} in task: #{Async::Task.current.to_s}",e.backtrace].flatten.join("\n"), level: :error
       end

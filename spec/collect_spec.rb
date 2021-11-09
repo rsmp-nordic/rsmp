@@ -88,7 +88,7 @@ RSpec.describe RSMP::Proxy do
         supervisor_proxy.stop
 
         # expect the collect to cancel
-        expect { collect_task.wait }.to raise_error(RSMP::ConnectionError)
+        expect { collect_task.wait }.to raise_error(RSMP::DisconnectError)
       end
     end
   end
