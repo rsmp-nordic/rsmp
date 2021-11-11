@@ -15,8 +15,10 @@ module RSMP
       return unless settings
       check_main_component settings
       settings.each_pair do |type,components_by_type|
-        components_by_type.each_pair do |id,settings|
-          @components[id] = build_component(id:id, type:type, settings:settings)
+        if components_by_type
+          components_by_type.each_pair do |id,settings|
+            @components[id] = build_component(id:id, type:type, settings:settings)
+          end
         end
       end
     end

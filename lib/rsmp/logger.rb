@@ -23,10 +23,10 @@ module RSMP
         'ip'=>false,
         'port'=>false,
         'site_id'=>true,
-        'component_id'=>true,
+        'component'=>true,
         'direction'=>false,
         'level'=>false,
-        'id'=>false,
+        'id'=>true,
         'str'=>true,
       }
 
@@ -37,7 +37,7 @@ module RSMP
         'ip'=>22,
         'port'=>5,
         'site_id'=>19,
-        'component_id'=>19,
+        'component'=>19,
         'direction'=>4,
         'level'=>7,
         'id'=>4,

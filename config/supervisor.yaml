@@ -11,7 +11,6 @@ log:
   active: true
   color: true
   timestamp: true
-  id: true
   component: true
   ip: false
   port: true
