@@ -189,7 +189,7 @@ module RSMP
       build_part( parts, item, :ip )
       build_part( parts, item, :port )
       build_part( parts, item, :site_id )
-      build_part( parts, item, :component_id )
+      build_part( parts, item, :component )
       build_part( parts, item, :direction ) { |part| {in:"-->",out:"<--"}[part] }
       build_part( parts, item, :level ) { |part| part.capitalize }
       build_part( parts, item, :id ) { Logger.shorten_message_id(item[:message].m_id,4) if item[:message] }
