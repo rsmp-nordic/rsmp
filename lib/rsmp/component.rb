@@ -118,7 +118,6 @@ module RSMP
         @statuses[sCI][n] ||= {}
         @statuses[sCI][n][:initial] = true
       end
-      #pp @subscribes
     end
 
     # Our proxy unsubscribed to status updates.

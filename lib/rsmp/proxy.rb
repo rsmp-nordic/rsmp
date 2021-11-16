@@ -348,20 +348,23 @@ module RSMP
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
       nil
     rescue SchemaError, RSMP::Schemer::Error => e
-      str = "Received invalid #{message.type}, schema errors: #{e.message}"
+      reason = "schema errors: #{e.message}"
+      str = "Received invalid #{message.type}, #{reason}"
       log str, message: message, level: :warning
       notify_error e.exception(str), message: message
-      dont_acknowledge message, str
+      dont_acknowledge message, str, reason
       message
     rescue InvalidMessage => e
-      str = "Received", "invalid #{message.type}, #{e.message}"
+      reason = "#{e.message}"
+      str = "Received invalid #{message.type},"
       notify_error e.exception("#{str} #{message.json}"), message: message
-      dont_acknowledge message, str
+      dont_acknowledge message, str, reason
       message
     rescue FatalError => e
+      reason = e.message
       str = "Rejected #{message.type},"
       notify_error e.exception(str), message: message
-      dont_acknowledge message, str, "#{e.message}"
+      dont_acknowledge message, str, reason
       stop
       message
     ensure

@@ -5,11 +5,11 @@ module RSMP
   class TrafficController < Component
     attr_reader :pos, :cycle_time
 
-    def initialize node:, id:, cycle_time: 10
+    def initialize node:, id:, cycle_time: 10, signal_plans:
       super node: node, id: id, grouped: true
       @signal_groups = []
       @detector_logics = []
-      @plans = []
+      @plans = signal_plans
       @cycle_time = cycle_time
       @num_traffic_situations = 1
       @num_inputs = 8
@@ -175,8 +175,22 @@ module RSMP
       @node.verify_security_code 2, arg['securityCode']
     end
 
+    def find_plan plan_nr
+      plan = @plans[plan_nr.to_i]
+      raise InvalidMessage.new "unknown signal plan #{plan_nr}, known only [#{@plans.keys.join(',')}]" unless plan
+      plan
+    end
+
     def handle_m0014 arg
       @node.verify_security_code 2, arg['securityCode']
+      plan = find_plan arg['plan']
+      arg['status'].split(',').each do |item|
+        matched = /(\d+)-(\d+)/.match item
+        band = matched[1].to_i
+        value = matched[2].to_i
+        log "Set plan #{arg['plan']} dynamic band #{band} to #{value}", level: :info
+        plan.set_band band, value
+      end
     end
 
     def handle_m0015 arg
@@ -241,6 +255,7 @@ module RSMP
       if plan_nr == 0
         log "Switching to plan selection by time table", level: :info
       else
+        plan = find_plan plan_nr
         log "Switching to plan #{plan_nr}", level: :info
       end
       @plan = plan_nr
@@ -455,14 +470,16 @@ module RSMP
     def handle_s0022 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status '1'
+        RSMP::Tlc.make_status @plans.keys.join(',')
       end
     end
 
     def handle_s0023 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status '1-1-0'
+        bands = @plans.map { |nr,plan| plan.band_string }
+        str = bands.compact.join(',')
+        RSMP::Tlc.make_status str
       end
     end
 
@@ -625,19 +642,24 @@ module RSMP
   class SignalGroup < Component
     attr_reader :plan, :state
 
-    # plan is a string, with each character representing a signal phase at a particular second  in the cycle
+    # plan is a string, with each character representing a signal phase at a particular second in the cycle
     def initialize node:, id:, plan: nil
       super node: node, id: id, grouped: false
       @plan = plan
       move 0
     end
 
+    def plan_str
+      return unless @plan
+      @plan.plan
+    end
+
     def get_state pos
-      return 'a' unless @plan  # if no plan, use phase a, which means disabled/dark
-      if pos > @plan.length
+      return 'a' unless plan_str  # if no plan, use phase a, which means disabled/dark
+      if pos > plan_str.length
         '.'
       else
-        @plan[pos]
+        plan_str[pos]
       end
     end
 
@@ -802,23 +824,58 @@ module RSMP
   end
 
   class Tlc < Site
+
+    class SignalPlan
+      attr_reader :nr, :plan, :dynamic_bands
+      def initialize nr:, plan:, dynamic_bands:
+        @nr = nr
+        @plan = plan
+        @dynamic_bands = dynamic_bands || {}
+      end
+
+      def band_string
+        str = @dynamic_bands.map { |band,value| "#{nr}-#{band}-#{value}" }.join(',')
+        return nil if str == ''
+        str
+      end
+
+      def set_band band, value
+        @dynamic_bands[ band.to_i ] = value.to_i
+      end
+
+      def get_band band
+        @dynamic_bands[ band.to_i ]
+      end
+    end
+
     attr_accessor :main
+
     def initialize options={}
-      super options
       @sxl = 'traffic_light_controller'
       @security_codes = options[:site_settings]['security_codes']
       @interval = options[:site_settings].dig('intervals','timer') || 1
+      build_plans options[:site_settings].dig('signal_plans')
+      super options
       unless @main
         raise ConfigurationError.new "TLC must have a main component"
+      end
+    end
+
+    def build_plans signal_plans
+      @signal_plans = {}
+      signal_plans.each_pair do |id,settings|
+        @signal_plans[id.to_i] = SignalPlan.new(nr: id.to_i, plan:settings['plan'],dynamic_bands:settings['dynamic_bands'])
       end
     end
 
     def build_component id:, type:, settings:{}
       component = case type
       when 'main'
-        @main = TrafficController.new node: self, id: id, cycle_time: settings['cycle_time']
+        @main = TrafficController.new node: self, id: id,
+          cycle_time: settings['cycle_time'],
+          signal_plans: @signal_plans
       when 'signal_group'
-        group = SignalGroup.new node: self, id: id, plan: settings['plan']
+        group = SignalGroup.new node: self, id: id, plan: @signal_plans.values.first
         @main.add_signal_group group
         group
       when 'detector_logic'
