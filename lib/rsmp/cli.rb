@@ -51,7 +51,7 @@ module RSMP
       if options[:type]
         case options[:type]
           when 'tlc'
-            site_class = RSMP::Tlc
+            site_class = RSMP::TrafficControllerSite
           else
             site_class = RSMP::Site
         end

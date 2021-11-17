@@ -3,7 +3,7 @@
 module RSMP
 
   class TrafficController < Component
-    attr_reader :pos, :cycle_time
+    attr_reader :pos, :cycle_time, :plan
 
     def initialize node:, id:, cycle_time: 10, signal_plans:
       super node: node, id: id, grouped: true
@@ -44,6 +44,10 @@ module RSMP
       node.clock
     end
 
+    def current_plan
+      # TODO plan 0 should means use time table
+      @plans[ plan ] || @plans.first[1]
+    end
 
     def add_signal_group group
       @signal_groups << group
@@ -68,9 +72,7 @@ module RSMP
       @signal_groups.each do |group|
         group.move pos
       end
-      if pos == 0
-        aggregated_status_changed
-      end
+      #output_states
     end
 
     def output_states
@@ -84,7 +86,8 @@ module RSMP
           s.colorize(:red)
         end
       end.join ' '
-      print "\t#{pos.to_s.ljust(3)} #{str}\r"
+      plan = "P#{@plan}"
+      print "#{plan.rjust(4)} #{pos.to_s.rjust(4)} #{str}\r"
     end
 
     def format_signal_group_status
@@ -115,7 +118,7 @@ module RSMP
 
     def handle_m0002 arg
       @node.verify_security_code 2, arg['securityCode']
-      if RSMP::Tlc.from_rsmp_bool(arg['status'])
+      if RSMP::TrafficControllerSite.from_rsmp_bool(arg['status'])
         switch_plan arg['timeplan']
       else
         switch_plan 0   # TODO use clock/calender
@@ -295,182 +298,182 @@ module RSMP
     def handle_s0001 status_code, status_name=nil
       case status_name
       when 'signalgroupstatus'
-        RSMP::Tlc.make_status format_signal_group_status
+        RSMP::TrafficControllerSite.make_status format_signal_group_status
       when 'cyclecounter'
-        RSMP::Tlc.make_status @pos.to_s
+        RSMP::TrafficControllerSite.make_status @pos.to_s
       when 'basecyclecounter'
-        RSMP::Tlc.make_status @pos.to_s
+        RSMP::TrafficControllerSite.make_status @pos.to_s
       when 'stage'
-        RSMP::Tlc.make_status 0.to_s
+        RSMP::TrafficControllerSite.make_status 0.to_s
       end
     end
 
     def handle_s0002 status_code, status_name=nil
       case status_name
       when 'detectorlogicstatus'
-        RSMP::Tlc.make_status @detector_logics.map { |dl| dl.value ? '1' : '0' }.join
+        RSMP::TrafficControllerSite.make_status @detector_logics.map { |dl| dl.value ? '1' : '0' }.join
       end
     end
 
     def handle_s0003 status_code, status_name=nil
       case status_name
       when 'inputstatus'
-        RSMP::Tlc.make_status @input_results
+        RSMP::TrafficControllerSite.make_status @input_results
       when 'extendedinputstatus'
-        RSMP::Tlc.make_status 0.to_s
+        RSMP::TrafficControllerSite.make_status 0.to_s
       end
     end
 
     def handle_s0004 status_code, status_name=nil
       case status_name
       when 'outputstatus'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'extendedoutputstatus'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
 
     def handle_s0005 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status @is_starting
+        RSMP::TrafficControllerSite.make_status @is_starting
       end
     end
 
     def handle_s0006 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status @emergency_route
+        RSMP::TrafficControllerSite.make_status @emergency_route
       when 'emergencystage'
-        RSMP::Tlc.make_status @emergency_route_number
+        RSMP::TrafficControllerSite.make_status @emergency_route_number
       end
     end
 
     def handle_s0007 status_code, status_name=nil
       case status_name
       when 'intersection'
-        RSMP::Tlc.make_status @intersection
+        RSMP::TrafficControllerSite.make_status @intersection
       when 'status'
-        RSMP::Tlc.make_status !@dark_mode
+        RSMP::TrafficControllerSite.make_status !@dark_mode
       end
     end
 
     def handle_s0008 status_code, status_name=nil
       case status_name
       when 'intersection'
-        RSMP::Tlc.make_status @intersection
+        RSMP::TrafficControllerSite.make_status @intersection
       when 'status'
-        RSMP::Tlc.make_status @manual_control
+        RSMP::TrafficControllerSite.make_status @manual_control
       end
     end
 
     def handle_s0009 status_code, status_name=nil
       case status_name
       when 'intersection'
-        RSMP::Tlc.make_status @intersection
+        RSMP::TrafficControllerSite.make_status @intersection
       when 'status'
-        RSMP::Tlc.make_status @fixed_time_control
+        RSMP::TrafficControllerSite.make_status @fixed_time_control
       end
     end
 
     def handle_s0010 status_code, status_name=nil
       case status_name
       when 'intersection'
-        RSMP::Tlc.make_status @intersection
+        RSMP::TrafficControllerSite.make_status @intersection
       when 'status'
-        RSMP::Tlc.make_status @isolated_control
+        RSMP::TrafficControllerSite.make_status @isolated_control
       end
     end
 
     def handle_s0011 status_code, status_name=nil
       case status_name
       when 'intersection'
-        RSMP::Tlc.make_status @intersection
+        RSMP::TrafficControllerSite.make_status @intersection
       when 'status'
-        RSMP::Tlc.make_status @yellow_flash
+        RSMP::TrafficControllerSite.make_status @yellow_flash
       end
     end
 
     def handle_s0012 status_code, status_name=nil
       case status_name
       when 'intersection'
-        RSMP::Tlc.make_status @intersection
+        RSMP::TrafficControllerSite.make_status @intersection
       when 'status'
-        RSMP::Tlc.make_status @all_red
+        RSMP::TrafficControllerSite.make_status @all_red
       end
     end
 
     def handle_s0013 status_code, status_name=nil
       case status_name
       when 'intersection'
-        RSMP::Tlc.make_status @intersection
+        RSMP::TrafficControllerSite.make_status @intersection
       when 'status'
-        RSMP::Tlc.make_status @police_key
+        RSMP::TrafficControllerSite.make_status @police_key
       end
     end
 
     def handle_s0014 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status @plan
+        RSMP::TrafficControllerSite.make_status @plan
       end
     end
 
     def handle_s0015 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status @traffic_situation
+        RSMP::TrafficControllerSite.make_status @traffic_situation
       end
     end
 
     def handle_s0016 status_code, status_name=nil
       case status_name
       when 'number'
-        RSMP::Tlc.make_status @detector_logics.size
+        RSMP::TrafficControllerSite.make_status @detector_logics.size
       end
     end
 
     def handle_s0017 status_code, status_name=nil
       case status_name
       when 'number'
-        RSMP::Tlc.make_status @signal_groups.size
+        RSMP::TrafficControllerSite.make_status @signal_groups.size
       end
     end
 
     def handle_s0018 status_code, status_name=nil
       case status_name
       when 'number'
-        RSMP::Tlc.make_status @plans.size
+        RSMP::TrafficControllerSite.make_status @plans.size
       end
     end
 
     def handle_s0019 status_code, status_name=nil
       case status_name
       when 'number'
-        RSMP::Tlc.make_status @num_traffic_situations
+        RSMP::TrafficControllerSite.make_status @num_traffic_situations
       end
     end
 
     def handle_s0020 status_code, status_name=nil
       case status_name
       when 'intersection'
-        RSMP::Tlc.make_status @intersection
+        RSMP::TrafficControllerSite.make_status @intersection
       when 'controlmode'
-        RSMP::Tlc.make_status @control_mode
+        RSMP::TrafficControllerSite.make_status @control_mode
       end
     end
 
     def handle_s0021 status_code, status_name=nil
       case status_name
       when 'detectorlogics'
-        RSMP::Tlc.make_status @detector_logics.map { |logic| logic.forced=='True' ? '1' : '0'}.join
+        RSMP::TrafficControllerSite.make_status @detector_logics.map { |logic| logic.forced=='True' ? '1' : '0'}.join
       end
     end
 
     def handle_s0022 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status @plans.keys.join(',')
+        RSMP::TrafficControllerSite.make_status @plans.keys.join(',')
       end
     end
 
@@ -479,81 +482,81 @@ module RSMP
       when 'status'
         bands = @plans.map { |nr,plan| plan.band_string }
         str = bands.compact.join(',')
-        RSMP::Tlc.make_status str
+        RSMP::TrafficControllerSite.make_status str
       end
     end
 
     def handle_s0024 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status '1-0'
+        RSMP::TrafficControllerSite.make_status '1-0'
       end
     end
 
     def handle_s0026 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status '0-00'
+        RSMP::TrafficControllerSite.make_status '0-00'
       end
     end
 
     def handle_s0027 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status '00-00-00-00'
+        RSMP::TrafficControllerSite.make_status '00-00-00-00'
       end
     end
 
     def handle_s0028 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status '00-00'
+        RSMP::TrafficControllerSite.make_status '00-00'
       end
     end
 
     def handle_s0029 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status ''
+        RSMP::TrafficControllerSite.make_status ''
       end
     end
 
     def handle_s0030 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status ''
+        RSMP::TrafficControllerSite.make_status ''
       end
     end
 
     def handle_s0031 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status ''
+        RSMP::TrafficControllerSite.make_status ''
       end
     end
 
     def handle_s0091 status_code, status_name=nil
       case status_name
       when 'user'
-        RSMP::Tlc.make_status 'nobody'
+        RSMP::TrafficControllerSite.make_status 'nobody'
       when 'status'
-        RSMP::Tlc.make_status 'logout'
+        RSMP::TrafficControllerSite.make_status 'logout'
       end
     end
 
     def handle_s0092 status_code, status_name=nil
       case status_name
       when 'user'
-        RSMP::Tlc.make_status 'nobody'
+        RSMP::TrafficControllerSite.make_status 'nobody'
       when 'status'
-        RSMP::Tlc.make_status 'logout'
+        RSMP::TrafficControllerSite.make_status 'logout'
       end
     end
 
     def handle_s0095 status_code, status_name=nil
       case status_name
       when 'status'
-        RSMP::Tlc.make_status RSMP::VERSION
+        RSMP::TrafficControllerSite.make_status RSMP::VERSION
       end
     end
 
@@ -561,79 +564,79 @@ module RSMP
       now = clock.now
       case status_name
       when 'year'
-        RSMP::Tlc.make_status now.year.to_s.rjust(4, "0")
+        RSMP::TrafficControllerSite.make_status now.year.to_s.rjust(4, "0")
       when 'month'
-        RSMP::Tlc.make_status now.month.to_s.rjust(2, "0")
+        RSMP::TrafficControllerSite.make_status now.month.to_s.rjust(2, "0")
       when 'day'
-        RSMP::Tlc.make_status now.day.to_s.rjust(2, "0")
+        RSMP::TrafficControllerSite.make_status now.day.to_s.rjust(2, "0")
       when 'hour'
-        RSMP::Tlc.make_status now.hour.to_s.rjust(2, "0")
+        RSMP::TrafficControllerSite.make_status now.hour.to_s.rjust(2, "0")
       when 'minute'
-        RSMP::Tlc.make_status now.min.to_s.rjust(2, "0")
+        RSMP::TrafficControllerSite.make_status now.min.to_s.rjust(2, "0")
       when 'second'
-        RSMP::Tlc.make_status now.sec.to_s.rjust(2, "0")
+        RSMP::TrafficControllerSite.make_status now.sec.to_s.rjust(2, "0")
       end
     end
 
     def handle_s0097 status_code, status_name=nil
       case status_name
       when 'checksum'
-        RSMP::Tlc.make_status '1'
+        RSMP::TrafficControllerSite.make_status '1'
       when 'timestamp'
         now = @node.clock.to_s
-        RSMP::Tlc.make_status now
+        RSMP::TrafficControllerSite.make_status now
       end
     end
 
     def handle_s0205 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status clock.to_s
+        RSMP::TrafficControllerSite.make_status clock.to_s
       when 'vehicles'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
 
     def handle_s0206 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status clock.to_s
+        RSMP::TrafficControllerSite.make_status clock.to_s
       when 'speed'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
 
     def handle_s0207 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status clock.to_s
+        RSMP::TrafficControllerSite.make_status clock.to_s
       when 'occupancy'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
 
     def handle_s0208 status_code, status_name=nil
       case status_name
       when 'start'
-        RSMP::Tlc.make_status clock.to_s
+        RSMP::TrafficControllerSite.make_status clock.to_s
       when 'P'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'PS'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'L'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'LS'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'B'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'SP'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'MC'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'C'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'F'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
 
@@ -643,24 +646,15 @@ module RSMP
     attr_reader :plan, :state
 
     # plan is a string, with each character representing a signal phase at a particular second in the cycle
-    def initialize node:, id:, plan: nil
+    def initialize node:, id:
       super node: node, id: id, grouped: false
-      @plan = plan
       move 0
     end
 
-    def plan_str
-      return unless @plan
-      @plan.plan
-    end
-
     def get_state pos
-      return 'a' unless plan_str  # if no plan, use phase a, which means disabled/dark
-      if pos > plan_str.length
-        '.'
-      else
-        plan_str[pos]
-      end
+      plan = node.main.current_plan
+      states = plan.states[c_id]
+      states[pos] ||  'a'     # phase a means disabled/dark
     end
 
     def move pos
@@ -679,7 +673,7 @@ module RSMP
     # Start of signal group. Orders a signal group to green
     def handle_m0010 arg
       @node.verify_security_code 2, arg['securityCode']
-      if RSMP::Tlc.from_rsmp_bool arg['status']
+      if RSMP::TrafficControllerSite.from_rsmp_bool arg['status']
         log "Start signal group #{c_id}, go to green", level: :info
       end
     end
@@ -687,7 +681,7 @@ module RSMP
     # Stop of signal group. Orders a signal group to red
     def handle_m0011 arg
       @node.verify_security_code 2, arg['securityCode']
-      if RSMP::Tlc.from_rsmp_bool arg['status']
+      if RSMP::TrafficControllerSite.from_rsmp_bool arg['status']
         log "Stop signal group #{c_id}, go to red", level: :info
       end
     end
@@ -705,21 +699,21 @@ module RSMP
       now = @node.clock.to_s
       case status_name
       when 'minToGEstimate'
-        RSMP::Tlc.make_status now
+        RSMP::TrafficControllerSite.make_status now
       when 'maxToGEstimate'
-        RSMP::Tlc.make_status now
+        RSMP::TrafficControllerSite.make_status now
       when 'likelyToGEstimate'
-        RSMP::Tlc.make_status now
+        RSMP::TrafficControllerSite.make_status now
       when 'ToGConfidence'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'minToREstimate'
-        RSMP::Tlc.make_status now
+        RSMP::TrafficControllerSite.make_status now
       when 'maxToREstimate'
-        RSMP::Tlc.make_status now
+        RSMP::TrafficControllerSite.make_status now
       when 'likelyToREstimate'
-        RSMP::Tlc.make_status now
+        RSMP::TrafficControllerSite.make_status now
       when 'ToRConfidence'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
   end
@@ -745,52 +739,52 @@ module RSMP
     def handle_s0201 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status @node.clock.to_s
+        RSMP::TrafficControllerSite.make_status @node.clock.to_s
       when 'vehicles'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
 
     def handle_s0202 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status @node.clock.to_s
+        RSMP::TrafficControllerSite.make_status @node.clock.to_s
       when 'speed'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
 
     def handle_s0203 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status @node.clock.to_s
+        RSMP::TrafficControllerSite.make_status @node.clock.to_s
       when 'occupancy'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
 
     def handle_s0204 status_code, status_name=nil
       case status_name
       when 'starttime'
-        RSMP::Tlc.make_status @node.clock.to_s
+        RSMP::TrafficControllerSite.make_status @node.clock.to_s
       when 'P'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'PS'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'L'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'LS'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'B'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'SP'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'MC'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'C'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       when 'F'
-        RSMP::Tlc.make_status 0
+        RSMP::TrafficControllerSite.make_status 0
       end
     end
 
@@ -823,13 +817,13 @@ module RSMP
 
   end
 
-  class Tlc < Site
+  class TrafficControllerSite < Site
 
     class SignalPlan
-      attr_reader :nr, :plan, :dynamic_bands
-      def initialize nr:, plan:, dynamic_bands:
+      attr_reader :nr, :states, :dynamic_bands
+      def initialize nr:, states:, dynamic_bands:
         @nr = nr
-        @plan = plan
+        @states = states
         @dynamic_bands = dynamic_bands || {}
       end
 
@@ -848,7 +842,7 @@ module RSMP
       end
     end
 
-    attr_accessor :main
+    attr_accessor :main, :signal_plans
 
     def initialize options={}
       @sxl = 'traffic_light_controller'
@@ -864,8 +858,12 @@ module RSMP
     def build_plans signal_plans
       @signal_plans = {}
       signal_plans.each_pair do |id,settings|
-        @signal_plans[id.to_i] = SignalPlan.new(nr: id.to_i, plan:settings['plan'],dynamic_bands:settings['dynamic_bands'])
+        @signal_plans[id.to_i] = SignalPlan.new(nr: id.to_i, states:settings['states'],dynamic_bands:settings['dynamic_bands'])
       end
+    end
+
+    def get_plan group_id, plan_nr
+      'NN1BB1'
     end
 
     def build_component id:, type:, settings:{}
@@ -875,7 +873,7 @@ module RSMP
           cycle_time: settings['cycle_time'],
           signal_plans: @signal_plans
       when 'signal_group'
-        group = SignalGroup.new node: self, id: id, plan: @signal_plans.values.first
+        group = SignalGroup.new node: self, id: id
         @main.add_signal_group group
         group
       when 'detector_logic'
