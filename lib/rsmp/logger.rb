@@ -50,7 +50,7 @@ module RSMP
         'statuses' => ['StatusRequest','StatusSubscribe','StatusUnsubscribe','StatusResponse','StatusUpdate'],
         'commands' => ['CommandRequest','CommandResponse'],
         'watchdogs' => 'Watchdog',
-        'alarms' => ['Alarm','AlarmRequest'],
+        'alarms' => ['AlarmIssue','AlarmRequest','AlarmAcknowledged','AlarmSuspend','AlarmResume'],
         'aggregated_status' => ['AggregatedStatus','AggregatedStatusRequest']
       }
 
