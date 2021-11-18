@@ -85,7 +85,7 @@ module RSMP
           raise RepeatedAlarmError.new("no changes from previous alarm #{previous.m_id_short}")
         end
         if Time.parse(message.attribute('aTs')) < Time.parse(previous.attribute('aTs'))
-          raise RepeatedAlarmError.new("timestamp is earlier than previous alarm #{previous.m_id_short}")
+          raise TimestampError.new("timestamp is earlier than previous alarm #{previous.m_id_short}")
         end
       end
     ensure
