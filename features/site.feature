@@ -7,7 +7,7 @@ Feature: Run site
     When I run `rsmp site` interactively
 		And I send the signal "SIGINT" to the command started last
     Then the output should contain "Starting site RN+SI0001"
-    Then the output should contain "Connecting to superviser at 127.0.0.1:12111"
+    Then the output should contain "Connecting to supervisor at 127.0.0.1:12111"
 
   Scenario: Help option
     When I run `rsmp help site`
@@ -22,7 +22,7 @@ Feature: Run site
   Scenario: Supervisors option
     When I run `rsmp site -s 127.0.0.8:12118` interactively
 		And I send the signal "SIGINT" to the command started last
-    Then the output should contain "Connecting to superviser at 127.0.0.8:12118"
+    Then the output should contain "Connecting to supervisor at 127.0.0.8:12118"
 
   Scenario: Config option
     Given a directory named "features/fixtures"

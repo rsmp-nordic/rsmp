@@ -125,7 +125,7 @@ This will output messages form both the site and the supervisor, ordered chronol
 ```console
 RN+SU0001                              Starting supervisor RN+SU0001 on port 12111
 RN+SI0001                              Starting site RN+SI0001
-RN+SI0001                              Connecting to superviser at 127.0.0.1:12111
+RN+SI0001                              Connecting to supervisor at 127.0.0.1:12111
 RN+SI0001                   <--  f8c7  Sent Version
 RN+SU0001                              Site connected from 127.0.0.1:53500
 RN+SU0001     RN+SI0001     -->  f8c7  Received Version message for sites [RN+SI0001] using RSMP 3.1.4
@@ -156,7 +156,7 @@ The ```site``` command will start an RSMP site, which will try to connect to one
 ```console
 % rsmp site
 2019-11-11 12:22:00 UTC                            Starting site RN+SI0001
-2019-11-11 12:22:00 UTC                            Connecting to superviser at 127.0.0.1:12111
+2019-11-11 12:22:00 UTC                            Connecting to supervisor at 127.0.0.1:12111
 2019-11-11 12:22:00 UTC                 <--  792f  Sent Version
 2019-11-11 12:22:00 UTC  RN+SU0001      -->  e70e  Received Version message, using RSMP 3.1.4
 2019-11-11 12:22:00 UTC  RN+SU0001                 Connection to supervisor established
