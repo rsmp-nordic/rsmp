@@ -15,5 +15,3 @@ log:
   level: false
   debug: true
   json: true
-  acknowledgements: false
-  watchdogs: false

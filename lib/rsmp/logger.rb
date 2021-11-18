@@ -14,6 +14,7 @@ module RSMP
         'hide_ip_and_port' => false,
         'acknowledgements' => false,
         'watchdogs' => false,
+        'alarms' => true,
         'json'=>false,
         'tabs'=>'-',
 
@@ -42,6 +43,15 @@ module RSMP
         'direction'=>3,
         'level'=>7,
         'id'=>4,
+      }
+
+      @ignorable = {
+        'versions' => ['Version'],
+        'statuses' => ['StatusRequest','StatusSubscribe','StatusUnsubscribe','StatusResponse','StatusUpdate'],
+        'commands' => ['CommandRequest','CommandResponse'],
+        'watchdogs' => 'Watchdog',
+        'alarms' => ['Alarm','AlarmRequest'],
+        'aggregated_status' => ['AggregatedStatus','AggregatedStatusRequest']
       }
 
       if settings
@@ -96,10 +106,15 @@ module RSMP
       if item[:message]
         type = item[:message].type
         ack = type == "MessageAck" || type == "MessageNotAck"
-        if @settings["watchdogs"] == false
-          return false if type == "Watchdog"
-          if ack
-            return false if item[:message].original && item[:message].original.type == "Watchdog"
+        @ignorable.each_pair do |key,types|
+          next unless types
+          ignore = [types].flatten
+          if @settings[key] == false
+            #p [type,ignore_type, [ignore_type].flatten.include?(type)]
+            return false if ignore.include?(type)
+            if ack
+              return false if item[:message].original && ignore.include?(item[:message].original.type)
+            end
           end
         end
         return false if ack && @settings["acknowledgements"] == false && 
