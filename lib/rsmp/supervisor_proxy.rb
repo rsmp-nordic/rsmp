@@ -23,15 +23,22 @@ module RSMP
     end
 
     def start
-      log "Connecting to superviser at #{@ip}:#{@port}", level: :info
+      log "Connecting to supervisor at #{@ip}:#{@port}", level: :info
       super
       connect
       @logger.unmute @ip, @port
-      log "Connected to superviser at #{@ip}:#{@port}", level: :info
+      log "Connected to supervisor at #{@ip}:#{@port}", level: :info
       start_reader
       send_version @site_settings['site_id'], @site_settings["rsmp_versions"]
-    rescue Errno::ECONNREFUSED
-      log "No connection to supervisor at #{@ip}:#{@port}", level: :error
+    rescue SystemCallError => e
+      log "Could not connect to supervisor at #{@ip}:#{@port}: Errno #{e.errno} #{e}", level: :error
+      retry_notice
+    rescue StandardError => e
+      log "Error while connecting to supervisor at #{@ip}:#{@port}: #{e}", level: :error
+      retry_notice
+    end
+
+    def retry_notice
       unless @site.site_settings['intervals']['reconnect'] == :no
         log "Will try to reconnect again every #{@site.site_settings['intervals']['reconnect']} seconds..", level: :info
         @logger.mute @ip, @port
