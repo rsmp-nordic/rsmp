@@ -19,13 +19,14 @@ signal_plans:
   1:
     dynamic_bands:
       1: 0
-    plan:
+      2: 5
+    states:
       A1: '11NBBB'
       A2: '1NBBBB'
       B1: 'BBB11N'
       B2: 'BBB1NB'
   2:
-    plan:
+    states:
       A1: '111NBB'
       A2: '11NBBB'
       B1: 'BBB11N'
@@ -41,17 +42,11 @@ security_codes:
   1: '1111'
   2: '2222'
 log:
-  active: true
-  color: true
-  timestamp: true
-  component_id: true
   ip: false
   site_id: 9
-  component: 3
+  component: 2
   level: false
   debug: true
-  text: true
-  direction: false
   json: true
   acknowledgements: false
   watchdogs: false

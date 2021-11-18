@@ -8,15 +8,9 @@ guest:
     watchdog: 0.2
     acknowledgement: 0.2
 log:
-  active: true
-  color: true
-  timestamp: true
-  component: true
-  ip: false
   port: true
   site_id: 9
-  component_id: 3
-  text: true
+  component: 2
   direction: false
   level: false
   debug: true

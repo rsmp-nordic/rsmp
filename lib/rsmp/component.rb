@@ -65,7 +65,8 @@ module RSMP
     end
 
     def log str, options
-      @node.log str, options
+      default = { component: c_id}
+      @node.log str, default.merge(options)
     end
 
     def handle_command command_code, arg

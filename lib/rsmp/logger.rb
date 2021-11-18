@@ -5,7 +5,7 @@ module RSMP
     
     def initialize settings={}
       defaults = {
-        'active'=>false,
+        'active'=>true,
         'path'=>nil,
         'stream'=>nil,
         'color'=>true,
@@ -13,6 +13,7 @@ module RSMP
         'statistics'=>false,
         'hide_ip_and_port' => false,
         'acknowledgements' => false,
+        'watchdogs' => false,
         'json'=>false,
         'tabs'=>'-',
 
@@ -23,11 +24,10 @@ module RSMP
         'ip'=>false,
         'port'=>false,
         'site_id'=>true,
-        'component'=>true,
         'direction'=>false,
         'level'=>false,
         'id'=>true,
-        'str'=>true,
+        'text'=>true,
       }
 
       default_lengths = {
@@ -38,7 +38,7 @@ module RSMP
         'port'=>5,
         'site_id'=>19,
         'component'=>19,
-        'direction'=>4,
+        'direction'=>3,
         'level'=>7,
         'id'=>4,
       }
@@ -190,14 +190,14 @@ module RSMP
       build_part( parts, item, :port )
       build_part( parts, item, :site_id )
       build_part( parts, item, :component )
-      build_part( parts, item, :direction ) { |part| {in:"-->",out:"<--"}[part] }
+      build_part( parts, item, :direction ) { |part| {in:"In",out:"Out"}[part] }
       build_part( parts, item, :level ) { |part| part.capitalize }
       build_part( parts, item, :id ) { Logger.shorten_message_id(item[:message].m_id,4) if item[:message] }
-      build_part( parts, item, :str )
+      build_part( parts, item, :text )
       build_part( parts, item, :json ) { item[:message].json if item[:message] }
       build_part( parts, item, :exception ) { |e| [e.class,e.backtrace].flatten.join("\n") }
 
-      parts.join('  ').chomp(@settings['tabs']).rstrip
+      parts.join('  ').chomp(@settings['tabs'].to_s).rstrip
     end
   end
 end

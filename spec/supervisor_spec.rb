@@ -14,7 +14,9 @@ RSpec.describe RSMP::Supervisor do
 				'active' => false,
 				'hide_ip_and_port' => true,
 				'debug' => false,
-				'json' => true
+				'json' => true,
+				'acknowledgement' => true,
+				'watchdogs' => true
 			}
 		}
 
@@ -86,7 +88,7 @@ RSpec.describe RSMP::Supervisor do
 				}.not_to raise_error
 
 				# verify log content
-				got = supervisor.archive.by_level([:log, :info]).map { |item| item[:str] }
+				got = supervisor.archive.by_level([:log, :info]).map { |item| item[:text] }
 				expect( got ).to match_array([
 					"Starting supervisor on port 13111",
 					"Site connected from ********",
