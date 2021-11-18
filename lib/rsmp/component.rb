@@ -79,16 +79,17 @@ module RSMP
 
     def handle_alarm message
       code = message.attribute('aCId')
-      alarm = @alarms[code]
-      if alarm
-        if alarm.differ? message
-          @alarms[code] = alarm
-        else
-          raise RepeatedAlarmError.new("no changes from previous alarm #{alarm.m_id_short}")
+      previous = @alarms[code]
+      if previous
+        unless message.differ?(previous)
+          raise RepeatedAlarmError.new("no changes from previous alarm #{previous.m_id_short}")
         end
-      else
-        @alarms[code] = message
+        if Time.parse(message.attribute('aTs')) < Time.parse(previous.attribute('aTs'))
+          raise RepeatedAlarmError.new("timestamp is earlier than previous alarm #{previous.m_id_short}")
+        end
       end
+    ensure
+      @alarms[code] = message
     end
 
     # Handle an incoming status respone, by storing the values
