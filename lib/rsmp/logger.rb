@@ -24,6 +24,7 @@ module RSMP
         'ip'=>false,
         'port'=>false,
         'site_id'=>true,
+        'component'=>true,
         'direction'=>false,
         'level'=>false,
         'id'=>true,
