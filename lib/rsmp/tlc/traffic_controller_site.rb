@@ -19,7 +19,12 @@ module RSMP
         @signal_plans = {}
         return unless signal_plans
         signal_plans.each_pair do |id,settings|
-          @signal_plans[id.to_i] = SignalPlan.new(nr: id.to_i, states:settings['states'],dynamic_bands:settings['dynamic_bands'])
+          states = nil
+          bands = nil
+          states = settings['states'] if settings
+          dynamic_bands = settings['dynamic_bands'] if settings
+
+          @signal_plans[id.to_i] = SignalPlan.new(nr: id.to_i, states:states,dynamic_bands:dynamic_bands)
         end
       end
 
