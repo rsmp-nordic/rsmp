@@ -50,7 +50,7 @@ module RSMP
         'statuses' => ['StatusRequest','StatusSubscribe','StatusUnsubscribe','StatusResponse','StatusUpdate'],
         'commands' => ['CommandRequest','CommandResponse'],
         'watchdogs' => 'Watchdog',
-        'alarms' => ['AlarmIssue','AlarmRequest','AlarmAcknowledged','AlarmSuspend','AlarmResume'],
+        'alarms' => ['Alarm'],
         'aggregated_status' => ['AggregatedStatus','AggregatedStatusRequest']
       }
 
@@ -105,12 +105,10 @@ module RSMP
 
       if item[:message]
         type = item[:message].type
-        ack = type == "MessageAck" || type == "MessageNotAck"
+        ack = (type == "MessageAck" || type == "MessageNotAck")
         @ignorable.each_pair do |key,types|
-          next unless types
           ignore = [types].flatten
           if @settings[key] == false
-            #p [type,ignore_type, [ignore_type].flatten.include?(type)]
             return false if ignore.include?(type)
             if ack
               return false if item[:message].original && ignore.include?(item[:message].original.type)
