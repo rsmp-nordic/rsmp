@@ -3,6 +3,10 @@ require 'rsmp'
 
 module RSMP
   class CLI < Thor
+    desc "version", "Show version"
+    def version
+      puts RSMP::VERSION
+    end
 
     desc "site", "Run RSMP site"
     method_option :config, :type => :string, :aliases => "-c", banner: 'Path to .yaml config file'
