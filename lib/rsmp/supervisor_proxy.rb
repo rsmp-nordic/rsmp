@@ -244,10 +244,13 @@ module RSMP
       @status_subscriptions[component] ||= {}
       update_list[component] ||= {} 
       now = Time.now  # internal timestamp
+      subs = @status_subscriptions[component]
 
       message.attributes["sS"].each do |arg|
         sCI = arg["sCI"]
         subcription = {interval: arg["uRt"].to_i, last_sent_at: now}
+        subs[sCI] ||= {}
+        subs[sCI][arg["n"]] = subcription
         update_list[component][sCI] ||= []
         update_list[component][sCI] << arg["n"]
       end
