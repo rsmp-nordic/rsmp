@@ -124,6 +124,7 @@ GEM
 
 PLATFORMS
   x86_64-darwin-20
+  x86_64-darwin-21
 
 DEPENDENCIES
   aruba (~> 1.1.2)
@@ -136,4 +137,4 @@ DEPENDENCIES
   timecop (~> 0.9.4)
 
 BUNDLED WITH
-   2.2.21
+   2.2.32
