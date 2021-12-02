@@ -1,6 +1,5 @@
 include RSMP
 RSpec.describe StatusUpdateMatcher do
-  #include RSMP::SpecHelper::ConnectionHelper
   class MockProxy
     include Notifier
     include Logging
