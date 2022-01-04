@@ -282,11 +282,7 @@ module RSMP
     end
 
     def fetch_last_sent_status component, code, name
-      if @last_status_sent && @last_status_sent[component] && @last_status_sent[component][code]
-        @last_status_sent[component][code][name]
-      else
-        nil
-      end
+      @last_status_sent.dig component, code, name
     end
 
     def store_last_sent_status message
@@ -310,10 +306,12 @@ module RSMP
         by_code.each_pair do |code,by_name|
           by_name.each_pair do |name,subscription|
             current = nil
+            should_send = false
             if subscription[:interval] == 0 
               # send as soon as the data changes
               if component_object
                 current, age = *(component_object.get_status code, name)
+                current = current.to_s
               end
               last_sent = fetch_last_sent_status component, code, name
               if current != last_sent
