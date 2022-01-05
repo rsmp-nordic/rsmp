@@ -6,7 +6,6 @@ module RSMP
       # plan is a string, with each character representing a signal phase at a particular second in the cycle
       def initialize node:, id:
         super node: node, id: id, grouped: false
-        move 0
       end
 
       def get_state pos
@@ -21,7 +20,15 @@ module RSMP
         state
       end
 
-      def move pos
+      def move_yellow_flash
+        @state = 'c'
+      end
+
+      def move_startup pos, sequence
+        @state = sequence[pos] || 'a'
+      end
+
+      def move_normal pos
         @state = get_state pos
       end
 

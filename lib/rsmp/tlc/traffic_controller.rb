@@ -15,7 +15,9 @@ module RSMP
         @cycle_time = cycle_time
         @num_traffic_situations = 1
         @num_inputs = 8
+        @startup_sequence = 'efg'
         reset
+        #initiate_startup_sequence
       end
 
       def reset
@@ -40,6 +42,12 @@ module RSMP
         @inputs = '0'*@num_inputs
         @input_activations = '0'*@num_inputs
         @input_results = '0'*@num_inputs
+
+        @day_time_table = {}
+        @startup_sequence_active = false
+        @startup_sequence_initiated_at = nil
+        @startup_sequence_pos = 0
+        @time_int = nil
       end
 
       def clock
@@ -67,18 +75,60 @@ module RSMP
         # TODO
         # We should use a monotone timer, to avoid jumps
         # in case the user sets the system time
-        pos = Time.now.to_i % @cycle_time
-        if pos != @pos
-          @pos = pos
-          move pos
+        time = Time.now.to_i
+        if time != @time_int
+          @time_int = time
+          if @yellow_flash
+            move_yellow_flash
+          elsif @startup_sequence_active
+            move_startup
+          else
+            move_normal
+          end
+          output_states
         end
       end
 
-      def move pos
+      def move_yellow_flash
         @signal_groups.each do |group|
-          group.move pos
+          group.move_yellow_flash
         end
-        #output_states
+      end
+
+      def initiate_startup_sequence
+        @startup_sequence_active = true
+        @startup_sequence_initiated_at = nil
+        @startup_sequence_pos = nil
+      end
+
+      def end_startup_sequence
+        @startup_sequence_active = false
+        @startup_sequence_initiated_at = nil
+        @startup_sequence_pos = nil
+      end
+
+      def move_startup
+        was = @startup_sequence_pos
+        if @startup_sequence_initiated_at == nil
+          @startup_sequence_initiated_at = Time.now.to_i+1
+          @startup_sequence_pos = 0
+        else
+          @startup_sequence_pos = Time.now.to_i - @startup_sequence_initiated_at
+        end
+        @signal_groups.each do |group|
+          group.move_startup @startup_sequence_pos, @startup_sequence
+        end
+        if @startup_sequence_pos >= @startup_sequence.size-1
+          end_startup_sequence
+        end
+      end
+
+      def move_normal
+        pos = Time.now.to_i % @cycle_time
+        @pos = pos
+        @signal_groups.each do |group|
+          group.move_normal pos
+        end
       end
 
       def output_states
@@ -88,22 +138,22 @@ module RSMP
               s.colorize(:green)
           elsif group.state =~ /^[NOP]$/
             s.colorize(:yellow)
-          elsif group.state =~ /^[a]$/
-            s.colorize(color: :black)
+          elsif group.state =~ /^[ae]$/
+            s.colorize(:black)
+          elsif group.state =~ /^[f]$/
+            s.colorize(:yellow)
+          elsif group.state =~ /^[g]$/
+            s.colorize(:red)
           else
             s.colorize(:red)
           end
         end.join ' '
         plan = "P#{@plan}"
-        print "#{plan.rjust(4)} #{pos.to_s.rjust(4)} #{str}\r"
+        puts "#{plan.rjust(4)} #{pos.to_s.rjust(4)} #{str}\r"
       end
 
       def format_signal_group_status
-        if @yellow_flash
-          'c' * @signal_groups.size
-        else
-          @signal_groups.map { |group| group.state }.join
-        end
+        @signal_groups.map { |group| group.state }.join
       end
 
       def handle_command command_code, arg
@@ -214,6 +264,18 @@ module RSMP
 
       def handle_m0017 arg
         @node.verify_security_code 2, arg['securityCode']
+        arg['status'].split(',').each do |item|
+          elems = item.split('-')
+          nr = elems[0].to_i
+          plan = elems[1].to_i
+          hour = elems[2].to_i
+          min = elems[3].to_i
+          if nr<0 || nr>12
+            raise InvalidMessage.new "time table id must be between 0 and 12, got #{nr}"
+          end
+          #p "nr: #{nr}, plan #{plan} at #{hour}:#{min}"
+          @day_time_table[nr] = {plan: plan, hour: hour, min:min}
+        end
       end
 
       def handle_m0018 arg
@@ -276,6 +338,7 @@ module RSMP
         log "Switching to mode #{mode}", level: :info
         case mode
         when 'NormalControl'
+          initiate_startup_sequence if @yellow_flash || @dark_mode
           @yellow_flash = false
           @dark_mode = false
         when 'YellowFlash'
@@ -511,7 +574,10 @@ module RSMP
       def handle_s0027 status_code, status_name=nil
         case status_name
         when 'status'
-          TrafficControllerSite.make_status '00-00-00-00'
+          status = @day_time_table.map do |i,item|
+            "#{i}-#{item[:plan]}-#{item[:hour]}-#{item[:min]}"
+          end.join(',')
+          TrafficControllerSite.make_status status
         end
       end
 

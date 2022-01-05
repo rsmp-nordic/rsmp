@@ -31,6 +31,7 @@ signal_plans:
       A2: '11NBBB'
       B1: 'BBB11N'
       B2: 'BBB1NB'
+startup_sequence: 'efg'
 intervals:
   timer: 0.1
   watchdog: 0.1
