@@ -39,7 +39,6 @@ module RSMP
     def initialize proxy, want, options={}
       super proxy, options.merge( ingoing: true, outgoing: false)
       @queries = want.map { |item| build_query item }
-      @want = want
     end
 
     # Build a query object.
@@ -77,7 +76,7 @@ module RSMP
       { need: need, reached: reached }
     end
 
-    # Are there queries left to match?
+    # Are there queries left to type_match?
     def done?
       @queries.all? { |query| query.done? }
     end
@@ -95,11 +94,14 @@ module RSMP
 
     # Check if a messages matches our criteria.
     # Match each query against each item in the message
-    def check_match message
-      return unless match?(message)
+    def perform_match message
+      return unless type_match?(message)
       @queries.each do |query|       # look through queries
         get_items(message).each do |item|  # look through items in message
-          matched = query.check_match(item,message)
+          matched = query.match?(item)
+          if matched == true
+            matched = @block.call(message,item) if @block
+          end
           if matched != nil
             type = {true=>'match',false=>'mismatch'}[matched]
             @proxy.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug

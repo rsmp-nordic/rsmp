@@ -109,14 +109,14 @@ module RSMP
       raise RuntimeError.new("can't process message when already done") if @done
       check_not_ack(message)
       return true if @done
-      check_match message
+      perform_match message
       complete if done?
       @done
     end
 
     # Match message against our collection criteria
-    def check_match message
-      matched = match? message
+    def perform_match message
+      matched = type_match?(message) && block_match?(message)
       if matched == true
         keep message
       elsif matched == false
@@ -185,26 +185,25 @@ module RSMP
     end
 
     # Check a message against our match criteria
-    # Return true if there's a match
-    def match? message
-      raise ArgumentError unless message
-      return if message.direction == :in && @ingoing == false
-      return if message.direction == :out && @outgoing == false
+    # Return true if there's a match, false if not
+    def type_match? message
+      return false if message.direction == :in && @ingoing == false
+      return false if message.direction == :out && @outgoing == false
       if @options[:type]
-        return if message == nil
         if @options[:type].is_a? Array
-          return unless @options[:type].include? message.type
+          return false unless @options[:type].include? message.type
         else
-          return unless message.type == @options[:type]
+          return false unless message.type == @options[:type]
         end
       end
       if @options[:component]
-        return if message.attributes['cId'] && message.attributes['cId'] != @options[:component]
-      end
-      if @block
-        return if @block.call(message) == false
+        return false if message.attributes['cId'] && message.attributes['cId'] != @options[:component]
       end
       true
     end
+  end
+
+  def block_match? message
+    @block.call(message) == true
   end
 end
