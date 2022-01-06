@@ -1,6 +1,7 @@
 require 'bundler/setup'
 require 'rsmp'
 require_relative 'support/connection_helper'
+require_relative 'support/site_proxy_stub'
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

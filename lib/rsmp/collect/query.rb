@@ -1,5 +1,5 @@
 module RSMP
-    
+
   # Class that matches a single status or command item
   class Query
     attr_reader :want, :got, :message

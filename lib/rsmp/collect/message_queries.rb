@@ -14,7 +14,7 @@ module RSMP
     end
   end
 
-  # Match a specific status response or update 
+  # Match a specific status response or update
   class StatusQuery < Query
     # Match a status value against a query
     def match? item

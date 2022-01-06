@@ -36,9 +36,9 @@ module RSMP
     attr_reader :queries
 
     # Initialize with a list of wanted statuses
-    def initialize proxy, want, options={}
+    def initialize proxy, options={}
       super proxy, options.merge( ingoing: true, outgoing: false)
-      @queries = want.map { |item| build_query item }
+      @queries = options[:want].map { |item| build_query item }
     end
 
     # Build a query object.
@@ -57,11 +57,6 @@ module RSMP
     # Get an array of the last item received for each query
     def reached
       @queries.map { |query| query.got }.compact
-    end
-
-    # get the first message. Useful when you only collect one mesage
-    def message
-      @queries.first.message
     end
 
     # Get messages from results
