@@ -36,9 +36,10 @@ module RSMP
     attr_reader :queries
 
     # Initialize with a list of wanted statuses
-    def initialize proxy, options={}
+    def initialize proxy, want, options={}
+      raise ArgumentError.new("num option cannot be used") if options[:num]
       super proxy, options.merge( ingoing: true, outgoing: false)
-      @queries = options[:want].map { |item| build_query item }
+      @queries = want.map { |item| build_query item }
     end
 
     # Build a query object.
@@ -78,7 +79,7 @@ module RSMP
 
     # Get a simplified hash of queries, with values set to either true or false,
     # indicating which queries have been matched.
-    def status
+    def query_status
       @queries.map { |query| [query.want, query.done?] }.to_h
     end
 
@@ -93,7 +94,7 @@ module RSMP
       return unless type_match?(message)
       @queries.each do |query|       # look through queries
         get_items(message).each do |item|  # look through items in message
-          matched = query.match?(item)
+          matched = query.perform_match(item,message)
           if matched == true
             matched = @block.call(message,item) if @block
           end
@@ -104,6 +105,7 @@ module RSMP
           end
         end
       end
+      complete if done?
       @proxy.log "#{@title.capitalize} collect reached #{summary}", level: :debug
     end
   end

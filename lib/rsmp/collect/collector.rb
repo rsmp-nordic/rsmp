@@ -121,9 +121,6 @@ module RSMP
       return true if @done
       perform_match message
       @status
-    rescue StandardError => e
-      p e
-      raise e
     end
 
     # Match message against our collection criteria

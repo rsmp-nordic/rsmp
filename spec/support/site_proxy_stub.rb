@@ -1,14 +1,16 @@
 module RSMP
   class SiteProxyStub
     include RSMP::Notifier
+    include RSMP::Logging
 
     def initialize
       initialize_distributor
+      initialize_logging({})
     end
 
     def self.async &block
       error = nil
-      Async do |task|
+       Async do |task|
         proxy = self.new
         yield task, proxy
 
@@ -17,7 +19,8 @@ module RSMP
       # which inteferres with rspec output
       rescue StandardError => e
         error = e
-      end
+        task.stop
+      end.wait
       raise error if error
     end
   end

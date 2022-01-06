@@ -18,7 +18,7 @@ module RSMP
 
     # Check an item and set @done to true if it matches
     # Store the item and corresponding message if there's a positive or negative match
-    def check_match item, message
+    def perform_match item, message
       matched = match? item
       if matched != nil
         @message = message
