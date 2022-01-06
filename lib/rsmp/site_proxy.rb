@@ -101,15 +101,8 @@ module RSMP
           "cId" => component,
           "mId" => m_id
       })
-      if options[:collect]
-        task = @task.async do |task|
-          collect_aggregated_status task, options[:collect].merge(m_id: m_id)
-        end
-        send_message message, validate: options[:validate]
-        return message, task.wait
-      else
-        send_message message, validate: options[:validate]
-        message
+      send_and_collect_if_needed message, options do |task|
+        collect_aggregated_status task, options[:collect].merge(m_id: m_id, num:1)
       end
     end
 
@@ -181,7 +174,7 @@ module RSMP
           "sS" => request_list,
           "mId" => m_id
       })
-      send_while_collecting message, options do |task|
+      send_and_collect_if_needed message, options do |task|
         collect_status_responses task, status_list, options[:collect].merge(m_id: m_id)
       end
     end
@@ -193,11 +186,15 @@ module RSMP
       acknowledge message
     end
 
-    def send_while_collecting message, options, &block
-      task = @task.async { |task| yield task } if options[:collect]
-      send_message message, validate: options[:validate]
-      return message, task.wait if task
-      message
+    def send_and_collect_if_needed message, options, &block
+      if options[:collect]
+        task = @task.async { |task| yield task }
+        send_message message, validate: options[:validate]
+        { sent: message, collector: task.wait }
+      else
+        send_message message, validate: options[:validate]
+        return { sent: message }
+      end
     end
 
     def subscribe_to_status component_id, status_list, options={}
@@ -218,7 +215,7 @@ module RSMP
           "sS" => subscribe_list,
           'mId' => m_id
       })
-      send_while_collecting message, options do |task|
+      send_and_collect_if_needed message, options do |task|
          collect_status_updates task, status_list, options[:collect].merge(m_id: m_id)
       end
     end
@@ -264,7 +261,7 @@ module RSMP
           "arg" => command_list,
           "mId" => m_id
       })
-      send_while_collecting message, options do |task|
+      send_and_collect_if_needed message, options do |task|
         collect_command_responses task, command_list, options[:collect].merge(m_id: m_id)
       end
     end
@@ -352,19 +349,27 @@ module RSMP
     end
 
     def collect_status_updates task, status_list, options
-      StatusUpdateMatcher.new(self, status_list, options).collect task
+      collector = StatusUpdateMatcher.new(self, status_list, options)
+      collector.collect task
+      collector
     end
 
     def collect_status_responses task, status_list, options
-      StatusResponseMatcher.new(self, status_list, options).collect task
+      collector = StatusResponseMatcher.new(self, status_list, options)
+      collector.collect task
+      collector
     end
 
     def collect_command_responses task, command_list, options
-      CommandResponseMatcher.new(self, command_list, options).collect task
+      collector = CommandResponseMatcher.new(self, command_list, options)
+      collector.collect task
+      collector
     end
 
     def collect_aggregated_status task, options
-      AggregatedStatusMatcher.new(self, options).collect task
+      collector = AggregatedStatusMatcher.new(self, options)
+      collector.collect task
+      collector
     end
   end
 end

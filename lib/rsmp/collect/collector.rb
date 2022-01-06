@@ -101,15 +101,14 @@ module RSMP
     end
 
     # Check if we receive a NotAck related to initiating request, identified by @m_id.
-    def check_not_ack message
+    def reject_not_ack message
       return unless @options[:m_id]
       if message.is_a?(MessageNotAck)
         if message.attribute('oMId') == @options[:m_id]
           m_id_short = RSMP::Message.shorten_m_id @options[:m_id], 8
-          @error = RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
-          cancel
+          cancel RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
+          true
         end
-        false
       end
     end
 
@@ -117,9 +116,9 @@ module RSMP
     def notify message
       raise ArgumentError unless message
       raise RuntimeError.new("can't process message when done") unless @status == :ready || @status == :collecting
-      check_not_ack(message)
-      return true if @done
-      perform_match message
+      unless reject_not_ack(message)
+        perform_match message
+      end
       @status
     end
 
