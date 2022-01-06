@@ -144,6 +144,38 @@ RSpec.describe RSMP::Collector do
         collect_task.wait
       end
     end
+
+    it 'can cancel on schema error' do
+      RSMP::SiteProxyStub.async do |task,site_proxy|
+        collect_task = task.async do |task|
+          options = { num: 1, timeout: timeout }
+          collector = RSMP::Collector.new site_proxy
+          result = collector.collect task, options
+
+          expect(result).to eq(:cancelled)
+          expect(collector.error).to be_a(RSMP::SchemaError)
+          expect(collector.messages.size).to eq(0)
+        end
+        site_proxy.distribute_error RSMP::SchemaError.new, message: RSMP::Watchdog.new
+        collect_task.wait
+      end
+    end
+
+    it 'can cancel if disconnect' do
+      RSMP::SiteProxyStub.async do |task,site_proxy|
+        collect_task = task.async do |task|
+          options = { num: 1, timeout: timeout, cancel: {disconnect: true} }
+          collector = RSMP::Collector.new site_proxy
+          result = collector.collect task, options
+
+          expect(result).to eq(:cancelled)
+          expect(collector.error).to be_a(RSMP::DisconnectError)
+          expect(collector.messages.size).to eq(0)
+        end
+        site_proxy.distribute_error RSMP::DisconnectError.new, message: RSMP::Watchdog.new
+        collect_task.wait
+      end
+    end
   end
 
   describe "#collect!" do

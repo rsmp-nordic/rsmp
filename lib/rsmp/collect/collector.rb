@@ -3,7 +3,7 @@ module RSMP
   # Collects ingoing and/or outgoing messages from a notifier.
   # Can filter by message type and wakes up the client once the desired number of messages has been collected.
   class Collector < Listener
-    attr_reader :condition, :messages, :status
+    attr_reader :condition, :messages, :status, :error
 
     def initialize proxy, options={}
       super proxy, options
@@ -165,7 +165,7 @@ module RSMP
       case error
       when RSMP::SchemaError
         notify_schema_error error, options
-      when RSMP::ConnectionError
+      when RSMP::DisconnectError
         notify_disconnect error, options
       end
     end
@@ -176,7 +176,7 @@ module RSMP
       message = options[:message]
       return unless message
       klass = message.class.name.split('::').last
-      return unless [@options[:type]].flatten.include? klass
+      return unless @options[:type] == nil || [@options[:type]].flatten.include?(klass)
       @proxy.log "Collection cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
       cancel error
     end
@@ -190,7 +190,7 @@ module RSMP
 
     # Abort collection
     def cancel error
-      @error = error if error
+      @error = error
       @status = :cancelled
       do_stop
     end
