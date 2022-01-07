@@ -15,9 +15,8 @@ module RSMP
 
     def initialize options
       initialize_logging options
-      setup options
       initialize_distributor
-      prepare_collection @settings['collect']
+      setup options
       clear
     end
 
@@ -37,6 +36,10 @@ module RSMP
       @sxl = nil
       @site_settings = nil  # can't pick until we know the site id
       @state = :stopped
+      if options[:collect]
+        @collector = RSMP::Collector.new self, options[:collect]
+        @collector.start
+      end
     end
 
     def inspect
@@ -47,13 +50,6 @@ module RSMP
 
     def clock
       node.clock
-    end
-
-    def prepare_collection num
-      if num
-        @collector = RSMP::Collector.new self, num: num, ingoing: true, outgoing: true
-        add_listener @collector
-      end
     end
 
     def collect task, options, &block

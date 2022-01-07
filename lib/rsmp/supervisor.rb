@@ -7,7 +7,6 @@ module RSMP
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :proxies, :logger
 
     def initialize options={}
-
       handle_supervisor_settings( options[:supervisor_settings] || {} )
       super options
       @proxies = []
@@ -161,7 +160,7 @@ module RSMP
         ip: info[:ip],
         port: info[:port],
         task: @task,
-        settings: {'collect'=>@supervisor_settings['collect']},
+        collect: @collect,
         socket: socket,
         stream: stream,
         protocol: protocol,

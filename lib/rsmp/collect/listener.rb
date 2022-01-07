@@ -5,8 +5,13 @@ module RSMP
   class Listener
     include Inspect
 
-    def initialize proxy, options={}
-      @proxy = proxy
+    def initialize notifier, options={}
+      @notifier = notifier
+    end
+
+    def change_notifier notifier
+      @notifier.remove_listener self if @notifier
+      @notifier = notifier
     end
 
     def notify message
@@ -16,10 +21,10 @@ module RSMP
     end
 
     def listen &block
-      @proxy.add_listener self
+      @notifier.add_listener self
       yield
     ensure
-      @proxy.remove_listener self
+      @notifier.remove_listener self
     end
 
   end

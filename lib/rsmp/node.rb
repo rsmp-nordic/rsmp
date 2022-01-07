@@ -6,7 +6,7 @@ module RSMP
     include Wait
     include Inspect
 
-    attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock
+    attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock, :collector
 
     def initialize options
       initialize_logging options
@@ -15,6 +15,8 @@ module RSMP
       @clock = Clock.new
       @error_queue = Async::Queue.new
       @ignore_errors = []
+      options[:collector]
+      @collect = options[:collect]
     end
 
     def ignore_errors classes, &block

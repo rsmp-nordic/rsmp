@@ -43,47 +43,63 @@ module RSMP
       @outgoing == true
     end
 
-    # Block until all messages have been collected
-    def wait
-      @condition.wait
+    # If collection is complete, return immeditatly. Otherwise wait until
+    # the desired messages have been collected, or timeout is reached.
+    def wait task
+      wait! task
+    rescue RSMP::TimeoutError
+      @status
+    end
+
+    # If collection is complete, return immeditatly. Otherwise wait until
+    # the desired messages have been collected.
+    # If timeout is reached, an exceptioin is raised.
+    def wait! task
+      return @status unless @status == :collecting
+      if @options[:timeout]
+        task.with_timeout(@options[:timeout]) { @condition.wait }
+      else
+        @condition.wait
+      end
+      @status
+    rescue Async::TimeoutError
+      @status = :timeout
+      raise RSMP::TimeoutError.new(describe_progress)
+    end
+
+    # Start collection and return immediately
+    # You can later use wait() to wait for completion
+    def start options={}, &block
+      raise RuntimeError.new("Can't begin unless ready (currenty #{@status})") unless @status == :ready
+      @options.merge! options
+      @block = block
+      raise ArgumentError.new("Num, timeout or block must be provided") unless @options[:num] || @options[:timeout] || @block
+      reset
+      @status = :collecting
+      @notifier.add_listener self if @notifier
     end
 
     # Collect message
     # Will return once all messages have been collected, or timeout is reached
     def collect task, options={}, &block
-      @options.merge! options
-      @block = block
-      unless @options[:num] || @options[:timeout] || @block
-        raise ArgumentError.new('num timeout or block must be provided')
-      end
-      reset
-      if @status == :ready
-        @status = :collecting
-        listen do
-          if @options[:timeout]
-            task.with_timeout(@options[:timeout]) do
-              @condition.wait
-            end
-          else
-            @condition.wait
-          end
-        end
-      end
+      start options, &block
+      wait task
       @status
-    rescue Async::TimeoutError
-      str = "#{@title.capitalize} collection"
-      str << " in response to #{options[:m_id]}" if options[:m_id]
-      str << " didn't complete within #{@options[:timeout]}s"
-      reached = progress
-      str << ", reached #{progress[:reached]}/#{progress[:need]}"
-      @why = str
-      @status = :timeout
-      @status
+    ensure
+      @notifier.remove_listener self
+    end
+
+    # Build a string describing how how progress reached before timeout
+    def describe_progress
+      str = "#{@title.capitalize} collection "
+      str << "in response to #{@options[:m_id]} " if @options[:m_id]
+      str << "didn't complete within #{@options[:timeout]}s, "
+      str << "reached #{@messages.size}/#{@options[:num]}"
+      str
     end
 
     # Collect message
-    # If successful, it returns the collected messaege, otherwise
-    # an exception is raised.
+    # Returns the collected messages, or raise an exception in case of a time out.
     def collect! task, options={}, &block
       case collect(task, options, &block)
       when :timeout
@@ -91,13 +107,6 @@ module RSMP
       else
         @messages
       end
-    end
-
-    # Return progress as collected vs. number requested
-    def progress
-      need = @options[:num]
-      reached =  @messages.size
-      { need: need, got: reached }
     end
 
     # Check if we receive a NotAck related to initiating request, identified by @m_id.
@@ -154,7 +163,7 @@ module RSMP
     # Remove ourself as a listener, so we don't receive message notifications anymore,
     # and wake up the async condition
     def do_stop
-      @proxy.remove_listener self
+      @notifier.remove_listener self
       @condition.signal
     end
 
@@ -176,14 +185,14 @@ module RSMP
       return unless message
       klass = message.class.name.split('::').last
       return unless @options[:type] == nil || [@options[:type]].flatten.include?(klass)
-      @proxy.log "Collection cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
+      @notifier.log "Collection cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
       cancel error
     end
 
     # Cancel if we received e notificaiton about a disconnect
     def notify_disconnect error, options
       return unless @options.dig(:cancel,:disconnect)
-      @proxy.log "Collection cancelled due to a connection error: #{error.to_s}", level: :debug
+      @notifier.log "Collection cancelled due to a connection error: #{error.to_s}", level: :debug
       cancel error
     end
 

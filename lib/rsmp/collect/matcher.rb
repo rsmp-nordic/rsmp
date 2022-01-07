@@ -100,13 +100,13 @@ module RSMP
           end
           if matched != nil
             type = {true=>'match',false=>'mismatch'}[matched]
-            @proxy.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
+            @notifier.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
             break
           end
         end
       end
       complete if done?
-      @proxy.log "#{@title.capitalize} collect reached #{summary}", level: :debug
+      @notifier.log "#{@title.capitalize} collect reached #{summary}", level: :debug
     end
   end
 end
