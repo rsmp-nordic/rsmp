@@ -69,9 +69,8 @@ module RSMP
 
     # Start collection and return immediately
     # You can later use wait() to wait for completion
-    def start options={}, &block
+    def start &block
       raise RuntimeError.new("Can't begin unless ready (currenty #{@status})") unless @status == :ready
-      @options.merge! options
       @block = block
       raise ArgumentError.new("Num, timeout or block must be provided") unless @options[:num] || @options[:timeout] || @block
       reset
@@ -81,8 +80,8 @@ module RSMP
 
     # Collect message
     # Will return once all messages have been collected, or timeout is reached
-    def collect task, options={}, &block
-      start options, &block
+    def collect task, &block
+      start &block
       wait task
       @status
     ensure
@@ -100,8 +99,8 @@ module RSMP
 
     # Collect message
     # Returns the collected messages, or raise an exception in case of a time out.
-    def collect! task, options={}, &block
-      case collect(task, options, &block)
+    def collect! task, &block
+      case collect(task, &block)
       when :timeout
         raise RSMP::TimeoutError.new @why
       else
