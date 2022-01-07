@@ -16,7 +16,7 @@ module RSMP
         return default unless plan.states
         states = plan.states[c_id]
         return default unless states
-        state =states[pos]
+        state = states[pos]
         return default unless state =~ /[a-hA-G0-9N-P]/  # valid signal group states
         state
       end

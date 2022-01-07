@@ -1,7 +1,8 @@
 module RSMP
 
-  # Collects ingoing and/or outgoing messages from a notifier.
-  # Can filter by message type and wakes up the client once the desired number of messages has been collected.
+  # Collects messages from a notifier.
+  # Can filter by message type, componet and direction.
+  # Wakes up the once the desired number of messages has been collected.
   class Collector < Listener
     attr_reader :condition, :messages, :status, :error
 

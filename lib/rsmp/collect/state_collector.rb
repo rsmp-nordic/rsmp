@@ -31,8 +31,7 @@ module RSMP
   #   {"cCI"=>"M0104", "cO"=>"setDate", "n"=>"month", "v"=>/\d+/} =>
   #     { <StatusResponse message>, {"cCI"=>"M0104", "cO"=>"setDate", "n"=>"month", "v"=>"9"} }
   # }
-
-  class Matcher < Collector
+  class StateCollector < Collector
     attr_reader :queries
 
     # Initialize with a list of wanted statuses

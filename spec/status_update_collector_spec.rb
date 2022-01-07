@@ -1,5 +1,5 @@
 include RSMP
-RSpec.describe StatusUpdateMatcher do
+RSpec.describe StatusUpdateCollector do
   let(:timeout) { 0.001 }
 
   describe "#collect" do
@@ -37,7 +37,7 @@ RSpec.describe StatusUpdateMatcher do
     }
     
     let(:proxy) { SiteProxyStub.new }
-    let(:collector) { StatusUpdateMatcher.new(proxy, want.values, timeout: timeout) }
+    let(:collector) { StatusUpdateCollector.new(proxy, want.values, timeout: timeout) }
     
     it 'completes with a single status update' do
       Async do
