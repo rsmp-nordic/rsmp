@@ -4,7 +4,7 @@ module RSMP
   # Can filter by message type, componet and direction.
   # Wakes up the once the desired number of messages has been collected.
   class Collector < Listener
-    attr_reader :condition, :messages, :status, :error
+    attr_reader :condition, :messages, :status, :error, :task
 
     def initialize proxy, options={}
       super proxy, options
@@ -18,7 +18,12 @@ module RSMP
       @outgoing = options[:outgoing] == nil ? false : options[:outgoing]
       @condition = Async::Notification.new
       @title = options[:title] || [@options[:type]].flatten.join('/')
+      @task = options[:task]
       reset
+    end
+
+    def use_task task
+      @task = task
     end
 
     # Clear all query results
@@ -26,7 +31,6 @@ module RSMP
       @messages = []
       @error = nil
       @status = :ready
-      @why = nil
     end
 
     # Inspect formatter that shows the message we have collected
@@ -71,9 +75,9 @@ module RSMP
 
     # Collect message
     # Will return once all messages have been collected, or timeout is reached
-    def collect task, &block
+    def collect &block
       start &block
-      wait task
+      wait
       @status
     ensure
       @notifier.remove_listener self
@@ -81,19 +85,19 @@ module RSMP
 
     # Collect message
     # Returns the collected messages, or raise an exception in case of a time out.
-    def collect! task, &block
-      if collect(task, &block) == :timeout
-        raise RSMP::TimeoutError.new @why
+    def collect! &block
+      if collect(&block) == :timeout
+        raise RSMP::TimeoutError.new describe_progress
       end
       @messages
     end
 
     # If collection is not active, return status immeditatly. Otherwise wait until
     # the desired messages have been collected, or timeout is reached.
-    def wait task
+    def wait
       if collecting?
         if @options[:timeout]
-          task.with_timeout(@options[:timeout]) { @condition.wait }
+          @task.with_timeout(@options[:timeout]) { @condition.wait }
         else
           @condition.wait
         end
@@ -106,8 +110,8 @@ module RSMP
     # If collection is not active, raise an error. Otherwise wait until
     # the desired messages have been collected.
     # If timeout is reached, an exceptioin is raised.
-    def wait! task
-      wait task
+    def wait!
+      wait
       raise RSMP::TimeoutError.new(describe_progress) if timeout?
       @messages
     end

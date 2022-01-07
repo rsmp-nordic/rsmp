@@ -106,12 +106,13 @@ RSpec.describe StatusUpdateCollector do
 
     it 'extra status updates are ignored' do
       Async do |task|
+        collector.use_task task
         # proxy should have no listeners initially
         expect(proxy.listeners.size).to eq(0)
 
         # start collection
         collect_task = task.async do
-          collector.collect task
+          collector.collect
         end
 
         # collector should have inserted inself as a listener on the proxy

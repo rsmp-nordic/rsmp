@@ -52,9 +52,9 @@ module RSMP
       node.clock
     end
 
-    def collect task, options, &block
-      collector = RSMP::Collector.new self, options
-      collector.collect task, &block
+    def collect options, &block
+      collector = RSMP::Collector.new self, options.merge(task: @task)
+      collector.collect &block
       collector
     end
 

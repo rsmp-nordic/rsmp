@@ -349,26 +349,26 @@ module RSMP
     end
 
     def collect_status_updates task, status_list, options
-      collector = StatusUpdateCollector.new(self, status_list, options)
-      collector.collect task
+      collector = StatusUpdateCollector.new(self, status_list, options.merge(task:task))
+      collector.collect
       collector
     end
 
     def collect_status_responses task, status_list, options
-      collector = StatusResponseCollector.new(self, status_list, options)
-      collector.collect task
+      collector = StatusResponseCollector.new(self, status_list, options.merge(task:task))
+      collector.collect
       collector
     end
 
     def collect_command_responses task, command_list, options
-      collector = CommandResponseCollector.new(self, command_list, options)
-      collector.collect task
+      collector = CommandResponseCollector.new(self, command_list, options.merge(task:task))
+      collector.collect
       collector
     end
 
     def collect_aggregated_status task, options
-      collector = AggregatedStatusCollector.new(self, options)
-      collector.collect task
+      collector = AggregatedStatusCollector.new(self, options.merge(task:task))
+      collector.collect
       collector
     end
   end

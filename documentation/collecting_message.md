@@ -74,9 +74,8 @@ message = collector.collect # => collected message.
 
 Similar, `wait!()` will raise an exception in case of timeouts or errors:
 
-
 ```ruby
-message = collector.wait # => collected message.
+message = collector.wait! # => collected message.
 ```
 
 
