@@ -19,9 +19,6 @@ Handle logging.
 ### Wait
 Handles waiting for an async condition and block.
 
-### SiteProxyWait
-Handles waiting for different types of messages and responses from a remote site.
-
 ### Components
 Component handling.
 
@@ -38,7 +35,7 @@ A Site has one or more SupervisorProxies (connections to supervisor).
 
 A site has one of more components.
 
-### Supervisor 
+### Supervisor
 A Supervisor represents an RSMP supervisor, typically a central supervisor system. An RSMP supervisor can handle connections one or more sites.
 
 A Supervisor has one or more SiteProxies (connections to sites).

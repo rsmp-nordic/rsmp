@@ -34,6 +34,31 @@ module RSMP
       "#<#{self.class.name}:#{self.object_id}, #{inspector(:@messages)}>"
     end
 
+    # Is collection active?
+    def collecting?
+      @status == :collecting
+    end
+
+    # Is collection active?
+    def ok?
+      @status == :ok
+    end
+
+    # Has collection time out?
+    def timeout?
+      @status == :timeout
+    end
+
+    # Is collection ready to start?
+    def ready?
+      @status == :ready
+    end
+
+    # Has collection been cancelled?
+    def cancelled?
+      @status == :cancelled
+    end
+
     # Want ingoing messages?
     def ingoing?
       @ingoing == true
@@ -42,41 +67,6 @@ module RSMP
     # Want outgoing messages?
     def outgoing?
       @outgoing == true
-    end
-
-    # If collection is complete, return immeditatly. Otherwise wait until
-    # the desired messages have been collected, or timeout is reached.
-    def wait task
-      wait! task
-    rescue RSMP::TimeoutError
-      @status
-    end
-
-    # If collection is complete, return immeditatly. Otherwise wait until
-    # the desired messages have been collected.
-    # If timeout is reached, an exceptioin is raised.
-    def wait! task
-      return @status unless @status == :collecting
-      if @options[:timeout]
-        task.with_timeout(@options[:timeout]) { @condition.wait }
-      else
-        @condition.wait
-      end
-      @status
-    rescue Async::TimeoutError
-      @status = :timeout
-      raise RSMP::TimeoutError.new(describe_progress)
-    end
-
-    # Start collection and return immediately
-    # You can later use wait() to wait for completion
-    def start &block
-      raise RuntimeError.new("Can't begin unless ready (currenty #{@status})") unless @status == :ready
-      @block = block
-      raise ArgumentError.new("Num, timeout or block must be provided") unless @options[:num] || @options[:timeout] || @block
-      reset
-      @status = :collecting
-      @notifier.add_listener self if @notifier
     end
 
     # Collect message
@@ -89,6 +79,50 @@ module RSMP
       @notifier.remove_listener self
     end
 
+    # Collect message
+    # Returns the collected messages, or raise an exception in case of a time out.
+    def collect! task, &block
+      if collect(task, &block) == :timeout
+        raise RSMP::TimeoutError.new @why
+      end
+      @messages
+    end
+
+    # If collection is not active, return status immeditatly. Otherwise wait until
+    # the desired messages have been collected, or timeout is reached.
+    def wait task
+      if collecting?
+        if @options[:timeout]
+          task.with_timeout(@options[:timeout]) { @condition.wait }
+        else
+          @condition.wait
+        end
+      end
+      @status
+    rescue Async::TimeoutError
+      @status = :timeout
+    end
+
+    # If collection is not active, raise an error. Otherwise wait until
+    # the desired messages have been collected.
+    # If timeout is reached, an exceptioin is raised.
+    def wait! task
+      wait task
+      raise RSMP::TimeoutError.new(describe_progress) if timeout?
+      @messages
+    end
+
+    # Start collection and return immediately
+    # You can later use wait() to wait for completion
+    def start &block
+      raise RuntimeError.new("Can't begin unless ready (currenty #{@status})") unless ready?
+      @block = block
+      raise ArgumentError.new("Num, timeout or block must be provided") unless @options[:num] || @options[:timeout] || @block
+      reset
+      @status = :collecting
+      @notifier.add_listener self if @notifier
+    end
+
     # Build a string describing how how progress reached before timeout
     def describe_progress
       str = "#{@title.capitalize} collection "
@@ -96,17 +130,6 @@ module RSMP
       str << "didn't complete within #{@options[:timeout]}s, "
       str << "reached #{@messages.size}/#{@options[:num]}"
       str
-    end
-
-    # Collect message
-    # Returns the collected messages, or raise an exception in case of a time out.
-    def collect! task, &block
-      case collect(task, &block)
-      when :timeout
-        raise RSMP::TimeoutError.new @why
-      else
-        @messages
-      end
     end
 
     # Check if we receive a NotAck related to initiating request, identified by @m_id.
@@ -124,7 +147,7 @@ module RSMP
     # Handle message. and return true when we're done collecting
     def notify message
       raise ArgumentError unless message
-      raise RuntimeError.new("can't process message when done") unless @status == :ready || @status == :collecting
+      raise RuntimeError.new("can't process message when done") unless ready? || collecting?
       unless reject_not_ack(message)
         perform_match message
       end

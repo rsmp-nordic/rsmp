@@ -238,17 +238,20 @@ RSpec.describe RSMP::Collector do
   end
   
   describe "#wait!" do
-    it "returns :ok if already complete" do
+    it "returns messages if already complete" do
       RSMP::SiteProxyStub.async do |task,proxy|
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
         collector.start
         proxy.notify RSMP::Watchdog.new
         expect(collector.messages.size).to eq(1)
-        expect(collector.wait! task).to eq(:ok)
+        messages = collector.wait! task
+        expect(messages).to be_an(Array)
+        expect(messages.size).to eq(1)
+        expect(messages.first).to be_an(RSMP::Watchdog)
       end
     end
 
-    it "returns :ok after completion" do
+    it "returns messages after completion" do
       RSMP::SiteProxyStub.async do |task,proxy|
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
         collector.start
@@ -256,9 +259,10 @@ RSpec.describe RSMP::Collector do
           collector.wait! task
         end
         proxy.notify RSMP::Watchdog.new
-        expect(collect_task.wait).to eq(:ok)
-        expect(collector.messages.size).to eq(1)
-        expect(collector.status).to eq(:ok)
+        messages = collect_task.wait
+        expect(messages).to be_an(Array)
+        expect(messages.size).to eq(1)
+        expect(messages.first).to be_an(RSMP::Watchdog)
       end
     end
 
