@@ -14,7 +14,7 @@ module RSMP
 
     # Get items, in our case the return values
     def get_items message
-      message.attributes['rvs']
+      message.attributes['rvs'] || []
     end
   end
 end

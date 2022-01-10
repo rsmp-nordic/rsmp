@@ -2,7 +2,7 @@ module RSMP
   # Base class for waiting for status updates or responses
   class StatusUpdateOrResponseCollector < StateCollector
     def initialize proxy, want, options={}
-      super proxy, want, options.merge
+      super proxy, want, options.merge(outgoing: false)
     end
 
     def build_query want
@@ -11,7 +11,7 @@ module RSMP
 
     # Get items, in our case status values
     def get_items message
-      message.attributes['sS']
+      message.attributes['sS'] || []
     end
   end
 end

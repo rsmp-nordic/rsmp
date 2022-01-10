@@ -125,7 +125,7 @@ RSpec.describe RSMP::Collector do
         collect_task = task.async do
           collector = RSMP::Collector.new proxy, task: task, num: 1, timeout: timeout
           result = collector.collect do |message|
-            :cancel
+            collector.cancel
           end
           expect(result).to eq(:cancelled)
           expect(collector.messages.size).to eq(0)
@@ -161,6 +161,25 @@ RSpec.describe RSMP::Collector do
           expect(collector.messages.size).to eq(0)
         end
         proxy.distribute_error RSMP::DisconnectError.new, message: RSMP::Watchdog.new
+        collect_task.wait
+      end
+    end
+
+    it 'can be used without num or timeout' do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collect_task = task.async do
+          collector = RSMP::Collector.new proxy, task: task
+          messages = []
+          result = collector.collect do |message|
+            messages << message
+            collector.cancel if messages.size >= 2
+          end
+          expect(result).to eq(:cancelled)
+          expect(messages.size).to eq(2)
+          expect(collector.messages.size).to eq(0)
+        end
+        proxy.notify RSMP::Watchdog.new
+        proxy.notify RSMP::Watchdog.new
         collect_task.wait
       end
     end

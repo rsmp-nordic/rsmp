@@ -21,10 +21,10 @@ signal_plans:
       1: 0
       2: 5
     states:
-      A1: '11NBBB'
-      A2: '1NBBBB'
-      B1: 'BBB11N'
-      B2: 'BBB1NB'
+      A1: '123efg'
+      A2: '123efg'
+      B1: '123efg'
+      B2: '123efg'
   2:
     states:
       A1: '111NBB'

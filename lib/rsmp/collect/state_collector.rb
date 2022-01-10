@@ -61,7 +61,7 @@ module RSMP
 
     # Get messages from results
     def messages
-      @queries.map { |query| query.message }.uniq
+      @queries.map { |query| query.message }.uniq.compact
     end
 
     # Return progress as completes queries vs. total number of queries
@@ -90,22 +90,33 @@ module RSMP
     # Check if a messages matches our criteria.
     # Match each query against each item in the message
     def perform_match message
-      return unless type_match?(message)
+      return false if super(message) == false
+      return unless collecting?
       @queries.each do |query|       # look through queries
         get_items(message).each do |item|  # look through items in message
-          matched = query.perform_match(item,message)
-          if matched == true
-            matched = @block.call(message,item) if @block
-          end
+          matched = query.perform_match(item,message,@block)
+          return unless collecting?
           if matched != nil
             type = {true=>'match',false=>'mismatch'}[matched]
             @notifier.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
-            break
+            if matched == true
+              query.keep message, item
+            elsif matched == false
+              query.forget
+            end
           end
         end
       end
       complete if done?
       @notifier.log "#{@title.capitalize} collect reached #{summary}", level: :debug
+    end
+
+    # don't collect anything. Query will collect them instead
+    def keep message
+    end
+
+    def describe
+      @queries.map {|q| q.want.to_s }
     end
   end
 end

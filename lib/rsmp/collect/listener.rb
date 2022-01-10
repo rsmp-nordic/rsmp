@@ -19,13 +19,5 @@ module RSMP
 
     def notify_error error, options={}
     end
-
-    def listen &block
-      @notifier.add_listener self
-      yield
-    ensure
-      @notifier.remove_listener self
-    end
-
   end
 end

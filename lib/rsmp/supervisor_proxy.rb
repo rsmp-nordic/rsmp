@@ -282,7 +282,7 @@ module RSMP
     end
 
     def fetch_last_sent_status component, code, name
-      @last_status_sent.dig component, code, name
+      @last_status_sent.dig component, code, name if @last_status_sent
     end
 
     def store_last_sent_status message

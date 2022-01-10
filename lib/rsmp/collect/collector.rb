@@ -80,7 +80,7 @@ module RSMP
       wait
       @status
     ensure
-      @notifier.remove_listener self
+      @notifier.remove_listener self if @notifier
     end
 
     # Collect message
@@ -151,28 +151,26 @@ module RSMP
     # Handle message. and return true when we're done collecting
     def notify message
       raise ArgumentError unless message
-      raise RuntimeError.new("can't process message when done") unless ready? || collecting?
-      unless reject_not_ack(message)
-        perform_match message
-      end
+      raise RuntimeError.new("can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}") unless ready? || collecting?
+      perform_match message
       @status
+    end
+
+    def describe
     end
 
     # Match message against our collection criteria
     def perform_match message
-      return unless type_match?(message)
+      return false if reject_not_ack(message)
+      return false unless type_match?(message)
       if @block
         status = [@block.call(message)].flatten
+        return unless collecting?
         keep message if status.include?(:keep)
-        if status.include?(:cancel)
-          cancel('Cancelled by block')
-        else
-          complete if done?
-        end
       else
         keep message
-        complete if done?
       end
+      complete if done?
     end
 
     # Have we collected the required number of messages?
@@ -224,7 +222,7 @@ module RSMP
     end
 
     # Abort collection
-    def cancel error
+    def cancel error=nil
       @error = error
       @status = :cancelled
       do_stop
