@@ -35,13 +35,11 @@ RSpec.describe StatusCollector do
     }
   }
   
-  let(:proxy) { SiteProxyStub.new }
-  let(:collector) { StatusCollector.new(proxy, want.values, timeout: timeout) }
-  
   describe "#collect" do
   
     it 'completes with a single status update' do
-      Async do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.summary).to eq([false,false,false])
         expect(collector.done?).to be(false)
         
@@ -53,7 +51,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'completes with sequential status updates' do
-      Async do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.summary).to eq([false,false,false])
         expect(collector.done?).to be(false)
 
@@ -73,7 +72,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'marks queries as not done' do
-      Async do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.done?).to be(false)
         expect(collector.summary).to eq([false,false,false])
 
@@ -101,7 +101,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'raises if notified after being complete' do
-      Async do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         collector.start
         collector.notify build_status_message(ok.values)
         expect(collector.done?).to be(true)
@@ -110,7 +111,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'extra status updates are ignored' do
-      Async do |task|
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         collector.use_task task
         # proxy should have no listeners initially
         expect(proxy.listeners.size).to eq(0)
