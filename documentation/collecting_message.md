@@ -157,7 +157,7 @@ task.wait  # wait for collection task to complete (or time out)
 ```
 
 ### With collection
-If you provide `:collect` options, it will be used to construct a StatusUpdateCollector for collecting the relevant status messages. When collection completes the collector is returned in the `:collector` key:
+If you provide `:collect` options, it will be used to construct a StatusCollector for collecting the relevant status messages. When collection completes the collector is returned in the `:collector` key:
 
 ```ruby
 options = {

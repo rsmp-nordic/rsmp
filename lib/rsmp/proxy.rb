@@ -52,12 +52,6 @@ module RSMP
       node.clock
     end
 
-    def collect options, &block
-      collector = RSMP::Collector.new self, options.merge(task: @task)
-      collector.collect &block
-      collector
-    end
-
     def run
       start
       @reader.wait if @reader
@@ -579,25 +573,27 @@ module RSMP
     end
 
     def wait_for_acknowledgement parent_task, options={}, m_id
-      collect(parent_task,options.merge({
-        type: ['MessageAck','MessageNotAck'],
-        num: 1
-      })) do |message|
+      collector = Collector.new self, options.merge(task: parent_task, type: ['MessageAck','MessageNotAck'])
+      collector.collect do |message|
         if message.is_a?(MessageNotAck)
           if message.attribute('oMId') == m_id
-            # set result to an exception, but don't raise it.
-            # this will be returned by the task and stored as the task result
-            # when the parent task call wait() on the task, the exception
-            # will be raised in the parent task, and caught by rspec.
-            # rspec will then show the error and record the test as failed
             m_id_short = RSMP::Message.shorten_m_id m_id, 8
-            result = RSMP::MessageRejected.new "Aggregated status request #{m_id_short} was rejected with '#{message.attribute('rea')}'"
-            next true   # done, no more messages wanted
+            raise RSMP::MessageRejected.new "Aggregated status request #{m_id_short} was rejected with '#{message.attribute('rea')}'"
           end
         elsif message.is_a?(MessageAck)
-          next true if message.attribute('oMId') == m_id
+          collector.complete if message.attribute('oMId') == m_id
         end
-        false
+      end
+    end
+
+    def send_and_optionally_collect message, options, &block
+      if options[:collect]
+        task = @task.async { |task| yield task }
+        send_message message, validate: options[:validate]
+        { sent: message, collector: task.wait }
+      else
+        send_message message, validate: options[:validate]
+        return { sent: message }
       end
     end
   end

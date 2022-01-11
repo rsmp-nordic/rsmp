@@ -1,5 +1,5 @@
 include RSMP
-RSpec.describe StatusUpdateCollector do
+RSpec.describe StatusCollector do
   let(:timeout) { 0.001 }
 
   def build_status_message status_list
@@ -36,7 +36,7 @@ RSpec.describe StatusUpdateCollector do
   }
   
   let(:proxy) { SiteProxyStub.new }
-  let(:collector) { StatusUpdateCollector.new(proxy, want.values, timeout: timeout) }
+  let(:collector) { StatusCollector.new(proxy, want.values, timeout: timeout) }
   
   describe "#collect" do
   
@@ -141,7 +141,7 @@ RSpec.describe StatusUpdateCollector do
   describe '#collect with block' do
     it 'gets message and each item' do
       RSMP::SiteProxyStub.async do |task,proxy|
-        collector = StatusUpdateCollector.new(proxy, want.values, task: task, timeout: timeout)
+        collector = StatusCollector.new(proxy, want.values, task: task, timeout: timeout)
         collect_task = task.async do
           messages = []
           items = []
@@ -166,7 +166,7 @@ RSpec.describe StatusUpdateCollector do
     it 'can keep or reject items' do
       RSMP::SiteProxyStub.async do |task,proxy|
         want = {"sCI" => "S0001","n" => "status"}
-        collector = StatusUpdateCollector.new(proxy, [want], task: task, timeout: timeout)
+        collector = StatusCollector.new(proxy, [want], task: task, timeout: timeout)
         collect_task = task.async do
           items = []
           result = collector.collect do |message, item|
@@ -187,7 +187,7 @@ RSpec.describe StatusUpdateCollector do
 
     it 'can cancel' do
       RSMP::SiteProxyStub.async do |task,proxy|
-        collector = StatusUpdateCollector.new(proxy, want.values, task: task)
+        collector = StatusCollector.new(proxy, want.values, task: task)
         collect_task = task.async do
           result = collector.collect do |message, item|
             collector.cancel

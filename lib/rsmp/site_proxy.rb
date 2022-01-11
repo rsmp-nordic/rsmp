@@ -101,8 +101,13 @@ module RSMP
           "cId" => component,
           "mId" => m_id
       })
-      send_and_collect_if_needed message, options do |task|
-        collect_aggregated_status task, options[:collect].merge(m_id: m_id, num:1)
+      send_and_optionally_collect message, options do |task|
+        collector = AggregatedStatusCollector.new(
+          self,
+          options[:collect].merge(task:@task,m_id: m_id, num:1)
+        )
+        collector.collect
+        collector
       end
     end
 
@@ -174,8 +179,14 @@ module RSMP
           "sS" => request_list,
           "mId" => m_id
       })
-      send_and_collect_if_needed message, options do |task|
-        collect_status_responses task, status_list, options[:collect].merge(m_id: m_id)
+      send_and_optionally_collect message, options do |task|
+        collector = StatusCollector.new(
+          self,
+          status_list,
+          options[:collect].merge(task:@task,m_id: m_id)
+          )
+        collector.collect
+        collector
       end
     end
 
@@ -184,17 +195,6 @@ module RSMP
       component.handle_status_response message
       log "Received #{message.type}", message: message, level: :log
       acknowledge message
-    end
-
-    def send_and_collect_if_needed message, options, &block
-      if options[:collect]
-        task = @task.async { |task| yield task }
-        send_message message, validate: options[:validate]
-        { sent: message, collector: task.wait }
-      else
-        send_message message, validate: options[:validate]
-        return { sent: message }
-      end
     end
 
     def subscribe_to_status component_id, status_list, options={}
@@ -215,8 +215,14 @@ module RSMP
           "sS" => subscribe_list,
           'mId' => m_id
       })
-      send_and_collect_if_needed message, options do |task|
-         collect_status_updates task, status_list, options[:collect].merge(m_id: m_id)
+      send_and_optionally_collect message, options do |task|
+        collector = StatusCollector.new(
+          self,
+          status_list,
+          options[:collect].merge(task:@task,m_id: m_id)
+        )
+        collector.collect
+        collector
       end
     end
 
@@ -261,8 +267,14 @@ module RSMP
           "arg" => command_list,
           "mId" => m_id
       })
-      send_and_collect_if_needed message, options do |task|
-        collect_command_responses task, command_list, options[:collect].merge(m_id: m_id)
+      send_and_optionally_collect message, options do |task|
+        collector = CommandResponseCollector.new(
+          self,
+          command_list,
+          options[:collect].merge(task:@task,m_id: m_id)
+          )
+        collector.collect
+        collector
       end
     end
 
@@ -339,37 +351,13 @@ module RSMP
       distribute_error e, options
     end
 
-    def collect_alarms parent_task, options={}
-      collect(parent_task,options.merge(type: "Alarm")) do |alarm|
+    def collect_alarms options={}
+      collect(@task,options.merge(type: "Alarm")) do |alarm|
         next if options[:aCId] && options[:aCId] != alarm.attribute("aCId")
         next if options[:aSp] && options[:aSp] != alarm.attribute("aSp")
         next if options[:aS] && options[:aS] != alarm.attribute("aS")
-        true
+        :keep
       end
-    end
-
-    def collect_status_updates task, status_list, options
-      collector = StatusUpdateCollector.new(self, status_list, options.merge(task:task))
-      collector.collect
-      collector
-    end
-
-    def collect_status_responses task, status_list, options
-      collector = StatusResponseCollector.new(self, status_list, options.merge(task:task))
-      collector.collect
-      collector
-    end
-
-    def collect_command_responses task, command_list, options
-      collector = CommandResponseCollector.new(self, command_list, options.merge(task:task))
-      collector.collect
-      collector
-    end
-
-    def collect_aggregated_status task, options
-      collector = AggregatedStatusCollector.new(self, options.merge(task:task))
-      collector.collect
-      collector
     end
   end
 end

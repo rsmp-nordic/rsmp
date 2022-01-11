@@ -95,7 +95,8 @@ module RSMP
         ip: supervisor_settings['ip'],
         port: supervisor_settings['port'],
         logger: @logger,
-        archive: @archive
+        archive: @archive,
+        collect: @collect
       })
       @proxies << proxy
       @proxies_condition.signal

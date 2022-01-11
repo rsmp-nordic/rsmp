@@ -15,7 +15,6 @@ module RSMP
       @clock = Clock.new
       @error_queue = Async::Queue.new
       @ignore_errors = []
-      options[:collector]
       @collect = options[:collect]
     end
 

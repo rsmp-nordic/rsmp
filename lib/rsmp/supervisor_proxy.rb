@@ -138,16 +138,8 @@ module RSMP
         "mId" => m_id,
       })
 
-      if options[:collect]
-        result = nil
-        task = @task.async do |task|
-          wait_for_acknowledgement task, options[:collect], m_id
-        end
-        send_message message, validate: options[:validate]
-        return message, task.wait
-      else
-        send_message message, validate: options[:validate]
-        message
+      send_and_optionally_collect message, options do |task|
+        wait_for_acknowledgement task, options[:collect], m_id
       end
     end
 

@@ -2,8 +2,10 @@ module RSMP
   class SiteProxyStub
     include RSMP::Notifier
     include RSMP::Logging
+    attr_reader :task
 
-    def initialize
+    def initialize task
+      @task = task
       initialize_distributor
       initialize_logging({})
     end
@@ -11,7 +13,7 @@ module RSMP
     def self.async &block
       error = nil
        Async do |task|
-        proxy = self.new
+        proxy = self.new task
         yield task, proxy
 
       # catch error and reraise outside async block

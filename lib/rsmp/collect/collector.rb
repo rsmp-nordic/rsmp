@@ -6,8 +6,8 @@ module RSMP
   class Collector < Listener
     attr_reader :condition, :messages, :status, :error, :task
 
-    def initialize proxy, options={}
-      super proxy, options
+    def initialize notifier, options={}
+      super notifier, options
       @options = {
         cancel: {
           schema_error: true,
@@ -18,7 +18,15 @@ module RSMP
       @outgoing = options[:outgoing] == nil ? false : options[:outgoing]
       @condition = Async::Notification.new
       @title = options[:title] || [@options[:type]].flatten.join('/')
-      @task = options[:task]
+      if options[:task]
+        @task = options[:task]
+      else
+         # if notifier is a Proxy, or some other object that implements task(),
+         # then try to get the task that way
+        if notifier.respond_to? 'task'
+          @task = notifier.task
+        end
+      end
       reset
     end
 
@@ -192,8 +200,8 @@ module RSMP
       @condition.signal
     end
 
-    # The proxy experienced some error.
-    # Check if this should cause us to cancel.
+    # An error occured upstream.
+    # Check if we should cancel.
     def notify_error error, options={}
       case error
       when RSMP::SchemaError
