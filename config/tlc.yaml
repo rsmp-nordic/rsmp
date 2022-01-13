@@ -21,16 +21,16 @@ signal_plans:
       1: 0
       2: 5
     states:
-      A1: '123efg'
-      A2: '123efg'
-      B1: '123efg'
-      B2: '123efg'
-  2:
-    states:
       A1: '111NBB'
       A2: '11NBBB'
       B1: 'BBB11N'
       B2: 'BBB1NB'
+  2:
+    states:
+      A1: 'NNNNBB'
+      A2: 'NNNNBN'
+      B1: 'BBNNNN'
+      B2: 'BNNNNN'
 startup_sequence: 'efg'
 intervals:
   timer: 0.1
@@ -49,3 +49,4 @@ log:
   level: false
   debug: true
   json: true
+live_output: tmp/tlc.state

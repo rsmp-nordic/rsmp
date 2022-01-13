@@ -5,11 +5,16 @@ module RSMP
       attr_accessor :main, :signal_plans
 
       def initialize options={}
+        # setup options before calling super initializer,
+        # since build of components depend on options
         @sxl = 'traffic_light_controller'
         @security_codes = options[:site_settings]['security_codes']
         @interval = options[:site_settings].dig('intervals','timer') || 1
+        @startup_sequence = options[:site_settings]['startup_sequence'] || 'efg'
         build_plans options[:site_settings].dig('signal_plans')
+
         super options
+
         unless @main
           raise ConfigurationError.new "TLC must have a main component"
         end
@@ -37,7 +42,9 @@ module RSMP
         when 'main'
           @main = TrafficController.new node: self, id: id,
             cycle_time: settings['cycle_time'],
-            signal_plans: @signal_plans
+            startup_sequence: @startup_sequence,
+            signal_plans: @signal_plans,
+            live_output: @site_settings['live_output']
         when 'signal_group'
           group = SignalGroup.new node: self, id: id
           @main.add_signal_group group
@@ -52,6 +59,7 @@ module RSMP
       def start_action
         super
         start_timer
+        @main.initiate_startup_sequence
       end
 
       def start_timer
@@ -134,6 +142,7 @@ module RSMP
         when :restart
           log "Restarting TLC", level: :info
           restart
+          initiate_startup_sequence
         end
       end
     end

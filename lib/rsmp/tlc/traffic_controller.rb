@@ -5,9 +5,12 @@ module RSMP
     # and keeps track of signal plans, detector logics, inputs, etc. which do
     # not have dedicated components.
     class TrafficController < Component
-      attr_reader :pos, :cycle_time, :plan
+      attr_reader :pos, :cycle_time, :plan, :cycle_counter,
+        :yellow_flash, :dark_mode,
+        :startup_sequence_active, :startup_sequence, :startup_sequence_pos
 
-      def initialize node:, id:, cycle_time: 10, signal_plans:
+      def initialize node:, id:, cycle_time: 10, signal_plans:,
+          startup_sequence:, live_output:nil
         super node: node, id: id, grouped: true
         @signal_groups = []
         @detector_logics = []
@@ -15,15 +18,15 @@ module RSMP
         @cycle_time = cycle_time
         @num_traffic_situations = 1
         @num_inputs = 8
-        @startup_sequence = 'efg'
+        @startup_sequence = startup_sequence
+        @live_output = live_output
         reset
-        #initiate_startup_sequence
       end
 
       def reset
-        @pos = 0
-        @plan = 0
-        @dark_mode = false
+        @cycle_counter = 0
+        @plan = 1
+        @dark_mode = true
         @yellow_flash = false
         @booting = false
         @control_mode = 'control'
@@ -72,30 +75,29 @@ module RSMP
       end
 
       def timer now
-        # TODO
-        # We should use a monotone timer, to avoid jumps
-        # in case the user sets the system time
+        # TODO use monotone timer, to avoid jumps in case the user sets the system time
+        @signal_groups.each { |group| group.timer }
         time = Time.now.to_i
-        if time != @time_int
-          @time_int = time
-          if @yellow_flash
-            move_yellow_flash
-          elsif @startup_sequence_active
-            move_startup
-          else
-            move_normal
-          end
-          output_states
-        end
+        return if time == @time_int
+        @time_int = time
+        move_cycle_counter
+        move_startup_sequence if @startup_sequence_active
+        output_states
       end
 
-      def move_yellow_flash
-        @signal_groups.each do |group|
-          group.move_yellow_flash
-        end
+      def move_cycle_counter
+        counter = Time.now.to_i % @cycle_time
+        @cycle_counter = counter
+      end
+
+      def startup_state
+        return unless @startup_sequence_active
+        return unless @startup_sequence_pos
+        @startup_sequence[ @startup_sequence_pos ]
       end
 
       def initiate_startup_sequence
+        log "Initiating startup sequence", level: :info
         @startup_sequence_active = true
         @startup_sequence_initiated_at = nil
         @startup_sequence_pos = nil
@@ -105,33 +107,26 @@ module RSMP
         @startup_sequence_active = false
         @startup_sequence_initiated_at = nil
         @startup_sequence_pos = nil
+
+        @yellow_flash = false
+        @dark_mode = false
       end
 
-      def move_startup
+      def move_startup_sequence
         was = @startup_sequence_pos
         if @startup_sequence_initiated_at == nil
-          @startup_sequence_initiated_at = Time.now.to_i+1
+          @startup_sequence_initiated_at = Time.now.to_i + 1
           @startup_sequence_pos = 0
         else
           @startup_sequence_pos = Time.now.to_i - @startup_sequence_initiated_at
         end
-        @signal_groups.each do |group|
-          group.move_startup @startup_sequence_pos, @startup_sequence
-        end
-        if @startup_sequence_pos >= @startup_sequence.size-1
+        if @startup_sequence_pos >= @startup_sequence.size
           end_startup_sequence
         end
       end
 
-      def move_normal
-        pos = Time.now.to_i % @cycle_time
-        @pos = pos
-        @signal_groups.each do |group|
-          group.move_normal pos
-        end
-      end
-
       def output_states
+        return unless @live_output
         str = @signal_groups.map do |group|
           s = "#{group.c_id}:#{group.state}"
           if group.state =~ /^[1-9]$/
@@ -149,7 +144,10 @@ module RSMP
           end
         end.join ' '
         plan = "P#{@plan}"
-        puts "#{plan.rjust(4)} #{pos.to_s.rjust(4)} #{str}\r"
+
+        File.open @live_output, 'w' do |file|
+          file.puts "#{plan.rjust(4)} #{pos.to_s.rjust(4)} #{str}\r"
+        end
       end
 
       def format_signal_group_status
@@ -371,9 +369,9 @@ module RSMP
         when 'signalgroupstatus'
           TrafficControllerSite.make_status format_signal_group_status
         when 'cyclecounter'
-          TrafficControllerSite.make_status @pos.to_s
+          TrafficControllerSite.make_status @cycle_counter.to_s
         when 'basecyclecounter'
-          TrafficControllerSite.make_status @pos.to_s
+          TrafficControllerSite.make_status @cycle_counter.to_s
         when 'stage'
           TrafficControllerSite.make_status 0.to_s
         end

@@ -9,9 +9,9 @@ module RSMP
     attr_reader :rsmp_versions, :site_settings, :logger, :proxies
 
     def initialize options={}
+      super options
       initialize_components
       handle_site_settings options
-      super options
       @proxies = []
       @sleep_condition = Async::Notification.new
       @proxies_condition = Async::Notification.new

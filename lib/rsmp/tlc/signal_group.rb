@@ -8,28 +8,29 @@ module RSMP
         super node: node, id: id, grouped: false
       end
 
-      def get_state pos
+      def timer
+        @state = get_state
+      end
+
+      def get_state
+        return 'a' if node.main.dark_mode
+        return 'c' if node.main.yellow_flash
+
+        cycle_counter = node.main.cycle_counter
+
+        if node.main.startup_sequence_active
+          @state = node.main.startup_state || 'a'
+        end
+
         default = 'a'   # phase a means disabled/dark
         plan = node.main.current_plan
         return default unless plan
         return default unless plan.states
         states = plan.states[c_id]
         return default unless states
-        state = states[pos]
+        state = states[cycle_counter]
         return default unless state =~ /[a-hA-G0-9N-P]/  # valid signal group states
         state
-      end
-
-      def move_yellow_flash
-        @state = 'c'
-      end
-
-      def move_startup pos, sequence
-        @state = sequence[pos] || 'a'
-      end
-
-      def move_normal pos
-        @state = get_state pos
       end
 
       def handle_command command_code, arg
