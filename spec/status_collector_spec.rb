@@ -34,15 +34,15 @@ RSpec.describe StatusCollector do
       s11: {"sCI" => "S0011","n" => "status","s" => "True"},
     }
   }
-  
+
   describe "#collect" do
-  
+
     it 'completes with a single status update' do
       RSMP::SiteProxyStub.async do |task,proxy|
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.summary).to eq([false,false,false])
         expect(collector.done?).to be(false)
-        
+
         collector.start
         collector.notify build_status_message(ok.values)
         expect(collector.summary).to eq([true,true,true])
@@ -86,7 +86,7 @@ RSpec.describe StatusCollector do
         expect(collector.summary).to eq([true,true,false])
         expect(collector.done?).to be(false)
 
-        collector.notify build_status_message(reject[:s5])    # clear s5 
+        collector.notify build_status_message(reject[:s5])    # clear s5
         expect(collector.summary).to eq([false,true,false])
         expect(collector.done?).to be(false)
 

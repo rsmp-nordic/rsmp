@@ -1,5 +1,5 @@
 # Get the current time in UTC, with optional adjustment
-# Convertion to string uses the RSMP format 2015-06-08T12:01:39.654Z 
+# Convertion to string uses the RSMP format 2015-06-08T12:01:39.654Z
 # Note that using to_s on a my_clock.to_s will not produce an RSMP formatted timestamp,
 # you need to use Clock.to_s my_clock
 

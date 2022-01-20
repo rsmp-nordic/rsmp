@@ -16,3 +16,18 @@ RSpec.configure do |config|
 end
 
 include RSpec
+
+
+def async_context &block
+  Async do |task|
+    yield task
+    task.reactor.stop
+  end
+end
+
+def async_context terminate:true, &block
+  Async do |task|
+    yield task
+    task.reactor.stop if terminate
+  end.result
+end

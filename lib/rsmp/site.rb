@@ -15,6 +15,8 @@ module RSMP
       @proxies = []
       @sleep_condition = Async::Notification.new
       @proxies_condition = Async::Notification.new
+
+      build_proxies
     end
 
     def site_id
@@ -62,23 +64,27 @@ module RSMP
       RSMP::Schemer::find_schema! sxl, version, lenient: true
     end
 
-    def reconnect
-      @sleep_condition.signal
+    def run
+      log "Starting site #{@site_settings["site_id"]}",
+          level: :info,
+          timestamp: @clock.now
+      @proxies.each { |proxy| proxy.start }
+      @proxies.each { |proxy| proxy.wait }
     end
 
-    def start_action
+    def build_proxies
       @site_settings["supervisors"].each do |supervisor_settings|
-        @task.async do |task|
-          task.annotate "site proxy"
-          connect_to_supervisor task, supervisor_settings
-        rescue StandardError => e
-          notify_error e, level: :internal
-        end
+        @proxies << SupervisorProxy.new({
+          site: self,
+          task: @task,
+          settings: @site_settings,
+          ip: supervisor_settings['ip'],
+          port: supervisor_settings['port'],
+          logger: @logger,
+          archive: @archive,
+          collect: @collect
+        })
       end
-    end
-
-    def build_proxy settings
-      SupervisorProxy.new settings
     end
 
     def aggregated_status_changed component, options={}
@@ -91,7 +97,7 @@ module RSMP
       proxy = build_proxy({
         site: self,
         task: @task,
-        settings: @site_settings, 
+        settings: @site_settings,
         ip: supervisor_settings['ip'],
         port: supervisor_settings['port'],
         logger: @logger,
@@ -99,63 +105,20 @@ module RSMP
         collect: @collect
       })
       @proxies << proxy
-      @proxies_condition.signal
-      run_site_proxy task, proxy
-    ensure
-      @proxies.delete proxy
+      proxy.start
       @proxies_condition.signal
     end
 
-    def run_site_proxy task, proxy
-      loop do
-        proxy.run       # run until disconnected
-      rescue IOError => e
-        log "Stream error: #{e}", level: :warning
-      rescue StandardError => e
-        notify_error e, level: :internal
-      ensure
-        begin
-          if @site_settings['intervals']['watchdog'] != :no
-            # sleep until waken by reconnect() or the reconnect interval passed
-            proxy.set_state :wait_for_reconnect
-            task.with_timeout(@site_settings['intervals']['watchdog']) do
-              @sleep_condition.wait
-            end
-          else
-            proxy.set_state :cannot_connect
-            break
-          end
-        rescue Async::TimeoutError
-          # ignore
-        end
-      end
-    end
-
+    # stop
     def stop
       log "Stopping site #{@site_settings["site_id"]}", level: :info
-      @proxies.each do |proxy|
-        proxy.stop
-      end
-      @proxies.clear
       super
-    end
- 
-    def starting
-      log "Starting site #{@site_settings["site_id"]}",
-          level: :info,
-          timestamp: @clock.now
-    end
-
-    def alarm
-      @proxies.each do |proxy|
-        proxy.stop
-      end
     end
 
     def wait_for_supervisor ip, timeout
       supervisor = find_supervisor ip
       return supervisor if supervisor
-      wait_for(@proxy_condition,timeout) { find_supervisor ip }
+      wait_for_condition(@proxy_condition,timeout:timeout) { find_supervisor ip }
     rescue Async::TimeoutError
       raise RSMP::TimeoutError.new "Supervisor '#{ip}' did not connect within #{timeout}s"
     end

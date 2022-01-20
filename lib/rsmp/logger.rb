@@ -2,7 +2,7 @@ module RSMP
   class Logger
 
     attr_accessor :settings
-    
+
     def initialize settings={}
       defaults = {
         'active'=>true,
@@ -115,7 +115,7 @@ module RSMP
             end
           end
         end
-        return false if ack && @settings["acknowledgements"] == false && 
+        return false if ack && @settings["acknowledgements"] == false &&
           [:not_acknowledged,:warning,:error].include?(item[:level]) == false
       end
       true
@@ -159,7 +159,7 @@ module RSMP
 
     def log item, force:false
       if output?(item, force)
-        output item[:level], build_output(item) 
+        output item[:level], build_output(item)
       end
     end
 
@@ -169,7 +169,7 @@ module RSMP
       else
         ' '*length
       end
-    end 
+    end
 
     def dump archive, force:false, num:nil
       num ||= archive.items.size
@@ -183,7 +183,7 @@ module RSMP
     def build_part parts, item, key, &block
       skey = key.to_s
       return unless @settings[skey]
-      
+
       part = item[key]
       part = yield part if block
       part = part.to_s

@@ -9,25 +9,27 @@ module RSMP
       end
 
       def timer
-        @state = get_state
+        @state = compute_state
       end
 
-      def get_state
+      def compute_state
         return 'a' if node.main.dark_mode
         return 'c' if node.main.yellow_flash
 
         cycle_counter = node.main.cycle_counter
 
         if node.main.startup_sequence_active
-          @state = node.main.startup_state || 'a'
+          return node.main.startup_state || 'a'
         end
 
         default = 'a'   # phase a means disabled/dark
         plan = node.main.current_plan
         return default unless plan
         return default unless plan.states
+
         states = plan.states[c_id]
         return default unless states
+
         state = states[cycle_counter]
         return default unless state =~ /[a-hA-G0-9N-P]/  # valid signal group states
         state

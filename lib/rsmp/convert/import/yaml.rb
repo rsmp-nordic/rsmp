@@ -24,7 +24,7 @@ module RSMP
             commands: {}
           }
 
-          yaml['objects'].each_pair do |type,object|  
+          yaml['objects'].each_pair do |type,object|
             object["alarms"].each { |id,item| sxl[:alarms][id] = item }
             object["statuses"].each { |id,item| sxl[:statuses][id] = item }
             object["commands"].each { |id,item| sxl[:commands][id] = item }

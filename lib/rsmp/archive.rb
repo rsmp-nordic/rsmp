@@ -20,11 +20,11 @@ module RSMP
 
     def self.prepare_item item
       raise ArgumentError unless item.is_a? Hash
-    
+
       cleaned = item.select { |k,v| [:author,:level,:ip,:port,:site_id,:component,:text,:message,:exception].include? k }
       cleaned[:timestamp] = Clock.now
       if item[:message]
-        cleaned[:direction] = item[:message].direction 
+        cleaned[:direction] = item[:message].direction
         cleaned[:component] = item[:message].attributes['cId']
       end
 
@@ -54,7 +54,7 @@ module RSMP
         @items.shift
       end
     end
-    
+
     private
 
     def find options, &block

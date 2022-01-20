@@ -23,24 +23,29 @@ module RSMP
         reset
       end
 
-      def reset
-        @cycle_counter = 0
-        @plan = 1
+      def reset_modes
         @dark_mode = true
         @yellow_flash = false
         @booting = false
-        @control_mode = 'control'
-        @police_key = 0
-        @intersection = 0
         @is_starting = false
-        @emergency_route = false
-        @emergency_route_number = 0
-        @traffic_situation = 0
+        @control_mode = 'control'
         @manual_control = false
         @fixed_time_control = false
         @isolated_control = false
         @yellow_flash = false
         @all_red = false
+        @police_key = 0
+      end
+
+      def reset
+        reset_modes
+
+        @cycle_counter = 0
+        @plan = 1
+        @intersection = 0
+        @emergency_route = false
+        @emergency_route_number = 0
+        @traffic_situation = 0
 
         @inputs = '0'*@num_inputs
         @input_activations = '0'*@num_inputs
@@ -76,12 +81,14 @@ module RSMP
 
       def timer now
         # TODO use monotone timer, to avoid jumps in case the user sets the system time
-        @signal_groups.each { |group| group.timer }
         time = Time.now.to_i
         return if time == @time_int
         @time_int = time
         move_cycle_counter
         move_startup_sequence if @startup_sequence_active
+
+        @signal_groups.each { |group| group.timer }
+
         output_states
       end
 
@@ -98,6 +105,8 @@ module RSMP
 
       def initiate_startup_sequence
         log "Initiating startup sequence", level: :info
+        reset_modes
+        @dark_mode = false
         @startup_sequence_active = true
         @startup_sequence_initiated_at = nil
         @startup_sequence_pos = nil
@@ -107,7 +116,6 @@ module RSMP
         @startup_sequence_active = false
         @startup_sequence_initiated_at = nil
         @startup_sequence_pos = nil
-
         @yellow_flash = false
         @dark_mode = false
       end
@@ -127,26 +135,40 @@ module RSMP
 
       def output_states
         return unless @live_output
+
         str = @signal_groups.map do |group|
-          s = "#{group.c_id}:#{group.state}"
-          if group.state =~ /^[1-9]$/
+          state = group.state
+          s = "#{group.c_id}:#{state}"
+          if state =~ /^[1-9]$/
               s.colorize(:green)
-          elsif group.state =~ /^[NOP]$/
+          elsif state =~ /^[NOP]$/
             s.colorize(:yellow)
-          elsif group.state =~ /^[ae]$/
-            s.colorize(:black)
-          elsif group.state =~ /^[f]$/
+          elsif state =~ /^[ae]$/
+            s.colorize(:light_black)
+          elsif state =~ /^[f]$/
             s.colorize(:yellow)
-          elsif group.state =~ /^[g]$/
+          elsif state =~ /^[g]$/
             s.colorize(:red)
           else
             s.colorize(:red)
           end
         end.join ' '
+
+        modes = '.'*9
+        modes[0] = 'B' if @booting
+        modes[1] = 'S' if @startup_sequence_active
+        modes[2] = 'D' if @dark_mode
+        modes[3] = 'Y' if @yellow_flash
+        modes[4] = 'M' if @manual_control
+        modes[5] = 'F' if @fixed_time_control
+        modes[6] = 'R' if @all_red
+        modes[7] = 'I' if @isolated_control
+        modes[8] = 'P' if @police_key != 0
+
         plan = "P#{@plan}"
 
         File.open @live_output, 'w' do |file|
-          file.puts "#{plan.rjust(4)} #{pos.to_s.rjust(4)} #{str}\r"
+          file.puts "#{modes}  #{plan.rjust(2)}  #{@cycle_counter.to_s.rjust(3)}  #{str}\r"
         end
       end
 
@@ -316,7 +338,7 @@ module RSMP
         return unless i>=0 && i<@num_inputs
         @inputs[i] = (arg['value'] ? '1' : '0')
       end
-      
+
       def set_fixed_time_control status
         @fixed_time_control = status
       end

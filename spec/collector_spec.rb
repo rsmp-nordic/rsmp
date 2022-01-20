@@ -328,7 +328,7 @@ RSpec.describe RSMP::Collector do
       end
     end
   end
-  
+
   describe "#wait!" do
     it "returns messages if already complete" do
       RSMP::SiteProxyStub.async do |task,proxy|

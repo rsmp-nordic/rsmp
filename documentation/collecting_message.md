@@ -1,7 +1,7 @@
 # Collection
 You often need to collect messages or responses. The collector classes are used to collect message asyncronously. Other tasks continue until the collection completes, time outs or is cancelled.
 
-A collector can collect ingoing and/or outgoing messages. 
+A collector can collect ingoing and/or outgoing messages.
 
 An object that includes the Notifier module (or implements the same functionality) must be provided when you construct a Collected. The collector will attach itself to this notifier when it starts collecting, to receive messages. The SiteProxy and SupervisorProxy classes both include the Notifier module, and can therefore be used as message sources.
 
@@ -32,7 +32,7 @@ outgoing: Whether to collect outgoing messages. Defaults to true
 component: An RSMP component id.
 
 ### Collecting
-Use collect() to start collecting and wait for completion or timeout. The status will be returned. 
+Use collect() to start collecting and wait for completion or timeout. The status will be returned.
 
 ```ruby
 result = collector.collect # => :ok, :timeout or :cancelled

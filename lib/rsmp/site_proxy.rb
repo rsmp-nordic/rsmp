@@ -1,6 +1,6 @@
 # Handles a supervisor connection to a remote client
 
-module RSMP  
+module RSMP
   class SiteProxy < Proxy
     include Components
 
@@ -14,33 +14,37 @@ module RSMP
       @site_id = options[:site_id]
     end
 
+    # handle communication
+    # when we're created, the socket is already open
+    def run
+      set_state :connected
+      start_reader
+      wait_for_reader   # run until disconnected
+    rescue RSMP::ConnectionError => e
+      log e, level: :error
+    rescue StandardError => e
+      notify_error e, level: :internal
+    ensure
+      close
+    end
+
     def revive options
       super options
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
     end
 
-
     def inspect
       "#<#{self.class.name}:#{self.object_id}, #{inspector(
         :@acknowledgements,:@settings,:@site_settings,:@components
         )}>"
     end
+
     def node
       supervisor
     end
 
-    def start
-      super
-      start_reader
-    end
-
-    def stop
-      log "Closing connection to site", level: :info
-      super
-    end
-
-    def connection_complete
+    def handshake_complete
       super
       sanitized_sxl_version = RSMP::Schemer.sanitize_version(@site_sxl_version)
       log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{sanitized_sxl_version}", level: :info
@@ -68,7 +72,7 @@ module RSMP
         else
           super message
       end
-    rescue RSMP::RepeatedAlarmError, RSMP::RepeatedStatusError, TimestampError => e
+    rescue RSMP::RepeatedAlarmError, RSMP::RepeatedStatusError
       str = "Rejected #{message.type} message,"
       dont_acknowledge message, str, "#{e}"
       notify_error e.exception("#{str}#{e.message} #{message.json}")
@@ -148,7 +152,7 @@ module RSMP
     end
 
     def version_acknowledged
-      connection_complete
+      handshake_complete
     end
 
     def process_watchdog message
@@ -196,7 +200,7 @@ module RSMP
     def subscribe_to_status component_id, status_list, options={}
       validate_ready 'subscribe to status'
       m_id = options[:m_id] || RSMP::Message.make_m_id
-      
+
       # additional items can be used when verifying the response,
       # but must to remove from the subscribe message
       subscribe_list = status_list.map { |item| item.slice('sCI','n','uRt') }
@@ -324,7 +328,7 @@ module RSMP
         log "Using site settings for guest", level: :debug
         return @settings['guest']
       end
-  
+
       nil
     end
 

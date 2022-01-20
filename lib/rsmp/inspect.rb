@@ -1,5 +1,5 @@
 # Costume inspect, to reduce noise
-# 
+#
 # Instance variables of classes starting with Async or RSMP are shown
 # with only their class name and object id, which reduces output,
 # especially for deep object structures.
