@@ -52,6 +52,37 @@ RSpec.describe RSMP::Collector do
       end
     end
 
+    it 'gets a MessageAck' do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collect_task = task.async do
+          collector = RSMP::Collector.new proxy, type: "MessageAck", num: 1, timeout: timeout
+          result = collector.collect
+
+          expect(result).to eq(:ok)
+          expect(collector.messages).to be_an(Array)
+          expect(collector.messages.size).to eq(1)
+          expect(collector.messages.first).to be_an(RSMP::MessageAck)
+        end
+        proxy.notify RSMP::MessageAck.new
+        collect_task.wait
+      end
+    end
+
+    it 'gets a MessageNotAck' do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collect_task = task.async do
+          collector = RSMP::Collector.new proxy, type: "MessageNotAck", num: 1, timeout: timeout
+          result = collector.collect
+
+          expect(result).to eq(:ok)
+          expect(collector.messages).to be_an(Array)
+          expect(collector.messages.size).to eq(1)
+          expect(collector.messages.first).to be_an(RSMP::MessageNotAck)
+        end
+        proxy.notify RSMP::MessageNotAck.new
+        collect_task.wait
+      end
+    end
     it 'times out if nothing is received' do
       RSMP::SiteProxyStub.async do |task,proxy|
         collector = RSMP::Collector.new proxy, type: "Watchdog", num: 1, timeout: timeout

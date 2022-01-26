@@ -572,20 +572,6 @@ module RSMP
       node.site_id
     end
 
-    def wait_for_acknowledgement parent_task, options={}, m_id
-      collector = Collector.new self, options.merge(task: parent_task, type: ['MessageAck','MessageNotAck'])
-      collector.collect do |message|
-        if message.is_a?(MessageNotAck)
-          if message.attribute('oMId') == m_id
-            m_id_short = RSMP::Message.shorten_m_id m_id, 8
-            raise RSMP::MessageRejected.new "Aggregated status request #{m_id_short} was rejected with '#{message.attribute('rea')}'"
-          end
-        elsif message.is_a?(MessageAck)
-          collector.complete if message.attribute('oMId') == m_id
-        end
-      end
-    end
-
     def send_and_optionally_collect message, options, &block
       collect_options = options[:collect] || options[:collect!]
       if collect_options

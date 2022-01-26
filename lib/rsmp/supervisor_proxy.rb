@@ -138,8 +138,8 @@ module RSMP
         "mId" => m_id,
       })
 
-      send_and_optionally_collect message, options do |task|
-        wait_for_acknowledgement task, options[:collect], m_id
+      send_and_optionally_collect message, options do |collect_options|
+        Collector.new self, collect_options.merge(task:@task, type: 'MessageAck')
       end
     end
 

@@ -3,7 +3,7 @@ module RSMP
   class CommandResponseCollector < StateCollector
     def initialize proxy, want, options={}
       super proxy, want, options.merge(
-        type: ['CommandResponse','MessageNotAck'],
+        type: 'CommandResponse',
         title:'command response'
       )
     end
