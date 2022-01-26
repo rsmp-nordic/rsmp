@@ -94,8 +94,11 @@ module RSMP
     # Collect message
     # Returns the collected messages, or raise an exception in case of a time out.
     def collect! &block
-      if collect(&block) == :timeout
+      result = collect(&block)
+      if result == :timeout
         raise RSMP::TimeoutError.new describe_progress
+      elsif result == :cancelled
+        raise @error
       end
       @messages
     end

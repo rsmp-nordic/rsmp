@@ -98,6 +98,29 @@ RSpec.describe RSMP::Collector do
         expect { collector.collect }.to raise_error(ArgumentError)
       end
     end
+
+    it 'can cancel on MessageNotAck' do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        message = RSMP::StatusRequest.new
+        collect_task = task.async do
+          collector = RSMP::Collector.new(
+            proxy,
+            type: "StatusUpdate",
+            num: 1,
+            timeout: timeout,
+            m_id: message.m_id # id of original request. NotAck with matching mOId should cancel collection
+          )
+          result = collector.collect
+
+          expect(result).to eq(:cancelled)
+          expect(collector.messages).to be_an(Array)
+          expect(collector.messages.size).to eq(0)
+          expect(collector.error).to be_a(RSMP::MessageRejected )
+        end
+        proxy.notify RSMP::MessageNotAck.new 'oMId' => message.m_id
+        collect_task.wait
+      end
+    end
   end
 
   describe '#collect with block' do
@@ -206,6 +229,25 @@ RSpec.describe RSMP::Collector do
           expect(messages.first).to be_an(RSMP::Watchdog)
         end
         proxy.notify RSMP::Watchdog.new
+        collect_task.wait
+      end
+    end
+
+    it 'raises on MessageNotAck' do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        message = RSMP::StatusRequest.new
+        collect_task = task.async do
+          collector = RSMP::Collector.new(
+            proxy,
+            type: "StatusUpdate",
+            num: 1,
+            timeout: timeout,
+            m_id: message.m_id # id of original request. NotAck with matching mOId should cancel collection
+          )
+          expect { collector.collect! }.to raise_error(RSMP::MessageRejected)
+
+        end
+        proxy.notify RSMP::MessageNotAck.new 'oMId' => message.m_id
         collect_task.wait
       end
     end
