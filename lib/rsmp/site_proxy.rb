@@ -101,13 +101,11 @@ module RSMP
           "cId" => component,
           "mId" => m_id
       })
-      send_and_optionally_collect message, options do |task|
-        collector = AggregatedStatusCollector.new(
+      send_and_optionally_collect message, options do |collect_options|
+        AggregatedStatusCollector.new(
           self,
-          options[:collect].merge(task:@task,m_id: m_id, num:1)
+          collect_options.merge(task:@task,m_id: m_id, num:1)
         )
-        collector.collect
-        collector
       end
     end
 
@@ -179,14 +177,12 @@ module RSMP
           "sS" => request_list,
           "mId" => m_id
       })
-      send_and_optionally_collect message, options do |task|
-        collector = StatusCollector.new(
+      send_and_optionally_collect message, options do |collect_options|
+        StatusCollector.new(
           self,
           status_list,
-          options[:collect].merge(task:@task,m_id: m_id)
+          collect_options.merge(task:@task,m_id: m_id)
           )
-        collector.collect
-        collector
       end
     end
 
@@ -215,14 +211,12 @@ module RSMP
           "sS" => subscribe_list,
           'mId' => m_id
       })
-      send_and_optionally_collect message, options do |task|
-        collector = StatusCollector.new(
+      send_and_optionally_collect message, options do |collect_options|
+        StatusCollector.new(
           self,
           status_list,
-          options[:collect].merge(task:@task,m_id: m_id)
+          collect_options.merge(task:@task,m_id: m_id)
         )
-        collector.collect
-        collector
       end
     end
 
@@ -267,14 +261,12 @@ module RSMP
           "arg" => command_list,
           "mId" => m_id
       })
-      send_and_optionally_collect message, options do |task|
-        collector = CommandResponseCollector.new(
+      send_and_optionally_collect message, options do |collect_options|
+        CommandResponseCollector.new(
           self,
           command_list,
-          options[:collect].merge(task:@task,m_id: m_id)
+          collect_options.merge(task:@task,m_id: m_id)
           )
-        collector.collect
-        collector
       end
     end
 

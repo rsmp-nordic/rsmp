@@ -587,8 +587,15 @@ module RSMP
     end
 
     def send_and_optionally_collect message, options, &block
-      if options[:collect]
-        task = @task.async { |task| yield task }
+      collect_options = options[:collect] || options[:collect!]
+      if collect_options
+        task = @task.async do |task|
+          collector = yield collect_options     # call block to create collector
+          collector.collect
+          collector.ok! if options[:collect!]   # raise any errors if the bang version was specified
+          collector
+        end
+
         send_message message, validate: options[:validate]
         { sent: message, collector: task.wait }
       else

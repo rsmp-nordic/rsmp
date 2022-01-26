@@ -51,12 +51,12 @@ module RSMP
       @status == :collecting
     end
 
-    # Is collection active?
+    # Is collection complete?
     def ok?
       @status == :ok
     end
 
-    # Has collection time out?
+    # Has collection timed out?
     def timeout?
       @status == :timeout
     end
@@ -81,6 +81,13 @@ module RSMP
       @outgoing == true
     end
 
+    # if an errors caused collection to abort, then raise it
+    # return self, so this can be tucked on to calls that return a collector
+    def ok!
+      raise @error if @error
+      self
+    end
+
     # Collect message
     # Will return once all messages have been collected, or timeout is reached
     def collect &block
@@ -94,12 +101,8 @@ module RSMP
     # Collect message
     # Returns the collected messages, or raise an exception in case of a time out.
     def collect! &block
-      result = collect(&block)
-      if result == :timeout
-        raise RSMP::TimeoutError.new describe_progress
-      elsif result == :cancelled
-        raise @error
-      end
+      collect(&block)
+      ok!
       @messages
     end
 
@@ -115,6 +118,7 @@ module RSMP
       end
       @status
     rescue Async::TimeoutError
+      @error = RSMP::TimeoutError.new describe_progress
       @status = :timeout
     end
 
@@ -123,7 +127,7 @@ module RSMP
     # If timeout is reached, an exceptioin is raised.
     def wait!
       wait
-      raise RSMP::TimeoutError.new(describe_progress) if timeout?
+      raise @error if timeout?
       @messages
     end
 
