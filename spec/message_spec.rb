@@ -25,29 +25,29 @@ RSpec.describe RSMP::Message do
 
 	context 'when parsing json packages' do
 		it 'raises ArgumentError when parsing nil' do
-			expect { RSMP::Message.parse_attributes(nil) }.to raise_error(ArgumentError) 
+			expect { RSMP::Message.parse_attributes(nil) }.to raise_error(ArgumentError)
 		end
 
 		it 'raises InvalidPacket when parsing empty string' do
-			expect { RSMP::Message.parse_attributes('') }.to raise_error(RSMP::InvalidPacket) 
+			expect { RSMP::Message.parse_attributes('') }.to raise_error(RSMP::InvalidPacket)
 		end
 
 		it 'raises InvalidPacket when parsing whitespace' do
-			expect { RSMP::Message.parse_attributes(' ') }.to raise_error(RSMP::InvalidPacket) 
-			expect { RSMP::Message.parse_attributes("\t") }.to raise_error(RSMP::InvalidPacket) 
-			expect { RSMP::Message.parse_attributes("\n") }.to raise_error(RSMP::InvalidPacket) 
-			expect { RSMP::Message.parse_attributes("\f") }.to raise_error(RSMP::InvalidPacket) 
-			expect { RSMP::Message.parse_attributes("\r") }.to raise_error(RSMP::InvalidPacket) 
+			expect { RSMP::Message.parse_attributes(' ') }.to raise_error(RSMP::InvalidPacket)
+			expect { RSMP::Message.parse_attributes("\t") }.to raise_error(RSMP::InvalidPacket)
+			expect { RSMP::Message.parse_attributes("\n") }.to raise_error(RSMP::InvalidPacket)
+			expect { RSMP::Message.parse_attributes("\f") }.to raise_error(RSMP::InvalidPacket)
+			expect { RSMP::Message.parse_attributes("\r") }.to raise_error(RSMP::InvalidPacket)
 		end
 
 		it 'raises InvalidPacket when parsing invalid JSON ' do
-			expect { RSMP::Message.parse_attributes('{"a":"1"') }.to raise_error(RSMP::InvalidPacket) 
-			expect { RSMP::Message.parse_attributes('"a":"1"}') }.to raise_error(RSMP::InvalidPacket) 
-			expect { RSMP::Message.parse_attributes('/') }.to raise_error(RSMP::InvalidPacket) 
+			expect { RSMP::Message.parse_attributes('{"a":"1"') }.to raise_error(RSMP::InvalidPacket)
+			expect { RSMP::Message.parse_attributes('"a":"1"}') }.to raise_error(RSMP::InvalidPacket)
+			expect { RSMP::Message.parse_attributes('/') }.to raise_error(RSMP::InvalidPacket)
 		end
 
 		it 'parses valid JSON' do
-			expect(RSMP::Message.parse_attributes('"string"')).to eq("string") 
+			expect(RSMP::Message.parse_attributes('"string"')).to eq("string")
 			expect(RSMP::Message.parse_attributes('123')).to eq(123)
 			expect(RSMP::Message.parse_attributes('3.14')).to eq(3.14)
 			expect(RSMP::Message.parse_attributes('[1,2,3]')).to eq([1,2,3])
@@ -134,7 +134,7 @@ RSpec.describe RSMP::Message do
 
 		it 'generates json' do
 			message = RSMP::Version.new(json)
-			message.generate_json 
+			message.generate_json
 			str = '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.1"},{"vers":"3.1.2"},{"vers":"3.1.3"},{"vers":"3.1.4"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","siteId":[{"sId":"RN+SI0001"}]}'
 			expect(message.json).to eq(str)
 		end

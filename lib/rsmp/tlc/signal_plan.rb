@@ -1,8 +1,8 @@
 module RSMP
   module TLC
     # A Traffic Light Controller Signal Plan.
-    # A signal plan is a description of how all signal groups should change 
-    # state over time. 
+    # A signal plan is a description of how all signal groups should change
+    # state over time.
     class SignalPlan
       attr_reader :nr, :states, :dynamic_bands
       def initialize nr:, states:, dynamic_bands:

@@ -23,7 +23,7 @@ $ git submodule update   # fetch submodules
 
 Alternatively, you can pass --recurse-submodules to the git clone command, and it will automatically initialize and update each submodule in the repository.
 
-## Usage 
+## Usage
 ### Site and Supervisor
 The RSMP::Site and RSMP::Supervisor classes can be used to run a RSMP site.
 
@@ -172,7 +172,7 @@ Use the ```tlc``` site type to run an emulation of a traffic light controller. T
 ### CLI help and options.
 Use ```--help <command>``` to get a list of available options.
 
-Use ```--config <path>``` to point to a .yaml config file, controlling things like IP adresses, ports, and log output. Examples of config files can be found the folder ```config/```. 
+Use ```--config <path>``` to point to a .yaml config file, controlling things like IP adresses, ports, and log output. Examples of config files can be found the folder ```config/```.
 
 ## Tests
 ### RSpec

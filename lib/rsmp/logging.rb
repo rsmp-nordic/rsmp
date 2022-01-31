@@ -8,7 +8,7 @@ module RSMP
 
     def initialize_logging options
       @archive = options[:archive] || RSMP::Archive.new
-      @logger = options[:logger] || RSMP::Logger.new(options[:log_settings]) 
+      @logger = options[:logger] || RSMP::Logger.new(options[:log_settings])
     end
 
     def author

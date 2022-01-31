@@ -20,6 +20,29 @@ RSpec.describe RSMP::Supervisor do
 			}
 		}
 
+		let(:supervisor) {
+			RSMP::Supervisor.new(
+				supervisor_settings: supervisor_settings,
+				log_settings: log_settings
+			)
+		}
+
+	  let(:endpoint) {
+	  	Async::IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
+	  }
+
+	  let(:socket) {
+	  	endpoint.connect
+	  }
+
+	  let(:stream) {
+	  	Async::IO::Stream.new(socket)
+	  }
+
+	  let(:protocol) {
+	  	Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+	  }
+
 		it 'runs without options' do
 			expect { RSMP::Supervisor.new({}) }.not_to raise_error
 		end
@@ -31,7 +54,7 @@ RSpec.describe RSMP::Supervisor do
 			)
 		end
 
-		it 'starts' do
+		it 'accepts connections' do
 			# mock SecureRandom.uui() so we get known message ids:
 			allow(SecureRandom).to receive(:uuid).and_return(
 				'1b206e56-31be-4739-9164-3a24d47b0aa2',
@@ -44,20 +67,10 @@ RSpec.describe RSMP::Supervisor do
 				'16ec49e4-6ac1-4da6-827c-2a6562b91731'
 			)
 
-			supervisor = RSMP::Supervisor.new(
-				supervisor_settings: supervisor_settings,
-				log_settings: log_settings
-			)
-			Async do |task|
+			async_context do |task|
 				task.async do
 					supervisor.start
 				end
-
-				# create stream
-	      endpoint = Async::IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
-	      socket = endpoint.connect
-	      stream = Async::IO::Stream.new(socket)
-	      protocol = Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
 
 	      # write version message
 				protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.5"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.0.15","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'
@@ -77,15 +90,10 @@ RSpec.describe RSMP::Supervisor do
 				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
 
 				# supervisor should see our tcp socket and create a proxy
-				proxy = supervisor.wait_for_site "RN+SI0001", 0.1
+				proxy = supervisor.wait_for_site "RN+SI0001", timeout: 0.1
+				proxy.wait_for_state(:ready, timeout: 0.1)
 				expect(proxy).to be_an(RSMP::SiteProxy)
 				expect(proxy.site_id).to eq("RN+SI0001")
-
-
-
-				expect {
-					proxy.wait_for_state(:ready, 0.1)
-				}.not_to raise_error
 
 				# verify log content
 				got = supervisor.archive.by_level([:log, :info]).map { |item| item[:text] }
@@ -98,8 +106,6 @@ RSpec.describe RSMP::Supervisor do
 					"Received MessageAck for Version 1b20",
 					"Connection to site RN+SI0001 established, using core 3.1.5, tlc 1.0.15"
 				])
-
-				supervisor.stop
 			end
 		end
 	end

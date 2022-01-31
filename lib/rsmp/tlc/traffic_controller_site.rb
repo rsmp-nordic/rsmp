@@ -18,6 +18,18 @@ module RSMP
         unless @main
           raise ConfigurationError.new "TLC must have a main component"
         end
+
+      end
+
+      def start
+        super
+        start_tlc_timer
+        @main.initiate_startup_sequence
+      end
+
+      def stop_subtasks
+        stop_tlc_timer
+        super
       end
 
       def build_plans signal_plans
@@ -56,47 +68,43 @@ module RSMP
         end
       end
 
-      def start_action
-        super
-        start_timer
-        @main.initiate_startup_sequence
-      end
-
-      def start_timer
+      def start_tlc_timer
         task_name = "tlc timer"
         log "Starting #{task_name} with interval #{@interval} seconds", level: :debug
 
         @timer = @task.async do |task|
-          task.annotate task_name
-          next_time = Time.now.to_f
-          loop do
-            begin
-              timer(@clock.now)
-            rescue EOFError => e
-              log "Connection closed: #{e}", level: :warning
-            rescue IOError => e
-              log "IOError", level: :warning
-            rescue Errno::ECONNRESET
-              log "Connection reset by peer", level: :warning
-            rescue Errno::EPIPE => e
-              log "Broken pipe", level: :warning
-            rescue StandardError => e
-              notify_error e, level: :internal
-            ensure
-              # adjust sleep duration to avoid drift. so wake up always happens on the
-              # same fractional second.
-              # note that Time.now is not monotonic. If the clock is changed,
-              # either manaully or via NTP, the sleep interval might jump.
-              # an alternative is to use ::Process.clock_gettime(::Process::CLOCK_MONOTONIC),
-              # to get the current time. this ensures a constant interval, but
-              # if the clock is changed, the wake up would then happen on a different
-              # fractional second
-              next_time += @interval
-              duration = next_time - Time.now.to_f
-              task.sleep duration
-            end
+        task.annotate task_name
+          run_tlc_timer task
+        end
+      end
+
+      def run_tlc_timer task
+        next_time = Time.now.to_f
+        loop do
+          begin
+            timer(@clock.now)
+          rescue StandardError => e
+            notify_error e, level: :internal
+          ensure
+            # adjust sleep duration to avoid drift. so wake up always happens on the
+            # same fractional second.
+            # note that Time.now is not monotonic. If the clock is changed,
+            # either manaully or via NTP, the sleep interval might jump.
+            # an alternative is to use ::Process.clock_gettime(::Process::CLOCK_MONOTONIC),
+            # to get the current time. this ensures a constant interval, but
+            # if the clock is changed, the wake up would then happen on a different
+            # fractional second
+            next_time += @interval
+            duration = next_time - Time.now.to_f
+            task.sleep duration
           end
         end
+      end
+
+      def stop_tlc_timer
+        return unless @timer
+        @timer.stop
+        @timer = nil
       end
 
       def timer now
@@ -142,7 +150,6 @@ module RSMP
         when :restart
           log "Restarting TLC", level: :info
           restart
-          initiate_startup_sequence
         end
       end
     end

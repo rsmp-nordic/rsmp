@@ -3,7 +3,7 @@
 module RSMP
   module Components
     attr_reader :components
-    
+
     def initialize_components
       @components = {}
     end
@@ -25,10 +25,10 @@ module RSMP
 
     def check_main_component settings
       unless settings['main'] && settings['main'].size >= 1
-        raise ConfigurationError.new("main component must be defined") 
+        raise ConfigurationError.new("main component must be defined")
       end
       if settings['main'].size > 1
-        raise ConfigurationError.new("only one main component can be defined, found #{settings['main'].keys.join(', ')}") 
+        raise ConfigurationError.new("only one main component can be defined, found #{settings['main'].keys.join(', ')}")
       end
     end
 

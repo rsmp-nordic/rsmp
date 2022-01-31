@@ -5,17 +5,25 @@ module RSMP
     include Logging
     include Wait
     include Inspect
+    include Task
 
     attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock, :collector
 
     def initialize options
       initialize_logging options
-      @task = options[:task]
+      initialize_task
       @deferred = []
       @clock = Clock.new
       @error_queue = Async::Queue.new
       @ignore_errors = []
       @collect = options[:collect]
+    end
+
+    # stop proxies, then call super
+    def stop_subtasks
+      @proxies.each { |proxy| proxy.stop }
+      @proxies.clear
+      super
     end
 
     def ignore_errors classes, &block
@@ -50,55 +58,13 @@ module RSMP
 
     def clear_deferred
       @deferred.clear
-    end    
-
-    def do_start task
-      task.annotate self.class.to_s
-      @task = task
-      start_action
-      idle
-    end
-
-    def start
-      starting
-      if @task
-        do_start @task
-      else
-        Async do |task|
-          do_start task
-        end
-      end
-    rescue Errno::EADDRINUSE => e
-      log "Cannot start: #{e.to_s}", level: :error
-    rescue SystemExit, SignalException, Interrupt
-      @logger.unmute_all
-      exiting
-    end
-
-    def idle
-      loop do
-        @task.sleep 60
-      end
-    end
-
-    def stop
-      @task.stop if @task
-    end
-
-    def restart
-      stop
-      start
-    end
-
-    def exiting
-      log "Exiting", level: :info
     end
 
     def check_required_settings settings, required
       raise ArgumentError.new "Settings is empty" unless settings
       required.each do |setting|
         raise ArgumentError.new "Missing setting: #{setting}" unless settings.include? setting.to_s
-      end 
+      end
     end
 
     def author

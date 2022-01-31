@@ -188,7 +188,7 @@ module RSMP
   class Unknown < Message
   end
 
-  class AggregatedStatus < Message 
+  class AggregatedStatus < Message
     def initialize attributes = {}
       super({
         "type" => "AggregatedStatus",

@@ -64,7 +64,4 @@ module RSMP
 
 	class RepeatedStatusError < Error
 	end
-
-	class TimestampError < Error
-	end
 end

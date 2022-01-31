@@ -58,26 +58,31 @@ module RSMP
       end
     end
 
-    def start_action
+    # listen for connections
+    # Async::IO::Endpoint#accept createa an async task that we will wait for
+    def run
+      log "Starting supervisor on port #{@supervisor_settings["port"]}",
+          level: :info,
+          timestamp: @clock.now
+
       @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
-      @endpoint.accept do |socket|  # creates async tasks
+      tasks = @endpoint.accept do |socket|  # creates async tasks
         handle_connection(socket)
       rescue StandardError => e
         notify_error e, level: :internal
       end
+      tasks.each { |task| task.wait }
     rescue StandardError => e
       notify_error e, level: :internal
     end
 
+    # stop
     def stop
       log "Stopping supervisor #{@supervisor_settings["site_id"]}", level: :info
-      @proxies.each { |proxy| proxy.stop }
-      @proxies.clear
       super
-      @tcp_server.close if @tcp_server
-      @tcp_server = nil
     end
 
+    # handle an incoming connction by either accepting of rejecting it
     def handle_connection socket
       remote_port = socket.remote_address.ip_port
       remote_hostname = socket.remote_address.ip_address
@@ -85,9 +90,9 @@ module RSMP
 
       info = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:Clock.now}
       if accept? socket, info
-        connect socket, info
+        accept_connection socket, info
       else
-        reject socket, info
+        reject_connection socket, info
       end
     rescue ConnectionError => e
       log "Rejected connection from #{remote_ip}:#{remote_port}, #{e.to_s}", level: :warning
@@ -97,12 +102,6 @@ module RSMP
       notify_error e, level: :internal
     ensure
       close socket, info
-    end
-
-    def starting
-      log "Starting supervisor on port #{@supervisor_settings["port"]}", 
-          level: :info,
-          timestamp: @clock.now
     end
 
     def accept? socket, info
@@ -143,7 +142,8 @@ module RSMP
       message.attribute('siteId').first['sId']
     end
 
-    def connect socket, info
+    # accept an incoming connecting by creating and starting a proxy
+    def accept_connection socket, info
       log "Site connected from #{format_ip_and_port(info)}",
           ip: info[:ip],
           port: info[:port],
@@ -182,7 +182,8 @@ module RSMP
         proxy = build_proxy settings.merge(site_id:id)    # keep the id learned by peeking above
         @proxies.push proxy
       end
-      proxy.run     # will run until the site disconnects
+      proxy.start     # will run until the site disconnects
+      proxy.wait
     ensure
       site_ids_changed
       stop if @supervisor_settings['one_shot']
@@ -192,7 +193,7 @@ module RSMP
       @site_id_condition.signal
     end
 
-    def reject socket, info
+    def reject_connection socket, info
       log "Site rejected", ip: info[:ip], level: :info
     end
 
@@ -224,10 +225,13 @@ module RSMP
       nil
     end
 
-    def wait_for_site site_id, timeout
+    def wait_for_site site_id, timeout:
       site = find_site site_id
       return site if site
-      wait_for(@site_id_condition,timeout) { find_site site_id }
+      wait_for_condition(@site_id_condition,timeout:timeout) do
+        find_site site_id
+      end
+
     rescue Async::TimeoutError
       if site_id == :any
         str = "No site connected"
@@ -237,8 +241,8 @@ module RSMP
       raise RSMP::TimeoutError.new "#{str} within #{timeout}s"
     end
 
-    def wait_for_site_disconnect site_id, timeout
-      wait_for(@site_id_condition,timeout) { true unless find_site site_id }
+    def wait_for_site_disconnect site_id, timeout:
+      wait_for_condition(@site_id_condition,timeout:timeout) { true unless find_site site_id }
     rescue Async::TimeoutError
       raise RSMP::TimeoutError.new "Site '#{site_id}' did not disconnect within #{timeout}s"
     end

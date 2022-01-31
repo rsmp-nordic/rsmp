@@ -1,8 +1,10 @@
-# Logging class for a connection to a remote site or supervisor.
+# A connection to a remote site or supervisor.
+# Uses the Task module to handle asyncronous work, but adds
+# the concept of a connection that can be connected or disconnected.
 
 require 'rubygems'
 
-module RSMP  
+module RSMP
   class Proxy
     WRAPPING_DELIMITER = "\f"
 
@@ -10,23 +12,94 @@ module RSMP
     include Wait
     include Notifier
     include Inspect
+    include Task
 
-    attr_reader :state, :archive, :connection_info, :sxl, :task, :collector, :ip, :port
+    attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port
 
     def initialize options
       initialize_logging options
       initialize_distributor
+      initialize_task
       setup options
       clear
+      @state = :disconnected
     end
 
+    def disconnect
+    end
+
+    # wait for the reader task to complete,
+    # which is not expected to happen before the connection is closed
+    def wait_for_reader
+      @reader.wait if @reader
+    end
+
+    # close connection, but keep our main task running so we can reconnect
+    def close
+      log "Closing connection", level: :warning
+      close_stream
+      close_socket
+      set_state :disconnected
+      notify_error DisconnectError.new("Connection was closed")
+      stop_timer
+    end
+
+    def stop_subtasks
+      stop_timer
+      stop_reader
+      clear
+      super
+    end
+
+    def stop_timer
+      return unless @timer
+      @timer.stop
+      @timer = nil
+    end
+
+    def stop_reader
+      return unless @reader
+      @reader.stop
+      @reader = nil
+    end
+
+    def close_stream
+      return unless @stream
+      @stream.close
+      @stream = nil
+    end
+
+    def close_socket
+      return unless @socket
+      @socket.close
+      @socket = nil
+    end
+
+    def terminate
+      close
+      super
+    end
+
+    # change our state
+    def set_state state
+      return if state == @state
+      @state = state
+      state_changed
+    end
+
+    # the state changed
+    # override to to things like notifications
+    def state_changed
+      @state_condition.signal @state
+    end
+
+    # revive after a reconnect
     def revive options
       setup options
     end
 
     def setup options
       @settings = options[:settings]
-      @task = options[:task]
       @socket = options[:socket]
       @stream = options[:stream]
       @protocol = options[:protocol]
@@ -35,7 +108,6 @@ module RSMP
       @connection_info = options[:info]
       @sxl = nil
       @site_settings = nil  # can't pick until we know the site id
-      @state = :stopped
       if options[:collect]
         @collector = RSMP::Collector.new self, options[:collect]
         @collector.start
@@ -52,35 +124,16 @@ module RSMP
       node.clock
     end
 
-    def run
-      start
-      @reader.wait if @reader
-    ensure
-      stop unless [:stopped, :stopping].include? @state
-    end
-
     def ready?
       @state == :ready
     end
 
     def connected?
-      @state == :starting || @state == :ready
+      @state == :connected || @state == :ready
     end
 
-
-    def start
-      set_state :starting
-    end
-
-    def stop
-      return if @state == :stopped
-      set_state :stopping
-      stop_tasks
-      notify_error DisconnectError.new("Connection was closed")
-    ensure
-      close_socket
-      clear
-      set_state :stopped
+    def disconnected?
+      @state == :disconnected
     end
 
     def clear
@@ -97,56 +150,57 @@ module RSMP
       @acknowledgement_condition = Async::Notification.new
     end
 
-    def close_socket
-      if @stream
-        @stream.close
-        @stream = nil
-      end
-
-      if @socket
-        @socket.close
-        @socket = nil
+    # run an async task that reads from @socket
+    def start_reader
+      @reader = @task.async do |task|
+        task.annotate "reader"
+        run_reader
       end
     end
 
-    def start_reader  
-      @reader = @task.async do |task|
-        task.annotate "reader"
-        @stream ||= Async::IO::Stream.new(@socket)
-        @protocol ||= Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
-        while json = @protocol.read_line
-          beginning = Time.now
-          message = process_packet json
-          duration = Time.now - beginning
-          ms = (duration*1000).round(4)
-          if duration > 0
-            per_second = (1.0 / duration).round
-          else
-            per_second = Float::INFINITY
-          end
-          if message
-            type = message.type
-            m_id = Logger.shorten_message_id(message.m_id)
-          else
-            type = 'Unknown'
-            m_id = nil
-          end
-          str = [type,m_id,"processed in #{ms}ms, #{per_second}req/s"].compact.join(' ')
-          log str, level: :statistics
-        end
-      rescue Async::Wrapper::Cancelled
-        # ignore        
-      rescue EOFError
-        log "Connection closed", level: :warning
-      rescue IOError => e
-        log "IOError: #{e}", level: :warning
-      rescue Errno::ECONNRESET
-        log "Connection reset by peer", level: :warning
-      rescue Errno::EPIPE
-        log "Broken pipe", level: :warning
-      rescue StandardError => e
-        notify_error e, level: :internal
+    def run_reader
+      @stream ||= Async::IO::Stream.new(@socket)
+      @protocol ||= Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+      loop do
+        read_line
       end
+    rescue Restart
+      log "Closing connection", level: :warning
+      raise
+    rescue Async::Wrapper::Cancelled
+      # ignore exceptions raised when a wait is aborted because a task is stopped
+    rescue EOFError, Async::Stop
+      log "Connection closed", level: :warning
+    rescue IOError => e
+      log "IOError: #{e}", level: :warning
+    rescue Errno::ECONNRESET
+      log "Connection reset by peer", level: :warning
+    rescue Errno::EPIPE
+      log "Broken pipe", level: :warning
+    rescue StandardError => e
+      notify_error e, level: :internal
+    end
+
+    def read_line
+      json = @protocol.read_line
+      beginning = Time.now
+      message = process_packet json
+      duration = Time.now - beginning
+      ms = (duration*1000).round(4)
+      if duration > 0
+        per_second = (1.0 / duration).round
+      else
+        per_second = Float::INFINITY
+      end
+      if message
+        type = message.type
+        m_id = Logger.shorten_message_id(message.m_id)
+      else
+        type = 'Unknown'
+        m_id = nil
+      end
+      str = [type,m_id,"processed in #{ms}ms, #{per_second}req/s"].compact.join(' ')
+      log str, level: :statistics
     end
 
     def notify_error e, options={}
@@ -160,36 +214,40 @@ module RSMP
     end
 
     def start_timer
+      return if @timer
       name = "timer"
       interval = @site_settings['intervals']['timer'] || 1
       log "Starting #{name} with interval #{interval} seconds", level: :debug
       @latest_watchdog_received = Clock.now
-
       @timer = @task.async do |task|
         task.annotate "timer"
-        next_time = Time.now.to_f
-        loop do
-          begin
-            now = Clock.now
-            timer(now)
-          rescue RSMP::Schemer::Error => e
-            puts "Timer: Schema error: #{e}"
-          rescue EOFError => e
-            log "Timer: Connection closed: #{e}", level: :warning
-          rescue IOError => e
-            log "Timer: IOError", level: :warning
-          rescue Errno::ECONNRESET
-            log "Timer: Connection reset by peer", level: :warning
-          rescue Errno::EPIPE => e
-            log "Timer: Broken pipe", level: :warning
-          rescue StandardError => e
-            notify_error e, level: :internal
-          end
-        ensure
-          next_time += interval
-          duration = next_time - Time.now.to_f
-          task.sleep duration
+        run_timer task, interval
+      end
+    end
+
+    def run_timer task, interval
+      next_time = Time.now.to_f
+      loop do
+        begin
+          now = Clock.now
+          timer(now)
+        rescue RSMP::Schemer::Error => e
+          log "Timer: Schema error: #{e}", level: :warning
+        rescue EOFError => e
+          log "Timer: Connection closed: #{e}", level: :warning
+        rescue IOError => e
+          log "Timer: IOError", level: :warning
+        rescue Errno::ECONNRESET
+          log "Timer: Connection reset by peer", level: :warning
+        rescue Errno::EPIPE => e
+          log "Timer: Broken pipe", level: :warning
+        rescue StandardError => e
+          notify_error e, level: :internal
         end
+      ensure
+        next_time += interval
+        duration = next_time - Time.now.to_f
+        task.sleep duration
       end
     end
 
@@ -200,7 +258,7 @@ module RSMP
     end
 
     def watchdog_send_timer now
-      return unless @watchdog_started  
+      return unless @watchdog_started
       return if @site_settings['intervals']['watchdog'] == :never
       if @latest_watchdog_send_at == nil
         send_watchdog now
@@ -226,9 +284,13 @@ module RSMP
       @awaiting_acknowledgement.clone.each_pair do |m_id, message|
         latest = message.timestamp + timeout
         if now > latest
-          log "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds", level: :error
-          stop
-          notify_error MissingAcknowledgment.new('No ack')
+          str = "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds"
+          log str, level: :error
+          begin
+            close
+          ensure
+            notify_error MissingAcknowledgment.new(str)
+          end
         end
       end
     end
@@ -238,14 +300,14 @@ module RSMP
       latest = @latest_watchdog_received + timeout
       left = latest - now
       if left < 0
-        log "No Watchdog within #{timeout} seconds", level: :error
-        stop
+        str = "No Watchdog within #{timeout} seconds"
+        log str, level: :error
+          begin
+            close                                   # this will stop the current task (ourself)
+          ensure
+            notify_error MissingWatchdog.new(str)   # but ensure block will still be reached
+          end
       end
-    end
-
-    def stop_tasks
-      @timer.stop if @timer
-      @reader.stop if @reader
     end
 
     def log str, options={}
@@ -355,7 +417,7 @@ module RSMP
       str = "Rejected #{message.type},"
       notify_error e.exception(str), message: message
       dont_acknowledge message, str, reason
-      stop
+      close
       message
     ensure
       node.clear_deferred
@@ -436,19 +498,14 @@ module RSMP
       send_message message, "for #{original.type} #{original.m_id_short}"
     end
 
-    def set_state state
-      @state = state
-      @state_condition.signal @state
-    end
-
-    def wait_for_state state, timeout
+    def wait_for_state state, timeout:
       states = [state].flatten
       return if states.include?(@state)
-      wait_for(@state_condition,timeout) do
+      wait_for_condition(@state_condition,timeout: timeout) do
         states.include?(@state)
       end
       @state
-    rescue Async::TimeoutError
+    rescue RSMP::TimeoutError
       raise RSMP::TimeoutError.new "Did not reach state #{state} within #{timeout}s"
     end
 
@@ -557,10 +614,10 @@ module RSMP
       end
     end
 
-    def connection_complete
+    def handshake_complete
       set_state :ready
     end
-    
+
     def version_acknowledged
     end
 
@@ -576,6 +633,7 @@ module RSMP
       collect_options = options[:collect] || options[:collect!]
       if collect_options
         task = @task.async do |task|
+          task.annotate 'send_and_optionally_collect'
           collector = yield collect_options     # call block to create collector
           collector.collect
           collector.ok! if options[:collect!]   # raise any errors if the bang version was specified

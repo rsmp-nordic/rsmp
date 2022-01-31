@@ -25,7 +25,7 @@ module RSMP
   # matches this input:
   #
   # {"cCI"=>"M0104", "n"=>"month", "v"=>"9", "age"=>"recent"}
-  # 
+  #
   # And the result is stored as:
   # {
   #   {"cCI"=>"M0104", "cO"=>"setDate", "n"=>"month", "v"=>/\d+/} =>

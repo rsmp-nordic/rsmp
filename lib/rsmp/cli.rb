@@ -11,7 +11,7 @@ module RSMP
     desc "site", "Run RSMP site"
     method_option :config, :type => :string, :aliases => "-c", banner: 'Path to .yaml config file'
     method_option :id, :type => :string, :aliases => "-i", banner: 'RSMP site id'
-    method_option :supervisors, :type => :string, :aliases => "-s", banner: 'ip:port,... list of supervisor to connect to'      
+    method_option :supervisors, :type => :string, :aliases => "-s", banner: 'ip:port,... list of supervisor to connect to'
     method_option :log, :type => :string, :aliases => "-l", banner: 'Path to log file'
     method_option :json, :type => :boolean, :aliases => "-j", banner: 'Show JSON messages in log'
     method_option :type, :type => :string, :aliases => "-t", banner: 'Type of site: [tlc]'
@@ -60,19 +60,35 @@ module RSMP
             site_class = RSMP::Site
         end
       end
-      site_class.new(site_settings:settings, log_settings: log_settings).start
+      Async do |task|
+        task.annotate 'cli'
+        loop do
+          begin
+            site = site_class.new(site_settings:settings, log_settings: log_settings)
+            site.start
+            site.wait
+          rescue RSMP::Restart
+            site.stop
+          end
+        end
+      end
+    rescue Interrupt
+      # cntr-c
     rescue RSMP::Schemer::UnknownSchemaTypeError => e
       puts "Cannot start site: #{e}"
     rescue RSMP::Schemer::UnknownSchemaVersionError => e
       puts "Cannot start site: #{e}"
     rescue Psych::SyntaxError => e
       puts "Cannot read config file #{e}"
+    rescue Exception => e
+      puts "Uncaught error: #{e}"
+      puts caller.join("\n")
     end
 
     desc "supervisor", "Run RSMP supervisor"
     method_option :config, :type => :string, :aliases => "-c", banner: 'Path to .yaml config file'
     method_option :id, :type => :string, :aliases => "-i", banner: 'RSMP site id'
-    method_option :ip, :type => :numeric, banner: 'IP address to listen on'      
+    method_option :ip, :type => :numeric, banner: 'IP address to listen on'
     method_option :port, :type => :string, :aliases => "-p", banner: 'Port to listen on'
     method_option :log, :type => :string, :aliases => "-l", banner: 'Path to log file'
     method_option :json, :type => :boolean, :aliases => "-j", banner: 'Show JSON messages in log'
@@ -110,7 +126,14 @@ module RSMP
         log_settings['json'] = options[:json]
       end
 
-      RSMP::Supervisor.new(supervisor_settings:settings,log_settings:log_settings).start
+      Async do |task|
+        task.annotate 'cli'
+        supervisor = RSMP::Supervisor.new(supervisor_settings:settings,log_settings:log_settings)
+        supervisor.start
+        supervisor.wait
+      end
+    rescue Interrupt
+      # ctrl-c
     rescue RSMP::ConfigurationError => e
       puts "Cannot start supervisor: #{e}"
     end

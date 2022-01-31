@@ -2,7 +2,7 @@
 
 require 'digest'
 
-module RSMP  
+module RSMP
   class SupervisorProxy < Proxy
 
     attr_reader :supervisor_id, :site
@@ -22,44 +22,67 @@ module RSMP
       site
     end
 
-    def start
-      log "Connecting to supervisor at #{@ip}:#{@port}", level: :info
-      super
-      connect
-      @logger.unmute @ip, @port
-      log "Connected to supervisor at #{@ip}:#{@port}", level: :info
-      start_reader
-      send_version @site_settings['site_id'], @site_settings["rsmp_versions"]
-    rescue SystemCallError => e
-      log "Could not connect to supervisor at #{@ip}:#{@port}: Errno #{e.errno} #{e}", level: :error
-      retry_notice
-    rescue StandardError => e
-      log "Error while connecting to supervisor at #{@ip}:#{@port}: #{e}", level: :error
-      retry_notice
-    end
-
-    def retry_notice
-      unless @site.site_settings['intervals']['reconnect'] == :no
-        log "Will try to reconnect again every #{@site.site_settings['intervals']['reconnect']} seconds..", level: :info
+    # handle communication
+    # if disconnected, then try to reconnect
+    def run
+      loop do
+        connect
+        start_reader
+        start_handshake
+        wait_for_reader   # run until disconnected
+        break if reconnect_delay == false
+      rescue Restart
         @logger.mute @ip, @port
+        raise
+      rescue RSMP::ConnectionError => e
+        log e, level: :error
+        break if reconnect_delay == false
+      rescue StandardError => e
+        notify_error e, level: :internal
+        break if reconnect_delay == false
+      ensure
+        close
+        stop_subtasks
       end
     end
 
-    def stop
-      log "Closing connection to supervisor", level: :info
+    def start_handshake
+      send_version @site_settings['site_id'], @site_settings["rsmp_versions"]
+    end
+
+    # connect to the supervisor and initiate handshake supervisor
+    def connect
+      log "Connecting to supervisor at #{@ip}:#{@port}", level: :info
+      set_state :connecting
+      connect_tcp
+      @logger.unmute @ip, @port
+      log "Connected to supervisor at #{@ip}:#{@port}", level: :info
+    rescue SystemCallError => e
+      raise ConnectionError.new "Could not connect to supervisor at #{@ip}:#{@port}: Errno #{e.errno} #{e}"
+    rescue StandardError => e
+      raise ConnectionError.new "Error while connecting to supervisor at #{@ip}:#{@port}: #{e}"
+    end
+
+    def terminate
       super
       @last_status_sent = nil
     end
 
-    def connect
-      return if @socket
+    def connect_tcp
       @endpoint = Async::IO::Endpoint.tcp(@ip, @port)
-      @socket = @endpoint.connect
+
+      # Async::IO::Endpoint#connect renames the current task. run in a subtask to avoid this
+      @task.async do |task|
+        task.annotate 'socket task'
+        @socket = @endpoint.connect
+      end.wait
+
       @stream = Async::IO::Stream.new(@socket)
       @protocol = Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+      set_state :connected
     end
 
-    def connection_complete
+    def handshake_complete
       super
       sanitized_sxl_version = RSMP::Schemer.sanitize_version(sxl_version)
       log "Connection to supervisor established, using core #{@rsmp_version}, #{sxl} #{sanitized_sxl_version}", level: :info
@@ -114,16 +137,19 @@ module RSMP
     end
 
     def reconnect_delay
+      return false if @site_settings['intervals']['reconnect'] == :no
       interval = @site_settings['intervals']['reconnect']
-      log "Waiting #{interval} seconds before trying to reconnect", level: :info
+      log "Will try to reconnect again every #{interval} seconds...", level: :info
+      @logger.mute @ip, @port
       @task.sleep interval
+      true
     end
 
     def version_accepted message
       log "Received Version message, using RSMP #{@rsmp_version}", message: message, level: :log
       start_timer
       acknowledge message
-      connection_complete
+      handshake_complete
       @version_determined = true
     end
 
@@ -234,7 +260,7 @@ module RSMP
       update_list = {}
       component = message.attributes["cId"]
       @status_subscriptions[component] ||= {}
-      update_list[component] ||= {} 
+      update_list[component] ||= {}
       now = Time.now  # internal timestamp
       subs = @status_subscriptions[component]
 
@@ -299,7 +325,7 @@ module RSMP
           by_name.each_pair do |name,subscription|
             current = nil
             should_send = false
-            if subscription[:interval] == 0 
+            if subscription[:interval] == 0
               # send as soon as the data changes
               if component_object
                 current, age = *(component_object.get_status code, name)

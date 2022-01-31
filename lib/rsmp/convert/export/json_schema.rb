@@ -23,7 +23,7 @@ module RSMP
 
         def self.build_value item
           out = {}
-          
+
           if item['description']
             out["description"] = item['description']
           end
@@ -95,7 +95,7 @@ module RSMP
             }
           end
           json = {
-            "properties" => { 
+            "properties" => {
               "aCId" => { "enum" => items.keys.sort },
               "rvs" => { "items" => { "allOf" => list } }
             }
@@ -175,7 +175,7 @@ module RSMP
               }
             ]
           }
-          out["sxl.json"] = output_json json     
+          out["sxl.json"] = output_json json
         end
 
         def self.generate sxl
@@ -192,7 +192,7 @@ module RSMP
           out.each_pair do |relative_path,str|
             path = File.join(folder, relative_path)
             FileUtils.mkdir_p File.dirname(path)      # create folders if needed
-            file = File.open(path, 'w+')      # w+ means truncate or create new file 
+            file = File.open(path, 'w+')      # w+ means truncate or create new file
             file.puts str
           end
         end
