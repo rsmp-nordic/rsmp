@@ -14,13 +14,13 @@ SupervisorProxy    SiteProxy - - include Components, SiteProxyWait
 
 ## Modules
 ### Logging
-Handle logging.
+Handles logging.
 
-### Wait
-Handles waiting for an async condition and block.
+### Task
+Handles async tasks.
 
 ### Components
-Component handling.
+Handles RSMP components.
 
 ## Classes
 ### Node

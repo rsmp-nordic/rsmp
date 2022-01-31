@@ -63,7 +63,7 @@ module RSMP
       raise ConnectionError.new "Error while connecting to supervisor at #{@ip}:#{@port}: #{e}"
     end
 
-    def terminate
+    def stop_task
       super
       @last_status_sent = nil
     end

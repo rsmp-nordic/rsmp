@@ -9,7 +9,6 @@ module RSMP
     WRAPPING_DELIMITER = "\f"
 
     include Logging
-    include Wait
     include Notifier
     include Inspect
     include Task
@@ -75,7 +74,7 @@ module RSMP
       @socket = nil
     end
 
-    def terminate
+    def stop_task
       close
       super
     end

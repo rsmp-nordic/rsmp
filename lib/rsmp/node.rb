@@ -3,7 +3,6 @@
 module RSMP
   class Node
     include Logging
-    include Wait
     include Inspect
     include Task
 

@@ -18,7 +18,7 @@ RSpec.describe RSMP::Task do
 
 	describe 'start' do
 		it 'creates task' do
-			async_context do |task|
+			Async(transient:true) do |task|
 				obj.start
 				expect(obj.task).to be_a(Async::Task)
 				expect(obj.task.status).to eq(:running)
@@ -26,7 +26,7 @@ RSpec.describe RSMP::Task do
 		end
 
 		it 'calls run' do
-			async_context do |task|
+			Async(transient:true) do |task|
 				expect(obj).to receive(:run)
 				obj.start
 			end
@@ -36,7 +36,7 @@ RSpec.describe RSMP::Task do
 
 	describe 'start' do
 		it 'can be called several times' do
-			async_context do |task|
+			Async(transient:true) do |task|
 				obj.start
 				obj.start
 				expect(obj.task).to be_a(Async::Task)
@@ -47,7 +47,7 @@ RSpec.describe RSMP::Task do
 
 	describe 'stop' do
 		it 'stops the task' do
-			async_context do |task|
+			Async(transient:true) do |task|
 				obj.start
 				obj.stop
 				expect(obj.task).to be_nil
@@ -58,7 +58,7 @@ RSpec.describe RSMP::Task do
 
 	describe 'restart' do
 		it 'raises Restart' do
-			async_context do |task|
+			Async(transient:true) do |task|
 				obj.start
 				expect(obj.task).to be_a(Async::Task)
 				expect(obj.task.status).to eq(:running)

@@ -67,7 +67,7 @@ RSpec.describe RSMP::Supervisor do
 				'16ec49e4-6ac1-4da6-827c-2a6562b91731'
 			)
 
-			async_context do |task|
+			Async(transient: true) do |task|
 				task.async do
 					supervisor.start
 				end

@@ -49,29 +49,35 @@ module RSMP
     # stop our task
     def stop
       stop_subtasks
-      terminate if @task
+      stop_task if @task
     end
 
     def stop_subtasks
     end
 
-    def self.print_hierarchy task=Async::Task.current.reactor, level=0
-      if task.parent
-        status = task.status
-        puts "#{'. '*level}#{task.object_id} #{task.annotation.to_s}: #{status}"
-      else
-        puts "#{'. '*level}#{task.object_id} reactor"
-      end
-      task.children&.each do |child|
-        print_hierarchy child, level+1
-      end
-    end
-
-
     # stop our task and any subtask
-    def terminate
+    def stop_task
       @task.stop
       @task = nil
+    end
+
+    # wait for an async condition to signal, then yield to block
+    # if block returns true we're done. otherwise, wait again
+    def wait_for_condition condition, timeout:, task:Async::Task.current, &block
+      unless task
+        raise RuntimeError.new("Can't wait without a task")
+      end
+      task.with_timeout(timeout) do
+        while task.running?
+          value = condition.wait
+          return value unless block
+          result = yield value
+          return result if result
+        end
+        raise RuntimeError.new("Can't wait for condition because task #{task.object_id} #{task.annotation} is not running")
+      end
+    rescue Async::TimeoutError
+      raise RSMP::TimeoutError.new
     end
 
   end
