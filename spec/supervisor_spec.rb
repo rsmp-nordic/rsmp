@@ -1,25 +1,40 @@
 RSpec.describe RSMP::Supervisor do
-	context 'when creating' do
+	let(:timeout) { 0.01 }
 
-		let(:supervisor_settings) {
-			{
-				'port' => 13111,		# use special port to avoid sites connection during test
-				'guest' => {
-					'sxl' => 'tlc'
-				}
+	let(:supervisor_settings) {
+		{
+			'port' => 13111,		# use special port to avoid sites connection during test
+			'guest' => {
+				'sxl' => 'tlc'
 			}
 		}
-		let(:log_settings) {
-			{
-				'active' => false,
-				'hide_ip_and_port' => true,
-				'debug' => false,
-				'json' => true,
-				'acknowledgement' => true,
-				'watchdogs' => true
-			}
-		}
+	}
 
+	let(:log_settings) {
+		{
+			'active' => false,
+			'hide_ip_and_port' => true,
+			'debug' => false,
+			'json' => true,
+			'acknowledgement' => true,
+			'watchdogs' => true
+		}
+	}
+
+  describe '#initialize' do
+		it 'accepts no options' do
+			expect { RSMP::Supervisor.new({}) }.not_to raise_error
+		end
+
+		it 'accepts options' do
+			supervisor = RSMP::Supervisor.new(
+				supervisor_settings: supervisor_settings,
+				log_settings: log_settings
+			)
+		end
+	end
+
+	describe 'connection handshake' do
 		let(:supervisor) {
 			RSMP::Supervisor.new(
 				supervisor_settings: supervisor_settings,
@@ -43,18 +58,7 @@ RSpec.describe RSMP::Supervisor do
 	  	Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
 	  }
 
-		it 'runs without options' do
-			expect { RSMP::Supervisor.new({}) }.not_to raise_error
-		end
-
-		it 'accepts options' do
-			supervisor = RSMP::Supervisor.new(
-				supervisor_settings: supervisor_settings,
-				log_settings: log_settings
-			)
-		end
-
-		it 'accepts connections' do
+		it 'completes' do
 			# mock SecureRandom.uui() so we get known message ids:
 			allow(SecureRandom).to receive(:uuid).and_return(
 				'1b206e56-31be-4739-9164-3a24d47b0aa2',
@@ -68,9 +72,7 @@ RSpec.describe RSMP::Supervisor do
 			)
 
 			Async(transient: true) do |task|
-				task.async do
-					supervisor.start
-				end
+				supervisor.start
 
 	      # write version message
 				protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.5"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.0.15","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'
@@ -90,10 +92,23 @@ RSpec.describe RSMP::Supervisor do
 				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
 
 				# supervisor should see our tcp socket and create a proxy
-				proxy = supervisor.wait_for_site "RN+SI0001", timeout: 0.1
-				proxy.wait_for_state(:ready, timeout: 0.1)
+				proxy = supervisor.wait_for_site "RN+SI0001", timeout: timeout
+				proxy.wait_for_state(:ready, timeout: timeout)
 				expect(proxy).to be_an(RSMP::SiteProxy)
 				expect(proxy.site_id).to eq("RN+SI0001")
+			end
+		end
+
+		it 'logs' do
+			Async(transient: true) do |task|
+				supervisor.start
+
+				protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.5"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.0.15","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'
+				version_ack = JSON.parse protocol.read_line
+				version = JSON.parse protocol.read_line
+				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
+				proxy = supervisor.wait_for_site "RN+SI0001", timeout: timeout
+				proxy.wait_for_state(:ready, timeout: timeout)
 
 				# verify log content
 				got = supervisor.archive.by_level([:log, :info]).map { |item| item[:text] }

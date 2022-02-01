@@ -21,7 +21,7 @@ RSpec.describe RSMP::Task do
 			Async(transient:true) do |task|
 				obj.start
 				expect(obj.task).to be_a(Async::Task)
-				expect(obj.task.status).to eq(:running)
+				expect(obj.task_status).to eq(:running)
 			end
 		end
 
@@ -31,16 +31,13 @@ RSpec.describe RSMP::Task do
 				obj.start
 			end
 		end
-
-	end
-
-	describe 'start' do
-		it 'can be called several times' do
+	  
+	  it 'can be called several times' do
 			Async(transient:true) do |task|
 				obj.start
 				obj.start
 				expect(obj.task).to be_a(Async::Task)
-				expect(obj.task.status).to eq(:running)
+				expect(obj.task_status).to eq(:running)
 			end
 		end
 	end
@@ -51,7 +48,7 @@ RSpec.describe RSMP::Task do
 				obj.start
 				obj.stop
 				expect(obj.task).to be_nil
-				expect(obj.status).to be_nil
+				expect(obj.task_status).to be_nil
 			end
 		end
 	end
@@ -61,7 +58,7 @@ RSpec.describe RSMP::Task do
 			Async(transient:true) do |task|
 				obj.start
 				expect(obj.task).to be_a(Async::Task)
-				expect(obj.task.status).to eq(:running)
+				expect(obj.task_status).to eq(:running)
 				
 				first_task = obj.task
 				expect { obj.restart }.to raise_error(RSMP::Restart)
