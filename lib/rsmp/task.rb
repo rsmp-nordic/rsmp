@@ -29,7 +29,7 @@ module RSMP
     end
 
     # get the status of our task, or nil of no task
-    def status
+    def task_status
       @task.status if @task
     end
 
