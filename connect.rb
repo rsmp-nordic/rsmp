@@ -8,7 +8,7 @@ Async do |task|
     endpoint = Async::IO::Endpoint.tcp('127.0.0.1', 13111)
     endpoint.connect
   rescue StandardError => e
-    puts "connect error: #{e}"
+    puts "connect error: #{e.inspect}"
   end
 rescue Async::TimeoutError
   puts "timeout"
