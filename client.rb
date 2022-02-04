@@ -2,7 +2,7 @@ require 'async'
 require 'async/io'
 
 Async do |task|
-	timeout = 5
+	timeout = 10
 
 	task.async do |connect_task|
 	  endpoint = Async::IO::Endpoint.tcp('127.0.0.1', 13111)

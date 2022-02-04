@@ -1,7 +1,7 @@
 require 'async'
 require 'async/io'
 
-timeout = 5
+timeout = 10
 Async do |task|
   puts "try to connect to server, time out after #{timeout}s"
   task.with_timeout timeout do
