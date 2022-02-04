@@ -4,6 +4,7 @@ name: start client first
 on: [push, pull_request]
 jobs:
   test:
+    timeout-minutes: 1
     strategy:
       fail-fast: false
       matrix:
