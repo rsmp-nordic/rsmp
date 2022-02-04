@@ -38,7 +38,7 @@ RSpec.describe RSMP::Site do
 				'1b206e56-31be-4739-9164-3a24d47b0aa2'
 			)
 
-			Async(transient: false) do |task|
+			Async do |task|
 				site = nil
 
 				# acts as a supervisior by listening for connections

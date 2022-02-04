@@ -1,6 +1,6 @@
 # This workflow runs RSpec tests
 
-name: RSpec
+name: start client first
 on: [push, pull_request]
 jobs:
   test:
@@ -17,4 +17,9 @@ jobs:
       with:
         ruby-version: ${{ matrix.ruby }}
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-    - run: bundle exec rspec
+
+    - shell: bash
+      run: bundle exec ruby ./client.rb &
+    
+    - shell: bash
+      run: sleep 3 && bundle exec ruby ./server.rb

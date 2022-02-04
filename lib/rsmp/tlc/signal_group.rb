@@ -13,8 +13,8 @@ module RSMP
       end
 
       def compute_state
-        return 'a' if node.main.dark_mode
-        return 'c' if node.main.yellow_flash
+        return 'a' if node.main.dark_mode?
+        return 'c' if node.main.yellow_flash?
 
         cycle_counter = node.main.cycle_counter
 
