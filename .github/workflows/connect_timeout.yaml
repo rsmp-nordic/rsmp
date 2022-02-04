@@ -4,7 +4,7 @@ name: connect timeout
 on: [push]
 jobs:
   test:
-    timeout-minutes: 1
+    timeout-minutes: 3
     strategy:
       fail-fast: false
       matrix:
