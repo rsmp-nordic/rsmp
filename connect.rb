@@ -11,5 +11,5 @@ Async do |task|
     puts "connect error: #{e.inspect}"
   end
 rescue Async::TimeoutError
-  puts "timeout"
+  puts "client did not connect within #{timneout}s"
 end

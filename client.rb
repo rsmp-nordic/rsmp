@@ -20,6 +20,6 @@ Async do |task|
 	task.async do |cancel_task|
 		cancel_task.sleep timeout
 		puts "could not connect within #{timeout} sec"
-		exit
+		exit 1
 	end
 end
