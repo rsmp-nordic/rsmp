@@ -1,20 +1,25 @@
 require 'async'
 require 'async/io'
 
-timeout = 5
 Async do |task|
-	task.with_timeout timeout do
+	timeout = 5
+
+	task.async do |connect_task|
 	  endpoint = Async::IO::Endpoint.tcp('127.0.0.1', 13111)
 		loop do
-		  puts "trying to connect to server"
+		  puts "connecting to server"
 			endpoint.connect
 			puts 'connected'
 			exit
 		rescue StandardError => e
-			task.sleep 1
+			puts "error while connecting: #{e.inspect}"
+			connect_task.sleep 1
 		end
-	rescue Async::TimeoutError
+	end
+
+	task.async do |cancel_task|
+		cancel_task.sleep timeout
 		puts "could not connect within #{timeout} sec"
-		exit 1
+		exit
 	end
 end
