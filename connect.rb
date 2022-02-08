@@ -1,15 +1,52 @@
 require 'async'
 require 'async/io'
 
-timeout = 10
-Async do |task|
-  puts "try to connect to server, time out after #{timeout}s"
-  task.with_timeout timeout do
-    endpoint = Async::IO::Endpoint.tcp('127.0.0.1', 13111)
-    endpoint.connect
-  rescue StandardError => e
-    puts "connect error: #{e.inspect}"
+# client
+client_thread = Thread.new do
+  Async do |task|
+    timeout = 10
+
+    task.async do |connect_task|
+      endpoint = Async::IO::Endpoint.tcp('127.0.0.1', 13111)
+      loop do
+        puts "client: trying to connect to server"
+        endpoint.connect
+        puts 'client: connected to server'
+        exit
+      rescue StandardError => e
+        puts "client: error while connecting: #{e.inspect}"
+        connect_task.sleep 1
+      end
+    end
+
+    task.async do |cancel_task|
+      cancel_task.sleep timeout
+      puts "client: could not connect within #{timeout} sec - failure"
+      exit 1
+    end
   end
-rescue Async::TimeoutError
-  puts "client did not connect within #{timneout}s"
 end
+
+
+server_thread = Thread.new do
+  Async do |task|
+    timeout = 10
+
+    endpoint = Async::IO::Endpoint.tcp('0.0.0.0', 13111)
+    puts 'server: waiting for client to connect'
+    tasks = endpoint.accept do |socket|  # creates async tasks
+      puts "server: client connected - success"
+      exit
+    end
+
+#    task.async do |cancel_task|
+#      cancel_task.sleep timeout
+#      puts "client did not connect within #{timeout} sec"
+#      exit 1
+#    end
+  end
+end
+
+
+client_thread.join
+server_thread.join
