@@ -4,7 +4,7 @@ require 'async/io'
 # client
 client_thread = Thread.new do
   Async do |task|
-    timeout = 10
+    timeout = 20
     task.async do |connect_task|
       endpoint = Async::IO::Endpoint.tcp('localhost', 12111)
       loop do
@@ -26,8 +26,8 @@ client_thread = Thread.new do
 end
 
 server_thread = Thread.new do
-  timeout = 10
-  delay = 3
+  timeout = 20
+  delay = 5
   puts "server: initial delay of #{delay}s"
   sleep delay
 
