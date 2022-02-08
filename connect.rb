@@ -7,7 +7,7 @@ client_thread = Thread.new do
     timeout = 10
 
     task.async do |connect_task|
-      endpoint = Async::IO::Endpoint.tcp('127.0.0.1', 13111)
+      endpoint = Async::IO::Endpoint.tcp('localhost', 12111)
       loop do
         puts "client: trying to connect to server"
         endpoint.connect
@@ -34,8 +34,8 @@ server_thread = Thread.new do
     delay = 3
     puts "server: initial delay of #{delay}s"
     sleep delay
-    
-    endpoint = Async::IO::Endpoint.tcp('0.0.0.0', 13111)
+
+    endpoint = Async::IO::Endpoint.tcp('localhost', 12111)
     puts 'server: waiting for client to connect'
     tasks = endpoint.accept do |socket|  # creates async tasks
       puts "server: client connected - success"
