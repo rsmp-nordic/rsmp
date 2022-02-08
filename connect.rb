@@ -3,6 +3,9 @@ require 'async/io'
 
 # client
 client_thread = Thread.new do
+
+  endpoint = Async::IO::Endpoint.tcp('0.0.0.0', 13111)
+
   Async do |task|
     timeout = 10
 
@@ -29,27 +32,18 @@ end
 
 
 server_thread = Thread.new do
-  Async do |task|
-    timeout = 10
-    delay = 3
-    puts "server: initial delay of #{delay}s"
-    sleep delay
+  timeout = 10
+  delay = 3
+  puts "server: initial delay of #{delay}s"
+  sleep delay
 
-    endpoint = Async::IO::Endpoint.tcp('localhost', 12111)
-    puts 'server: waiting for client to connect'
-    tasks = endpoint.accept do |socket|  # creates async tasks
-      puts "server: client connected - success"
-      exit
-    end
-
-#    task.async do |cancel_task|
-#      cancel_task.sleep timeout
-#      puts "client did not connect within #{timeout} sec"
-#      exit 1
-#    end
+  endpoint = Async::IO::Endpoint.tcp('0.0.0.0', 13111)
+  puts 'server: waiting for client to connect'
+  tasks = endpoint.accept do |socket|  # creates async tasks
+    puts "server: client connected - success"
+    exit
   end
 end
-
 
 client_thread.join
 server_thread.join
