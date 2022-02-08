@@ -3,7 +3,7 @@ require 'async/io'
 
 # client
 client_thread = Thread.new do
-  5.times do
+  loop do
     puts "client: trying to connect to server"
     socket = TCPSocket.new 'localhost', 12111
     puts "client: connected to server"
@@ -15,8 +15,7 @@ client_thread = Thread.new do
 end
 
 server_thread = Thread.new do
-  timeout = 10
-  delay = 5
+  delay = 4
   puts "server: initial delay of #{delay}s"
   sleep delay
 
@@ -27,5 +26,13 @@ server_thread = Thread.new do
   exit
 end
 
-client_thread.join
-server_thread.join
+timeout_thread = Thread.new do
+  timeout = 10
+  sleep timeout
+  puts "timout: client didn't connect within #{timeout}s - failure"
+  exit 1
+end
+
+#client_thread.join
+#server_thread.join
+timeout_thread.join
