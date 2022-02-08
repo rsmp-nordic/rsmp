@@ -15,7 +15,7 @@ client_thread = Thread.new do
 end
 
 server_thread = Thread.new do
-  timeout = 20
+  timeout = 10
   delay = 5
   puts "server: initial delay of #{delay}s"
   sleep delay
