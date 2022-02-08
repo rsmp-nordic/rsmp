@@ -11,6 +11,7 @@ client_thread = Thread.new do
         puts "client: trying to connect to server"
         endpoint.connect
         puts 'client: connected to server'
+        break
       rescue StandardError => e
         puts "client: error while connecting: #{e.inspect}"
         connect_task.sleep 1
