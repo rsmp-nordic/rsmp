@@ -37,7 +37,7 @@ server_thread = Thread.new do
   puts "server: initial delay of #{delay}s"
   sleep delay
 
-  server = TCPServer.new 13111
+  server = TCPServer.new 12111
   puts 'server: waiting for client to connect'
   client = server.accept 
   puts "server: client connected - success"
