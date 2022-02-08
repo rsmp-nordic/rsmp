@@ -31,7 +31,10 @@ end
 server_thread = Thread.new do
   Async do |task|
     timeout = 10
-
+    delay = 3
+    puts "server: initial delay of #{delay}s"
+    sleep delay
+    
     endpoint = Async::IO::Endpoint.tcp('0.0.0.0', 13111)
     puts 'server: waiting for client to connect'
     tasks = endpoint.accept do |socket|  # creates async tasks
