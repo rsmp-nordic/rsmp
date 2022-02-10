@@ -1,38 +1,27 @@
-require 'async'
-require 'async/io'
+require_relative 'lib/rsmp'
 
-# client
 client_thread = Thread.new do
-  loop do
-    puts "client: trying to connect to server"
-    socket = TCPSocket.new 'localhost', 12111
-    puts "client: connected to server"
-    break
-  rescue StandardError => e
-    puts "client: error while connecting: #{e.inspect}"
-    sleep 1
+  Async do
+    site = RSMP::Site.new log_settings: {'prefix' => 'site      ' } 
+    site.start
+    site.wait
   end
 end
 
 server_thread = Thread.new do
-  delay = 4
-  puts "server: initial delay of #{delay}s"
-  sleep delay
-
-  server = TCPServer.new 12111
-  puts 'server: waiting for client to connect'
-  client = server.accept 
-  puts "server: client connected - success"
-  exit
+  Async do
+    delay = 3
+    puts "supervisor: initial delay of #{delay}s"
+    sleep delay
+    supervisor = RSMP::Supervisor.new log_settings: {'prefix' => 'supervisor' } 
+    supervisor.start
+    supervisor.wait_for_site :any, timeout: 5
+    puts "supervisor: site connected"
+    exit
+  rescue RSMP::TimeoutError
+    puts "supervisor: timeout"
+    exit 1
+  end
 end
 
-timeout_thread = Thread.new do
-  timeout = 10
-  sleep timeout
-  puts "timout: client didn't connect within #{timeout}s - failure"
-  exit 1
-end
-
-#client_thread.join
-#server_thread.join
-timeout_thread.join
+server_thread.join
