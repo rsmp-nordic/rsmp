@@ -71,10 +71,13 @@ module RSMP
     def connect_tcp
       @endpoint = Async::IO::Endpoint.tcp(@ip, @port)
 
-      # Async::IO::Endpoint#connect renames the current task. run in a subtask to avoid this
+      # Async::IO::Endpoint#connect renames the current task. run in a subtask to avoid this see issue #22
       @task.async do |task|
         task.annotate 'socket task'
-        @socket = @endpoint.connect
+        # this timeout is a workaround for #connect hanging on windows if the other side is not present yet
+        task.with_timeout 1.1 do
+          @socket = @endpoint.connect
+        end
       end.wait
 
       @stream = Async::IO::Stream.new(@socket)
