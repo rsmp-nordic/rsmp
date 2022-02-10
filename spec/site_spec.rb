@@ -38,7 +38,7 @@ RSpec.describe RSMP::Site do
 				'1b206e56-31be-4739-9164-3a24d47b0aa2'
 			)
 
-			Async(transient: false) do |task|
+			async_context do
 				site = nil
 
 				# acts as a supervisior by listening for connections
@@ -68,8 +68,6 @@ RSpec.describe RSMP::Site do
 					proxy = site.proxies.first
 					expect(proxy).to be_an(RSMP::SupervisorProxy)
 					expect(proxy.state).to be(:ready)
-			  ensure
-			  	task.stop
 				end
 
 			  site = RSMP::Site.new(

@@ -100,7 +100,7 @@ RSpec.describe RSMP::Supervisor do
 		end
 
 		it 'logs' do
-			Async(transient: true) do |task|
+			async_context do
 				supervisor.start
 
 				protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.5"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.0.15","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'
