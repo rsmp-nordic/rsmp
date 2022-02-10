@@ -1,7 +1,7 @@
 # This workflow runs RSpec tests
 
 name: RSpec
-on: [push, pull_request]
+on: [push]
 jobs:
   test:
     timeout-minutes: 10

@@ -46,6 +46,8 @@ RSpec.describe 'Connecting' do
 			supervisor.start
 			site.start
 
+			raise RSMP::TimeoutError
+			
 			site_proxy = supervisor.wait_for_site site_id, timeout: timeout
 			supervisor_proxy = site.wait_for_supervisor ip, timeout: timeout
 
