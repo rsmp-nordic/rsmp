@@ -161,5 +161,10 @@ module RSMP
       RSMP::Convert::Export::JSONSchema.write sxl, options[:out]
     end
 
+    # avoid Thor returnin 0 on failures, see
+    # https://github.com/coinbase/salus/pull/380/files
+    def self.exit_on_failure?
+      true
+    end
   end
 end
