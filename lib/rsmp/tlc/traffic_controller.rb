@@ -167,6 +167,10 @@ module RSMP
 
         plan = "P#{@plan}"
 
+        # create folders if needed
+        FileUtils.mkdir_p File.dirname(@live_output)
+
+        # append a line with the current state to the file
         File.open @live_output, 'w' do |file|
           file.puts "#{modes}  #{plan.rjust(2)}  #{@cycle_counter.to_s.rjust(3)}  #{str}\r"
         end
