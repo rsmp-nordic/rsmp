@@ -72,7 +72,7 @@ module RSMP
         else
           super message
       end
-    rescue RSMP::RepeatedAlarmError, RSMP::RepeatedStatusError
+    rescue RSMP::RepeatedAlarmError, RSMP::RepeatedStatusError => e
       str = "Rejected #{message.type} message,"
       dont_acknowledge message, str, "#{e}"
       notify_error e.exception("#{str}#{e.message} #{message.json}")
