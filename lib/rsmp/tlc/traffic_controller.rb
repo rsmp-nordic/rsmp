@@ -49,6 +49,8 @@ module RSMP
 
         @inputs = '0'*@num_inputs
         @input_activations = '0'*@num_inputs
+        @input_forced = '0'*@num_inputs
+        @input_forced_values = '0'*@num_inputs
         @input_results = '0'*@num_inputs
 
         @day_time_table = {}
@@ -232,18 +234,27 @@ module RSMP
         end
       end
 
+      def recompute_input idx
+        if @input_forced[idx] == '1'
+          @input_results[idx] = @input_forced_values[idx]
+        elsif @input_activations[idx]=='1'
+          @input_results[idx] = '1'
+        else
+          @input_results[idx] = bool_to_digit( @inputs[idx]=='1' )
+        end
+      end
+
       def handle_m0006 arg
         @node.verify_security_code 2, arg['securityCode']
         input = arg['input'].to_i
         idx = input - 1
         return unless idx>=0 && input<@num_inputs # TODO should NotAck
-        @input_activations[idx] = (arg['status']=='True' ? '1' : '0')
-        result = @input_activations[idx]=='1' || @inputs[idx]=='1'
-        @input_results[idx] = (result ? '1' : '0')
+        @input_activations[idx] = bool_string_to_digit arg['status']
+        recompute_input idx
         if @input_activations[idx]
-          log "Activate input #{idx}", level: :info
+          log "Activating input #{idx+1}", level: :info
         else
-          log "Deactivate input #{idx}", level: :info
+          log "Deactivating input #{idx+1}", level: :info
         end
       end
 
@@ -306,8 +317,39 @@ module RSMP
         @node.verify_security_code 2, arg['securityCode']
       end
 
+      def bool_string_to_digit bool
+        case bool
+          when 'True'
+            '1'
+          when 'False'
+            '0'
+          else
+            raise RSMP::MessageRejected.new "Invalid boolean '#{bool}', must be 'True' or 'False'"
+        end
+      end
+
+      def bool_to_digit bool
+        bool ?  '1' : '0'
+      end
+
       def handle_m0019 arg
         @node.verify_security_code 2, arg['securityCode']
+        input = arg['input'].to_i
+        idx = input - 1
+        unless idx>=0 && input<@num_inputs # TODO should NotAck
+          log "Can't force input #{idx+1}, only have #{@num_inputs} inputs", level: :warning
+          return
+        end
+        @input_forced[idx] = bool_string_to_digit arg['status']
+        if @input_forced[idx]
+          @input_forced_values[idx] = bool_string_to_digit arg['inputValue']
+        end
+        recompute_input idx
+        if @input_forced[idx]
+          log "Forcing input #{idx+1} to #{@input_forced_values[idx]}, #{@input_results}", level: :info
+        else
+          log "Releasing input #{idx+1}", level: :info
+        end
       end
 
       def handle_m0020 arg
@@ -340,7 +382,7 @@ module RSMP
 
       def set_input i, value
         return unless i>=0 && i<@num_inputs
-        @inputs[i] = (arg['value'] ? '1' : '0')
+        @inputs[i] = bool_to_digit arg['value']
       end
 
       def set_fixed_time_control status
@@ -406,7 +448,7 @@ module RSMP
       def handle_s0002 status_code, status_name=nil
         case status_name
         when 'detectorlogicstatus'
-          TrafficControllerSite.make_status @detector_logics.map { |dl| dl.value ? '1' : '0' }.join
+          TrafficControllerSite.make_status @detector_logics.map { |dl| bool_to_digit(dl.value) }.join
         end
       end
 
@@ -561,7 +603,7 @@ module RSMP
       def handle_s0021 status_code, status_name=nil
         case status_name
         when 'detectorlogics'
-          TrafficControllerSite.make_status @detector_logics.map { |logic| logic.forced=='True' ? '1' : '0'}.join
+          TrafficControllerSite.make_status @detector_logics.map { |logic| bool_to_digit(logic.forced)}.join
         end
       end
 
@@ -615,7 +657,7 @@ module RSMP
       def handle_s0029 status_code, status_name=nil
         case status_name
         when 'status'
-          TrafficControllerSite.make_status ''
+          TrafficControllerSite.make_status @input_forced
         end
       end
 
