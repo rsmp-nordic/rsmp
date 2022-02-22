@@ -6,7 +6,7 @@ module RSMP
     # not have dedicated components.
     class TrafficController < Component
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
-        :yellow_flash, :dark_mode,
+        :functional_position,
         :startup_sequence_active, :startup_sequence, :startup_sequence_pos
 
       def initialize node:, id:, cycle_time: 10, signal_plans:,
@@ -24,15 +24,16 @@ module RSMP
       end
 
       def reset_modes
-        @dark_mode = true
-        @yellow_flash = false
+        @function_position = 'NormalControl'
+        @previous_functional_position = nil
+        @functional_position_timeout = nil
+
         @booting = false
         @is_starting = false
         @control_mode = 'control'
         @manual_control = false
         @fixed_time_control = false
         @isolated_control = false
-        @yellow_flash = false
         @all_red = false
         @police_key = 0
       end
@@ -58,6 +59,18 @@ module RSMP
         @startup_sequence_initiated_at = nil
         @startup_sequence_pos = 0
         @time_int = nil
+      end
+
+      def dark?
+        @function_position == 'Dark'
+      end
+
+      def yellow_flash?
+        @function_position == 'YellowFlash'
+      end
+
+      def normal_control?
+        @function_position == 'NormalControl'
       end
 
       def clock
@@ -87,6 +100,7 @@ module RSMP
         return if time == @time_int
         @time_int = time
         move_cycle_counter
+        check_functional_position_timeout
         move_startup_sequence if @startup_sequence_active
 
         @signal_groups.each { |group| group.timer }
@@ -99,6 +113,15 @@ module RSMP
         @cycle_counter = counter
       end
 
+      def check_functional_position_timeout
+        return unless @functional_position_timeout
+        if clock.now >= @functional_position_timeout
+          switch_functional_position @previous_functional_position, reverting: true
+          @functional_position_timeout = nil
+          @previous_functional_position = nil
+        end
+      end
+
       def startup_state
         return unless @startup_sequence_active
         return unless @startup_sequence_pos
@@ -108,7 +131,6 @@ module RSMP
       def initiate_startup_sequence
         log "Initiating startup sequence", level: :info
         reset_modes
-        @dark_mode = false
         @startup_sequence_active = true
         @startup_sequence_initiated_at = nil
         @startup_sequence_pos = nil
@@ -118,8 +140,6 @@ module RSMP
         @startup_sequence_active = false
         @startup_sequence_initiated_at = nil
         @startup_sequence_pos = nil
-        @yellow_flash = false
-        @dark_mode = false
       end
 
       def move_startup_sequence
@@ -157,15 +177,16 @@ module RSMP
         end.join ' '
 
         modes = '.'*9
-        modes[0] = 'B' if @booting
-        modes[1] = 'S' if @startup_sequence_active
-        modes[2] = 'D' if @dark_mode
-        modes[3] = 'Y' if @yellow_flash
-        modes[4] = 'M' if @manual_control
-        modes[5] = 'F' if @fixed_time_control
-        modes[6] = 'R' if @all_red
-        modes[7] = 'I' if @isolated_control
-        modes[8] = 'P' if @police_key != 0
+        modes[0] = 'N' if @function_position == 'NormalControl'
+        modes[1] = 'Y' if @function_position == 'YellowFlash'
+        modes[2] = 'D' if @function_position == 'Dark'
+        modes[3] = 'B' if @booting
+        modes[4] = 'S' if @startup_sequence_active
+        modes[5] = 'M' if @manual_control
+        modes[6] = 'F' if @fixed_time_control
+        modes[7] = 'R' if @all_red
+        modes[8] = 'I' if @isolated_control
+        modes[9] = 'P' if @police_key != 0
 
         plan = "P#{@plan}"
 
@@ -197,7 +218,7 @@ module RSMP
 
       def handle_m0001 arg
         @node.verify_security_code 2, arg['securityCode']
-        switch_mode arg['status']
+        switch_functional_position arg['status'], timeout: arg['timeout'].to_i*60
       end
 
       def handle_m0002 arg
@@ -376,8 +397,8 @@ module RSMP
           arg['second'],
           'UTC'
         )
-        @node.clock.set time
-        log "Clock set to #{time}, (adjustment is #{@node.clock.adjustment}s)", level: :info
+        clock.set time
+        log "Clock set to #{time}, (adjustment is #{clock.adjustment}s)", level: :info
       end
 
       def set_input i, value
@@ -400,20 +421,24 @@ module RSMP
         @plan = plan_nr
       end
 
-      def switch_mode mode
-        log "Switching to mode #{mode}", level: :info
-        case mode
-        when 'NormalControl'
-          initiate_startup_sequence if @yellow_flash || @dark_mode
-          @yellow_flash = false
-          @dark_mode = false
-        when 'YellowFlash'
-          @yellow_flash = true
-          @dark_mode = false
-        when 'Dark'
-          @yellow_flash = false
-          @dark_mode = true
+      def switch_functional_position mode, timeout: nil, reverting: false
+        unless ['NormalControl','YellowFlash','Dark'].include? mode
+          raise RSMP::MessageRejected.new "Invalid functional position '#{mode}', must be NormalControl, YellowFlash or Dark'"
         end
+        if reverting
+          log "Reverting to functional position #{mode} after timeout", level: :info
+        elsif timeout && timeout > 0
+          log "Switching to functional position #{mode} with timeout #{timeout}min", level: :info
+          @previous_functional_position = @function_position
+          now = clock.now
+          @functional_position_timeout = now + timeout
+        else
+          log "Switching to functional position #{mode}", level: :info
+        end 
+        if mode == 'NormalControl'
+          initiate_startup_sequence if @function_position != 'NormalControl'
+        end
+        @function_position = mode
         mode
       end
 
@@ -491,7 +516,7 @@ module RSMP
         when 'intersection'
           TrafficControllerSite.make_status @intersection
         when 'status'
-          TrafficControllerSite.make_status !@dark_mode
+          TrafficControllerSite.make_status @function_position != 'Dark'
         end
       end
 
@@ -527,7 +552,7 @@ module RSMP
         when 'intersection'
           TrafficControllerSite.make_status @intersection
         when 'status'
-          TrafficControllerSite.make_status @yellow_flash
+          TrafficControllerSite.make_status TrafficControllerSite.to_rmsp_bool( @function_position == 'YellowFlash' )
         end
       end
 
@@ -723,7 +748,7 @@ module RSMP
         when 'checksum'
           TrafficControllerSite.make_status '1'
         when 'timestamp'
-          now = @node.clock.to_s
+          now = clock.to_s
           TrafficControllerSite.make_status now
         end
       end
