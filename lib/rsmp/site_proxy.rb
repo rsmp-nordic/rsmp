@@ -346,14 +346,5 @@ module RSMP
       @supervisor.notify_error e, options if @supervisor
       distribute_error e, options
     end
-
-    def collect_alarms options={}
-      collect(@task,options.merge(type: "Alarm")) do |alarm|
-        next if options[:aCId] && options[:aCId] != alarm.attribute("aCId")
-        next if options[:aSp] && options[:aSp] != alarm.attribute("aSp")
-        next if options[:aS] && options[:aS] != alarm.attribute("aS")
-        :keep
-      end
-    end
   end
 end
