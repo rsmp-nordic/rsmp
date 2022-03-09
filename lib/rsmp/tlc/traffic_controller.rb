@@ -272,7 +272,7 @@ module RSMP
         return unless idx>=0 && input<@num_inputs # TODO should NotAck
         @input_activations[idx] = bool_string_to_digit arg['status']
         recompute_input idx
-        if @input_activations[idx]
+        if @input_activations[idx] == '1'
           log "Activating input #{idx+1}", level: :info
         else
           log "Deactivating input #{idx+1}", level: :info
