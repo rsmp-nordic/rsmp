@@ -31,6 +31,11 @@ signal_plans:
       A2: 'NNNNBN'
       B1: 'BBNNNN'
       B2: 'BNNNNN'
+inputs:
+  total: 8
+  programming:
+    8:
+      raise: A0301
 startup_sequence: 'efg'
 intervals:
   timer: 0.1

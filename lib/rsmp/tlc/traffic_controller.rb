@@ -10,14 +10,15 @@ module RSMP
         :startup_sequence_active, :startup_sequence, :startup_sequence_pos
 
       def initialize node:, id:, cycle_time: 10, signal_plans:,
-          startup_sequence:, live_output:nil
+          startup_sequence:, live_output:nil, inputs:
         super node: node, id: id, grouped: true
         @signal_groups = []
         @detector_logics = []
         @plans = signal_plans
         @cycle_time = cycle_time
         @num_traffic_situations = 1
-        @num_inputs = 8
+        @num_inputs = inputs['total']
+        @input_programming = inputs['programming']
         @startup_sequence = startup_sequence
         @live_output = live_output
         reset
@@ -274,10 +275,23 @@ module RSMP
         idx = input - 1
         @input_activations[idx] = bool_string_to_digit arg['status']
         recompute_input idx
-        if @input_activations[idx] == '1'
+        activate = @input_activations[idx] == '1'
+        if activate
           log "Activating input #{input}", level: :info
         else
           log "Deactivating input #{input}", level: :info
+        end
+
+        if @input_programming
+          actions = @input_programming[input]
+          if actions && actions['raise']
+            alarm_code = actions['raise']
+            if activate
+              log "Activating alarm #{alarm_code}, due to input #{input} programming", level: :info
+            else
+              log "Deactivating alarm #{alarm_code}, due to input #{input} programming", level: :info
+            end
+          end
         end
       end
 
@@ -430,7 +444,7 @@ module RSMP
         if reverting
           log "Reverting to functional position #{mode} after timeout", level: :info
         elsif timeout && timeout > 0
-          log "Switching to functional position #{mode} with timeout #{timeout}min", level: :info
+          log "Switching to functional position #{mode} with timeout #{(timeout/60).round(1)}min", level: :info
           @previous_functional_position = @function_position
           now = clock.now
           @functional_position_timeout = now + timeout

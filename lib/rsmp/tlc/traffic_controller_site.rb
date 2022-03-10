@@ -56,7 +56,8 @@ module RSMP
             cycle_time: settings['cycle_time'],
             startup_sequence: @startup_sequence,
             signal_plans: @signal_plans,
-            live_output: @site_settings['live_output']
+            live_output: @site_settings['live_output'],
+            inputs: @site_settings['inputs']
         when 'signal_group'
           group = SignalGroup.new node: self, id: id
           @main.add_signal_group group
