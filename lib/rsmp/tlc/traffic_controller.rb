@@ -380,9 +380,8 @@ module RSMP
         @node.verify_security_code 2, arg['securityCode']
         input = arg['input'].to_i
         idx = input - 1
-        unless idx>=0 && input<@num_inputs # TODO should NotAck
-          log "Can't force input #{idx+1}, only have #{@num_inputs} inputs", level: :warning
-          return
+        unless input>0 && input<=@num_inputs
+          raise MessageRejected.new("Can't force input #{input}, only have #{@num_inputs} inputs")
         end
         @input_forced[idx] = bool_string_to_digit arg['status']
         if @input_forced[idx]
@@ -390,9 +389,9 @@ module RSMP
         end
         recompute_input idx
         if @input_forced[idx]
-          log "Forcing input #{idx+1} to #{@input_forced_values[idx]}, #{@input_results}", level: :info
+          log "Forcing input #{input} to #{@input_forced_values[idx]}", level: :info
         else
-          log "Releasing input #{idx+1}", level: :info
+          log "Releasing input #{input}", level: :info
         end
       end
 
