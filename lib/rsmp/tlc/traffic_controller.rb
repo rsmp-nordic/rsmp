@@ -10,15 +10,22 @@ module RSMP
         :startup_sequence_active, :startup_sequence, :startup_sequence_pos
 
       def initialize node:, id:, cycle_time: 10, signal_plans:,
-          startup_sequence:, live_output:nil, inputs:
+          startup_sequence:, live_output:nil, inputs:{}
         super node: node, id: id, grouped: true
         @signal_groups = []
         @detector_logics = []
         @plans = signal_plans
         @cycle_time = cycle_time
         @num_traffic_situations = 1
-        @num_inputs = inputs['total']
-        @input_programming = inputs['programming']
+
+        if inputs
+          @num_inputs = inputs['total'] || 8
+          @input_programming = inputs['programming']
+        else
+          @num_inputs = 8
+          @input_programming = nil
+        end
+
         @startup_sequence = startup_sequence
         @live_output = live_output
         reset
