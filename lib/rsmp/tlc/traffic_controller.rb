@@ -268,14 +268,16 @@ module RSMP
       def handle_m0006 arg
         @node.verify_security_code 2, arg['securityCode']
         input = arg['input'].to_i
+        unless input>0 && input<=@num_inputs
+          raise MessageRejected.new("Input #{idx} is invalid, must be in the range 1-#{@num_inputs}")
+        end
         idx = input - 1
-        return unless idx>=0 && input<@num_inputs # TODO should NotAck
         @input_activations[idx] = bool_string_to_digit arg['status']
         recompute_input idx
         if @input_activations[idx] == '1'
-          log "Activating input #{idx+1}", level: :info
+          log "Activating input #{input}", level: :info
         else
-          log "Deactivating input #{idx+1}", level: :info
+          log "Deactivating input #{input}", level: :info
         end
       end
 
