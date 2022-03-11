@@ -19,12 +19,12 @@ module RSMP
         @num_traffic_situations = 1
 
         if inputs
-          @num_inputs = inputs['total'] || 8
+          num_inputs = inputs['total']
           @input_programming = inputs['programming']
         else
-          @num_inputs = 8
           @input_programming = nil
         end
+        @inputs = TLC::Inputs.new num_inputs || 8
 
         @startup_sequence = startup_sequence
         @live_output = live_output
@@ -48,25 +48,18 @@ module RSMP
 
       def reset
         reset_modes
-
         @cycle_counter = 0
         @plan = 1
         @intersection = 0
         @emergency_route = false
         @emergency_route_number = 0
         @traffic_situation = 0
-
-        @inputs = '0'*@num_inputs
-        @input_activations = '0'*@num_inputs
-        @input_forced = '0'*@num_inputs
-        @input_forced_values = '0'*@num_inputs
-        @input_results = '0'*@num_inputs
-
         @day_time_table = {}
         @startup_sequence_active = false
         @startup_sequence_initiated_at = nil
         @startup_sequence_pos = 0
         @time_int = nil
+        @inputs.reset
       end
 
       def dark?
@@ -263,43 +256,34 @@ module RSMP
         end
       end
 
-      def recompute_input idx
-        if @input_forced[idx] == '1'
-          @input_results[idx] = @input_forced_values[idx]
-        elsif @input_activations[idx]=='1'
-          @input_results[idx] = '1'
-        else
-          @input_results[idx] = bool_to_digit( @inputs[idx]=='1' )
+      def input_logic input, change
+        return unless @input_programming && change != nil
+        actions = @input_programming[input]
+        return unless actions
+        if actions['raise']
+          alarm_code = actions['raise']
+          if change
+            log "Activating alarm #{alarm_code}, because input #{input} was activated", level: :info
+          else
+            log "Deactivating alarm #{alarm_code}, because input #{input} was deactivated", level: :info
+          end
         end
       end
 
       def handle_m0006 arg
         @node.verify_security_code 2, arg['securityCode']
         input = arg['input'].to_i
-        unless input>0 && input<=@num_inputs
-          raise MessageRejected.new("Input #{idx} is invalid, must be in the range 1-#{@num_inputs}")
+        status = string_to_bool arg['status']
+        unless input>=1 && input<=@inputs.size
+          raise MessageRejected.new("Input must be in the range 1-#{@inputs.size}")
         end
-        idx = input - 1
-        @input_activations[idx] = bool_string_to_digit arg['status']
-        recompute_input idx
-        activate = @input_activations[idx] == '1'
-        if activate
+        if status
           log "Activating input #{input}", level: :info
         else
           log "Deactivating input #{input}", level: :info
         end
-
-        if @input_programming
-          actions = @input_programming[input]
-          if actions && actions['raise']
-            alarm_code = actions['raise']
-            if activate
-              log "Activating alarm #{alarm_code}, due to input #{input} programming", level: :info
-            else
-              log "Deactivating alarm #{alarm_code}, due to input #{input} programming", level: :info
-            end
-          end
-        end
+        change = @inputs.set input, status
+        input_logic input, change if change != nil
       end
 
       def handle_m0007 arg
@@ -361,6 +345,17 @@ module RSMP
         @node.verify_security_code 2, arg['securityCode']
       end
 
+      def string_to_bool bool_str
+        case bool_str
+          when 'True'
+            true
+          when 'False'
+            false
+          else
+            raise RSMP::MessageRejected.new "Invalid boolean '#{bool}', must be 'True' or 'False'"
+        end
+      end
+
       def bool_string_to_digit bool
         case bool
           when 'True'
@@ -379,20 +374,18 @@ module RSMP
       def handle_m0019 arg
         @node.verify_security_code 2, arg['securityCode']
         input = arg['input'].to_i
-        idx = input - 1
-        unless input>0 && input<=@num_inputs
-          raise MessageRejected.new("Can't force input #{input}, only have #{@num_inputs} inputs")
+        force = string_to_bool arg['status']
+        forced_value = string_to_bool arg['inputValue']
+        unless input>=1 && input<=@inputs.size
+          raise MessageRejected.new("Input must be in the range 1-#{@inputs.size}")
         end
-        @input_forced[idx] = bool_string_to_digit arg['status']
-        if @input_forced[idx]
-          @input_forced_values[idx] = bool_string_to_digit arg['inputValue']
-        end
-        recompute_input idx
-        if @input_forced[idx]
-          log "Forcing input #{input} to #{@input_forced_values[idx]}", level: :info
+        if force
+          log "Forcing input #{input} to #{forced_value}", level: :info
         else
           log "Releasing input #{input}", level: :info
         end
+        change = @inputs.set_forcing input, force, forced_value
+        input_logic input, change if change != nil
       end
 
       def handle_m0020 arg
@@ -502,7 +495,7 @@ module RSMP
       def handle_s0003 status_code, status_name=nil
         case status_name
         when 'inputstatus'
-          TrafficControllerSite.make_status @input_results
+          TrafficControllerSite.make_status @inputs.actual_string
         when 'extendedinputstatus'
           TrafficControllerSite.make_status 0.to_s
         end
@@ -704,7 +697,7 @@ module RSMP
       def handle_s0029 status_code, status_name=nil
         case status_name
         when 'status'
-          TrafficControllerSite.make_status @input_forced
+          TrafficControllerSite.make_status @inputs.forced_string
         end
       end
 
