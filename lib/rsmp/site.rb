@@ -93,6 +93,12 @@ module RSMP
       end
     end
 
+    def alarm_changed component, alarm
+      @proxies.each do |proxy|
+        proxy.send_alarm component, alarm if proxy.ready?
+      end
+    end
+
     def connect_to_supervisor task, supervisor_settings
       proxy = build_proxy({
         site: self,

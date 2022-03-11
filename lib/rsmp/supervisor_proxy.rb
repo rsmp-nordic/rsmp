@@ -172,6 +172,12 @@ module RSMP
       end
     end
 
+    def send_alarm component, alarm, options={}
+      send_and_optionally_collect alarm, options do |collect_options|
+        Collector.new self, collect_options.merge(task:@task, type: 'MessageAck')
+      end
+    end
+
     def process_aggregated_status message
       se = message.attribute("se")
       validate_aggregated_status(message,se) == false

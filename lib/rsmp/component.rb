@@ -77,6 +77,7 @@ module RSMP
       raise UnknownStatus.new "Status #{status_code}/#{status_name} not implemented by #{self.class}"
     end
 
+    # handle incoming alarm
     def handle_alarm message
       code = message.attribute('aCId')
       previous = @alarms[code]
@@ -90,6 +91,27 @@ module RSMP
       end
     ensure
       @alarms[code] = message
+    end
+
+    # set alarm
+    def send_alarm code:, status:
+      # TODO
+      # we need to manage the state of alarms internally (an ALarm class probably),
+      # and handle request from the supervisor to suspend and resume alarms etc.
+      # when this state changes, we then send an alarm message
+      alarm = Alarm.new(
+        'cId' => c_id,
+        'aTs' => @node.clock.to_s,
+        'aCId' => code,
+        'aSp' => 'Issue',
+        'ack' => 'Acknowledged',
+        'sS' => 'notSuspended',
+        'aS' => status,
+        'cat' => 'D',
+        'pri' => '2',
+        'rvs' => []
+      )
+      @node.alarm_changed self, alarm
     end
 
     # Handle an incoming status respone, by storing the values
