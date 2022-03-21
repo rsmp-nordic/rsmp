@@ -135,12 +135,11 @@ module RSMP
         colors = {
           'info' => 'white',
           'log' => 'light_blue',
-          'test' => 'light_magenta',
           'statistics' => 'light_black',
-          'not_acknowledged' => 'cyan',
           'warning' => 'light_yellow',
           'error' => 'red',
-          'debug' => 'light_black'
+          'debug' => 'light_black',
+          'collect' => 'light_black'
         }
         colors.merge! @settings["color"] if @settings["color"].is_a?(Hash)
         if colors[level.to_s]

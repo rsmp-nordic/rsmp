@@ -9,6 +9,7 @@ module RSMP
       )
     end
 
+    # match alarm attributes
     def type_match? message
       return false if super(message) == false
 
@@ -38,5 +39,11 @@ module RSMP
       end
       true
     end
+
+    # return a string that describes what we're collecting
+    def describe_query
+      "#{describe_num_and_type} #{ {component: @options[:component]}.merge(@query).compact }"
+    end
+
   end
 end

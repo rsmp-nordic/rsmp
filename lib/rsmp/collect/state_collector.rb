@@ -97,8 +97,8 @@ module RSMP
           matched = query.perform_match(item,message,@block)
           return unless collecting?
           if matched != nil
-            type = {true=>'match',false=>'mismatch'}[matched]
-            @notifier.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
+            #type = {true=>'match',false=>'mismatch'}[matched]
+            #@notifier.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
             if matched == true
               query.keep message, item
             elsif matched == false
@@ -107,8 +107,6 @@ module RSMP
           end
         end
       end
-      complete if done?
-      @notifier.log "#{@title.capitalize} collect reached #{summary}", level: :debug
     end
 
     # don't collect anything. Query will collect them instead
@@ -117,6 +115,25 @@ module RSMP
 
     def describe
       @queries.map {|q| q.want.to_s }
+    end
+
+    # return a string that describes the attributes that we're looking for
+    def describe_query
+      want = @queries.map {|query| "#{query.want}" }
+      "#{super} with #{want.join(', ')}"
+    end
+
+    # return a string that describe how many many messages have been collected
+    def describe_progress
+      num_queries = @queries.size
+      num_matched =  @queries.count { |query| query.done? }
+
+      got = @queries.select {|query| query.done? == true }.map {|query| "#{query.got}" }
+      need = @queries.select {|query| query.done? == false }.map {|query| "#{query.want}" }
+      str = "Matched #{num_matched} of #{num_queries}".colorize(:red)
+      str << ", got #{got.join(', ')}" if got.any?
+      str << ", need #{need.join(', ')}" if need.any?
+      str
     end
   end
 end

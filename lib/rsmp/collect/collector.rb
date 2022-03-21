@@ -134,17 +134,18 @@ module RSMP
     # Start collection and return immediately
     # You can later use wait() to wait for completion
     def start &block
-      raise RuntimeError.new("Can't begin unless ready (currenty #{@status})") unless ready?
+      raise RuntimeError.new("Can't start collectimng unless ready (currently #{@status})") unless ready?
       @block = block
       raise ArgumentError.new("Num, timeout or block must be provided") unless @options[:num] || @options[:timeout] || @block
       reset
       @status = :collecting
+      log_start
       @notifier.add_listener self if @notifier
     end
 
     # Build a string describing how how progress reached before timeout
     def describe_progress
-      str = "#{@title.capitalize} collection "
+      str = "#{identifier}: #{@title.capitalize} collection "
       str << "in response to #{@options[:m_id]} " if @options[:m_id]
       str << "didn't complete within #{@options[:timeout]}s, "
       str << "reached #{@messages.size}/#{@options[:num]}"
@@ -167,7 +168,13 @@ module RSMP
     def notify message
       raise ArgumentError unless message
       raise RuntimeError.new("can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}") unless ready? || collecting?
-      perform_match message
+      if perform_match message
+        if done?
+          complete
+        else
+          incomplete
+        end
+      end
       @status
     end
 
@@ -178,6 +185,7 @@ module RSMP
     def perform_match message
       return false if reject_not_ack(message)
       return false unless type_match?(message)
+      #@notifier.log "#{identifier}: Looking at #{message.type} #{message.m_id_short}", level: :collect
       if @block
         status = [@block.call(message)].flatten
         return unless collecting?
@@ -185,7 +193,6 @@ module RSMP
       else
         keep message
       end
-      complete if done?
     end
 
     # Have we collected the required number of messages?
@@ -198,6 +205,12 @@ module RSMP
     def complete
       @status = :ok
       do_stop
+      log_complete
+    end
+
+    # called when we received a message, but are not done yet
+    def incomplete
+      log_incomplete
     end
 
     # Remove ourself as a listener, so we don't receive message notifications anymore,
@@ -225,14 +238,14 @@ module RSMP
       return unless message
       klass = message.class.name.split('::').last
       return unless @options[:type] == nil || [@options[:type]].flatten.include?(klass)
-      @notifier.log "Collection cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
+      @notifier.log "#{identifier}: cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
       cancel error
     end
 
     # Cancel if we received e notificaiton about a disconnect
     def notify_disconnect error, options
       return unless @options.dig(:cancel,:disconnect)
-      @notifier.log "Collection cancelled due to a connection error: #{error.to_s}", level: :debug
+      @notifier.log "#{identifier}: cancelled due to a connection error: #{error.to_s}", level: :debug
       cancel error
     end
 
@@ -265,5 +278,54 @@ module RSMP
       end
       true
     end
+
+    # return a string that describes whe number of messages, and type of message we're collecting
+    def describe_num_and_type
+      if @options[:num] && @options[:num] > 1
+        "#{@options[:num]} #{@options[:type]}s"
+      else
+        @options[:type]
+      end
+    end
+
+    # return a string that describes the attributes that we're looking for
+    def describe_query
+      h = {component: @options[:component]}.compact
+      if h.empty?
+        describe_num_and_type
+      else
+        "#{describe_num_and_type} #{h}"
+      end
+    end
+
+    # return a string that describe how many many messages have been collected
+    def describe_progress
+      if @options[:num]
+        "#{@messages.size} of #{@options[:num]} message#{'s' if @messages.size!=1} collected"
+      else
+        "#{@messages.size} message#{'s' if @messages.size!=1} collected"
+      end        
+    end
+
+    # log when we start collecting
+    def log_start
+      @notifier.log "#{identifier}: Waiting for #{describe_query}".strip, level: :collect
+    end
+
+    # log current progress
+    def log_incomplete
+      @notifier.log "#{identifier}: #{describe_progress}", level: :collect
+    end
+
+    # log when we end collecting
+    def log_complete
+      @notifier.log "#{identifier}: Done", level: :collect
+    end
+
+    # get a short id in hex format, identifying ourself
+    def identifier
+      "Collect #{self.object_id.to_s(16)}"
+    end
+
   end
 end
