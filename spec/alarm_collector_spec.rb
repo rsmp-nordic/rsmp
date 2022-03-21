@@ -100,6 +100,23 @@ RSpec.describe RSMP::AlarmCollector do
       end
     end
 
+    it 'matches aSp with regex' do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collect_task = task.async do
+          collector = RSMP::AlarmCollector.new proxy, query: {'aSp' => /[Ii]ssue/}, num: 1, timeout: timeout
+          result = collector.collect
+
+          expect(result).to eq(:ok)
+          expect(collector.messages).to be_an(Array)
+          expect(collector.messages.size).to eq(1)
+          expect(collector.messages.first).to eq(right)
+        end
+        proxy.notify wrong
+        proxy.notify right
+        collect_task.wait
+      end
+    end
+
     it 'matches ack' do
       RSMP::SiteProxyStub.async do |task,proxy|
         collect_task = task.async do

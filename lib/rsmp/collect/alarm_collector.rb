@@ -14,7 +14,14 @@ module RSMP
 
       # match fixed attributes
       %w{aCId aSp ack aS sS cat pri}.each do |key|
-        return false if @query[key] && @query[key] != message.attribute(key)
+        want = @query[key]
+        got = message.attribute(key)
+        case want
+        when Regexp
+          return false if got !~ want
+        when String
+          return false if got != want
+        end
       end
 
       # match rvs items
