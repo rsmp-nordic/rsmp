@@ -186,19 +186,19 @@ module RSMP
       @queries.each do |query|
         want = query.want
         got = query.got
-        if got['cCI']
+        if want['cCI']
           cCI = want['cCI']
           h[cCI] ||= {}
           cO = want['cO']
           h[cCI][cO] ||= {}
           n = want['n']
-          v = got['v']
+          v = got ? got['v'] : nil
           h[cCI][cO][n] = v
         elsif want['sCI']
           sCI = want['sCI']
           h[sCI] ||= {}
           n = want['n']
-          s = got['s']
+          s = got ? got['s'] : nil
           h[sCI][n] = s
         end
       end
