@@ -13,9 +13,10 @@ module RSMP
     include Inspect
     include Task
 
-    attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port
+    attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port, :node
 
     def initialize options
+      @node = options[:node]
       initialize_logging options
       initialize_distributor
       initialize_task
@@ -120,7 +121,7 @@ module RSMP
     end
 
     def clock
-      node.clock
+      @node.clock
     end
 
     def ready?
@@ -203,7 +204,7 @@ module RSMP
     end
 
     def notify_error e, options={}
-      node.notify_error e, options
+      @node.notify_error e, options
     end
 
     def start_watchdog
@@ -369,7 +370,7 @@ module RSMP
     end
 
     def process_deferred
-      node.process_deferred
+      @node.process_deferred
     end
 
     def verify_sequence message
@@ -419,7 +420,7 @@ module RSMP
       close
       message
     ensure
-      node.clear_deferred
+      @node.clear_deferred
     end
 
     def process_message message
@@ -620,12 +621,8 @@ module RSMP
     def version_acknowledged
     end
 
-    def node
-      raise 'Must be overridden'
-    end
-
     def author
-      node.site_id
+      @node.site_id
     end
 
     def send_and_optionally_collect message, options, &block

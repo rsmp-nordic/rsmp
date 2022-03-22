@@ -8,7 +8,7 @@ module RSMP
     attr_reader :supervisor_id, :site
 
     def initialize options
-      super options
+      super options.merge(node:options[:site])
       @site = options[:site]
       @site_settings = @site.site_settings.clone
       @ip = options[:ip]
@@ -16,10 +16,6 @@ module RSMP
       @status_subscriptions = {}
       @sxl = @site_settings['sxl']
       @synthetic_id = Supervisor.build_id_from_ip_port @ip, @port
-    end
-
-    def node
-      site
     end
 
     # handle communication

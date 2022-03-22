@@ -7,7 +7,7 @@ module RSMP
     attr_reader :supervisor, :site_id
 
     def initialize options
-      super options
+      super options.merge(node:options[:supervisor])
       initialize_components
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
