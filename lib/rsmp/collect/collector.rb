@@ -279,12 +279,17 @@ module RSMP
       true
     end
 
+    # return a string describing the types of messages we're collecting
+    def describe_types
+      [@options[:type]].flatten.join('/')
+    end
+
     # return a string that describes whe number of messages, and type of message we're collecting
     def describe_num_and_type
       if @options[:num] && @options[:num] > 1
-        "#{@options[:num]} #{@options[:type]}s"
+        "#{@options[:num]} #{describe_types}s"
       else
-        @options[:type]
+        describe_types
       end
     end
 

@@ -119,21 +119,95 @@ module RSMP
 
     # return a string that describes the attributes that we're looking for
     def describe_query
-      want = @queries.map {|query| "#{query.want}" }
-      "#{super} with #{want.join(', ')}"
+      "#{super} matching #{query_want_hash.to_s}"
+    end
+
+    # return a hash that describe the status of all queries
+    def progress_hash
+      h = {}
+      @queries.each do |query|
+        want = query.want
+        if want['cCI']
+          cCI = want['cCI']
+          h[cCI] ||= {}
+          cO = h['cO']
+          n = h['n']
+          v = h['v']
+          h[cCI][cO] ||= {}
+          h[cCI][cO][n] = v
+        elsif want['sCI']
+          sCI = want['sCI']
+          h[sCI] ||= {}
+          n = want['n']
+          s = want['s']
+          if query.got && query.got['s']
+            h[sCI][n] = { {s=>query.got['s']} => query.done? }
+          else
+            h[sCI][n] = {s=>:anything}
+          end
+        end
+      end
+      h
     end
 
     # return a string that describe how many many messages have been collected
     def describe_progress
       num_queries = @queries.size
       num_matched =  @queries.count { |query| query.done? }
+      ".. Matched #{num_matched}/#{num_queries} with #{progress_hash.to_s}"
+    end
 
-      got = @queries.select {|query| query.done? == true }.map {|query| "#{query.got}" }
-      need = @queries.select {|query| query.done? == false }.map {|query| "#{query.want}" }
-      str = "Matched #{num_matched} of #{num_queries}".colorize(:red)
-      str << ", got #{got.join(', ')}" if got.any?
-      str << ", need #{need.join(', ')}" if need.any?
-      str
+    def query_want_hash
+      h = {}
+      @queries.each do |query|
+        item = query.want
+        if item['cCI']
+          cCI = item['cCI']
+          h[cCI] ||= {}
+          cO = item['cO']
+          h[cCI][cO] ||= {}
+          n = item['n']
+          v = item['v']
+          h[cCI][cO][n] = v || :any
+        elsif item['sCI']
+          sCI = item['sCI']
+          h[sCI] ||= {}
+          n = item['n']
+          s = item['s']
+          h[sCI][n] = s || :any
+        end
+      end
+      h
+    end
+
+    # return a hash that describe the end result
+    def query_got_hash
+      h = {}
+      @queries.each do |query|
+        want = query.want
+        got = query.got
+        if got['cCI']
+          cCI = want['cCI']
+          h[cCI] ||= {}
+          cO = want['cO']
+          h[cCI][cO] ||= {}
+          n = want['n']
+          v = got['v']
+          h[cCI][cO][n] = v
+        elsif want['sCI']
+          sCI = want['sCI']
+          h[sCI] ||= {}
+          n = want['n']
+          s = got['s']
+          h[sCI][n] = s
+        end
+      end
+      h
+    end
+
+    # log when we end collecting
+    def log_complete
+      @notifier.log "#{identifier}: Completed with #{query_got_hash.to_s}", level: :collect
     end
   end
 end

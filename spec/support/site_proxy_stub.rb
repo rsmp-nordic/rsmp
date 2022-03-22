@@ -7,7 +7,7 @@ module RSMP
     def initialize task
       @task = task
       initialize_distributor
-      initialize_logging({})
+      initialize_logging({log_settings:{'active'=>false}})
     end
 
     def self.async &block
