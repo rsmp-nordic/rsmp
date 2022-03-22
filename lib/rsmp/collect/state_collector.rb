@@ -143,7 +143,7 @@ module RSMP
           if query.got && query.got['s']
             h[sCI][n] = { {s=>query.got['s']} => query.done? }
           else
-            h[sCI][n] = {s=>:anything}
+            h[sCI][n] = { s=>nil }
           end
         end
       end
