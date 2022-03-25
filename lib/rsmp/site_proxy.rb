@@ -47,7 +47,8 @@ module RSMP
     def handshake_complete
       super
       sanitized_sxl_version = RSMP::Schemer.sanitize_version(@site_sxl_version)
-      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{sanitized_sxl_version}", level: :info
+      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{sanitized_sxl_version}", level: :log
+      start_watchdog
     end
 
     def process_message message
@@ -89,6 +90,20 @@ module RSMP
       acknowledge message
       send_version @site_id, rsmp_versions
       @version_determined = true
+    end
+
+    def acknowledged_first_ingoing message
+      case message.type
+      when "Watchdog"
+        send_watchdog
+      end
+    end
+
+    def acknowledged_first_outgoing message
+      case message.type
+      when "Watchdog"
+        handshake_complete
+      end
     end
 
     def validate_ready action
@@ -152,14 +167,10 @@ module RSMP
     end
 
     def version_acknowledged
-      handshake_complete
     end
 
     def process_watchdog message
       super
-      if @watchdog_started == false
-        start_watchdog
-      end
     end
 
     def site_ids_changed

@@ -209,7 +209,6 @@ module RSMP
 
     def start_watchdog
       log "Starting watchdog with interval #{@site_settings['intervals']['watchdog']} seconds", level: :debug
-      send_watchdog
       @watchdog_started = true
     end
 
