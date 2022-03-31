@@ -93,9 +93,25 @@ module RSMP
       end
     end
 
-    def alarm_changed component, alarm
+    def alarm_state_to_message alarm_state
+      Alarm.new(
+        'cId' => alarm_state.component_id,
+        'aTs' => clock.to_s,
+        'aCId' => alarm_state.code,
+        'aSp' => (alarm_state.suspended ? 'Suspend' : 'Issue'),
+        'ack' => (alarm_state.acknowledged ? 'Acknowledged' : 'notAcknowledged'),
+        'sS' => (alarm_state.suspended ? 'suspended' : 'notSuspended'),
+        'aS' => (alarm_state.active ? 'Active' : 'inActive'),
+        'cat' => (alarm_state.category || 'D'),
+        'pri' => (alarm_state.priority || '2'),
+        'rvs' => []
+      )
+    end
+
+    def alarm_suspended_or_resumed alarm_state
+      alarm = alarm_state_to_message alarm_state
       @proxies.each do |proxy|
-        proxy.send_alarm component, alarm if proxy.ready?
+        proxy.send_message alarm if proxy.ready?
       end
     end
 
@@ -134,6 +150,10 @@ module RSMP
         return supervisor if ip == :any || supervisor.ip == ip
       end
       nil
+    end
+
+    def build_component id:, type:, settings:{}
+      Component.new id:id, node: self, grouped: type=='main'
     end
   end
 end

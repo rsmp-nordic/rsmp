@@ -61,15 +61,15 @@ module RSMP
 
     def self.build_alarm attributes
       case attributes["aSp"]
-      when 'Issue'
+      when /Issue/i
         AlarmIssue.new attributes
-      when 'Request'
+      when /Request/i
         AlarmRequest.new attributes
-      when 'Acknowledge'
+      when /Acknowledge/i
         AlarmAcknowledged.new attributes
-      when 'Suspend'
+      when /Suspend/i
         AlarmSuspend.new attributes
-      when 'Resume'
+      when /Resume/i
         AlarmResume.new attributes
       else
         Alarm.new attributes

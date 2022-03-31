@@ -202,11 +202,8 @@ module RSMP
       m_id = options[:m_id] || RSMP::Message.make_m_id
 
       # additional items can be used when verifying the response,
-      # but must to remove from the subscribe message
+      # but must be removed from the subscribe message
       subscribe_list = status_list.map { |item| item.slice('sCI','n','uRt') }
-
-      component = find_component component_id
-      component.handle_status_subscribe subscribe_list
 
       message = RSMP::StatusSubscribe.new({
           "ntsOId" => '',
@@ -225,9 +222,6 @@ module RSMP
     end
 
     def unsubscribe_to_status component_id, status_list, options={}
-      component = find_component component_id
-      component.handle_status_subscribe status_list
-
       validate_ready 'unsubscribe to status'
       message = RSMP::StatusUnsubscribe.new({
           "ntsOId" => '',
@@ -346,5 +340,10 @@ module RSMP
       @supervisor.notify_error e, options if @supervisor
       distribute_error e, options
     end
+
+    def build_component id:, type:, settings:{}
+      ComponentProxy.new id:id, node: self, grouped: type=='main'
+    end
+
   end
 end

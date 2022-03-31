@@ -159,6 +159,7 @@ module RSMP
         if message.attribute('oMId') == @options[:m_id]
           m_id_short = RSMP::Message.shorten_m_id @options[:m_id], 8
           cancel RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
+          @notifier.log "#{identifier}: cancelled due to a NotAck", level: :debug
           true
         end
       end
