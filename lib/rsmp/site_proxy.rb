@@ -228,7 +228,6 @@ module RSMP
         @status_subscriptions[component_id][sCI][n]['uRt'] = uRt
       end
 
-      p @status_subscriptions
       component = find_component component_id
       component.allow_repeat_updates subscribe_list
 
