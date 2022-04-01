@@ -108,7 +108,7 @@ module RSMP
       )
     end
 
-    def alarm_suspended_or_resumed alarm_state
+    def alarm_changed alarm_state
       alarm = alarm_state_to_message alarm_state
       @proxies.each do |proxy|
         proxy.send_message alarm if proxy.ready?

@@ -21,5 +21,13 @@ module RSMP
     def resume
       @suspended = false
     end
+
+    def activate
+      @active = true
+    end
+
+    def deactivate
+      @active = false
+    end
   end
 end

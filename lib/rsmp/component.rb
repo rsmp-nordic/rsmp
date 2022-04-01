@@ -20,31 +20,35 @@ module RSMP
     end
 
     def suspend_alarm alarm_code
-      alarm_state = get_alarm_state alarm_code
-      if alarm.suspended == false
-        log "Suspending alarm #{alarm_code}", level: :info
-        alarm.suspend
-        @node.alarm_suspended_or_resumed alarm
-      else
-        log "Alarm #{alarm_code} already suspended", level: :info
-      end
+      alarm = get_alarm_state alarm_code
+      return if alarm.suspended
+      log "Suspending alarm #{alarm_code}", level: :info
+      alarm.suspend
+      @node.alarm_changed alarm
     end
 
     def resume_alarm alarm_code
-      alarm_state = get_alarm_state alarm_code
-      if alarm.suspended
-        log "Resuming alarm #{alarm_code}", level: :info
-        alarm.resume
-        @node.alarm_suspended_or_resumed alarm
-      else
-        log "Alarm #{alarm_code} not suspended", level: :info
-      end
+      alarm = get_alarm_state alarm_code
+      return unless alarm.suspended
+      log "Resuming alarm #{alarm_code}", level: :info
+      alarm.resume
+      @node.alarm_changed alarm
     end
 
-    # send alarm
-    def send_alarm code:, status:
-      @node.alarm_changed self, alarm
+    def activate_alarm alarm_code
+      alarm = get_alarm_state alarm_code
+      return if alarm.active
+      log "Activating alarm #{alarm_code}", level: :info
+      alarm.activate
+      @node.alarm_changed alarm
     end
 
+    def deactivate_alarm alarm_code
+      alarm = get_alarm_state alarm_code
+      return unless alarm.active
+      log "Deactivating alarm #{alarm_code}", level: :info
+      alarm.deactivate
+      @node.alarm_changed alarm
+    end
   end
 end

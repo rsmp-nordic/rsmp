@@ -264,10 +264,10 @@ module RSMP
           alarm_code = actions['raise']
           if change
             log "Activating alarm #{alarm_code}, because input #{input} was activated", level: :info
-            send_alarm code:alarm_code, status:'Active'
+            activate_alarm alarm_code
           else
             log "Deactivating alarm #{alarm_code}, because input #{input} was deactivated", level: :info
-            send_alarm code:alarm_code, status:'inActive'
+            deactivate_alarm alarm_code
           end
         end
       end
