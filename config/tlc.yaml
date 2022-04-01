@@ -51,8 +51,11 @@ security_codes:
 log:
   ip: false
   site_id: 9
-  component: 2
+  component: 3
   level: false
   debug: true
   json: true
 live_output: tmp/tlc.state
+skip_validation:
+  - AlarmSuspend
+  - AlarmResume

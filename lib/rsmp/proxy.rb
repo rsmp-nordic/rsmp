@@ -438,6 +438,7 @@ module RSMP
     end
 
     def will_not_handle message
+      "WILL NOT HANDLE"
       reason = "since we're a #{self.class.name.downcase}" unless reason
       log "Ignoring #{message.type}, #{reason}", message: message, level: :warning
       dont_acknowledge message, nil, reason

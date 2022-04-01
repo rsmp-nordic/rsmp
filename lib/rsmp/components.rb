@@ -36,9 +36,9 @@ module RSMP
       @components[component.c_id] = component
     end
 
-    def build_component id:, type:, settings:{}
-      Component.new id:id, node: self, grouped: type=='main'
-    end
+    #def build_component id:, type:, settings:{}
+    #  Component.new id:id, node: self, grouped: type=='main'
+    #end
 
     def infer_component_type component_id
       Component

@@ -91,25 +91,24 @@ module RSMP
 
     def process_message message
       case message
-        when Alarm
-        when StatusResponse
-        when StatusUpdate
-        when AggregatedStatus
-          will_not_handle message
-        when AggregatedStatusRequest
-          process_aggregated_status_request message
-        when CommandRequest
-          process_command_request message
-        when CommandResponse
-          process_command_response message
-        when StatusRequest
-          process_status_request message
-        when StatusSubscribe
-          process_status_subcribe message
-        when StatusUnsubscribe
-          process_status_unsubcribe message
-        else
-          super message
+      when StatusResponse, StatusUpdate, AggregatedStatus, AlarmIssue
+        will_not_handle message
+      when AggregatedStatusRequest
+        process_aggregated_status_request message
+      when CommandRequest
+        process_command_request message
+      when CommandResponse
+        process_command_response message
+      when StatusRequest
+        process_status_request message
+      when StatusSubscribe
+        process_status_subcribe message
+      when StatusUnsubscribe
+        process_status_unsubcribe message
+      when AlarmAcknowledged, AlarmSuspend, AlarmResume, AlarmRequest
+        process_alarm message
+      else
+        super message
       end
     rescue UnknownComponent, UnknownCommand, UnknownStatus,
            MessageRejected, MissingAttribute => e
@@ -182,13 +181,39 @@ module RSMP
     end
 
     def process_alarm message
-      alarm_code = message.attribute("aCId")
-      asp = message.attribute("aSp")
-      status = ["ack","aS","sS"].map { |key| message.attribute(key) }.join(',')
-      log "Received #{message.type}, #{alarm_code} #{asp} [#{status}]", message: message, level: :log
-      acknowledge message
+      case message
+      when AlarmAcknowledged
+        handle_alarm_acknowledge message
+      when AlarmSuspend
+        handle_alarm_suspend message
+      when AlarmResume
+        handle_alarm_resume message
+      when AlarmRequest
+        handle_alarm_request message
+      else
+        dont_acknowledge message, "Invalid alarm message type"
+      end
     end
 
+    # handle incoming alarm suspend
+    def handle_alarm_suspend message
+      component_id = message.attributes["cId"]
+      component = @site.find_component component_id
+      alarm_code = message.attribute("aCId")
+      log "Received #{message.type} #{alarm_code} suspend", message: message, level: :log
+      acknowledge message
+      component.suspend_alarm alarm_code
+    end
+
+    # handle incoming alarm resume
+    def handle_alarm_resume message
+      component_id = message.attributes["cId"]
+      component = @site.find_component component_id
+      alarm_code = message.attribute("aCId")
+      log "Received #{message.type} #{alarm_code} resume", message: message, level: :log
+      acknowledge message
+      component.resume_alarm alarm_code
+    end
     # reorganize rmsp command request arg attribute:
     # [{"cCI":"M0002","cO":"setPlan","n":"status","v":"True"},{"cCI":"M0002","cO":"setPlan","n":"securityCode","v":"5678"},{"cCI":"M0002","cO":"setPlan","n":"timeplan","v":"3"}]
     # into the simpler, but equivalent:
@@ -262,22 +287,26 @@ module RSMP
       # for each component, containing all the requested statuses
 
       update_list = {}
-      component = message.attributes["cId"]
-      @status_subscriptions[component] ||= {}
-      update_list[component] ||= {}
+      component_id = message.attributes["cId"]
+      @status_subscriptions[component_id] ||= {}
+      update_list[component_id] ||= {}
       now = Time.now  # internal timestamp
-      subs = @status_subscriptions[component]
+      subs = @status_subscriptions[component_id]
 
       message.attributes["sS"].each do |arg|
         sCI = arg["sCI"]
         subcription = {interval: arg["uRt"].to_i, last_sent_at: now}
         subs[sCI] ||= {}
         subs[sCI][arg["n"]] = subcription
-        update_list[component][sCI] ||= []
-        update_list[component][sCI] << arg["n"]
+        update_list[component_id][sCI] ||= []
+        update_list[component_id][sCI] << arg["n"]
       end
       acknowledge message
       send_status_updates update_list   # send status after subscribing is accepted
+    end
+
+    def get_status_subscribe_interval component_id, sCI, n
+      @status_subscriptions.dig component_id, sCI, n
     end
 
     def process_status_unsubcribe message
