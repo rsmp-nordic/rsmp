@@ -288,22 +288,26 @@ module RSMP
       # for each component, containing all the requested statuses
 
       update_list = {}
-      component = message.attributes["cId"]
-      @status_subscriptions[component] ||= {}
-      update_list[component] ||= {}
+      component_id = message.attributes["cId"]
+      @status_subscriptions[component_id] ||= {}
+      update_list[component_id] ||= {}
       now = Time.now  # internal timestamp
-      subs = @status_subscriptions[component]
+      subs = @status_subscriptions[component_id]
 
       message.attributes["sS"].each do |arg|
         sCI = arg["sCI"]
         subcription = {interval: arg["uRt"].to_i, last_sent_at: now}
         subs[sCI] ||= {}
         subs[sCI][arg["n"]] = subcription
-        update_list[component][sCI] ||= []
-        update_list[component][sCI] << arg["n"]
+        update_list[component_id][sCI] ||= []
+        update_list[component_id][sCI] << arg["n"]
       end
       acknowledge message
       send_status_updates update_list   # send status after subscribing is accepted
+    end
+
+    def get_status_subscribe_interval component_id, sCI, n
+      @status_subscriptions.dig component_id, sCI, n
     end
 
     def process_status_unsubcribe message

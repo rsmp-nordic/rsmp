@@ -21,8 +21,6 @@ module RSMP
       @node = node
       @grouped = grouped
       @alarms = {}
-      @statuses = {}
-      @subscribes = {}
       clear_aggregated_status
     end
 

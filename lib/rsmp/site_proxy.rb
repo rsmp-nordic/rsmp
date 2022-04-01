@@ -12,6 +12,7 @@ module RSMP
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
       @site_id = options[:site_id]
+      @status_subscriptions = {}
     end
 
     # handle communication
@@ -192,7 +193,7 @@ module RSMP
 
     def process_status_response message
       component = find_component message.attribute("cId")
-      component.handle_status_response message
+      component.store_status message
       log "Received #{message.type}", message: message, level: :log
       acknowledge message
     end
@@ -204,6 +205,21 @@ module RSMP
       # additional items can be used when verifying the response,
       # but must be removed from the subscribe message
       subscribe_list = status_list.map { |item| item.slice('sCI','n','uRt') }
+
+      # update our subcription list
+      @status_subscriptions[component_id] ||= {}
+      subscribe_list.each do |item|
+        sCI = item["sCI"]
+        n = item["n"]
+        uRt = item["uRt"]
+        @status_subscriptions[component_id][sCI] ||= {}
+        @status_subscriptions[component_id][sCI][n] ||= {}
+        @status_subscriptions[component_id][sCI][n]['uRt'] = uRt
+      end
+
+      p @status_subscriptions
+      component = find_component component_id
+      component.allow_repeat_updates subscribe_list
 
       message = RSMP::StatusSubscribe.new({
           "ntsOId" => '',
@@ -223,11 +239,23 @@ module RSMP
 
     def unsubscribe_to_status component_id, status_list, options={}
       validate_ready 'unsubscribe to status'
+
+      # update our subcription list
+      status_list.each do |item|
+        sCI = item["sCI"]
+        n = item["n"]
+        if @status_subscriptions.dig(component_id,sCI,n)
+          @status_subscriptions[component_id][sCI].delete n
+          @status_subscriptions[component_id].delete(sCI) if @status_subscriptions[component_id][sCI].empty?
+          @status_subscriptions.delete(component_id) if @status_subscriptions[component_id].empty?
+        end
+      end
+
       message = RSMP::StatusUnsubscribe.new({
-          "ntsOId" => '',
-          "xNId" => '',
-          "cId" => component_id,
-          "sS" => status_list
+        "ntsOId" => '',
+        "xNId" => '',
+        "cId" => component_id,
+        "sS" => status_list
       })
       send_message message, validate: options[:validate]
       message
@@ -235,7 +263,8 @@ module RSMP
 
     def process_status_update message
       component = find_component message.attribute("cId")
-      component.handle_status_update message
+      component.check_repeat_values message, @status_subscriptions
+      component.store_status message
       log "Received #{message.type}", message: message, level: :log
       acknowledge message
     end

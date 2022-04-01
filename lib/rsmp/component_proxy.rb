@@ -5,34 +5,44 @@ module RSMP
   class ComponentProxy < ComponentBase
     def initialize node:, id:, grouped: false
       super
+      @statuses = {}
+      @allow_repeat_updates = {}
     end
 
-    # Handle an incoming status respone, by storing the values
-    def handle_status_response message
-      store_status message, check_repeated: false
+    # allow the next status update to be a repeat value
+    def allow_repeat_updates subscribe_list
+      subscribe_list.each do |item|
+        sCI = item['sCI']
+        n = item['n']
+        @allow_repeat_updates[sCI] ||= Set.new  # Set is like an array, but with no duplicates
+        @allow_repeat_updates[sCI] << n
+      end
     end
 
-    # Handle an incoming status update, by storing the values
-    def handle_status_update message
-      store_status message, check_repeated: true
-    end
-
-    # Store the latest status update values, optionally
-    # checking that we're not receiving unchanged values if we're subscribed
-    # with updates only on change
-    def store_status message, check_repeated:
+    # Check that were not receiving repeated update values.
+    # The check is not performed for item with an update interval.
+    def check_repeat_values message, subscription_list
       message.attribute('sS').each do |item|
         sCI, n, s, q = item['sCI'], item['n'], item['s'], item['q']
-        uRt = @subscribes.dig(sCI,n,'uRt')
+        uRt = subscription_list.dig(c_id,sCI,n,'uRt')
+        next if uRt.to_i > 0
+        next if @allow_repeat_updates[sCI] && @allow_repeat_updates[sCI].include?(n)
         new_values = {'s'=>s,'q'=>q}
         old_values = @statuses.dig(sCI,n)
-        if check_repeated && uRt.to_i == 0
-          if new_values == old_values
-            raise RSMP::RepeatedStatusError.new "no change for #{sCI} '#{n}'"
-          end
+        if new_values == old_values
+          raise RSMP::RepeatedStatusError.new "no change for #{sCI} '#{n}'"
         end
+      end
+    end
+        # Store the latest status update values
+    def store_status message
+      message.attribute('sS').each do |item|
+        sCI, n, s, q = item['sCI'], item['n'], item['s'], item['q']
         @statuses[sCI] ||= {}
-        @statuses[sCI][n] = new_values
+        @statuses[sCI][n] = {'s'=>s,'q'=>q}
+
+        # once a value is received, don't allow the value to be a repeat
+        @allow_repeat_updates[sCI].delete(n) if @allow_repeat_updates[sCI]
       end
     end
  
