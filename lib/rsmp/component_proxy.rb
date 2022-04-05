@@ -1,10 +1,9 @@
 module RSMP
-
   # A proxy to a remote RSMP component.
-
   class ComponentProxy < ComponentBase
     def initialize node:, id:, grouped: false
       super
+      @alarms = {}
       @statuses = {}
       @allow_repeat_updates = {}
     end
@@ -45,23 +44,12 @@ module RSMP
         @allow_repeat_updates[sCI].delete(n) if @allow_repeat_updates[sCI]
       end
     end
- 
+
     # handle incoming alarm
     def handle_alarm message
-#      code = message.attribute('aCId')
-#      previous = @alarms[code]
-#      if previous
-#        unless message.differ?(previous)
-#          raise RepeatedAlarmError.new("no changes from previous alarm #{previous.m_id_short}")
-#        end
-#        if Time.parse(message.attribute('aTs')) < Time.parse(previous.attribute('aTs'))
-#          raise TimestampError.new("timestamp is earlier than previous alarm #{previous.m_id_short}")
-#        end
-#      end
-#      p message
-#    ensure
-#      @alarms[code] = message
+      code = message.attribute('aCId')
+      alarm = get_alarm_state code
+      alarm.update_from_message message
     end
-
- end
+  end
 end

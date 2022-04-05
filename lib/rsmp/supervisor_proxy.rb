@@ -105,7 +105,7 @@ module RSMP
         process_status_subcribe message
       when StatusUnsubscribe
         process_status_unsubcribe message
-      when AlarmAcknowledged, AlarmSuspend, AlarmResume, AlarmRequest
+      when Alarm, AlarmAcknowledged, AlarmSuspend, AlarmResume, AlarmRequest
         process_alarm message
       else
         super message

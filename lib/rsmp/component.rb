@@ -1,7 +1,5 @@
 module RSMP
-
   # RSMP component
-
   class Component < ComponentBase
     def initialize node:, id:, grouped: false
       super
@@ -15,40 +13,38 @@ module RSMP
       raise UnknownStatus.new "Status #{status_code}/#{status_name} not implemented by #{self.class}"
     end
 
-    def get_alarm_state alarm_code
-      alarm = @alarms[alarm_code] ||= RSMP::AlarmState.new component_id: c_id, code: alarm_code
-    end
-
     def suspend_alarm alarm_code
       alarm = get_alarm_state alarm_code
-      return if alarm.suspended
-      log "Suspending alarm #{alarm_code}", level: :info
-      alarm.suspend
-      @node.alarm_changed alarm
+      if alarm.suspend
+        log "Suspending alarm #{alarm_code}", level: :info
+        @node.alarm_suspended_or_resumed alarm
+      else
+        log "Alarm #{alarm_code} already suspended", level: :info
+      end       
     end
 
     def resume_alarm alarm_code
       alarm = get_alarm_state alarm_code
-      return unless alarm.suspended
-      log "Resuming alarm #{alarm_code}", level: :info
-      alarm.resume
-      @node.alarm_changed alarm
+      if alarm.resume
+        log "Resuming alarm #{alarm_code}", level: :info
+        @node.alarm_suspended_or_resumed alarm
+      else
+        log "Alarm #{alarm_code} already resumed", level: :info
+      end
     end
 
     def activate_alarm alarm_code
       alarm = get_alarm_state alarm_code
-      return if alarm.active
+      return unless alarm.activate
       log "Activating alarm #{alarm_code}", level: :info
-      alarm.activate
-      @node.alarm_changed alarm
+      @node.alarm_activated_or_deactivated alarm
     end
 
     def deactivate_alarm alarm_code
       alarm = get_alarm_state alarm_code
-      return unless alarm.active
+      return unless alarm.deactivate
       log "Deactivating alarm #{alarm_code}", level: :info
-      alarm.deactivate
-      @node.alarm_changed alarm
+      @node.alarm_activated_or_deactivated alarm
     end
   end
 end

@@ -20,8 +20,12 @@ module RSMP
       @c_id = id
       @node = node
       @grouped = grouped
-      @alarms = {}
       clear_aggregated_status
+      @alarms = {}
+    end
+
+    def get_alarm_state alarm_code
+      alarm = @alarms[alarm_code] ||= RSMP::AlarmState.new component: self, code: alarm_code
     end
 
     def clear_aggregated_status

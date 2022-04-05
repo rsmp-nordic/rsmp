@@ -68,7 +68,13 @@ module RSMP
       when /Acknowledge/i
         AlarmAcknowledged.new attributes
       when /Suspend/i
-        AlarmSuspend.new attributes
+        if attributes['sS'] =~ /suspended/i
+          AlarmSuspended.new attributes
+        elsif attributes['sS'] =~ /notSuspended/i
+          AlarmResumed.new attributes
+        else
+          AlarmSuspend.new attributes
+        end
       when /Resume/i
         AlarmResume.new attributes
       else
@@ -264,7 +270,23 @@ module RSMP
     end
   end
 
+  class AlarmSuspended < Alarm
+    def initialize attributes = {}
+      super({
+        "aSp" => "Suspend",
+        "sS" => "suspended"
+      }.merge attributes)
+    end
+  end
 
+  class AlarmResumed < Alarm
+    def initialize attributes = {}
+      super({
+        "aSp" => "Suspend",
+        "sS" => "notSuspended"
+      }.merge attributes)
+    end
+  end
 
   class Watchdog < Message
     def initialize attributes = {}

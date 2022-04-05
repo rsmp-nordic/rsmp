@@ -93,23 +93,31 @@ module RSMP
       end
     end
 
-    def alarm_state_to_message alarm_state
-      Alarm.new(
+    def alarm_state_to_hash alarm_state
+      {
         'cId' => alarm_state.component_id,
-        'aTs' => clock.to_s,
         'aCId' => alarm_state.code,
-        'aSp' => (alarm_state.suspended ? 'Suspend' : 'Issue'),
+        'aTs' => Clock.to_s(alarm_state.timestamp),
         'ack' => (alarm_state.acknowledged ? 'Acknowledged' : 'notAcknowledged'),
         'sS' => (alarm_state.suspended ? 'suspended' : 'notSuspended'),
         'aS' => (alarm_state.active ? 'Active' : 'inActive'),
-        'cat' => (alarm_state.category || 'D'),
-        'pri' => (alarm_state.priority || '2'),
-        'rvs' => []
-      )
+        'cat' => alarm_state.category,
+        'pri' => alarm_state.priority.to_s,
+        'rvs' => alarm_state.rvs
+      }
     end
 
-    def alarm_changed alarm_state
-      alarm = alarm_state_to_message alarm_state
+    def alarm_suspended_or_resumed alarm_state
+      alarm = AlarmIssue.new( alarm_state_to_hash(alarm_state).merge('aSp' => 'Suspend') )
+      send_alarm alarm
+    end
+
+    def alarm_activated_or_deactivated alarm_state
+      alarm = AlarmIssue.new( alarm_state_to_hash(alarm_state).merge('aSp' => 'Issue') )
+      send_alarm alarm
+    end
+
+    def send_alarm alarm
       @proxies.each do |proxy|
         proxy.send_message alarm if proxy.ready?
       end
