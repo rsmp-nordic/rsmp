@@ -116,8 +116,8 @@ module RSMP
       m_id = options[:m_id] || RSMP::Message.make_m_id
 
       message = RSMP::AggregatedStatusRequest.new({
-          "ntsOId" => '',
-          "xNId" => '',
+          "ntsOId" => @ntsOId,
+          "xNId" => @xNId,
           "cId" => component,
           "mId" => m_id
       })
@@ -187,8 +187,8 @@ module RSMP
       request_list = status_list.map { |item| item.slice('sCI','n') }
 
       message = RSMP::StatusRequest.new({
-          "ntsOId" => '',
-          "xNId" => '',
+          "ntsOId" => @ntsOId,
+          "xNId" => @xNId,
           "cId" => component,
           "sS" => request_list,
           "mId" => m_id
@@ -232,8 +232,8 @@ module RSMP
       component.allow_repeat_updates subscribe_list
 
       message = RSMP::StatusSubscribe.new({
-          "ntsOId" => '',
-          "xNId" => '',
+          "ntsOId" => @ntsOId,
+          "xNId" => @xNId,
           "cId" => component_id,
           "sS" => subscribe_list,
           'mId' => m_id
@@ -262,8 +262,8 @@ module RSMP
       end
 
       message = RSMP::StatusUnsubscribe.new({
-        "ntsOId" => '',
-        "xNId" => '',
+        "ntsOId" => @ntsOId,
+        "xNId" => @xNId,
         "cId" => component_id,
         "sS" => status_list
       })
@@ -292,8 +292,8 @@ module RSMP
       validate_ready 'send command'
       m_id = options[:m_id] || RSMP::Message.make_m_id
       message = RSMP::CommandRequest.new({
-          "ntsOId" => '',
-          "xNId" => '',
+          "ntsOId" => @ntsOId,
+          "xNId" => @xNId,
           "cId" => component,
           "arg" => command_list,
           "mId" => m_id
@@ -369,6 +369,8 @@ module RSMP
       @site_settings = find_site_settings @site_id
       if @site_settings
         @sxl = @site_settings['sxl']
+        @ntsOId = @site_settings['ntsOId']
+        @xNId = @site_settings['xNId']
         setup_components @site_settings['components']
       else
         dont_acknowledge message, 'Rejected', "No config found for site #{@site_id}"

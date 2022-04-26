@@ -15,6 +15,8 @@ module RSMP
       @port = options[:port]
       @status_subscriptions = {}
       @sxl = @site_settings['sxl']
+      @ntsOId = @site_settings['ntsOId']
+      @xNId = @site_settings['xNId']
       @synthetic_id = Supervisor.build_id_from_ip_port @ip, @port
     end
 
@@ -160,6 +162,8 @@ module RSMP
         "se" => component.aggregated_status_bools,
         "mId" => m_id,
       })
+      message.attributes['ntsOId'] = @site_settings['ntsOId'] if @site_settings['ntsOId']
+      message.attributes['xNId'] = @site_settings['xNId'] if @site_settings['xNId']
 
       send_and_optionally_collect message, options do |collect_options|
         Collector.new self, collect_options.merge(task:@task, type: 'MessageAck')
