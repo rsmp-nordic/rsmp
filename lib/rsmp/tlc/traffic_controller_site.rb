@@ -52,7 +52,10 @@ module RSMP
       def build_component id:, type:, settings:{}
         component = case type
         when 'main'
-          @main = TrafficController.new node: self, id: id,
+          @main = TrafficController.new node: self,
+            id: id,
+            ntsOId: settings['ntsOId'],
+            xNId: settings['xNId'],
             cycle_time: settings['cycle_time'],
             startup_sequence: @startup_sequence,
             signal_plans: @signal_plans,

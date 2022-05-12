@@ -9,9 +9,9 @@ module RSMP
         :functional_position,
         :startup_sequence_active, :startup_sequence, :startup_sequence_pos
 
-      def initialize node:, id:, cycle_time: 10, signal_plans:,
+      def initialize node:, id:, ntsOId: nil, xNId: nil, cycle_time: 10, signal_plans:,
           startup_sequence:, live_output:nil, inputs:{}
-        super node: node, id: id, grouped: true
+        super node: node, id: id, ntsOId: ntsOId, xNId: xNId, grouped: true
         @signal_groups = []
         @detector_logics = []
         @plans = signal_plans

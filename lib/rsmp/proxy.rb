@@ -643,5 +643,13 @@ module RSMP
         return { sent: message }
       end
     end
+
+    def set_nts_message_attributes message
+      return unless @site && @site.main
+      ntsOId =  @site.main.ntsOId
+      xNId =  @site.main.xNId
+      message.attributes['ntsOId'] = ntsOId if ntsOId
+      message.attributes['xNId'] = xNId if xNId
+    end
   end
 end

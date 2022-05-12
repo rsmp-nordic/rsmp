@@ -1,7 +1,7 @@
 module RSMP
   # RSMP component
   class Component < ComponentBase
-    def initialize node:, id:, grouped: false
+    def initialize node:, id:, ntsOId: nil, xNId: nil, grouped: false
       super
     end
 

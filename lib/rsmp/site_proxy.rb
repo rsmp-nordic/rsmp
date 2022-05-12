@@ -114,13 +114,11 @@ module RSMP
     def request_aggregated_status component, options={}
       validate_ready 'request aggregated status'
       m_id = options[:m_id] || RSMP::Message.make_m_id
-
       message = RSMP::AggregatedStatusRequest.new({
-          "ntsOId" => @ntsOId,
-          "xNId" => @xNId,
-          "cId" => component,
-          "mId" => m_id
+        "cId" => component,
+        "mId" => m_id
       })
+      set_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
         AggregatedStatusCollector.new(
           self,
@@ -187,12 +185,11 @@ module RSMP
       request_list = status_list.map { |item| item.slice('sCI','n') }
 
       message = RSMP::StatusRequest.new({
-          "ntsOId" => @ntsOId,
-          "xNId" => @xNId,
           "cId" => component,
           "sS" => request_list,
           "mId" => m_id
       })
+      set_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
         StatusCollector.new(
           self,
@@ -232,12 +229,11 @@ module RSMP
       component.allow_repeat_updates subscribe_list
 
       message = RSMP::StatusSubscribe.new({
-          "ntsOId" => @ntsOId,
-          "xNId" => @xNId,
           "cId" => component_id,
           "sS" => subscribe_list,
           'mId' => m_id
       })
+      set_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
         StatusCollector.new(
           self,
@@ -262,11 +258,10 @@ module RSMP
       end
 
       message = RSMP::StatusUnsubscribe.new({
-        "ntsOId" => @ntsOId,
-        "xNId" => @xNId,
         "cId" => component_id,
         "sS" => status_list
       })
+      set_nts_message_attributes message
       send_message message, validate: options[:validate]
       message
     end
@@ -292,12 +287,11 @@ module RSMP
       validate_ready 'send command'
       m_id = options[:m_id] || RSMP::Message.make_m_id
       message = RSMP::CommandRequest.new({
-          "ntsOId" => @ntsOId,
-          "xNId" => @xNId,
           "cId" => component,
           "arg" => command_list,
           "mId" => m_id
       })
+      set_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
         CommandResponseCollector.new(
           self,
@@ -369,8 +363,6 @@ module RSMP
       @site_settings = find_site_settings @site_id
       if @site_settings
         @sxl = @site_settings['sxl']
-        @ntsOId = @site_settings['ntsOId']
-        @xNId = @site_settings['xNId']
         setup_components @site_settings['components']
       else
         dont_acknowledge message, 'Rejected', "No config found for site #{@site_id}"
