@@ -15,7 +15,7 @@ module RSMP
 
         super options
 
-        unless @main
+        unless main
           raise ConfigurationError.new "TLC must have a main component"
         end
 
@@ -24,7 +24,7 @@ module RSMP
       def start
         super
         start_tlc_timer
-        @main.initiate_startup_sequence
+        main.initiate_startup_sequence
       end
 
       def stop_subtasks
@@ -52,7 +52,7 @@ module RSMP
       def build_component id:, type:, settings:{}
         component = case type
         when 'main'
-          @main = TrafficController.new node: self,
+          TrafficController.new node: self,
             id: id,
             ntsOId: settings['ntsOId'],
             xNId: settings['xNId'],
@@ -63,11 +63,11 @@ module RSMP
             inputs: @site_settings['inputs']
         when 'signal_group'
           group = SignalGroup.new node: self, id: id
-          @main.add_signal_group group
+          main.add_signal_group group
           group
         when 'detector_logic'
           logic = DetectorLogic.new node: self, id: id
-          @main.add_detector_logic logic
+          main.add_detector_logic logic
           logic
         end
       end
@@ -112,8 +112,8 @@ module RSMP
       end
 
       def timer now
-        return unless @main
-        @main.timer now
+        return unless main
+        main.timer now
       end
 
       def verify_security_code level, code

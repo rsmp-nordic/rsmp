@@ -161,7 +161,12 @@ module RSMP
     end
 
     def build_component id:, type:, settings:{}
-      Component.new id:id, node: self, grouped: type=='main'
+      if type == 'main'
+        Component.new id:id, node: self, grouped: true,
+          ntsOId: settings['ntsOId'], xNId: settings['xNId']
+      else
+        Component.new id:id, node: self, grouped: false
+      end
     end
   end
 end

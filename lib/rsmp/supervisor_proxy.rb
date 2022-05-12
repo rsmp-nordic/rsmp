@@ -254,6 +254,7 @@ module RSMP
         "cTS"=>clock.to_s,
         "rvs"=>rvs
       })
+      set_nts_message_attributes response
       acknowledge message
       send_message response
     end
@@ -272,6 +273,7 @@ module RSMP
         "sS"=>sS,
         "mId" => options[:m_id]
       })
+      set_nts_message_attributes response
       acknowledge message
       send_message response
     end
@@ -409,6 +411,7 @@ module RSMP
           "sTs"=>now,
           "sS"=>sS
         })
+        set_nts_message_attributes update
         send_message update
         store_last_sent_status update
       end
@@ -429,5 +432,8 @@ module RSMP
     def check_sxl_version message
     end
 
+    def main
+      @site.main
+    end
   end
 end

@@ -438,7 +438,6 @@ module RSMP
     end
 
     def will_not_handle message
-      "WILL NOT HANDLE"
       reason = "since we're a #{self.class.name.downcase}" unless reason
       log "Ignoring #{message.type}, #{reason}", message: message, level: :warning
       dont_acknowledge message, nil, reason
@@ -645,9 +644,9 @@ module RSMP
     end
 
     def set_nts_message_attributes message
-      return unless @site && @site.main
-      ntsOId =  @site.main.ntsOId
-      xNId =  @site.main.xNId
+      return unless main
+      ntsOId =  main.ntsOId
+      xNId =  main.xNId
       message.attributes['ntsOId'] = ntsOId if ntsOId
       message.attributes['xNId'] = xNId if xNId
     end

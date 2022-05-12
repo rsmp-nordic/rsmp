@@ -375,7 +375,12 @@ module RSMP
     end
 
     def build_component id:, type:, settings:{}
-      ComponentProxy.new id:id, node: self, grouped: type=='main'
+      if type == 'main'
+        ComponentProxy.new id:id, node: self, grouped: true,
+          ntsOId: settings['ntsOId'], xNId: settings['xNId']
+      else
+        ComponentProxy.new id:id, node: self, grouped: false
+      end
     end
 
   end
