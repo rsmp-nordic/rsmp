@@ -644,11 +644,8 @@ module RSMP
     end
 
     def set_nts_message_attributes message
-      return unless main
-      ntsOId =  main.ntsOId
-      xNId =  main.xNId
-      message.attributes['ntsOId'] = ntsOId if ntsOId
-      message.attributes['xNId'] = xNId if xNId
+      message.attributes['ntsOId'] = (main && main.ntsOId) ? main.ntsOId : ''
+      message.attributes['xNId'] = (main && main.xNId) ? main.xNId : ''
     end
   end
 end
