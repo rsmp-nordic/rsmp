@@ -8,6 +8,7 @@ components:
   main:
     TC:
       cycle_time: 6
+      ntsOId: KK+AG9998=001TC000
   signal_group:
     A1:
     A2:
