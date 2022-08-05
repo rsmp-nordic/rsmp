@@ -50,8 +50,8 @@ module RSMP
         component = inferred.new node: self, id: component_id
         @components[ component_id] = component
         class_name = component.class.name.split('::').last
-        class_name << " compoent" unless class_name == 'Component'
-        log "Inferred #{class_name} #{component_id}", level: :debug
+        class_name << " component" unless (class_name == 'Component' || class_name == 'ComponentProxy')
+        log "Adding component #{component_id} with the inferred type #{class_name}", level: :debug
         component
       else
         raise UnknownComponent.new("Component #{component_id} not found") unless component

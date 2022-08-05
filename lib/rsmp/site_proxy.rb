@@ -384,5 +384,8 @@ module RSMP
       end
     end
 
+    def infer_component_type component_id
+      ComponentProxy
+    end
   end
 end

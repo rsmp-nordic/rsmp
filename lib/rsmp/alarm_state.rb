@@ -17,6 +17,19 @@ module RSMP
       @rvs = []
     end
 
+    def to_hash
+      {
+        'cId' => component_id,
+        'aCId' => code,
+        'aTs' => Clock.to_s(timestamp),
+        'ack' => (acknowledged ? 'Acknowledged' : 'notAcknowledged'),
+        'sS' => (suspended ? 'suspended' : 'notSuspended'),
+        'aS' => (active ? 'Active' : 'inActive'),
+        'cat' => category,
+        'pri' => priority.to_s,
+        'rvs' => rvs
+      }
+    end
     def suspend
       change, @suspended = !@suspended, true
       update_timestamp if change
@@ -89,6 +102,5 @@ module RSMP
       @priority = message.attribute('pri').to_i
       @rvs = message.attribute('rvs')
     end
-
   end
 end

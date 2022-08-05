@@ -15,7 +15,6 @@ module RSMP
       @proxies = []
       @sleep_condition = Async::Notification.new
       @proxies_condition = Async::Notification.new
-
       build_proxies
     end
 
@@ -93,27 +92,13 @@ module RSMP
       end
     end
 
-    def alarm_state_to_hash alarm_state
-      {
-        'cId' => alarm_state.component_id,
-        'aCId' => alarm_state.code,
-        'aTs' => Clock.to_s(alarm_state.timestamp),
-        'ack' => (alarm_state.acknowledged ? 'Acknowledged' : 'notAcknowledged'),
-        'sS' => (alarm_state.suspended ? 'suspended' : 'notSuspended'),
-        'aS' => (alarm_state.active ? 'Active' : 'inActive'),
-        'cat' => alarm_state.category,
-        'pri' => alarm_state.priority.to_s,
-        'rvs' => alarm_state.rvs
-      }
-    end
-
     def alarm_suspended_or_resumed alarm_state
-      alarm = AlarmIssue.new( alarm_state_to_hash(alarm_state).merge('aSp' => 'Suspend') )
+      alarm = AlarmIssue.new( alarm_state.to_hash.merge('aSp' => 'Suspend') )
       send_alarm alarm
     end
 
     def alarm_activated_or_deactivated alarm_state
-      alarm = AlarmIssue.new( alarm_state_to_hash(alarm_state).merge('aSp' => 'Issue') )
+      alarm = AlarmIssue.new( alarm_state.to_hash.merge('aSp' => 'Issue') )
       send_alarm alarm
     end
 
