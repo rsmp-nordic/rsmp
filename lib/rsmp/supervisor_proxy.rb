@@ -85,7 +85,10 @@ module RSMP
       sanitized_sxl_version = RSMP::Schemer.sanitize_version(sxl_version)
       log "Connection to supervisor established, using core #{@rsmp_version}, #{sxl} #{sanitized_sxl_version}", level: :info
       start_watchdog
-      send_all_aggregated_status if @site_settings['send_after_connect']
+      if @site_settings['send_after_connect']
+        send_all_aggregated_status
+        send_active_alarms
+      end
       super
     end
 
@@ -116,9 +119,6 @@ module RSMP
     end
 
     def acknowledged_first_ingoing message
-      # TODO
-      # aggregateds status should only be send for later version of rsmp
-      # to handle verison differences, we probably need inherited classes
       case message.type
       when "Watchdog"
         handshake_complete
@@ -129,6 +129,17 @@ module RSMP
       @site.components.each_pair do |c_id,component|
         if component.grouped
           send_aggregated_status component
+        end
+      end
+    end
+
+    def send_active_alarms
+      @site.components.each_pair do |c_id,component|
+        component.alarms.each_pair do |alarm_code, alarm_state|
+          if alarm_state.active
+            alarm = AlarmIssue.new( alarm_state.to_hash.merge('aSp' => 'Issue') )
+            send_message alarm
+          end
         end
       end
     end
