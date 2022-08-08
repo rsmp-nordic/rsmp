@@ -80,7 +80,7 @@ GEM
     nio4r (2.5.8)
     rake (13.0.6)
     regexp_parser (2.5.0)
-    rsmp_schemer (0.4.1)
+    rsmp_schemer (0.4.2)
       json_schemer (~> 0.2.21)
     rspec (3.10.0)
       rspec-core (~> 3.10.0)
@@ -112,7 +112,7 @@ PLATFORMS
 
 DEPENDENCIES
   aruba (~> 2.0.0)
-  bundler (~> 2.3.6)
+  bundler (~> 2.3.7)
   cucumber (~> 7.1.0)
   rake (~> 13.0.6)
   rsmp!
