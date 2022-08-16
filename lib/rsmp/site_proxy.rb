@@ -212,7 +212,7 @@ module RSMP
 
       # additional items can be used when verifying the response,
       # but must be removed from the subscribe message
-      subscribe_list = status_list.map { |item| item.slice('sCI','n','uRt') }
+      subscribe_list = status_list.map { |item| item.slice('sCI','n','uRt','sOc') }
 
       # update our subcription list
       @status_subscriptions[component_id] ||= {}
@@ -220,9 +220,11 @@ module RSMP
         sCI = item["sCI"]
         n = item["n"]
         uRt = item["uRt"]
+        sOc = item["sOc"]
         @status_subscriptions[component_id][sCI] ||= {}
         @status_subscriptions[component_id][sCI][n] ||= {}
         @status_subscriptions[component_id][sCI][n]['uRt'] = uRt
+        @status_subscriptions[component_id][sCI][n]['sOc'] = sOc
       end
 
       component = find_component component_id
