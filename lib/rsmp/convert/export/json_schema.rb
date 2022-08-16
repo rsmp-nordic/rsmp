@@ -31,9 +31,9 @@ module RSMP
           if item['list']
             case item['type']
             when "boolean"
-              out["$ref"] = "../../core/definitions.json#/boolean_list"
+              out["$ref"] = "../../../core/3.1.1/definitions.json#/boolean_list"
             when "integer", "ordinal", "unit", "scale", "long"
-              out["$ref"] = "../../core/definitions.json#/integer_list"
+              out["$ref"] = "../../../core/3.1.1/definitions.json#/integer_list"
             else
               raise "Error: List of #{item['type']} is not supported: #{item.inspect}"
             end
@@ -51,11 +51,11 @@ module RSMP
             when "string", "base64"
               out["type"] = "string"
             when "boolean"
-              out["$ref"] = "../../core/definitions.json#/boolean"
+              out["$ref"] = "../../../core/3.1.1/definitions.json#/boolean"
             when "timestamp"
-              out["$ref"] = "../../core/definitions.json#/timestamp"
+              out["$ref"] = "../../../core/3.1.1/definitions.json#/timestamp"
             when "integer", "ordinal", "unit", "scale", "long"
-              out["$ref"] = "../../core/definitions.json#/integer"
+              out["$ref"] = "../../../core/3.1.1/definitions.json#/integer"
             else
               out["type"] = "string"
             end
@@ -153,9 +153,11 @@ module RSMP
           out["commands/#{key}.json"] = output_json json
         end
 
-        def self.output_root out
+        def self.output_root out, meta
           json = {
-            "description"=> "A schema validatating message against the RSMP SXL for Traffic Light Controllers",
+            "name"=> meta['name'],
+            "description"=> meta['description'],
+            "version"=> meta['version'],
             "allOf" => [
               {
                 "if" => { "required" => ["type"], "properties" => { "type" => { "const" => "CommandRequest" }}},
@@ -180,7 +182,7 @@ module RSMP
 
         def self.generate sxl
           out = {}
-          output_root out
+          output_root out, sxl[:meta]
           output_alarms out, sxl[:alarms]
           output_statuses out, sxl[:statuses]
           output_commands out, sxl[:commands]
