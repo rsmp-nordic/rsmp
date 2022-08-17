@@ -74,9 +74,9 @@ module RSMP
       end
     rescue Interrupt
       # cntr-c
-    rescue RSMP::Schemer::UnknownSchemaTypeError => e
+    rescue RSMP::Schema::UnknownSchemaTypeError => e
       puts "Cannot start site: #{e}"
-    rescue RSMP::Schemer::UnknownSchemaVersionError => e
+    rescue RSMP::Schema::UnknownSchemaVersionError => e
       puts "Cannot start site: #{e}"
     rescue Psych::SyntaxError => e
       puts "Cannot read config file #{e}"

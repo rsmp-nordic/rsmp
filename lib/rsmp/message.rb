@@ -1,4 +1,4 @@
-require 'rsmp_schemer'
+require 'rsmp_schema'
 
 # rsmp messages
 module RSMP
@@ -146,7 +146,7 @@ module RSMP
     end
 
     def validate schemas
-      errors = RSMP::Schemer.validate attributes, schemas
+      errors = RSMP::Schema.validate attributes, schemas
       if errors
         error_string = errors.map {|item| item.reject {|e| e=='' } }.compact.join(', ').strip
         raise SchemaError.new error_string

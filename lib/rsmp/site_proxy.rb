@@ -47,7 +47,7 @@ module RSMP
 
     def handshake_complete
       super
-      sanitized_sxl_version = RSMP::Schemer.sanitize_version(@site_sxl_version)
+      sanitized_sxl_version = RSMP::Schema.sanitize_version(@site_sxl_version)
       log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{sanitized_sxl_version}", level: :log
       start_watchdog
     end
@@ -314,12 +314,12 @@ module RSMP
       # comes from the Version message send by the site
       type = 'tlc'
       version = message.attribute 'SXL'
-      RSMP::Schemer::find_schema! type, version, lenient: true
+      RSMP::Schema::find_schema! type, version, lenient: true
 
       # store sxl version requested by site
       # TODO should check agaist site settings
       @site_sxl_version = message.attribute 'SXL'
-    rescue RSMP::Schemer::UnknownSchemaError => e
+    rescue RSMP::Schema::UnknownSchemaError => e
       dont_acknowledge message, "Rejected #{message.type} message,", "#{e}"
     end
 

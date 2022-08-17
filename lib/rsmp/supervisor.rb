@@ -52,8 +52,8 @@ module RSMP
         unless sxl
           raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': No SXL specified")
         end
-        RSMP::Schemer.find_schemas! sxl if sxl
-      rescue RSMP::Schemer::UnknownSchemaError => e
+        RSMP::Schema.find_schemas! sxl if sxl
+      rescue RSMP::Schema::UnknownSchemaError => e
         raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': #{e}")
       end
     end
