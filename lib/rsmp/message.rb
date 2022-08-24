@@ -61,21 +61,21 @@ module RSMP
 
     def self.build_alarm attributes
       case attributes["aSp"]
-      when /Issue/i
+      when /^Issue$/i
         AlarmIssue.new attributes
-      when /Request/i
+      when /^Request$/i
         AlarmRequest.new attributes
-      when /Acknowledge/i
+      when /^Acknowledge$/i
         AlarmAcknowledged.new attributes
-      when /Suspend/i
-        if attributes['sS'] =~ /suspended/i
+      when /^Suspend$/i
+        if attributes['sS'] =~ /^suspended$/i
           AlarmSuspended.new attributes
-        elsif attributes['sS'] =~ /notSuspended/i
+        elsif attributes['sS'] =~ /^notSuspended$/i
           AlarmResumed.new attributes
         else
           AlarmSuspend.new attributes
         end
-      when /Resume/i
+      when /^Resume$/i
         AlarmResume.new attributes
       else
         Alarm.new attributes
