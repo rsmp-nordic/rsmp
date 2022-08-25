@@ -275,7 +275,7 @@ module RSMP
       component = @site.find_component component_id
       log "Received #{message.type}", message: message, level: :log
       sS = message.attributes["sS"].map do |arg|
-        value, quality =  component.get_status arg['sCI'], arg['n']
+        value, quality =  component.get_status arg['sCI'], arg['n'], {sxl_version: sxl_version}
         { "s" => value.to_s, "q" => quality.to_s }.merge arg
       end
       response = StatusResponse.new({

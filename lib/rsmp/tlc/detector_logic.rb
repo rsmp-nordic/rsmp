@@ -9,7 +9,7 @@ module RSMP
         @value = 0
       end
 
-      def get_status code, name=nil
+      def get_status code, name=nil, options={}
         case code
         when 'S0201', 'S0202', 'S0203', 'S0204'
           return send("handle_#{code.downcase}", code, name)
@@ -18,7 +18,7 @@ module RSMP
         end
       end
 
-      def handle_s0201 status_code, status_name=nil
+      def handle_s0201 status_code, status_name=nil, options={}
         case status_name
         when 'starttime'
           TrafficControllerSite.make_status @node.clock.to_s
@@ -27,7 +27,7 @@ module RSMP
         end
       end
 
-      def handle_s0202 status_code, status_name=nil
+      def handle_s0202 status_code, status_name=nil, options={}
         case status_name
         when 'starttime'
           TrafficControllerSite.make_status @node.clock.to_s
@@ -36,7 +36,7 @@ module RSMP
         end
       end
 
-      def handle_s0203 status_code, status_name=nil
+      def handle_s0203 status_code, status_name=nil, options={}
         case status_name
         when 'starttime'
           TrafficControllerSite.make_status @node.clock.to_s
@@ -45,7 +45,7 @@ module RSMP
         end
       end
 
-      def handle_s0204 status_code, status_name=nil
+      def handle_s0204 status_code, status_name=nil, options={}
         case status_name
         when 'starttime'
           TrafficControllerSite.make_status @node.clock.to_s
@@ -70,7 +70,7 @@ module RSMP
         end
       end
 
-      def handle_command command_code, arg
+      def handle_command command_code, arg, options={}
         case command_code
         when 'M0008'
           handle_m0008 arg
@@ -79,7 +79,7 @@ module RSMP
         end
       end
 
-      def handle_m0008 arg
+      def handle_m0008 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         status = arg['status']=='True'
         mode = arg['mode']=='True'

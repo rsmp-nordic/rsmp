@@ -647,5 +647,11 @@ module RSMP
       message.attributes['ntsOId'] = (main && main.ntsOId) ? main.ntsOId : ''
       message.attributes['xNId'] = (main && main.xNId) ? main.xNId : ''
     end
+
+    # use Gem class to check version requirement
+    def self.version_requirement_met? requirement, version
+      Gem::Requirement.new(requirement).satisfied_by?(Gem::Version.new(version))
+    end
+
   end
 end

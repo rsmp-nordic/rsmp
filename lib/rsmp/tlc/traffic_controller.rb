@@ -204,25 +204,25 @@ module RSMP
         @signal_groups.map { |group| group.state }.join
       end
 
-      def handle_command command_code, arg
+      def handle_command command_code, arg, options={}
         case command_code
         when 'M0001', 'M0002', 'M0003', 'M0004', 'M0005', 'M0006', 'M0007',
              'M0012', 'M0013', 'M0014', 'M0015', 'M0016', 'M0017', 'M0018',
              'M0019', 'M0020', 'M0021', 'M0022',
              'M0103', 'M0104'
 
-          return send("handle_#{command_code.downcase}", arg)
+          return send("handle_#{command_code.downcase}", arg, options)
         else
           raise UnknownCommand.new "Unknown command #{command_code}"
         end
       end
 
-      def handle_m0001 arg
+      def handle_m0001 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         switch_functional_position arg['status'], timeout: arg['timeout'].to_i*60
       end
 
-      def handle_m0002 arg
+      def handle_m0002 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         if TrafficControllerSite.from_rsmp_bool(arg['status'])
           switch_plan arg['timeplan']
@@ -231,12 +231,12 @@ module RSMP
         end
       end
 
-      def handle_m0003 arg
+      def handle_m0003 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         @traffic_situation = arg['traficsituation'].to_i
       end
 
-      def handle_m0004 arg
+      def handle_m0004 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         # don't restart immeediately, since we need to first send command response
         # instead, defer an action, which will be handled by the TLC site
@@ -244,7 +244,7 @@ module RSMP
         @node.defer :restart
       end
 
-      def handle_m0005 arg
+      def handle_m0005 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         @emergency_route = (arg['status'] == 'True')
         @emergency_route_number = arg['emergencyroute'].to_i
@@ -272,7 +272,7 @@ module RSMP
         end
       end
 
-      def handle_m0006 arg
+      def handle_m0006 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         input = arg['input'].to_i
         status = string_to_bool arg['status']
@@ -288,16 +288,16 @@ module RSMP
         input_logic input, change if change != nil
       end
 
-      def handle_m0007 arg
+      def handle_m0007 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         set_fixed_time_control arg['status']
       end
 
-      def handle_m0012 arg
+      def handle_m0012 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
       end
 
-      def handle_m0013 arg
+      def handle_m0013 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
       end
 
@@ -307,7 +307,7 @@ module RSMP
         plan
       end
 
-      def handle_m0014 arg
+      def handle_m0014 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         plan = find_plan arg['plan']
         arg['status'].split(',').each do |item|
@@ -319,15 +319,15 @@ module RSMP
         end
       end
 
-      def handle_m0015 arg
+      def handle_m0015 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
       end
 
-      def handle_m0016 arg
+      def handle_m0016 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
       end
 
-      def handle_m0017 arg
+      def handle_m0017 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         arg['status'].split(',').each do |item|
           elems = item.split('-')
@@ -343,7 +343,7 @@ module RSMP
         end
       end
 
-      def handle_m0018 arg
+      def handle_m0018 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
       end
 
@@ -373,7 +373,7 @@ module RSMP
         bool ?  '1' : '0'
       end
 
-      def handle_m0019 arg
+      def handle_m0019 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         input = arg['input'].to_i
         force = string_to_bool arg['status']
@@ -390,20 +390,20 @@ module RSMP
         input_logic input, change if change != nil
       end
 
-      def handle_m0020 arg
+      def handle_m0020 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
       end
 
-      def handle_m0021 arg
+      def handle_m0021 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
       end
 
-      def handle_m0103 arg
+      def handle_m0103 arg, options={}
         level = {'Level1'=>1,'Level2'=>2}[arg['status']]
         @node.change_security_code level, arg['oldSecurityCode'], arg['newSecurityCode']
       end
 
-      def handle_m0104 arg
+      def handle_m0104 arg, options={}
         @node.verify_security_code 1, arg['securityCode']
         time = Time.new(
           arg['year'],
@@ -459,7 +459,7 @@ module RSMP
         mode
       end
 
-      def get_status code, name=nil
+      def get_status code, name=nil, options={}
         case code
         when 'S0001', 'S0002', 'S0003', 'S0004', 'S0005', 'S0006', 'S0007',
              'S0008', 'S0009', 'S0010', 'S0011', 'S0012', 'S0013', 'S0014',
@@ -468,13 +468,13 @@ module RSMP
              'S0029', 'S0030', 'S0031',
              'S0091', 'S0092', 'S0095', 'S0096', 'S0097',
              'S0205', 'S0206', 'S0207', 'S0208'
-          return send("handle_#{code.downcase}", code, name)
+          return send("handle_#{code.downcase}", code, name, options)
         else
           raise InvalidMessage.new "unknown status code #{code}"
         end
       end
 
-      def handle_s0001 status_code, status_name=nil
+      def handle_s0001 status_code, status_name=nil, options={}
         case status_name
         when 'signalgroupstatus'
           TrafficControllerSite.make_status format_signal_group_status
@@ -487,14 +487,14 @@ module RSMP
         end
       end
 
-      def handle_s0002 status_code, status_name=nil
+      def handle_s0002 status_code, status_name=nil, options={}
         case status_name
         when 'detectorlogicstatus'
           TrafficControllerSite.make_status @detector_logics.map { |dl| bool_to_digit(dl.value) }.join
         end
       end
 
-      def handle_s0003 status_code, status_name=nil
+      def handle_s0003 status_code, status_name=nil, options={}
         case status_name
         when 'inputstatus'
           TrafficControllerSite.make_status @inputs.actual_string
@@ -503,7 +503,7 @@ module RSMP
         end
       end
 
-      def handle_s0004 status_code, status_name=nil
+      def handle_s0004 status_code, status_name=nil, options={}
         case status_name
         when 'outputstatus'
           TrafficControllerSite.make_status 0
@@ -512,14 +512,14 @@ module RSMP
         end
       end
 
-      def handle_s0005 status_code, status_name=nil
+      def handle_s0005 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status @is_starting
         end
       end
 
-      def handle_s0006 status_code, status_name=nil
+      def handle_s0006 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status @emergency_route
@@ -528,7 +528,7 @@ module RSMP
         end
       end
 
-      def handle_s0007 status_code, status_name=nil
+      def handle_s0007 status_code, status_name=nil, options={}
         case status_name
         when 'intersection'
           TrafficControllerSite.make_status @intersection
@@ -537,7 +537,7 @@ module RSMP
         end
       end
 
-      def handle_s0008 status_code, status_name=nil
+      def handle_s0008 status_code, status_name=nil, options={}
         case status_name
         when 'intersection'
           TrafficControllerSite.make_status @intersection
@@ -546,7 +546,7 @@ module RSMP
         end
       end
 
-      def handle_s0009 status_code, status_name=nil
+      def handle_s0009 status_code, status_name=nil, options={}
         case status_name
         when 'intersection'
           TrafficControllerSite.make_status @intersection
@@ -555,7 +555,7 @@ module RSMP
         end
       end
 
-      def handle_s0010 status_code, status_name=nil
+      def handle_s0010 status_code, status_name=nil, options={}
         case status_name
         when 'intersection'
           TrafficControllerSite.make_status @intersection
@@ -564,7 +564,7 @@ module RSMP
         end
       end
 
-      def handle_s0011 status_code, status_name=nil
+      def handle_s0011 status_code, status_name=nil, options={}
         case status_name
         when 'intersection'
           TrafficControllerSite.make_status @intersection
@@ -573,7 +573,7 @@ module RSMP
         end
       end
 
-      def handle_s0012 status_code, status_name=nil
+      def handle_s0012 status_code, status_name=nil, options={}
         case status_name
         when 'intersection'
           TrafficControllerSite.make_status @intersection
@@ -582,7 +582,7 @@ module RSMP
         end
       end
 
-      def handle_s0013 status_code, status_name=nil
+      def handle_s0013 status_code, status_name=nil, options={}
         case status_name
         when 'intersection'
           TrafficControllerSite.make_status @intersection
@@ -591,49 +591,49 @@ module RSMP
         end
       end
 
-      def handle_s0014 status_code, status_name=nil
+      def handle_s0014 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status @plan
         end
       end
 
-      def handle_s0015 status_code, status_name=nil
+      def handle_s0015 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status @traffic_situation
         end
       end
 
-      def handle_s0016 status_code, status_name=nil
+      def handle_s0016 status_code, status_name=nil, options={}
         case status_name
         when 'number'
           TrafficControllerSite.make_status @detector_logics.size
         end
       end
 
-      def handle_s0017 status_code, status_name=nil
+      def handle_s0017 status_code, status_name=nil, options={}
         case status_name
         when 'number'
           TrafficControllerSite.make_status @signal_groups.size
         end
       end
 
-      def handle_s0018 status_code, status_name=nil
+      def handle_s0018 status_code, status_name=nil, options={}
         case status_name
         when 'number'
           TrafficControllerSite.make_status @plans.size
         end
       end
 
-      def handle_s0019 status_code, status_name=nil
+      def handle_s0019 status_code, status_name=nil, options={}
         case status_name
         when 'number'
           TrafficControllerSite.make_status @num_traffic_situations
         end
       end
 
-      def handle_s0020 status_code, status_name=nil
+      def handle_s0020 status_code, status_name=nil, options={}
         case status_name
         when 'intersection'
           TrafficControllerSite.make_status @intersection
@@ -642,21 +642,21 @@ module RSMP
         end
       end
 
-      def handle_s0021 status_code, status_name=nil
+      def handle_s0021 status_code, status_name=nil, options={}
         case status_name
         when 'detectorlogics'
           TrafficControllerSite.make_status @detector_logics.map { |logic| bool_to_digit(logic.forced)}.join
         end
       end
 
-      def handle_s0022 status_code, status_name=nil
+      def handle_s0022 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status @plans.keys.join(',')
         end
       end
 
-      def handle_s0023 status_code, status_name=nil
+      def handle_s0023 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           dynamic_bands = @plans.map { |nr,plan| plan.dynamic_bands_string }
@@ -665,21 +665,21 @@ module RSMP
         end
       end
 
-      def handle_s0024 status_code, status_name=nil
+      def handle_s0024 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status '1-0'
         end
       end
 
-      def handle_s0026 status_code, status_name=nil
+      def handle_s0026 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status '0-00'
         end
       end
 
-      def handle_s0027 status_code, status_name=nil
+      def handle_s0027 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           status = @day_time_table.map do |i,item|
@@ -689,60 +689,74 @@ module RSMP
         end
       end
 
-      def handle_s0028 status_code, status_name=nil
+      def handle_s0028 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status '00-00'
         end
       end
 
-      def handle_s0029 status_code, status_name=nil
+      def handle_s0029 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status @inputs.forced_string
         end
       end
 
-      def handle_s0030 status_code, status_name=nil
+      def handle_s0030 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status ''
         end
       end
 
-      def handle_s0031 status_code, status_name=nil
+      def handle_s0031 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status ''
         end
       end
 
-      def handle_s0091 status_code, status_name=nil
-        case status_name
-        when 'user'
-          TrafficControllerSite.make_status 'nobody'
-        when 'status'
-          TrafficControllerSite.make_status 'logout'
+      def handle_s0091 status_code, status_name=nil, options={}
+        if Proxy.version_requirement_met? '>=1.1',options[:sxl_version]
+          case status_name
+          when 'user'
+            TrafficControllerSite.make_status 0
+          end
+        else
+          case status_name
+          when 'user'
+            TrafficControllerSite.make_status 'nobody'
+          when 'status'
+            TrafficControllerSite.make_status 'logout'
+          end
         end
       end
 
-      def handle_s0092 status_code, status_name=nil
-        case status_name
-        when 'user'
-          TrafficControllerSite.make_status 'nobody'
-        when 'status'
-          TrafficControllerSite.make_status 'logout'
+      def handle_s0092 status_code, status_name=nil, options={}
+        if Proxy.version_requirement_met? '>=1.1',options[:sxl_version]
+          case status_name
+          when 'user'
+            TrafficControllerSite.make_status 0
+          end
+        else
+          case status_name
+          when 'user'
+            TrafficControllerSite.make_status 'nobody'
+          when 'status'
+            TrafficControllerSite.make_status 'logout'
+          end
         end
       end
 
-      def handle_s0095 status_code, status_name=nil
+      def handle_s0095 status_code, status_name=nil, options={}
         case status_name
         when 'status'
           TrafficControllerSite.make_status RSMP::VERSION
         end
       end
 
-      def handle_s0096 status_code, status_name=nil
+      def handle_s0096 status_code, status_name=nil, options={}
         now = clock.now
         case status_name
         when 'year'
@@ -760,7 +774,7 @@ module RSMP
         end
       end
 
-      def handle_s0097 status_code, status_name=nil
+      def handle_s0097 status_code, status_name=nil, options={}
         case status_name
         when 'checksum'
           TrafficControllerSite.make_status '1'
@@ -770,7 +784,7 @@ module RSMP
         end
       end
 
-      def handle_s0205 status_code, status_name=nil
+      def handle_s0205 status_code, status_name=nil, options={}
         case status_name
         when 'start'
           TrafficControllerSite.make_status clock.to_s
@@ -779,7 +793,7 @@ module RSMP
         end
       end
 
-      def handle_s0206 status_code, status_name=nil
+      def handle_s0206 status_code, status_name=nil, options={}
         case status_name
         when 'start'
           TrafficControllerSite.make_status clock.to_s
@@ -788,7 +802,7 @@ module RSMP
         end
       end
 
-      def handle_s0207 status_code, status_name=nil
+      def handle_s0207 status_code, status_name=nil, options={}
         case status_name
         when 'start'
           TrafficControllerSite.make_status clock.to_s
@@ -797,7 +811,7 @@ module RSMP
         end
       end
 
-      def handle_s0208 status_code, status_name=nil
+      def handle_s0208 status_code, status_name=nil, options={}
         case status_name
         when 'start'
           TrafficControllerSite.make_status clock.to_s

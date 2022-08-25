@@ -9,7 +9,7 @@ module RSMP
       raise UnknownCommand.new "Command #{command_code} not implemented by #{self.class}"
     end
 
-    def get_status status_code, status_name=nil
+    def get_status status_code, status_name=nil, options={}
       raise UnknownStatus.new "Status #{status_code}/#{status_name} not implemented by #{self.class}"
     end
 

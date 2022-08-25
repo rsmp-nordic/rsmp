@@ -35,17 +35,17 @@ module RSMP
         state
       end
 
-      def handle_command command_code, arg
+      def handle_command command_code, arg, options={}
         case command_code
         when 'M0010', 'M0011'
-          return send("handle_#{command_code.downcase}", arg)
+          return send("handle_#{command_code.downcase}", arg, options)
         else
           raise UnknownCommand.new "Unknown command #{command_code}"
         end
       end
 
       # Start of signal group. Orders a signal group to green
-      def handle_m0010 arg
+      def handle_m0010 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         if TrafficControllerSite.from_rsmp_bool arg['status']
           log "Start signal group #{c_id}, go to green", level: :info
@@ -53,14 +53,14 @@ module RSMP
       end
 
       # Stop of signal group. Orders a signal group to red
-      def handle_m0011 arg
+      def handle_m0011 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         if TrafficControllerSite.from_rsmp_bool arg['status']
           log "Stop signal group #{c_id}, go to red", level: :info
         end
       end
 
-      def get_status code, name=nil
+      def get_status code, name=nil, options={}
         case code
         when 'S0025'
           return send("handle_#{code.downcase}", code, name)
@@ -69,7 +69,7 @@ module RSMP
         end
       end
 
-      def handle_s0025 status_code, status_name=nil
+      def handle_s0025 status_code, status_name=nil, options={}
         now = @node.clock.to_s
         case status_name
         when 'minToGEstimate'
