@@ -313,12 +313,29 @@ module RSMP
       super str, options.merge(ip: @ip, port: @port, site_id: @site_id)
     end
 
+    def self.latest_core_version
+      RSMP::Schema.schemas[:core].keys.last
+    end
+
+    def self.all_core_versions
+      RSMP::Schema.schemas[:core].keys
+    end
+
+    def self.latest_sxl_tlc_version
+      RSMP::Schema.schemas[:tlc].keys.last
+    end
+
+    def self.all_sxl_tlc_versions
+      RSMP::Schema.schemas[:tlc].keys
+    end
+
     def get_schemas
       # normally we have an sxl, but during connection, it hasn't been established yet
       # at these times we only validate against the core schema
       # TODO
-      # what schema should we use to validate the intial Version and MessageAck messages?
-      schemas = { core: '3.1.5' }
+      # what schema should we use to validate the initial Version and MessageAck messages?
+      schemas = { core: latest_core_version } # use latest core
+      p schemas
       schemas[sxl] = RSMP::Schema.sanitize_version(sxl_version) if sxl && sxl_version
       schemas
     end
@@ -458,8 +475,8 @@ module RSMP
     end
 
     def rsmp_versions
-      return ['3.1.5'] if @site_settings["rsmp_versions"] == 'latest'
-      return ['3.1.1','3.1.2','3.1.3','3.1.4','3.1.5'] if @site_settings["rsmp_versions"] == 'all'
+      return [latest_core_version] if @site_settings["rsmp_versions"] == 'latest'
+      return all_core_versions if @site_settings["rsmp_versions"] == 'all'
       @site_settings["rsmp_versions"]
     end
 
@@ -510,9 +527,9 @@ module RSMP
 
     def send_version site_id, rsmp_versions
       if rsmp_versions=='latest'
-        versions = ['3.1.5']
+        versions = [latest_core_version]
       elsif rsmp_versions=='all'
-        versions = ['3.1.1','3.1.2','3.1.3','3.1.4','3.1.5']
+        versions = all_core_versions
       else
         versions = [rsmp_versions].flatten
       end

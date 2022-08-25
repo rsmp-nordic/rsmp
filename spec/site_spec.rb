@@ -45,18 +45,21 @@ RSpec.describe RSMP::Site do
 				# and exhcanging RSMP handhake
 				endpoint = Async::IO::Endpoint.tcp('localhost', port)
 				tasks = endpoint.accept do |socket|  # creates async tasks
-			  	stream = Async::IO::Stream.new(socket)
-			  	protocol = Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
-			  	
+					stream = Async::IO::Stream.new(socket)
+					protocol = Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+
 			  	# read version
 			  	version = JSON.parse protocol.read_line
-					expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.1"}, {"vers"=>"3.1.2"}, {"vers"=>"3.1.3"}, {"vers"=>"3.1.4"}, {"vers"=>"3.1.5"}], "SXL"=>"1.0.15", "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version"})
+			  	versions_array = RSMP::Schema.core_versions.map { |version| { vers: versions } }
+			  	sxl_version = RSMP::Schema.versions(:tlc).to_s
+			  	core_version = RSMP::Proxy.latest_core_tlc_version.to_s
+					expect(version).to eq({"RSMP"=>versions_array, "SXL"=>sxl_version, "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version"})
 
 					# send ack
 					protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"])
 
 		      # write version message
-					protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.5"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.0.15","mId":"51931724-b143-45a3-aa43-171f79ebb337"}'
+					protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"51931724-b143-45a3-aa43-171f79ebb337"})
 
 					# read ack
 					version_ack = JSON.parse protocol.read_line

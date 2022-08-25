@@ -75,7 +75,9 @@ RSpec.describe RSMP::Supervisor do
 				supervisor.start
 
 	      # write version message
-				protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.5"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.0.15","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'
+				core_version = RSMP::Schema.core_versions.to_s
+				sxl_version = RSMP::Schema.versions(:tlc).to_s
+				protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"})
 
 				# read ack
 				version_ack = JSON.parse protocol.read_line
@@ -86,7 +88,9 @@ RSpec.describe RSMP::Supervisor do
 
 				# read version
 				version = JSON.parse protocol.read_line
-				expect(version).to eq({"RSMP"=>[{"vers"=>"3.1.1"}, {"vers"=>"3.1.2"}, {"vers"=>"3.1.3"}, {"vers"=>"3.1.4"}, {"vers"=>"3.1.5"}], "SXL"=>"1.0.15", "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version"})
+				core_version = RSMP::Schema.core_versions.to_s
+				sxl_version = RSMP::Schema.versions(:tlc).to_s
+				expect(version).to eq({"RSMP"=>core_version, "SXL"=>sxl_version, "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version"})
 
 				# send ack
 				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
@@ -103,7 +107,9 @@ RSpec.describe RSMP::Supervisor do
 			async_context do
 				supervisor.start
 
-				protocol.write_lines '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.5"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.0.15","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}'
+				core_version = RSMP::Schema.core_versions.to_s
+				sxl_version = RSMP::Schema.versions(:tlc).to_s
+				protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"})
 				version_ack = JSON.parse protocol.read_line
 				version = JSON.parse protocol.read_line
 				protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
@@ -119,7 +125,7 @@ RSpec.describe RSMP::Supervisor do
 					"Sent MessageAck for Version 8db0",
 					"Sent Version",
 					"Received MessageAck for Version 1b20",
-					"Connection to site RN+SI0001 established, using core 3.1.5, tlc 1.0.15"
+					"Connection to site RN+SI0001 established, using core #{core_version}, tlc #{sxl_version}"
 				])
 			end
 		end

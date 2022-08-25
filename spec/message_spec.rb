@@ -3,12 +3,23 @@ Bundler.require(:default, :development)
 def build json
 	attributes = RSMP::Message.parse_attributes(json)
 	message = RSMP::Message.build(attributes,json)
-	message.validate(core:'3.1.5',tlc:'1.0.15') unless message.is_a? RSMP::Unknown
+	message.validate({
+		core: RSMP::Schema.latest_core_version,
+		tlc: RSMP::Schema.latest_version(:tlc)
+	}) unless message.is_a? RSMP::Unknown
 	message
 end
 
+def core_versions
+	RSMP::Schema.core_versions.map { |version| {"vers"=>version} }
+end
+
+def sxl_version
+	RSMP::Schema.latest_version(:tlc)
+end
+
 RSpec.describe RSMP::Message do
-	let(:version_str) { '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.1"},{"vers":"3.1.2"},{"vers":"3.1.3"},{"vers":"3.1.4"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}' }
+	let(:version_str) { %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}) }
 	let(:ack_str) { '{"mType":"rSMsg","type":"MessageAck","oMId":"a54dc38b-7ddb-42a6-b6e8-95b0d00dad19"}' }
 	let(:not_ack_str) { '{"mType":"rSMsg","type":"MessageNotAck","rea":"since we are a rsmp::SupervisorProxy","oMId":"24b5e2d1-fd32-4f12-80cf-f32f8b2772af"}' }
 	let(:watchdog_str) { '{"mType":"rSMsg","type":"Watchdog","wTs":"2015-06-08T12:01:39.654Z","mId":"a8cafa58-31bc-40bb-b335-645b5ac985cd"}' }
@@ -59,8 +70,8 @@ RSpec.describe RSMP::Message do
 
 	context 'when creating messages' do
 		let(:json) {{
-			 "RSMP" => [{"vers"=>"3.1.1"}, {"vers"=>"3.1.2"}, {"vers"=>"3.1.3"}, {"vers"=>"3.1.4"}],
-       "SXL" => "1.1",
+			 "RSMP" => core_versions,
+       "SXL" => sxl_version,
        "mId" => "8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6",
        "mType" => "rSMsg",
        "siteId" => [{"sId"=>"RN+SI0001"}],
@@ -139,7 +150,7 @@ RSpec.describe RSMP::Message do
 		it 'generates json' do
 			message = RSMP::Version.new(json)
 			message.generate_json
-			str = '{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"3.1.1"},{"vers":"3.1.2"},{"vers":"3.1.3"},{"vers":"3.1.4"}],"SXL":"1.1","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","siteId":[{"sId":"RN+SI0001"}]}'
+			str = %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions.to_json},"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","siteId":[{"sId":"RN+SI0001"}]})
 			expect(message.json).to eq(str)
 		end
 
@@ -166,7 +177,7 @@ RSpec.describe RSMP::Message do
 		let(:message) { build(version_str) }
 
 		it 'returns attribute values' do
-			expect( message.attribute("SXL") ).to eq('1.1')
+			expect( message.attribute("SXL") ).to eq(sxl_version)
 		end
 
 		it 'raises MissingAttribute when accessing non-existing attribute' do
