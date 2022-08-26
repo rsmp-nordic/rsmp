@@ -60,6 +60,7 @@ module RSMP
         @startup_sequence_pos = 0
         @time_int = nil
         @inputs.reset
+        @signal_priorities = []
       end
 
       def dark?
@@ -105,8 +106,30 @@ module RSMP
         move_startup_sequence if @startup_sequence_active
 
         @signal_groups.each { |group| group.timer }
+        @signal_priorities.each {|priority| priority.timer }
 
         output_states
+        prune_priorities
+      end
+
+      def signal_priority_changed priority, state
+        puts "priority #{priority.id} -> #{state}"
+      end
+
+      def prune_priorities
+        # TODO spec states that update must be send one time when it reaches the state 'completed',
+        # and then be removed. so we need to know when it has been sent
+        @signal_priorities.delete_if {|priority| priority.state=='completed' && priority.age >= 1.5 }
+      end
+
+      def get_priority_list
+        @signal_priorities.map do |priority|
+          {
+            "r" => priority.id,
+            "t" => RSMP::Clock.to_s(priority.updated),
+            "s" => priority.state
+          }
+        end
       end
 
       def move_cycle_counter
@@ -398,6 +421,43 @@ module RSMP
         @node.verify_security_code 2, arg['securityCode']
       end
 
+      def handle_m0022 arg, options={}
+        id = arg['requestId']
+        type = arg['type']
+        priority = @signal_priorities.find { |priority| priority.id == id }
+        case type
+        when 'new'
+          if priority
+            raise MessageRejected.new("Priority Request #{id} already exists")
+          else
+            #ref = arg.slice('signalGroupId','inputId','connectionId','approachId','laneInId','laneOutId')
+            if arg['signalGroupId']
+              signal_group = node.find_component arg['signalGroupId']
+            end
+
+            level = arg['level']
+            eta = arg['eta']
+            vehicleType = arg['vehicleType']
+            @signal_priorities << SignalPriority.new(node:self, id:id, level:level, eta:eta, vehicleType:vehicleType)
+            log "Priority request for signal group #{signal_group.c_id} received with id #{id}", level: :info
+          end          
+        when 'update'
+          if priority
+            log "Priority Request #{id} updated", level: :info
+          else
+            raise MessageRejected.new("Cannot update priority request #{id}, not found")
+          end
+        when 'cancel'
+          if priority
+            @signal_priorities.delete priority
+          else
+            raise MessageRejected.new("Cannot cancel priority request #{id}, not found")
+          end    
+        else
+          raise MessageRejected.new("Unknown type #{type}")
+        end
+      end
+
       def handle_m0103 arg, options={}
         level = {'Level1'=>1,'Level2'=>2}[arg['status']]
         @node.change_security_code level, arg['oldSecurityCode'], arg['newSecurityCode']
@@ -465,7 +525,7 @@ module RSMP
              'S0008', 'S0009', 'S0010', 'S0011', 'S0012', 'S0013', 'S0014',
              'S0015', 'S0016', 'S0017', 'S0018', 'S0019', 'S0020', 'S0021',
              'S0022', 'S0023', 'S0024', 'S0026', 'S0027', 'S0028',
-             'S0029', 'S0030', 'S0031',
+             'S0029', 'S0030', 'S0031', 'S0032', 'S0033',
              'S0091', 'S0092', 'S0095', 'S0096', 'S0097',
              'S0205', 'S0206', 'S0207', 'S0208'
           return send("handle_#{code.downcase}", code, name, options)
@@ -714,6 +774,24 @@ module RSMP
         case status_name
         when 'status'
           TrafficControllerSite.make_status ''
+        end
+      end
+
+      def handle_s0032 status_code, status_name=nil, options={}
+        case status_name
+        when 'intersection'
+          TrafficControllerSite.make_status @intersection
+        when 'status'
+          TrafficControllerSite.make_status 'local'
+        when 'source'
+          TrafficControllerSite.make_status 'startup'
+        end
+      end
+
+      def handle_s0033 status_code, status_name=nil, options={}
+        case status_name
+        when 'status'
+          TrafficControllerSite.make_status get_priority_list
         end
       end
 

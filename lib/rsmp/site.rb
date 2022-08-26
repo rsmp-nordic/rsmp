@@ -145,7 +145,8 @@ module RSMP
       nil
     end
 
-    def build_component id:, type:, settings:{}
+    def build_component id:, type:, settings:
+      settings ||= {}
       if type == 'main'
         Component.new id:id, node: self, grouped: true,
           ntsOId: settings['ntsOId'], xNId: settings['xNId']
