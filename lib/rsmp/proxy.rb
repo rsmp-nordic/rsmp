@@ -328,7 +328,7 @@ module RSMP
       raise IOError unless @protocol
       message.direction = :out
       message.generate_json
-      message.validate get_schemas unless validate==false
+  #    message.validate get_schemas unless validate==false
       @protocol.write_lines message.json
       expect_acknowledgement message
       notify message
@@ -379,7 +379,7 @@ module RSMP
     def process_packet json
       attributes = Message.parse_attributes json
       message = Message.build attributes, json
-      message.validate(get_schemas) if should_validate_ingoing_message?(message)
+#      message.validate(get_schemas) if should_validate_ingoing_message?(message)
       verify_sequence message
       deferred_notify do
         notify message

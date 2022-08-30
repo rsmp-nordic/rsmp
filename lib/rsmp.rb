@@ -49,6 +49,8 @@ require 'rsmp/tlc/signal_group'
 require 'rsmp/tlc/signal_plan'
 require 'rsmp/tlc/inputs'
 require 'rsmp/tlc/signal_priority'
+require 'rsmp/vms/vms_site'
+require 'rsmp/vms/vms_controller'
 
 require 'rsmp/convert/import/yaml'
 require 'rsmp/convert/export/json_schema'
