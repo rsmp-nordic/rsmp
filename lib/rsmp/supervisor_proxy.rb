@@ -86,7 +86,7 @@ module RSMP
       if sxl
         sxl_str = "#{sxl} #{sanitized_sxl_version}"
       else
-        sxl_str = "No SXL #{sanitized_sxl_version}"
+        sxl_str = "no SXL #{sanitized_sxl_version}"
       end
       log "Connection to supervisor established, using core #{@rsmp_version}, #{sxl_str}", level: :info
       start_watchdog

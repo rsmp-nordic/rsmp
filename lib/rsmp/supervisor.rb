@@ -52,9 +52,7 @@ module RSMP
         if sxl
           RSMP::Schema.find_schemas! sxl if sxl
         else
-            log "No SXL used, only core schema will be checked",
-              level: :warning
-#          raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': No SXL specified")
+            log "No SXL used, only core schema will be checked", level: :warning
         end
       rescue RSMP::Schema::UnknownSchemaError => e
         raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': #{e}")
