@@ -51,7 +51,7 @@ module RSMP
       def handle_command command_code, arg, options={}
         case command_code
         when 'M0101'
-          return handle_m001 arg, options
+          return handle_m0101 arg, options
         when 'M0102'
           return handle_m0102 arg, options
         else
@@ -59,8 +59,8 @@ module RSMP
         end
       end
 
-      def handle_m0001 arg, options={}
-        switch_bitmap arg['number'].to_i
+      def handle_m0101 arg, options={}
+        switch_bitmap arg['index'].to_i
       end
 
       def handle_m0102 arg, options={}
@@ -72,6 +72,7 @@ module RSMP
           raise InvalidMessage.new "Index must be between 1 and 255, got #{i}"
         end
         @bitmaps[i] = bitmap
+        log "Bitmap #{i} set", level: :info
       end
 
       def switch_bitmap i
@@ -79,6 +80,11 @@ module RSMP
           raise InvalidMessage.new "Index must be between 0 and 255, got #{i}"
         end
         @current_bitmap = i
+        if i==0
+          log "Switched bitmap off (dark)", level: :info
+        else
+          log "Switched to bitmap #{i}", level: :info
+        end
       end
 
       def get_status code, name=nil, options={}
