@@ -18,6 +18,10 @@ module RSMP
       build_proxies
     end
 
+    def site_type_name
+      'generic'
+    end
+
     def site_id
       @site_settings['site_id']
     end
@@ -29,8 +33,8 @@ module RSMP
           { 'ip' => '127.0.0.1', 'port' => 12111 }
         ],
         'rsmp_versions' => 'all',
-        'sxl' => 'tlc',
-        'sxl_version' => '1.0.15',
+        'sxl' => nil,
+        'sxl_version' => '1.0',
         'intervals' => {
           'timer' => 0.1,
           'watchdog' => 1,
@@ -53,20 +57,36 @@ module RSMP
       end
 
       @site_settings = defaults.deep_merge options[:site_settings]
+      load_sxl
       check_sxl_version
       setup_components @site_settings['components']
     end
 
+    def load_sxl
+      schema = @site_settings['sxl_schema']
+      if schema
+        @sxl = @site_settings['sxl'].to_sym
+        RSMP::Schema.load_schema_type @sxl, schema
+      end
+    end
+
     def check_sxl_version
-      sxl = @site_settings['sxl']
       version = @site_settings['sxl_version']
-#      RSMP::Schema::find_schema! sxl, version, lenient: true
+      if @sxl and version
+        RSMP::Schema::find_schema! @sxl, version, lenient: true
+      end
     end
 
     def run
-      log "Starting site #{@site_settings["site_id"]}",
+      log "Starting #{site_type_name} site #{@site_settings["site_id"]}",
           level: :info,
           timestamp: @clock.now
+      if @sxl
+        log "Using SXL '#{@sxl}'", level: :info, timestamp: @clock.now
+      else
+        log "No SXL used, only core schema will be checked", level: :warning, timestamp: @clock.now
+      end
+
       @proxies.each { |proxy| proxy.start }
       @proxies.each { |proxy| proxy.wait }
     end

@@ -7,8 +7,8 @@ module RSMP
     attr_reader :rsmp_versions, :site_id, :supervisor_settings, :proxies, :logger
 
     def initialize options={}
-      handle_supervisor_settings( options[:supervisor_settings] || {} )
       super options
+      handle_supervisor_settings( options[:supervisor_settings] || {} )
       @proxies = []
       @site_id_condition = Async::Notification.new
     end
@@ -23,7 +23,7 @@ module RSMP
         'ips' => 'all',
         'guest' => {
           'rsmp_versions' => 'all',
-          'sxl' => 'tlc',
+          'sxl' => nil,
           'intervals' => {
             'timer' => 1,
             'watchdog' => 1
@@ -49,10 +49,13 @@ module RSMP
           raise RSMP::ConfigurationError.new("Configuration for site '#{site_id}' is empty")
         end
         sxl = settings['sxl']
-        unless sxl
-          raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': No SXL specified")
+        if sxl
+          RSMP::Schema.find_schemas! sxl if sxl
+        else
+            log "No SXL used, only core schema will be checked",
+              level: :warning
+#          raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': No SXL specified")
         end
-        RSMP::Schema.find_schemas! sxl if sxl
       rescue RSMP::Schema::UnknownSchemaError => e
         raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': #{e}")
       end

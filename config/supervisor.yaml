@@ -1,4 +1,3 @@
-type: vms
 port: 12111
 guest:
   sxl: tlc

@@ -7,7 +7,7 @@ module RSMP
       def initialize options={}
         # setup options before calling super initializer,
         # since build of components depend on options
-        @sxl = nil
+        @sxl = 'vms'
         @security_codes = options[:site_settings]['security_codes']
         @interval = options[:site_settings].dig('intervals','timer') || 1
 
@@ -16,6 +16,10 @@ module RSMP
         unless main
           raise ConfigurationError.new "VMS must have a main component"
         end
+      end
+
+      def site_type_name
+        'VMS (Variable Message Sign)'
       end
 
       def start

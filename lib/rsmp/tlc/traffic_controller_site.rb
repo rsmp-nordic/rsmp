@@ -7,7 +7,7 @@ module RSMP
       def initialize options={}
         # setup options before calling super initializer,
         # since build of components depend on options
-        @sxl = 'traffic_light_controller'
+        @sxl = 'tlc'
         @security_codes = options[:site_settings]['security_codes']
         @interval = options[:site_settings].dig('intervals','timer') || 1
         @startup_sequence = options[:site_settings]['startup_sequence'] || 'efg'
@@ -20,6 +20,10 @@ module RSMP
         end
 
       end
+
+    def site_type_name
+      'TLC (Traffic Light Controller)'
+    end
 
       def start
         super

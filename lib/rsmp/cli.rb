@@ -51,16 +51,13 @@ module RSMP
         log_settings['json'] = options[:json]
       end
 
-      site_class = RSMP::Site
-      if options[:type]
-        case options[:type]
-          when 'tlc'
-            site_class = RSMP::TLC::TrafficControllerSite
-          when 'vms'
-            site_class = RSMP::VMS::VMSSite
-          else
-            site_class = RSMP::Site
-        end
+      case options[:type] || settings['type']
+      when 'tlc'
+        site_class = RSMP::TLC::TrafficControllerSite
+      when 'vms'
+        site_class = RSMP::VMS::VMSSite
+      else
+        site_class = RSMP::Site
       end
       Async do |task|
         task.annotate 'cli'

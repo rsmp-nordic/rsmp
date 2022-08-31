@@ -50,7 +50,7 @@ module RSMP
 
       def handle_command command_code, arg, options={}
         case command_code
-        when 'M0001'
+        when 'M0101'
           return handle_m001 arg, options
         when 'M0102'
           return handle_m0102 arg, options
