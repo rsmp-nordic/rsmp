@@ -218,6 +218,7 @@ module RSMP
       interval = @site_settings['intervals']['timer'] || 1
       log "Starting #{name} with interval #{interval} seconds", level: :debug
       @latest_watchdog_received = Clock.now
+      log "Last watchdog set to now=#{Clock.to_s @latest_watchdog_received} after starting timer", level: :debug
       @timer = @task.async do |task|
         task.annotate "timer"
         run_timer task, interval
@@ -297,15 +298,18 @@ module RSMP
     def check_watchdog_timeout now
       timeout = @site_settings['timeouts']['watchdog']
       latest = @latest_watchdog_received + timeout
-      left = latest - now
-      if left < 0
-        str = "No Watchdog within #{timeout} seconds"
+      ago = now - @latest_watchdog_received
+      if now > latest
+        ago = now - @latest_watchdog_received
+        str = "No Watchdog within #{timeout} seconds, last received at #{Clock.to_s @latest_watchdog_received}, which is #{ago}s ago"
         log str, level: :error
           begin
             close                                   # this will stop the current task (ourself)
           ensure
             notify_error MissingWatchdog.new(str)   # but ensure block will still be reached
           end
+      else
+        log "Last watchdog received at #{Clock.to_s @latest_watchdog_received}, which is #{ago}s ago, timeout is #{timeout}s", level: :debug
       end
     end
 
@@ -604,6 +608,7 @@ module RSMP
     def process_watchdog message
       log "Received #{message.type}", message: message, level: :log
       @latest_watchdog_received = Clock.now
+      log "Last watchdog set to now=#{Clock.to_s @latest_watchdog_received} after receiving watchdog", level: :debug
       acknowledge message
     end
 
