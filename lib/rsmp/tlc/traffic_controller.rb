@@ -113,7 +113,7 @@ module RSMP
       end
 
       def signal_priority_changed priority, state
-        puts "priority #{priority.id} -> #{state}"
+        #puts "priority #{priority.id} -> #{state}"
       end
 
       def prune_priorities
