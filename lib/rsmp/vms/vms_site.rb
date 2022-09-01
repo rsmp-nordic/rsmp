@@ -37,8 +37,9 @@ module RSMP
           VMSController.new node: self,
             id: id,
             ntsOId: settings['ntsOId'],
-            xNId: settings['xNId']            
-          end
+            xNId: settings['xNId'],
+            live_output: @site_settings['live_output']
+        end
       end
 
       def verify_security_code level, code

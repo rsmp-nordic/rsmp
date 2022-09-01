@@ -186,7 +186,7 @@ module RSMP
           state = group.state
           s = "#{group.c_id}:#{state}"
           if state =~ /^[1-9]$/
-              s.colorize(:green)
+            s.colorize(:green)
           elsif state =~ /^[NOP]$/
             s.colorize(:yellow)
           elsif state =~ /^[ae]$/

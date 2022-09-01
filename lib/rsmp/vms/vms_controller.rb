@@ -1,3 +1,5 @@
+require 'base64'
+
 module RSMP
   module VMS
     # TrafficController is the main component of a TrafficControllerSite.
@@ -7,10 +9,11 @@ module RSMP
     class VMSController < Component
       attr_reader :text
 
-      def initialize node:, id:, ntsOId: nil, xNId: nil
+      def initialize node:, id:, ntsOId: nil, xNId: nil, live_output:nil
         super node: node, id: id, ntsOId: ntsOId, xNId: xNId, grouped: true
         @current_bitmap = nil
         @bitmaps = []
+        @live_output = live_output
         reset
       end
 
@@ -73,17 +76,41 @@ module RSMP
         end
         @bitmaps[i] = bitmap
         log "Bitmap #{i} set", level: :info
+        output_live
       end
 
       def switch_bitmap i
         if i<0 || i>255
           raise InvalidMessage.new "Index must be between 0 and 255, got #{i}"
         end
+        return if i == @current_bitmap
         @current_bitmap = i
         if i==0
           log "Switched bitmap off (dark)", level: :info
         else
           log "Switched to bitmap #{i}", level: :info
+        end
+        output_live
+      end
+
+      def bitmap
+        @bitmaps[ @current_bitmap] if @current_bitmap && @current_bitmap > 0
+      end
+
+      def output_live
+        return unless @live_output
+
+        if bitmap
+          # create folders if needed
+          FileUtils.mkdir_p File.dirname(@live_output)
+
+          # write PNG file
+          decoded = Base64.decode64 bitmap
+          File.write @live_output, decoded
+        else
+          # delete file
+          puts "exists? #{File.exist?(@live_output)}"
+          File.delete(@live_output) if File.exist?(@live_output)
         end
       end
 
