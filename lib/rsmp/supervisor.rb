@@ -138,8 +138,7 @@ module RSMP
     def peek_version_message protocol
       json = protocol.peek_line
       attributes = Message.parse_attributes json
-      message = Message.build attributes, json
-      message.attribute('siteId').first['sId']
+       Message.build attributes, json
     end
 
     # accept an incoming connecting by creating and starting a proxy
@@ -169,7 +168,9 @@ module RSMP
         archive: @archive
       }
 
-      id = peek_version_message protocol
+      version_message = peek_version_message protocol
+      id = version_message.attribute('siteId').first['sId']
+
       proxy = find_site id
       if proxy
         if proxy.connected?
@@ -182,6 +183,11 @@ module RSMP
         proxy = build_proxy settings.merge(site_id:id)    # keep the id learned by peeking above
         @proxies.push proxy
       end
+
+      proxy.setup_site_settings
+      proxy.check_rsmp_version version_message
+      log "Validating using core version #{proxy.rsmp_version}", level: :debug
+
       proxy.start     # will run until the site disconnects
       proxy.wait
     ensure

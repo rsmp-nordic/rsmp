@@ -59,7 +59,7 @@ module RSMP
 
     def check_sxl_version
       sxl = @site_settings['sxl']
-      version = @site_settings['sxl_version']
+      version = @site_settings['sxl_version'].to_s
       RSMP::Schema::find_schema! sxl, version, lenient: true
     end
 

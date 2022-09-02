@@ -48,7 +48,7 @@ module RSMP
     def handshake_complete
       super
       sanitized_sxl_version = RSMP::Schema.sanitize_version(@site_sxl_version)
-      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{sanitized_sxl_version}", level: :log
+      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{sanitized_sxl_version}", level: :info
       start_watchdog
     end
 
@@ -308,11 +308,10 @@ module RSMP
     end
 
     def check_sxl_version message
-
       # check that we have a schema for specified sxl type and version
       # note that the type comes from the site config, while the version
       # comes from the Version message send by the site
-      type = 'tlc'
+      type = @site_settings['sxl']
       version = message.attribute 'SXL'
       RSMP::Schema::find_schema! type, version, lenient: true
 
@@ -332,7 +331,6 @@ module RSMP
     def process_version message
       return extraneous_version message if @version_determined
       check_site_ids message
-      check_rsmp_version message
       check_sxl_version message
       version_accepted message
     end
@@ -341,8 +339,6 @@ module RSMP
       # RSMP support multiple site ids. we don't support this yet. instead we use the first id only
       site_id = message.attribute("siteId").map { |item| item["sId"] }.first
       @supervisor.check_site_id site_id
-      @site_id = site_id
-      setup_site_settings
       site_ids_changed
     end
 

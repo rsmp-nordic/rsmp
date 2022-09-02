@@ -13,7 +13,7 @@ module RSMP
     include Inspect
     include Task
 
-    attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port, :node
+    attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port, :node, :rsmp_version
 
     def initialize options
       @node = options[:node]
@@ -27,6 +27,7 @@ module RSMP
 
     def disconnect
     end
+
 
     # wait for the reader task to complete,
     # which is not expected to happen before the connection is closed
@@ -314,12 +315,9 @@ module RSMP
     end
 
     def get_schemas
-      # normally we have an sxl, but during connection, it hasn't been established yet
-      # at these times we only validate against the core schema
-      # TODO
-      # what schema should we use to validate the initial Version and MessageAck messages?
       schemas = { core: RSMP::Schema.latest_core_version } # use latest core
-      schemas[sxl] = RSMP::Schema.sanitize_version(sxl_version) if sxl && sxl_version
+      schemas[:core] = rsmp_versions.last if rsmp_versions
+      schemas[sxl] = RSMP::Schema.sanitize_version(sxl_version.to_s) if sxl && sxl_version
       schemas
     end
 
@@ -460,7 +458,7 @@ module RSMP
     def rsmp_versions
       return [RSMP::Schema.latest_core_version] if @site_settings["rsmp_versions"] == 'latest'
       return RSMP::Schema.core_versions if @site_settings["rsmp_versions"] == 'all'
-      @site_settings["rsmp_versions"]
+      [@site_settings["rsmp_versions"]].flatten
     end
 
     def check_rsmp_version message
