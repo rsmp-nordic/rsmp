@@ -560,8 +560,11 @@ module RSMP
         message.original = original
         log_acknowledgement_for_original message, original
 
-        if original.type == "Version"
+        case original.type
+        when "Version"
           version_acknowledged
+        when "StatusSubscribe"
+          status_subscribe_acknowledged original
         end
 
         check_outgoing_acknowledged original
@@ -651,6 +654,15 @@ module RSMP
     # use Gem class to check version requirement
     def self.version_requirement_met? requirement, version
       Gem::Requirement.new(requirement).satisfied_by?(Gem::Version.new(version))
+    end
+
+    def status_subscribe_acknowledged original
+      component = find_component original.attribute('cId')
+      return unless component
+      short = Message.shorten_m_id original.m_id
+      subscribe_list = original.attributes['sS']
+      log "StatusSubscribe #{short} acknowledged, allowing repeated status values for #{subscribe_list}", level: :info
+      component.allow_repeat_updates subscribe_list
     end
 
   end

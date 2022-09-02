@@ -228,7 +228,6 @@ module RSMP
       end
 
       component = find_component component_id
-      component.allow_repeat_updates subscribe_list
 
       message = RSMP::StatusSubscribe.new({
           "cId" => component_id,
@@ -236,6 +235,7 @@ module RSMP
           'mId' => m_id
       })
       set_nts_message_attributes message
+
       send_and_optionally_collect message, options do |collect_options|
         StatusCollector.new(
           self,
