@@ -1,5 +1,5 @@
 RSpec.describe 'Connecting' do
-	let(:timeout) { 0.1 }
+	let(:timeout) { 0.2 }
 	let(:ip) { 'localhost' }
 	let(:port) { 13111 }
 	let(:site_id) { 'RN+SI0001' }
@@ -38,7 +38,7 @@ RSpec.describe 'Connecting' do
 	}
 
 	it 'works when the supervisor is started first' do
-		async_context do
+		Async do |task|
 			expect(supervisor.proxies.size).to eq(0)
 			expect(site.proxies.size).to eq(1)
 			expect(site.proxies.first.state).to eq(:disconnected)
@@ -60,11 +60,13 @@ RSpec.describe 'Connecting' do
 
 			expect(site_proxy.state).to eq(:ready)
 			expect(supervisor_proxy.state).to eq(:ready)
+
+			task.stop
 		end
 	end
 
 	it 'works when the site is started first' do
-		async_context do
+		Async do |task|
 			expect(supervisor.proxies.size).to eq(0)
 			expect(site.proxies.size).to eq(1)
 			expect(site.proxies.first.state).to eq(:disconnected)
@@ -86,6 +88,8 @@ RSpec.describe 'Connecting' do
 
 			expect(site_proxy.state).to eq(:ready)
 			expect(supervisor_proxy.state).to eq(:ready)
+
+			task.stop
 		end
 	end
 end
