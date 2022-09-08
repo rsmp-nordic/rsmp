@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rsmp (0.16.0)
+    rsmp (0.16.1)
       async (~> 1.30.3)
       async-io (~> 1.33.0)
       colorize (~> 0.8.1)
