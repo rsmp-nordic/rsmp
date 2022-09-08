@@ -149,16 +149,21 @@ RSpec.describe RSMP::Supervisor do
     end
 
     it 'validates initial messages with correct core version' do
-      async_context do
+      Async do |task|
         supervisor.start
 
         # write version message
-        core_version = '3.1.2'
-        sxl_version = RSMP::Schema.versions(:tlc).to_s
+        core_version = '3.1.3'
+        sxl_version = RSMP::Schema.latest_version(:tlc).to_s
         protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}/
 
-        puts 'start test'
-        expect( supervisor.core_version ).to eq( 2 )
+        proxy = supervisor.wait_for_site "RN+SI0001", timeout: timeout
+        expect(proxy).to be_an(RSMP::SiteProxy)
+        expect(proxy.site_id).to eq("RN+SI0001")
+
+        expect( proxy.rsmp_version ).to eq( core_version )
+
+        task.stop
       end
     end
   end
