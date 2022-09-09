@@ -18,6 +18,10 @@ module RSMP
       build_proxies
     end
 
+    def sxl_version
+      @site_settings['sxl_version']
+    end
+
     def site_id
       @site_settings['site_id']
     end

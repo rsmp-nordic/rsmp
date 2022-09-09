@@ -1,85 +1,113 @@
 RSpec.describe RSMP::Site do
-	let(:timeout) { 0.01 }
+  let(:timeout) { 0.01 }
 
-	let(:ip) { 'localhost' }
-	let(:port) { 13111 }
-	let(:site_settings) {
-		{
-			'site_id' => 'RN+SI0001',
-			'supervisors' => [
-				{ 'ip' => ip, 'port' => port }
-			]
-		}
-	}
+  let(:ip) { 'localhost' }
+  let(:port) { 13111 }
+  let(:site_settings) {
+    {
+      'site_id' => 'RN+SI0001',
+      'supervisors' => [
+        { 'ip' => ip, 'port' => port }
+      ]
+    }
+  }
 
-	let(:log_settings) {
-		{
-			'active' => false
-		}
-	}
+  let(:log_settings) {
+    {
+      'active' => false,
+      'watchdogs' => true,
+      'acknowledgements' => true
+    }
+  }
 
   describe '#initialize' do
-		it 'accepts no options' do
-			expect { RSMP::Site.new({}) }.not_to raise_error
-		end
+    it 'accepts no options' do
+      expect { RSMP::Site.new({}) }.not_to raise_error
+    end
 
-		it 'accepts options' do
-			RSMP::Site.new(
-				site_settings: site_settings,
-				log_settings: log_settings
-			)
-		end
-	end
+    it 'accepts options' do
+      RSMP::Site.new(
+        site_settings: site_settings,
+        log_settings: log_settings
+      )
+    end
+  end
 
-	describe 'connection handshake' do
-		it 'completes' do
-			# mock SecureRandom.uui() so we get known message ids:
-			allow(SecureRandom).to receive(:uuid).and_return(
-				'1b206e56-31be-4739-9164-3a24d47b0aa2'
-			)
+  describe 'connection handshake' do
+    it 'completes' do
+      # mock SecureRandom.uui() so we get known message ids:
+      allow(SecureRandom).to receive(:uuid).and_return(
+        '1b206e56-31be-4739-9164-3a24d47b0aa2',
+        'fd92d6f6-f0c3-4a91-a582-6fff4e5bb63b',
+        '1e363b78-a67a-40f0-a2b1-acb231656594',
+        '51931724-b143-45a3-aa43-171f79ebb337',
+        'd5ccbf4b-e951-4476-bf23-8aa8f6835fb5',
+        '3942bc2b-c0dc-45be-b3bf-b25e3afa300f',
+        '0459805f-73aa-41b1-beed-11852f62756d',
+        '16ec49e4-6ac1-4da6-827c-2a6562b91731'
+      )
 
-			async_context do
-				site = nil
+      site = RSMP::Site.new(
+        site_settings: site_settings,
+        log_settings: log_settings
+      )
 
-				# acts as a supervisior by listening for connections
-				# and exhcanging RSMP handhake
-				endpoint = Async::IO::Endpoint.tcp('localhost', port)
-				tasks = endpoint.accept do |socket|  # creates async tasks
-					stream = Async::IO::Stream.new(socket)
-					protocol = Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+      async_context transient: lambda {
+        site.start
 
-			  	# read version
-			  	version = JSON.parse protocol.read_line
-			  	versions_array = RSMP::Schema.core_versions.map { |version| { vers: versions } }
-			  	sxl_version = RSMP::Schema.versions(:tlc).to_s
-			  	core_version = RSMP::Proxy.latest_core_tlc_version.to_s
-					expect(version).to eq({"RSMP"=>versions_array, "SXL"=>sxl_version, "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version"})
+        # acts as a supervisior by listening for connections
+        # and exhcanging RSMP handhake
+        endpoint = Async::IO::Endpoint.tcp('localhost', port)
+        tasks = endpoint.accept do |socket|  # creates async tasks
+          stream = Async::IO::Stream.new(socket)
+          protocol = Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
 
-					# send ack
-					protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"])
+          # read version
+          message = JSON.parse protocol.read_line
+          core_versions = RSMP::Schema.core_versions
+          core_versions_array = core_versions.map { |version| { "vers" => version } }
+          sxl_version = site.sxl_version
+          expect(message['mType']).to eq('rSMsg')
+          expect(message['type']).to eq('Version')
+          expect(message['siteId']).to eq([{"sId"=>"RN+SI0001"}])
+          expect(message['RSMP']).to eq(core_versions_array)
+          expect(message['SXL']).to eq(sxl_version)
 
-		      # write version message
-					protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"51931724-b143-45a3-aa43-171f79ebb337"})
+          # send version ack
+          protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>message["mId"])
 
-					# read ack
-					version_ack = JSON.parse protocol.read_line
-					expect(version_ack['mType']).to eq('rSMsg')
-					expect(version_ack['type']).to eq('MessageAck')
-					expect(version_ack['oMId']).to eq('51931724-b143-45a3-aa43-171f79ebb337')
-					expect(version_ack['mId']).to be_nil
+          # write version message
+          protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_versions.last}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"51931724-b143-45a3-aa43-171f79ebb337"}/
 
-					proxy = site.proxies.first
-					expect(proxy).to be_an(RSMP::SupervisorProxy)
-					expect(proxy.state).to be(:ready)
-				end
+          # read version ack
+          message = JSON.parse protocol.read_line
+          expect(message['mType']).to eq('rSMsg')
+          expect(message['type']).to eq('MessageAck')
+          expect(message['mId']).to be_nil
 
-			  site = RSMP::Site.new(
-			  	site_settings: site_settings,
-			  	log_settings: log_settings
-			  )
+          # read watchdog
+          message = JSON.parse protocol.read_line
+          expect(message['mType']).to eq('rSMsg')
+          expect(message['type']).to eq('Watchdog')
 
-			  site.start
-			end
-		end
-	end
+          # send watchdog ack
+          protocol.write_lines %/{"mType":"rSMsg","type":"MessageAck","oMId":"#{message["mId"]}"}/
+
+          # send watchdog
+          protocol.write_lines %/{"mType":"rSMsg","type":"Watchdog","wTs":"2022-09-08T13:10:24.695Z","mId":"439e5748-0662-4ab2-a0d7-80fc680f04f5"}/
+
+          # read watchdog ack
+          watchdog_ack = JSON.parse protocol.read_line
+
+          # idle
+          site.task.sleep 1 while true
+        end
+
+      } do |task|
+        proxy = site.wait_for_supervisor :any, timeout
+        expect(proxy).to be_an(RSMP::SupervisorProxy)
+        proxy.wait_for_state(:ready, timeout: timeout)
+      end
+    end
+  end
 end

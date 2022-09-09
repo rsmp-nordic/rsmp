@@ -110,21 +110,18 @@ RSpec.describe RSMP::Supervisor do
     end
 
     it 'completes' do
-      Async do |task|
-        supervisor.start
+      async_context transient: lambda { supervisor.start } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
         proxy = connect task, core_versions:core_versions, sxl_version:sxl_version
 
         expect(proxy).to be_an(RSMP::SiteProxy)
         expect(proxy.site_id).to eq("RN+SI0001")
-        task.stop
       end
     end
 
     it 'logs' do
-      Async do |task|
-        supervisor.start
+      async_context transient: lambda { supervisor.start } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
         proxy = connect task, core_versions:core_versions, sxl_version:sxl_version
@@ -144,26 +141,23 @@ RSpec.describe RSMP::Supervisor do
            "Received MessageAck for Watchdog 1e36",
            "Connection to site RN+SI0001 established, using core #{core_versions.last}, tlc #{sxl_version}"
         ])
-        task.stop
       end
     end
 
     it 'validates initial messages with correct core version' do
-      Async do |task|
-        supervisor.start
-
+      async_context transient: lambda { supervisor.start } do |task|
         # write version message
         core_version = '3.1.3'
         sxl_version = RSMP::Schema.latest_version(:tlc).to_s
         protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}/
 
+        # wait for site to connect
         proxy = supervisor.wait_for_site "RN+SI0001", timeout: timeout
         expect(proxy).to be_an(RSMP::SiteProxy)
         expect(proxy.site_id).to eq("RN+SI0001")
 
+        # check that supervisor have correctly determined the version
         expect( proxy.rsmp_version ).to eq( core_version )
-
-        task.stop
       end
     end
   end

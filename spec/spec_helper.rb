@@ -1,6 +1,5 @@
 require 'bundler/setup'
 require 'rsmp'
-require_relative 'support/connection_helper'
 require_relative 'support/site_proxy_stub'
 require_relative 'support/async_helper'
 

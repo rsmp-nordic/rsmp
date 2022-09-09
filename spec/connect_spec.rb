@@ -38,14 +38,14 @@ RSpec.describe 'Connecting' do
 	}
 
 	it 'works when the supervisor is started first' do
-		Async do |task|
-			expect(supervisor.proxies.size).to eq(0)
-			expect(site.proxies.size).to eq(1)
-			expect(site.proxies.first.state).to eq(:disconnected)
+		expect(supervisor.proxies.size).to eq(0)
+		expect(site.proxies.size).to eq(1)
+		expect(site.proxies.first.state).to eq(:disconnected)
 
+    async_context transient: lambda {
 			supervisor.start
 			site.start
-
+    } do |task|
 			site_proxy = supervisor.wait_for_site site_id, timeout: timeout
 			supervisor_proxy = site.wait_for_supervisor ip, timeout: timeout
 
@@ -66,14 +66,14 @@ RSpec.describe 'Connecting' do
 	end
 
 	it 'works when the site is started first' do
-		Async do |task|
-			expect(supervisor.proxies.size).to eq(0)
-			expect(site.proxies.size).to eq(1)
-			expect(site.proxies.first.state).to eq(:disconnected)
+		expect(supervisor.proxies.size).to eq(0)
+		expect(site.proxies.size).to eq(1)
+		expect(site.proxies.first.state).to eq(:disconnected)
 
+    async_context transient: lambda {
 			site.start
 			supervisor.start
-
+    } do |task|
 			site_proxy = supervisor.wait_for_site site_id, timeout: timeout
 			supervisor_proxy = site.wait_for_supervisor ip, timeout: timeout
 
