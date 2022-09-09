@@ -84,6 +84,7 @@ module RSMP
     def handshake_complete
       sanitized_sxl_version = RSMP::Schema.sanitize_version(sxl_version)
       log "Connection to supervisor established, using core #{@rsmp_version}, #{sxl} #{sanitized_sxl_version}", level: :info
+      set_state :ready
       start_watchdog
       if @site_settings['send_after_connect']
         send_all_aggregated_status
