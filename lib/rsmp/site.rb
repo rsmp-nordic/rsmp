@@ -34,7 +34,7 @@ module RSMP
         ],
         'rsmp_versions' => 'all',
         'sxl' => 'tlc',
-        'sxl_version' => '1.0.15',
+        'sxl_version' => RSMP::Schema.latest_version(:tlc),
         'intervals' => {
           'timer' => 0.1,
           'watchdog' => 1,
