@@ -1,5 +1,5 @@
 RSpec.describe RSMP::Site do
-  let(:timeout) { 0.1 }
+  let(:timeout) { 1 }
 
   let(:ip) { 'localhost' }
   let(:port) { 13111 }
@@ -99,7 +99,6 @@ RSpec.describe RSMP::Site do
           # read watchdog ack
           watchdog_ack = JSON.parse protocol.read_line
         end
-
       } do |task|
         proxy = site.wait_for_supervisor :any, timeout
         expect(proxy).to be_an(RSMP::SupervisorProxy)

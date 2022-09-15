@@ -12,6 +12,7 @@ def async_context transient:nil, &block
 			end.result
 		end
 		yield task
+	ensure
 		task.stop
 	end.result
 end
