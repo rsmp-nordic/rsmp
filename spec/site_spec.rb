@@ -1,5 +1,5 @@
 RSpec.describe RSMP::Site do
-  let(:timeout) { 10 }
+  let(:timeout) { 0.1 }
 
   let(:ip) { 'localhost' }
   let(:port) { 13111 }
@@ -14,7 +14,7 @@ RSpec.describe RSMP::Site do
 
   let(:log_settings) {
     {
-      'active' => false,
+      'active' => true,
       'watchdogs' => true,
       'acknowledgements' => true
     }
