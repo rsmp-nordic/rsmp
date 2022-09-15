@@ -88,8 +88,6 @@ RSpec.describe 'Connecting' do
 
 			expect(site_proxy.state).to eq(:ready)
 			expect(supervisor_proxy.state).to eq(:ready)
-
-			task.stop
 		end
 	end
 end

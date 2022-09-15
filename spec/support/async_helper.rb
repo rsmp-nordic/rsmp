@@ -7,10 +7,11 @@ require 'async'
 def async_context transient:nil, &block
 	Async do |task|
 		if transient
-			Async transient: true do |child|
+			Async transient: false do |child|
 				transient.call
 			end.result
 		end
 		yield task
+		task.stop
 	end.result
 end
