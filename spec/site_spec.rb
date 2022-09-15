@@ -1,5 +1,5 @@
 RSpec.describe RSMP::Site do
-  let(:timeout) { 0.01 }
+  let(:timeout) { 0.2 }
 
   let(:ip) { 'localhost' }
   let(:port) { 13111 }
@@ -98,9 +98,6 @@ RSpec.describe RSMP::Site do
 
           # read watchdog ack
           watchdog_ack = JSON.parse protocol.read_line
-
-          # idle
-          site.task.sleep 1 while true
         end
 
       } do |task|
