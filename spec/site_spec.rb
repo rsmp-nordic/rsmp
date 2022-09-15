@@ -1,5 +1,5 @@
 RSpec.describe RSMP::Site do
-  let(:timeout) { 0.2 }
+  let(:timeout) { 2 }
 
   let(:ip) { 'localhost' }
   let(:port) { 13111 }
