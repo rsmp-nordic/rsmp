@@ -14,7 +14,7 @@ RSpec.describe RSMP::Site do
 
   let(:log_settings) {
     {
-      'active' => true,
+      'active' => false,
       'watchdogs' => true,
       'acknowledgements' => true
     }

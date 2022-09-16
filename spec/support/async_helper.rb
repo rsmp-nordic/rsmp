@@ -9,10 +9,10 @@ def async_context transient:nil, &block
 		if transient
 			Async transient: false do |child|
 				transient.call
-			end.result
+			end
 		end
 		yield task
 	ensure
 		task.stop
-	end.result
+	end
 end
