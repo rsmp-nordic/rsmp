@@ -435,7 +435,7 @@ module RSMP
     end
 
     def sxl_version
-      @site_settings['sxl_version']
+      @site_settings['sxl_version'].to_s
     end
 
     def process_version message

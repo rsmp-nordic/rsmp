@@ -521,7 +521,7 @@ module RSMP
       version_response = Version.new({
         "RSMP"=>versions_array,
         "siteId"=>site_id_array,
-        "SXL"=>sxl_version
+        "SXL"=>sxl_version.to_s
       })
       send_message version_response
     end
