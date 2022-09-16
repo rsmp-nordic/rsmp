@@ -1,5 +1,5 @@
 RSpec.describe 'Connecting' do
-	let(:timeout) { 0.2 }
+	let(:timeout) { 0.1 }
 	let(:ip) { 'localhost' }
 	let(:port) { 13111 }
 	let(:site_id) { 'RN+SI0001' }
@@ -88,8 +88,6 @@ RSpec.describe 'Connecting' do
 
 			expect(site_proxy.state).to eq(:ready)
 			expect(supervisor_proxy.state).to eq(:ready)
-
-			task.stop
 		end
 	end
 end
