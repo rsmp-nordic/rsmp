@@ -316,7 +316,7 @@ module RSMP
 
     def get_schemas
       schemas = { core: RSMP::Schema.latest_core_version } # use latest core
-      schemas[:core] = rsmp_versions.last if rsmp_versions
+      schemas[:core] = rsmp_version if rsmp_version
       schemas[sxl] = RSMP::Schema.sanitize_version(sxl_version.to_s) if sxl && sxl_version
       schemas
     end
