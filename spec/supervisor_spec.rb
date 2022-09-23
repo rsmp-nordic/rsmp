@@ -157,7 +157,7 @@ RSpec.describe RSMP::Supervisor do
         expect(proxy.site_id).to eq("RN+SI0001")
 
         # check that supervisor have correctly determined the version
-        expect( proxy.rsmp_version ).to eq( core_version )
+        expect( proxy.core_version ).to eq( core_version )
       end
     end
   end

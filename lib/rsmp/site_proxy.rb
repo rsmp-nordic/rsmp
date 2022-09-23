@@ -48,7 +48,7 @@ module RSMP
     def handshake_complete
       super
       sanitized_sxl_version = RSMP::Schema.sanitize_version(@site_sxl_version)
-      log "Connection to site #{@site_id} established, using core #{@rsmp_version}, #{@sxl} #{sanitized_sxl_version}", level: :info
+      log "Connection to site #{@site_id} established, using core #{@core_version}, #{@sxl} #{sanitized_sxl_version}", level: :info
       start_watchdog
     end
 
@@ -89,7 +89,7 @@ module RSMP
       log "Received Version message for site #{@site_id}", message: message, level: :log
       start_timer
       acknowledge message
-      send_version @site_id, rsmp_versions
+      send_version @site_id, core_versions
       @version_determined = true
     end
 

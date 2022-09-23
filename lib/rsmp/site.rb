@@ -6,7 +6,7 @@ module RSMP
   class Site < Node
     include Components
 
-    attr_reader :rsmp_versions, :site_settings, :logger, :proxies
+    attr_reader :core_versions, :site_settings, :logger, :proxies
 
     def initialize options={}
       super options
@@ -32,7 +32,7 @@ module RSMP
         'supervisors' => [
           { 'ip' => '127.0.0.1', 'port' => 12111 }
         ],
-        'rsmp_versions' => 'all',
+        'core_versions' => 'all',
         'sxl' => 'tlc',
         'sxl_version' => RSMP::Schema.latest_version(:tlc),
         'intervals' => {

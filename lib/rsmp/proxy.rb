@@ -13,8 +13,7 @@ module RSMP
     include Inspect
     include Task
 
-    attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port, :node, :rsmp_version
-
+    attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port, :node, :core_version
     def initialize options
       @node = options[:node]
       initialize_logging options
@@ -316,7 +315,7 @@ module RSMP
 
     def get_schemas
       schemas = { core: RSMP::Schema.latest_core_version } # use latest core
-      schemas[:core] = rsmp_version if rsmp_version
+      schemas[:core] = core_version if core_version
       schemas[sxl] = RSMP::Schema.sanitize_version(sxl_version.to_s) if sxl && sxl_version
       schemas
     end
@@ -455,18 +454,18 @@ module RSMP
       dont_acknowledge message, "Received", "extraneous Version message"
     end
 
-    def rsmp_versions
-      return [RSMP::Schema.latest_core_version] if @site_settings["rsmp_versions"] == 'latest'
-      return RSMP::Schema.core_versions if @site_settings["rsmp_versions"] == 'all'
-      [@site_settings["rsmp_versions"]].flatten
+    def core_versions
+      return [RSMP::Schema.latest_core_version] if @site_settings["core_versions"] == 'latest'
+      return RSMP::Schema.core_versions if @site_settings["core_versions"] == 'all'
+      [@site_settings["core_versions"]].flatten
     end
 
-    def check_rsmp_version message
-      versions = rsmp_versions
+    def check_core_version message
+      versions = core_versions
       # find versions that both we and the client support
       candidates = message.versions & versions
       if candidates.any?
-        @rsmp_version = candidates.sort_by { |v| Gem::Version.new(v) }.last  # pick latest version
+        @core_version = candidates.sort_by { |v| Gem::Version.new(v) }.last  # pick latest version
       else
         raise HandshakeError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{versions.join(',')}] supported."
       end
@@ -506,13 +505,13 @@ module RSMP
       raise RSMP::TimeoutError.new "Did not reach state #{state} within #{timeout}s"
     end
 
-    def send_version site_id, rsmp_versions
-      if rsmp_versions=='latest'
+    def send_version site_id, core_versions
+      if core_versions=='latest'
         versions = [RSMP::Schema.latest_core_version]
-      elsif rsmp_versions=='all'
+      elsif core_versions=='all'
         versions = RSMP::Schema.core_versions
       else
-        versions = [rsmp_versions].flatten
+        versions = [core_versions].flatten
       end
       versions_array = versions.map {|v| {"vers" => v} }
 
@@ -662,6 +661,5 @@ module RSMP
       log "StatusSubscribe #{short} acknowledged, allowing repeated status values for #{subscribe_list}", level: :info
       component.allow_repeat_updates subscribe_list
     end
-
   end
 end
