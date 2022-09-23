@@ -4,7 +4,7 @@
 
 module RSMP
   class Supervisor < Node
-    attr_reader :rsmp_versions, :site_id, :supervisor_settings, :proxies, :logger
+    attr_reader :core_versions, :site_id, :supervisor_settings, :proxies, :logger
 
     def initialize options={}
       handle_supervisor_settings( options[:supervisor_settings] || {} )
@@ -22,7 +22,7 @@ module RSMP
         'port' => 12111,
         'ips' => 'all',
         'guest' => {
-          'rsmp_versions' => 'all',
+          'core_versions' => 'all',
           'sxl' => 'tlc',
           'intervals' => {
             'timer' => 1,
@@ -37,7 +37,7 @@ module RSMP
 
       # merge options into defaults
       @supervisor_settings = defaults.deep_merge(supervisor_settings)
-      @rsmp_versions = @supervisor_settings["guest"]["rsmp_versions"]
+      @core_versions = @supervisor_settings["guest"]["core_versions"]
       check_site_sxl_types
     end
 
@@ -185,8 +185,8 @@ module RSMP
       end
 
       proxy.setup_site_settings
-      proxy.check_rsmp_version version_message
-      log "Validating using core version #{proxy.rsmp_version}", level: :debug
+      proxy.check_core_version version_message
+      log "Validating using core version #{proxy.core_version}", level: :debug
 
       proxy.start     # will run until the site disconnects
       proxy.wait

@@ -43,7 +43,7 @@ module RSMP
     end
 
     def start_handshake
-      send_version @site_settings['site_id'], @site_settings["rsmp_versions"]
+      send_version @site_settings['site_id'], @site_settings["core_versions"]
     end
 
     # connect to the supervisor and initiate handshake supervisor
@@ -83,7 +83,7 @@ module RSMP
 
     def handshake_complete
       sanitized_sxl_version = RSMP::Schema.sanitize_version(sxl_version)
-      log "Connection to supervisor established, using core #{@rsmp_version}, #{sxl} #{sanitized_sxl_version}", level: :info
+      log "Connection to supervisor established, using core #{@core_version}, #{sxl} #{sanitized_sxl_version}", level: :info
       set_state :ready
       start_watchdog
       if @site_settings['send_after_connect']
@@ -155,7 +155,7 @@ module RSMP
     end
 
     def version_accepted message
-      log "Received Version message, using RSMP #{@rsmp_version}", message: message, level: :log
+      log "Received Version message, using RSMP #{@core_version}", message: message, level: :log
       start_timer
       acknowledge message
       @version_determined = true
@@ -276,13 +276,23 @@ module RSMP
       v.to_s
     end
 
+    # get name of q field, depending on the core version we're using
+    # it changed from 'ageState' to 'q' in version 3.1.3
+    def q_key
+      if Proxy.version_requirement_met? '>=3.1.3', core_version
+        q_key = 'q'
+      else
+        q_key = 'ageState'
+      end
+    end
+
     def process_status_request message, options={}
       component_id = message.attributes["cId"]
       component = @site.find_component component_id
       log "Received #{message.type}", message: message, level: :log
       sS = message.attributes["sS"].map do |arg|
         value, quality =  component.get_status arg['sCI'], arg['n'], {sxl_version: sxl_version}
-        { "s" => rsmpify_value(value), "q" => quality.to_s }.merge arg
+        { "s" => rsmpify_value(value), q_key => quality.to_s }.merge arg
       end
       response = StatusResponse.new({
         "cId"=>component_id,
@@ -420,7 +430,7 @@ module RSMP
             sS << { "sCI" => code,
                      "n" => status_name,
                      "s" => rsmpify_value(value),
-                     "q" => quality }
+                     q_key => quality }
           end
         end
         update = StatusUpdate.new({
@@ -440,7 +450,7 @@ module RSMP
 
     def process_version message
       return extraneous_version message if @version_determined
-      check_rsmp_version message
+      check_core_version message
       check_sxl_version message
       @site_id = Supervisor.build_id_from_ip_port @ip, @port
       version_accepted message
