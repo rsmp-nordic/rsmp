@@ -276,23 +276,13 @@ module RSMP
       v.to_s
     end
 
-    # get name of q field, depending on the core version we're using
-    # it changed from 'ageState' to 'q' in version 3.1.3
-    def q_key
-      if Proxy.version_requirement_met? '>=3.1.3', core_version
-        q_key = 'q'
-      else
-        q_key = 'ageState'
-      end
-    end
-
     def process_status_request message, options={}
       component_id = message.attributes["cId"]
       component = @site.find_component component_id
       log "Received #{message.type}", message: message, level: :log
       sS = message.attributes["sS"].map do |arg|
         value, quality =  component.get_status arg['sCI'], arg['n'], {sxl_version: sxl_version}
-        { "s" => rsmpify_value(value), q_key => quality.to_s }.merge arg
+        { "s" => rsmpify_value(value), "q" => quality.to_s }.merge arg
       end
       response = StatusResponse.new({
         "cId"=>component_id,
@@ -430,7 +420,7 @@ module RSMP
             sS << { "sCI" => code,
                      "n" => status_name,
                      "s" => rsmpify_value(value),
-                     q_key => quality }
+                     "q" => quality }
           end
         end
         update = StatusUpdate.new({
