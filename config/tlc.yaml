@@ -58,6 +58,3 @@ log:
   debug: true
   json: true
 live_output: tmp/tlc.state
-skip_validation:
-  - AlarmSuspend
-  - AlarmResume
