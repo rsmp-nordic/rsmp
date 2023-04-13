@@ -796,7 +796,7 @@ module RSMP
       end
 
       def handle_s0091 status_code, status_name=nil, options={}
-        if Proxy.version_requirement_met? options[:sxl_version], '>=1.1'
+        if Proxy.version_meets_requirement? options[:sxl_version], '>=1.1'
           case status_name
           when 'user'
             TrafficControllerSite.make_status 0
@@ -812,7 +812,7 @@ module RSMP
       end
 
       def handle_s0092 status_code, status_name=nil, options={}
-        if Proxy.version_requirement_met? options[:sxl_version], '>=1.1'
+        if Proxy.version_meets_requirement? options[:sxl_version], '>=1.1'
           case status_name
           when 'user'
             TrafficControllerSite.make_status 0
