@@ -89,4 +89,47 @@ RSpec.describe RSMP::Proxy do
 			end
 		end
 	end
+
+	describe 'version_meets_requirement?' do
+		# the version_meets_requirement? helper is just a wrapper for the Gem class helper
+		# so we donøt do a lot of testing, just enough, to verify that our wrapping is as expected
+
+		it 'is equal to' do
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.9','1.0.10')).to be(false)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.10','1.0.10')).to be(true)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.11','1.0.10')).to be(false)
+		end
+
+		it 'is greater than' do
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.9','>1.0.10')).to be(false)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.10','>1.0.10')).to be(false)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.11','>1.0.10')).to be(true)
+		end
+
+		it 'is greater than or equal to' do
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.9','>=1.0.10')).to be(false)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.10','>=1.0.10')).to be(true)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.11','>=1.0.10')).to be(true)
+		end
+
+		it 'is less than' do
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.9','<1.0.10')).to be(true)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.10','<1.0.10')).to be(false)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.11','<1.0.10')).to be(false)
+		end
+
+		it 'is less than or equal to' do
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.9','<=1.0.10')).to be(true)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.10','<=1.0.10')).to be(true)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.11','<=1.0.10')).to be(false)
+		end
+
+		it 'takes a list of conditions' do
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.9',['>=1.0.10','<1.0.12'])).to be(false)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.10',['>=1.0.10','<1.0.12'])).to be(true)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.11',['>=1.0.10','<1.0.12'])).to be(true)
+			expect(RSMP::Proxy.version_meets_requirement?('1.0.12',['>=1.0.10','<1.0.12'])).to be(false)
+		end
+	end
+
 end

@@ -648,8 +648,10 @@ module RSMP
       message.attributes['xNId'] = (main && main.xNId) ? main.xNId : ''
     end
 
-    # use Gem class to check version requirement
-    def self.version_requirement_met? requirement, version
+    # Use Gem class to check version requirement
+    # Requirement must be a string like '1.1', '>=1.0.3' or '<2.1.4',
+    # or list of strings, like ['<=1.4','<1.5']
+    def self.version_meets_requirement? version, requirement
       Gem::Requirement.new(requirement).satisfied_by?(Gem::Version.new(version))
     end
 
