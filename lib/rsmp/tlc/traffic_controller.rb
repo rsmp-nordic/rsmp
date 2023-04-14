@@ -69,6 +69,7 @@ module RSMP
         @time_int = nil
         @inputs.reset
         @signal_priorities = []
+        @dynamic_bands_timeout = 0
       end
 
       def dark?
@@ -239,7 +240,7 @@ module RSMP
         case command_code
         when 'M0001', 'M0002', 'M0003', 'M0004', 'M0005', 'M0006', 'M0007',
              'M0012', 'M0013', 'M0014', 'M0015', 'M0016', 'M0017', 'M0018',
-             'M0019', 'M0020', 'M0021', 'M0022',
+             'M0019', 'M0020', 'M0021', 'M0022', 'M0023',
              'M0103', 'M0104'
 
           return send("handle_#{command_code.downcase}", arg, options)
@@ -472,6 +473,20 @@ module RSMP
         else
           raise MessageRejected.new("Unknown type #{type}")
         end
+      end
+
+      def handle_m0023 arg, options={}
+        @node.verify_security_code 2, arg['securityCode']
+        timeout = arg['status'].to_i
+        unless timeout>=0 and timeout <= 65535
+          raise RSMP::MessageRejected.new "Timeout must be in the range 0-65535, got #{timeout}"
+        end
+        if timeout == 0
+          log "Dynamic bands timeout disabled", level: :info
+        else
+          log "Dynamic bands timeout set to #{timeout}min", level: :info
+        end
+        @dynamic_bands_timeout = timeout
       end
 
       def handle_m0103 arg, options={}
