@@ -33,6 +33,7 @@ module RSMP
 
       def reset_modes
         @function_position = 'NormalControl'
+        @function_position_source = 'startup'
         @previous_functional_position = nil
         @functional_position_timeout = nil
 
@@ -40,9 +41,13 @@ module RSMP
         @is_starting = false
         @control_mode = 'control'
         @manual_control = false
+        @manual_control_source = 'startup'
         @fixed_time_control = false
+        @fixed_time_control_source = 'startup'
         @isolated_control = false
+        @isolated_control_source = 'startup'
         @all_red = false
+        @all_red_source = 'startup'
         @police_key = 0
       end
 
@@ -50,10 +55,13 @@ module RSMP
         reset_modes
         @cycle_counter = 0
         @plan = 1
+        @plan_source = 'startup'
         @intersection = 0
+        @intersection_source = 'startup'
         @emergency_route = false
         @emergency_route_number = 0
         @traffic_situation = 0
+        @traffic_situation_source = 'startup'
         @day_time_table = {}
         @startup_sequence_active = false
         @startup_sequence_initiated_at = nil
@@ -140,7 +148,7 @@ module RSMP
       def check_functional_position_timeout
         return unless @functional_position_timeout
         if clock.now >= @functional_position_timeout
-          switch_functional_position @previous_functional_position, reverting: true
+          switch_functional_position @previous_functional_position, reverting: true, source: 'calendar_clock'
           @functional_position_timeout = nil
           @previous_functional_position = nil
         end
@@ -242,21 +250,29 @@ module RSMP
 
       def handle_m0001 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
-        switch_functional_position arg['status'], timeout: arg['timeout'].to_i*60
+        switch_functional_position arg['status'],
+          timeout: arg['timeout'].to_i*60,
+          source: 'forced'
+
       end
 
       def handle_m0002 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         if TrafficControllerSite.from_rsmp_bool(arg['status'])
-          switch_plan arg['timeplan']
+          switch_plan arg['timeplan'], source: 'force'
         else
-          switch_plan 0   # TODO use clock/calender
+          switch_plan 0, source: 'startup'     # TODO use clock/calender
         end
       end
 
       def handle_m0003 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
-        @traffic_situation = arg['traficsituation'].to_i
+        switch_traffic_situation arg['traficsituation'], source: 'forced'
+      end
+
+      def switch_traffic_situation situation, source:
+        @traffic_situation = situation.to_i
+        @traffic_situation_source = 'forced'
       end
 
       def handle_m0004 arg, options={}
@@ -313,7 +329,7 @@ module RSMP
 
       def handle_m0007 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
-        set_fixed_time_control arg['status']
+        set_fixed_time_control arg['status'], source: 'forced'
       end
 
       def handle_m0012 arg, options={}
@@ -483,11 +499,12 @@ module RSMP
         @inputs[i] = bool_to_digit arg['value']
       end
 
-      def set_fixed_time_control status
+      def set_fixed_time_control status, source:
         @fixed_time_control = status
+        @fixed_time_control_source = source
       end
 
-      def switch_plan plan
+      def switch_plan plan, source:
         plan_nr = plan.to_i
         if plan_nr == 0
           log "Switching to plan selection by time table", level: :info
@@ -496,9 +513,10 @@ module RSMP
           log "Switching to plan #{plan_nr}", level: :info
         end
         @plan = plan_nr
+        @plan_source = source
       end
 
-      def switch_functional_position mode, timeout: nil, reverting: false
+      def switch_functional_position mode, timeout: nil, reverting: false, source:
         unless ['NormalControl','YellowFlash','Dark'].include? mode
           raise RSMP::MessageRejected.new "Invalid functional position '#{mode}', must be NormalControl, YellowFlash or Dark'"
         end
@@ -516,6 +534,7 @@ module RSMP
           initiate_startup_sequence if @function_position != 'NormalControl'
         end
         @function_position = mode
+        @function_position_source = source
         mode
       end
 
@@ -594,6 +613,8 @@ module RSMP
           TrafficControllerSite.make_status @intersection
         when 'status'
           TrafficControllerSite.make_status @function_position != 'Dark'
+        when 'source'
+          TrafficControllerSite.make_status @function_position_source
         end
       end
 
@@ -603,6 +624,8 @@ module RSMP
           TrafficControllerSite.make_status @intersection
         when 'status'
           TrafficControllerSite.make_status @manual_control
+        when 'source'
+          TrafficControllerSite.make_status @manual_control_source
         end
       end
 
@@ -612,6 +635,8 @@ module RSMP
           TrafficControllerSite.make_status @intersection
         when 'status'
           TrafficControllerSite.make_status @fixed_time_control
+        when 'source'
+          TrafficControllerSite.make_status @fixed_time_control_source
         end
       end
 
@@ -621,6 +646,8 @@ module RSMP
           TrafficControllerSite.make_status @intersection
         when 'status'
           TrafficControllerSite.make_status @isolated_control
+        when 'source'
+          TrafficControllerSite.make_status @isolated_control_source
         end
       end
 
@@ -630,6 +657,8 @@ module RSMP
           TrafficControllerSite.make_status @intersection
         when 'status'
           TrafficControllerSite.make_status TrafficControllerSite.to_rmsp_bool( @function_position == 'YellowFlash' )
+        when 'source'
+          TrafficControllerSite.make_status @function_position_source
         end
       end
 
@@ -639,6 +668,8 @@ module RSMP
           TrafficControllerSite.make_status @intersection
         when 'status'
           TrafficControllerSite.make_status @all_red
+        when 'source'
+          TrafficControllerSite.make_status @all_red_source
         end
       end
 
@@ -655,6 +686,8 @@ module RSMP
         case status_name
         when 'status'
           TrafficControllerSite.make_status @plan
+        when 'source'
+          TrafficControllerSite.make_status @plan_source
         end
       end
 
@@ -662,6 +695,8 @@ module RSMP
         case status_name
         when 'status'
           TrafficControllerSite.make_status @traffic_situation
+        when 'source'
+          TrafficControllerSite.make_status @traffic_situation_source
         end
       end
 
@@ -784,7 +819,7 @@ module RSMP
         when 'status'
           TrafficControllerSite.make_status 'local'
         when 'source'
-          TrafficControllerSite.make_status 'startup'
+          TrafficControllerSite.make_status @intersection_source
         end
       end
 
