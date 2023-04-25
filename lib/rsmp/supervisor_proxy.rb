@@ -70,10 +70,13 @@ module RSMP
       # Async::IO::Endpoint#connect renames the current task. run in a subtask to avoid this see issue #22
       @task.async do |task|
         task.annotate 'socket task'
-        # this timeout is a workaround for #connect hanging on windows if the other side is not present yet
-        task.with_timeout 1.1 do
+        # this timeout is a workaround for connect hanging on windows if the other side is not present yet
+        timeout = @site_settings.dig('timeouts','connect') || 1.1
+        task.with_timeout timeout do
           @socket = @endpoint.connect
         end
+        delay = @site_settings.dig('intervals','after_connect')
+        task.sleep delay if delay
       end.wait
 
       @stream = Async::IO::Stream.new(@socket)
