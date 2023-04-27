@@ -13,6 +13,16 @@ module RSMP
       raise UnknownStatus.new "Status #{status_code}/#{status_name} not implemented by #{self.class}"
     end
 
+    def acknowledge_alarm alarm_code
+      alarm = get_alarm_state alarm_code
+      if alarm.acknowledge
+        log "Acknowledging alarm #{alarm_code}", level: :info
+        @node.alarm_acknowledged alarm
+      else
+        log "Alarm #{alarm_code} already acknowledged", level: :info
+      end
+    end
+
     def suspend_alarm alarm_code
       alarm = get_alarm_state alarm_code
       if alarm.suspend
