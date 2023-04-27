@@ -210,6 +210,16 @@ module RSMP
       end
     end
 
+    # handle incoming alarm acknowledge
+    def handle_alarm_acknowledge message
+      component_id = message.attributes["cId"]
+      component = @site.find_component component_id
+      alarm_code = message.attribute("aCId")
+      log "Received #{message.type} #{alarm_code} acknowledgement", message: message, level: :log
+      acknowledge message
+      component.acknowledge_alarm alarm_code
+    end
+
     # handle incoming alarm suspend
     def handle_alarm_suspend message
       component_id = message.attributes["cId"]

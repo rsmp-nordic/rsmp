@@ -30,6 +30,13 @@ module RSMP
         'rvs' => rvs
       }
     end
+
+    def acknowledge
+      change, @acknowledged = !@acknowledged, true
+      update_timestamp if change
+      change
+    end
+
     def suspend
       change, @suspended = !@suspended, true
       update_timestamp if change
