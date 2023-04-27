@@ -49,8 +49,11 @@ module RSMP
       change
     end
 
+    # according to the rsmp core spec, the only time an alarm changes to unanknowledged,
+    # is when it's activated. See:
+    # https://rsmp-nordic.org/rsmp_specifications/core/3.2/applicability/basic_structure.html#alarm-status
     def activate
-      change, @active = !@active, true
+      change, @active, @acknowledged = !@active, true, false
       update_timestamp if change
       change
     end
