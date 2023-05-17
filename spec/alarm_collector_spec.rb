@@ -1,6 +1,7 @@
 RSpec.describe RSMP::AlarmCollector do
   let(:timeout) { 0.001 }
   let(:right) { RSMP::Alarm.new(
+      'cId' => 'DL1',
       'aCId' => 'A0302',
       'aSp' => 'Issue',
       'ack' => 'Acknowledged',
@@ -18,6 +19,7 @@ RSpec.describe RSMP::AlarmCollector do
     )
   }
   let(:wrong) { RSMP::Alarm.new(
+      'cId' => 'TC',
       'aCId' => 'A0303',
       'aSp' => 'Suspend',
       'ack' => 'notAcknowledged',
@@ -62,6 +64,23 @@ RSpec.describe RSMP::AlarmCollector do
 
           expect(result).to eq(:timeout)
         end
+        collect_task.wait
+      end
+    end
+
+    it 'matches cId' do
+      RSMP::SiteProxyStub.async do |task,proxy|
+        collect_task = task.async do
+          collector = RSMP::AlarmCollector.new proxy, query: {'cId' => 'DL1'}, num: 1, timeout: timeout
+          result = collector.collect
+
+          expect(result).to eq(:ok)
+          expect(collector.messages).to be_an(Array)
+          expect(collector.messages.size).to eq(1)
+          expect(collector.messages.first).to eq(right)
+        end
+        proxy.notify wrong
+        proxy.notify right
         collect_task.wait
       end
     end
