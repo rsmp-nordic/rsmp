@@ -14,7 +14,7 @@ module RSMP
       return false if super(message) == false
 
       # match fixed attributes
-      %w{aCId aSp ack aS sS cat pri}.each do |key|
+      %w{cId aCId aSp ack aS sS cat pri}.each do |key|
         want = @query[key]
         got = message.attribute(key)
         case want
