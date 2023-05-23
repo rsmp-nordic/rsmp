@@ -299,13 +299,9 @@ module RSMP
       latest = @latest_watchdog_received + timeout
       left = latest - now
       if left < 0
-        str = "No Watchdog within #{timeout} seconds"
-        log str, level: :error
-          begin
-            close                                   # this will stop the current task (ourself)
-          ensure
-            notify_error MissingWatchdog.new(str)   # but ensure block will still be reached
-          end
+        str = "No Watchdog received within #{timeout} seconds"
+        log str, level: :warning
+        notify MissingWatchdog.new(str)
       end
     end
 
