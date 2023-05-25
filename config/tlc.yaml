@@ -37,8 +37,9 @@ signal_plans:
 inputs:
   total: 8
   programming:
-    8:
-      raise: A0301
+    7:
+      raise_alarm: A0301
+      component: DL1
 startup_sequence: 'efg'
 intervals:
   timer: 0.1
