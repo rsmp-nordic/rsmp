@@ -31,16 +31,16 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "async", "~> 1.30.3"
-  spec.add_dependency "async-io", "~> 1.33.0"
+  spec.add_dependency "async-io", "~> 1.34.3"
   spec.add_dependency "colorize", "~> 0.8.1"
-  spec.add_dependency "thor", "~> 1.2.1"
+  spec.add_dependency "thor", "~> 1.2.2"
   spec.add_dependency "rsmp_schema", "~> 0.4.0"
 
-  spec.add_development_dependency "bundler", "~> 2.3.7"
+  spec.add_development_dependency "bundler", "~> 2.4.13"
   spec.add_development_dependency "rake", "~> 13.0.6"
-  spec.add_development_dependency "rspec", "~> 3.10.0"
-  spec.add_development_dependency "rspec-expectations", "~> 3.10.2"
-  spec.add_development_dependency "timecop", "~> 0.9.4"
-  spec.add_development_dependency "cucumber", "~> 7.1.0"
-  spec.add_development_dependency "aruba" , "~> 2.0.0"
+  spec.add_development_dependency "rspec", "~> 3.12.0"
+  spec.add_development_dependency "rspec-expectations", "~> 3.12.2"
+  spec.add_development_dependency "timecop", "~> 0.9.6"
+  spec.add_development_dependency "cucumber", "~> 8.0.0"
+  spec.add_development_dependency "aruba" , "~> 2.1.0"
 end
