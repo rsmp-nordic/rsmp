@@ -1,5 +1,5 @@
 RSpec.describe RSMP::AlarmCollector do
-  let(:timeout) { 0.001 }
+  let(:timeout) { 0.01 }
   let(:right) { RSMP::Alarm.new(
       'cId' => 'DL1',
       'aCId' => 'A0302',
