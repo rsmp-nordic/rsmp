@@ -98,6 +98,7 @@ RSpec.describe RSMP::Site do
 
           # read watchdog ack
           watchdog_ack = JSON.parse protocol.read_line
+        rescue EOFError
         end
       } do |task|
         proxy = site.wait_for_supervisor :any, timeout

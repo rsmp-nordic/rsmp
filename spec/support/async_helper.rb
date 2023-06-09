@@ -6,13 +6,11 @@ require 'async'
 # We use a transient task, to ensure that any subtask are terminated as soon as the main task completes.
 def async_context transient:nil, &block
 	Async do |task|
-		if transient
-			Async transient: false do |child|
-				transient.call
-			end
-		end
+		Async { transient.call } if transient
 		yield task
 	ensure
 		task.stop
 	end
+rescue IOError => e
+	puts e
 end

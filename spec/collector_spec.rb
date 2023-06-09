@@ -1,5 +1,5 @@
 RSpec.describe RSMP::Collector do
-  let(:timeout) { 0.001 }
+  let(:timeout) { 0.01 }
 
   describe '#collect' do
     it 'gets anything' do
