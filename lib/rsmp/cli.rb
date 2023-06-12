@@ -73,7 +73,11 @@ module RSMP
         end
       end
     rescue Interrupt
-      # cntr-c
+      # cntr-c pressed
+    rescue SignalException
+      # SIGTERM received
+    rescue exit
+      # exit() called in code
     rescue RSMP::Schema::UnknownSchemaTypeError => e
       puts "Cannot start site: #{e}"
     rescue RSMP::Schema::UnknownSchemaVersionError => e
