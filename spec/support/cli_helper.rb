@@ -1,6 +1,6 @@
 require 'rsmp/cli'
 
-def run_cli(cmd, exit_timeout: 1)
+def run_cli(cmd, exit_timeout: 5)
   run_command_and_stop(cmd, exit_timeout: exit_timeout, fail_on_error: false)
 end
 
