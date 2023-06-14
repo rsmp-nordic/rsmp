@@ -42,7 +42,7 @@ RSpec.describe 'Connecting' do
 		expect(site.proxies.size).to eq(1)
 		expect(site.proxies.first.state).to eq(:disconnected)
 
-    async_context transient: lambda {
+    AsyncRSpec.async context: lambda {
 			supervisor.start
 			site.start
     } do |task|
@@ -70,7 +70,7 @@ RSpec.describe 'Connecting' do
 		expect(site.proxies.size).to eq(1)
 		expect(site.proxies.first.state).to eq(:disconnected)
 
-    async_context transient: lambda {
+    AsyncRSpec.async context: lambda {
 			site.start
 			supervisor.start
     } do |task|
@@ -92,4 +92,5 @@ RSpec.describe 'Connecting' do
 			task.stop
 		end
 	end
+
 end

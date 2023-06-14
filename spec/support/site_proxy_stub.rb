@@ -19,8 +19,6 @@ module RSMP
       # catch error and reraise outside async block
       # we do this to avoid async printing the errors to the console,
       # which inteferres with rspec output
-      rescue Errno::EBADF => e
-        puts e
       rescue StandardError => e
         error = e
         task.stop

@@ -1,4 +1,4 @@
-RSpec.describe RSMP::Site do
+ RSpec.describe RSMP::Site do
   let(:timeout) { 0.1 }
 
   let(:ip) { 'localhost' }
@@ -52,9 +52,7 @@ RSpec.describe RSMP::Site do
         log_settings: log_settings
       )
 
-      async_context transient: lambda {
-        site.start
-
+      AsyncRSpec.async context: lambda {
         # acts as a supervisior by listening for connections
         # and exhcanging RSMP handhake
         endpoint = Async::IO::Endpoint.tcp('localhost', port)
@@ -99,8 +97,11 @@ RSpec.describe RSMP::Site do
           # read watchdog ack
           watchdog_ack = JSON.parse protocol.read_line
         rescue EOFError
+          puts e
+          puts e.backtrace
         end
       } do |task|
+        site.start
         proxy = site.wait_for_supervisor :any, timeout
         expect(proxy).to be_an(RSMP::SupervisorProxy)
         proxy.wait_for_state(:ready, timeout: timeout)
