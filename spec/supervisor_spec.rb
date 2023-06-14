@@ -110,7 +110,7 @@ RSpec.describe RSMP::Supervisor do
     end
 
     it 'completes' do
-      async_context transient: lambda { supervisor.start } do |task|
+      AsyncRSpec.async context: lambda { supervisor.start } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
         proxy = connect task, core_versions:core_versions, sxl_version:sxl_version
@@ -121,7 +121,7 @@ RSpec.describe RSMP::Supervisor do
     end
 
     it 'logs' do
-      async_context transient: lambda { supervisor.start } do |task|
+      AsyncRSpec.async context: lambda { supervisor.start } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
         proxy = connect task, core_versions:core_versions, sxl_version:sxl_version
@@ -145,7 +145,7 @@ RSpec.describe RSMP::Supervisor do
     end
 
     it 'validates initial messages with correct core version' do
-      async_context transient: lambda { supervisor.start } do |task|
+      AsyncRSpec.async context: lambda { supervisor.start } do |task|
         # write version message
         core_version = '3.1.3'
         sxl_version = RSMP::Schema.latest_version(:tlc).to_s
