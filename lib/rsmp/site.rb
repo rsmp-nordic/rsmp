@@ -97,12 +97,12 @@ module RSMP
     end
 
     def alarm_acknowledged alarm_state
-      alarm = AlarmIssue.new( alarm_state.to_hash.merge('aSp' => 'Issue') )
+      alarm = AlarmAcknowledged.new( alarm_state.to_hash )
       send_alarm alarm
     end
 
     def alarm_suspended_or_resumed alarm_state
-      alarm = AlarmIssue.new( alarm_state.to_hash.merge('aSp' => 'Suspend') )
+      alarm = AlarmSuspended.new( alarm_state.to_hash.merge('aSp' => 'Suspend') )
       send_alarm alarm
     end
 

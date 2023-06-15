@@ -246,7 +246,7 @@ module RSMP
     end
   end
 
-  class AlarmAcknowledged < Alarm
+  class AlarmAcknowledge < Alarm
     def initialize attributes = {}
       super({
         "aSp" => "Acknowledge",
@@ -254,18 +254,18 @@ module RSMP
     end
   end
 
+  class AlarmAcknowledged < Alarm
+    def initialize attributes = {}
+      super({
+        "aSp" => "Acknowledge",
+        "ack" => "acknowledged"
+      }.merge attributes)
+    end
+  end
   class AlarmSuspend < Alarm
     def initialize attributes = {}
       super({
         "aSp" => "Suspend",
-      }.merge attributes)
-    end
-  end
-
-  class AlarmResume < Alarm
-    def initialize attributes = {}
-      super({
-        "aSp" => "Resume",
       }.merge attributes)
     end
   end
@@ -275,6 +275,14 @@ module RSMP
       super({
         "aSp" => "Suspend",
         "sS" => "suspended"
+      }.merge attributes)
+    end
+  end
+
+  class AlarmResume < Alarm
+    def initialize attributes = {}
+      super({
+        "aSp" => "Resume",
       }.merge attributes)
     end
   end
