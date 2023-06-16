@@ -38,5 +38,8 @@ module RSMP
       (time || now).strftime("%FT%T.%3NZ")
     end
 
+    def self.parse str
+      Time.parse(str)
+    end
   end
 end
