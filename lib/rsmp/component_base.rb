@@ -30,6 +30,10 @@ module RSMP
       @alarms = {}
     end
 
+    def now
+      node.now
+    end
+
     def get_alarm_state alarm_code
       alarm = @alarms[alarm_code] ||= RSMP::AlarmState.new component: self, code: alarm_code
     end

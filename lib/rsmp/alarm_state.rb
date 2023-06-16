@@ -1,33 +1,55 @@
 module RSMP
-  # class that tracks the state of an alarm
+
+  # The state of an alarm on a component.
+  # The alarm state is for a particular alarm code,
+  # a component typically have an alarm state for each
+  # alarm code that is defined for the component type.
+
   class AlarmState
     attr_reader :component_id, :code, :acknowledged, :suspended, :active, :timestamp, :category, :priority, :rvs
 
-    def initialize component:, code:
+    def self.create_from_message component, message
+      self.new(
+        component: component,
+        code: message.attribute("aCId"),
+        timestamp: RSMP::Clock.parse(message.attribute('aTs')),
+        acknowledged: message.attribute('ack') == 'Acknowledged',
+        suspended: message.attribute('aS') == 'suspended',
+        active: message.attribute('sS') == 'Active',
+        category: message.attribute('cat'),
+        priority: message.attribute('pri').to_i,
+        rvs: message.attribute('rvs')
+      )
+    end
+
+    def initialize component:, code:, 
+        suspended: false, acknowledged: false, active: false, timestamp: nil,
+        category: 'D', priority: 2, rvs: []
       @component = component
       @component_id = component.c_id
       @code = code
-      @suspended = false
-      @acknowledged = false
-      @suspended = false
-      @active = false
-      @timestamp = nil
-      @category = 'D'
-      @priority = 2
-      @rvs = []
+      @suspended = !!suspended
+      @acknowledged = !!acknowledged 
+      @active = !!active
+      @timestamp =  timestamp
+      @category = category || 'D'
+      @priority = priority || 2
+      @rvs = rvs
+
+      update_timestamp unless @timestamp
     end
 
     def to_hash
       {
-        'cId' => component_id,
-        'aCId' => code,
-        'aTs' => Clock.to_s(timestamp),
-        'ack' => (acknowledged ? 'Acknowledged' : 'notAcknowledged'),
-        'sS' => (suspended ? 'suspended' : 'notSuspended'),
-        'aS' => (active ? 'Active' : 'inActive'),
-        'cat' => category,
-        'pri' => priority.to_s,
-        'rvs' => rvs
+        'cId' => @component_id,
+        'aCId' => @code,
+        'aTs' => Clock.to_s(@timestamp),
+        'ack' => (@acknowledged ? 'Acknowledged' : 'notAcknowledged'),
+        'sS' => (@suspended ? 'suspended' : 'notSuspended'),
+        'aS' => (@active ? 'Active' : 'inActive'),
+        'cat' => @category,
+        'pri' => @priority.to_s,
+        'rvs' => @rvs
       }
     end
 
@@ -65,33 +87,22 @@ module RSMP
     end
     
     def update_timestamp
-      @timestamp = @component.node.clock.now
-    end
-
-    def to_message specialization:
-      Alarm.new(
-        'cId' => @component_id,
-        'aSp' => specialization,
-        'aCId' => @code,
-        'aTs' => Clock.to_s(@timestamp),
-        'ack' => (@acknowledged ? 'Acknowledged' : 'notAcknowledged'),
-        'sS' => (@suspended ? 'suspended' : 'notSuspended'),
-        'aS' => (@active ? 'Active' : 'inActive'),
-        'cat' => @category,
-        'pri' => @priority.to_s,
-        'rvs' => @rvs
-      )
+      @timestamp = @component.now
     end
 
     def differ_from_message? message
-      return true if @timestamp != message.attribute('aTs')
-      return true if message.attribute('ack') && @acknowledged != (message.attribute('ack') == 'True')
-      return true if message.attribute('sS') && @suspended != (message.attribute('sS') == 'True')
-      return true if message.attribute('aS') && @active != (message.attribute('aS') == 'True')
+      return true if RSMP::Clock.to_s(@timestamp) != message.attribute('aTs')
+      return true if message.attribute('ack') && @acknowledged != (message.attribute('ack') == 'Acknowledged')
+      return true if message.attribute('sS') && @suspended != (message.attribute('sS') == 'suspended')
+      return true if message.attribute('aS') && @active != (message.attribute('aS') == 'Active')
       return true if message.attribute('cat') && @category != message.attribute('cat')
       return true if message.attribute('pri') && @priority != message.attribute('pri').to_i
       #return true @rvs = message.attribute('rvs')
       false
+    end
+
+    def message_is_older? message
+      Time.parse(message.attribute('aTs')) < @timestamp
     end
 
     # update from rsmp message
@@ -100,7 +111,7 @@ module RSMP
       unless differ_from_message? message
         raise RepeatedAlarmError.new("no changes from previous alarm #{message.m_id_short}")
       end
-      if Time.parse(message.attribute('aTs')) < Time.parse(message.attribute('aTs'))
+      if message_is_older? message
         raise TimestampError.new("timestamp is earlier than previous alarm #{message.m_id_short}")
       end
     ensure

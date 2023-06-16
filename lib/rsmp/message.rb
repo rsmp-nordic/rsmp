@@ -233,7 +233,7 @@ module RSMP
   class AlarmIssue < Alarm
     def initialize attributes = {}
       super({
-        "aSp" => "Issue",
+        "aSp" => "Issue"
       }.merge attributes)
     end
   end

@@ -8,7 +8,7 @@ module RSMP
 
     attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock, :collector
 
-    def initialize options
+    def initialize options={}
       initialize_logging options
       initialize_task
       @deferred = []
@@ -16,6 +16,10 @@ module RSMP
       @error_queue = Async::Queue.new
       @ignore_errors = []
       @collect = options[:collect]
+    end
+
+    def now
+      clock.now
     end
 
     # stop proxies, then call super
