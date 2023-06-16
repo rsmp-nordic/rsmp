@@ -35,8 +35,6 @@ module RSMP
       @category = category || 'D'
       @priority = priority || 2
       @rvs = rvs
-
-      update_timestamp unless @timestamp
     end
 
     def to_hash
@@ -101,8 +99,9 @@ module RSMP
       false
     end
 
-    def message_is_older? message
-      Time.parse(message.attribute('aTs')) < @timestamp
+    def older_message? message
+      return false if @timestamp == nil
+      RSMP::Clock.parse(message.attribute('aTs')) < @timestamp
     end
 
     # update from rsmp message
@@ -111,11 +110,11 @@ module RSMP
       unless differ_from_message? message
         raise RepeatedAlarmError.new("no changes from previous alarm #{message.m_id_short}")
       end
-      if message_is_older? message
+      if older_message? message
         raise TimestampError.new("timestamp is earlier than previous alarm #{message.m_id_short}")
       end
     ensure
-      @timestamp = message.attribute('aTs')
+      @timestamp = RSMP::Clock.parse message.attribute('aTs')
       @acknowledged = message.attribute('ack') == 'True'
       @suspended = message.attribute('sS') == 'True'
       @active = message.attribute('aS') == 'True'

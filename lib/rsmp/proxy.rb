@@ -24,6 +24,11 @@ module RSMP
       @state = :disconnected
     end
 
+
+    def now
+      node.now
+    end
+
     def disconnect
     end
 
