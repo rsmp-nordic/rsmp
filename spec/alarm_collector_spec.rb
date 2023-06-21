@@ -39,7 +39,8 @@ RSpec.describe RSMP::AlarmCollector do
 
   describe '#collect' do
     it 'gets any alarm' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, num: 2, timeout: timeout
           result = collector.collect
@@ -57,7 +58,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'times out' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, num: 1, timeout: timeout
           result = collector.collect
@@ -69,7 +71,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'matches cId' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, query: {'cId' => 'DL1'}, num: 1, timeout: timeout
           result = collector.collect
@@ -86,7 +89,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'matches aCId' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, query: {'aCId' => 'A0302'}, num: 1, timeout: timeout
           result = collector.collect
@@ -103,7 +107,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'matches aSp' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, query: {'aSp' => 'Issue'}, num: 1, timeout: timeout
           result = collector.collect
@@ -120,7 +125,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'matches aSp with regex' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, query: {'aSp' => /[Ii]ssue/}, num: 1, timeout: timeout
           result = collector.collect
@@ -137,7 +143,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'matches ack' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, query: {'ack' => 'Acknowledged'}, num: 1, timeout: timeout
           result = collector.collect
@@ -154,7 +161,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'matches As' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, query: {'aS' => 'Active'}, num: 1, timeout: timeout
           result = collector.collect
@@ -171,7 +179,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'matches sS' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, query: {'sS' => 'notSuspended'}, num: 1, timeout: timeout
           result = collector.collect
@@ -188,7 +197,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'matches cat' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, query: {'cat' => 'D'}, num: 1, timeout: timeout
           result = collector.collect
@@ -205,7 +215,8 @@ RSpec.describe RSMP::AlarmCollector do
     end
 
     it 'matches pri' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::AlarmCollector.new proxy, query: {'pri' => '1'}, num: 1, timeout: timeout
           result = collector.collect
@@ -223,7 +234,8 @@ RSpec.describe RSMP::AlarmCollector do
 
 
     it 'matches rvs' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+        AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           rvs = [
             {'n' => 'color', 'v' => 'green'}

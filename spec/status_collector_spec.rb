@@ -38,7 +38,8 @@ RSpec.describe StatusCollector do
   describe "#collect" do
 
     it 'completes with a single status update' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+      AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.summary).to eq([false,false,false])
         expect(collector.done?).to be(false)
@@ -51,7 +52,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'completes with sequential status updates' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+      AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.summary).to eq([false,false,false])
         expect(collector.done?).to be(false)
@@ -72,7 +74,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'marks queries as not done' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+      AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.done?).to be(false)
         expect(collector.summary).to eq([false,false,false])
@@ -101,7 +104,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'raises if notified after being complete' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+      AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         collector.start
         collector.notify build_status_message(ok.values)
@@ -111,7 +115,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'extra status updates are ignored' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+      AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         collector.use_task task
         # proxy should have no listeners initially
@@ -142,7 +147,8 @@ RSpec.describe StatusCollector do
 
   describe '#collect with block' do
     it 'gets message and each item' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+      AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, task: task, timeout: timeout)
         collect_task = task.async do
           messages = []
@@ -166,7 +172,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'can keep or reject items' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+      AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         want = {"sCI" => "S0001","n" => "status"}
         collector = StatusCollector.new(proxy, [want], task: task, timeout: timeout)
         collect_task = task.async do
@@ -188,7 +195,8 @@ RSpec.describe StatusCollector do
     end
 
     it 'can cancel' do
-      RSMP::SiteProxyStub.async do |task,proxy|
+      AsyncRSpec.async do |task|
+       proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, task: task)
         collect_task = task.async do
           result = collector.collect do |message, item|
