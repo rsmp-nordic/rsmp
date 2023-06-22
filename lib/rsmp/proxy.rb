@@ -22,6 +22,7 @@ module RSMP
       setup options
       clear
       @state = :disconnected
+      @state_condition = Async::Notification.new
     end
 
 
@@ -155,7 +156,6 @@ module RSMP
       @outgoing_acknowledged = {}
       @latest_watchdog_send_at = nil
 
-      @state_condition = Async::Notification.new
       @acknowledgements = {}
       @acknowledgement_condition = Async::Notification.new
     end
