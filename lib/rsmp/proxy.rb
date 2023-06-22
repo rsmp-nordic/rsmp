@@ -44,8 +44,13 @@ module RSMP
       log "Closing connection", level: :warning
       close_stream
       close_socket
+      stop_reader
       set_state :disconnected
       notify_error DisconnectError.new("Connection was closed")
+
+      # stop timer
+      # as we're running inside the timer, code after stop_timer() will not be called,
+      # unless it's in the ensure block
       stop_timer
     end
 
@@ -57,26 +62,26 @@ module RSMP
     end
 
     def stop_timer
-      return unless @timer
-      @timer.stop
+      @timer.stop if @timer
+    ensure
       @timer = nil
     end
 
     def stop_reader
-      return unless @reader
-      @reader.stop
+      @reader.stop if @reader
+    ensure
       @reader = nil
     end
 
     def close_stream
-      return unless @stream
-      @stream.close
+      @stream.close if @stream
+    ensure
       @stream = nil
     end
 
     def close_socket
-      return unless @socket
-      @socket.close
+      @socket.close if @socket
+    ensure
       @socket = nil
     end
 
