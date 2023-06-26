@@ -14,6 +14,6 @@ RSpec.describe 'CLI rsmp help', :type => :aruba do
   end
 
   it 'can run command and stop' do
-    run_command_and_stop('rsmp --help', exit_timeout: 1, fail_on_error: false)
+    run_command_and_stop('rspec --help', exit_timeout: 1, fail_on_error: false)
   end
 end
