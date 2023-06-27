@@ -1,5 +1,6 @@
 RSpec.describe(RSMP::CLI, :type => :aruba) do
   describe 'invoke site' do
+
     describe 'with no options' do
       it 'starts site' do
         AsyncRSpec.async do |task|
