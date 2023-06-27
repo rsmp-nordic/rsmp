@@ -8,18 +8,17 @@ require 'async'
 # It also avoid Async printing errors, which interferes with RSpec output.
 
 module AsyncRSpec
-  def self.async context:nil, &block
+  def self.async context:nil
     error = nil
-    context_task = nil
     Async do |task|
-      context_task = Async { context.call } if context
+      Async { context.call } if context
       yield task
     rescue StandardError => e
       error = e
     ensure
-      task.stop
+      task.stop                        # make sure child tasks are stopped
     end
-    raise error if error     # re-raise outside async block
+    raise error if error               # re-raise outside async block
   rescue IOError, EOFError => e        # work-around for async still being work-in-progress on Windows
     puts e
     puts e.backtrace
