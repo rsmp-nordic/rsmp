@@ -25,7 +25,7 @@ module RSMP
           log_settings = settings.delete('log') || {}
         else
           puts "Error: Config #{options[:config]} not found"
-          exit
+          return
         end
       end
 
@@ -106,7 +106,7 @@ module RSMP
           log_settings = settings.delete 'log'
         else
           puts "Error: Config #{options[:config]} not found"
-          exit
+          return
         end
       end
 
