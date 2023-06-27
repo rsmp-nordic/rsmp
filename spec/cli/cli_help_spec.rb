@@ -1,15 +1,16 @@
 RSpec.describe 'CLI rsmp help', :type => :aruba do
   describe 'with no options' do
     it 'prints help' do
-      run_cli 'rsmp help'
-      expect_cli_output /Commands:/
+      expect { RSMP::CLI.new.invoke("help") }
+      .to output( a_string_including('Commands:') ).to_stdout
     end
   end
 
-  describe 'site' do
+  describe 'with site' do
     it 'prints site help' do
-      run_cli 'rsmp help site'
-      expect_cli_output /Usage:/
+      expect { RSMP::CLI.new.invoke("help", ['site']) }
+      .to output( a_string_including('Usage:') ).to_stdout
     end
   end
+
 end

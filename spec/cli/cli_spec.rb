@@ -1,7 +1,7 @@
 RSpec.describe(RSMP::CLI) do
   describe "help" do
     it "lists commands" do
-      expect { RSMP::CLI.new.invoke("b") }.to output(
+      expect { RSMP::CLI.new.invoke("help") }.to output(
         a_string_including('Commands:')
       ).to_stdout
     end

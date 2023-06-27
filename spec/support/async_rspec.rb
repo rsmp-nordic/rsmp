@@ -17,10 +17,10 @@ module AsyncRSpec
     rescue StandardError => e
       error = e
     ensure
-      context_task.stop if context_task
-    end.wait                 # wait for main block to complete (needed if we're already inside a task)
+      task.stop
+    end
     raise error if error     # re-raise outside async block
-  rescue IOError => e        # work-around for async still being work-in-progress on Windows
+  rescue IOError, EOFError => e        # work-around for async still being work-in-progress on Windows
     puts e
     puts e.backtrace
   end
