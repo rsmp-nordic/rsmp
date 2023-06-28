@@ -5,8 +5,6 @@ RSpec.describe(RSMP::CLI) do
       it 'starts site' do
         AsyncRSpec.async do |task|
           expect_stdout( 'Starting site') do
-            #raise 'ups'
-            #1.upto(10) { |i| $stdout.puts i; sleep 1  }
             RSMP::CLI.new.invoke('site')
           end
         end
