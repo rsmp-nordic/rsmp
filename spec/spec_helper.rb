@@ -1,5 +1,5 @@
 require 'bundler/setup'
-require 'aruba/rspec'
+require 'tempfile'
 require 'rsmp'
 require_relative 'support/site_proxy_stub'
 require_relative 'support/async_rspec'
