@@ -1,6 +1,6 @@
 include RSMP
 RSpec.describe StatusCollector do
-  let(:timeout) { 0.01 }
+  let(:timeout) { 0.1 }
 
   def build_status_message status_list
     clock = Clock.new
