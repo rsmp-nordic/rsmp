@@ -1,4 +1,4 @@
-RSpec.describe(RSMP::CLI, :type => :aruba) do
+RSpec.describe(RSMP::CLI) do
   describe 'invoke site' do
 
     describe 'with no options' do
@@ -7,7 +7,7 @@ RSpec.describe(RSMP::CLI, :type => :aruba) do
           expect_stdout( 'Starting site') do
             #raise 'ups'
             #1.upto(10) { |i| $stdout.puts i; sleep 1  }
-            RSMP::CLI.new.invoke("site")
+            RSMP::CLI.new.invoke('site')
           end
         end
       end
@@ -17,7 +17,7 @@ RSpec.describe(RSMP::CLI, :type => :aruba) do
       it 'starts site with id' do
         AsyncRSpec.async do |task|
           expect_stdout( 'Starting site RN+SI0639') do
-            RSMP::CLI.new.invoke("site", [], id: 'RN+SI0639')
+            RSMP::CLI.new.invoke('site', [], id: 'RN+SI0639')
           end
         end
       end
@@ -27,7 +27,7 @@ RSpec.describe(RSMP::CLI, :type => :aruba) do
       it 'uses ip and port' do
         AsyncRSpec.async do |task|
           expect_stdout( 'Connecting to supervisor at 127.0.0.8:12118') do
-            RSMP::CLI.new.invoke("site", [], supervisors: '127.0.0.8:12118')
+            RSMP::CLI.new.invoke('site', [], supervisors: '127.0.0.8:12118')
           end
         end
       end
@@ -35,10 +35,16 @@ RSpec.describe(RSMP::CLI, :type => :aruba) do
 
     describe 'with config file' do
       it 'uses uses id from config' do
-        write_file 'spec/fixtures/site.yaml', 'site_id: RN+SI0932'
         AsyncRSpec.async do |task|
+          file = Tempfile.new(['site','.yaml'])
+          file.write('site_id: RN+SI0932')
           expect_stdout( 'Starting site RN+SI0932') do
-            RSMP::CLI.new.invoke("site", [], config: 'tmp/aruba/spec/fixtures/site.yaml')
+            RSMP::CLI.new.invoke('site', [], config: file.path)
+          end
+        ensure
+          if file
+            file.close
+            file.unlink   # deletes the temp file
           end
         end
       end
@@ -48,7 +54,7 @@ RSpec.describe(RSMP::CLI, :type => :aruba) do
       it 'prints error' do
         AsyncRSpec.async do |task|
           expect_stdout( 'Error: Config bad/path/site.yaml not found') do
-            RSMP::CLI.new.invoke("site", [], config: 'bad/path/site.yaml')
+            RSMP::CLI.new.invoke('site', [], config: 'bad/path/site.yaml')
           end
         end
       end
