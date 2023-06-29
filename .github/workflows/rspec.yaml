@@ -4,7 +4,7 @@ name: RSpec
 on: [push]
 jobs:
   test:
-    timeout-minutes: 10
+    timeout-minutes: 1
     strategy:
       fail-fast: false
       matrix:
