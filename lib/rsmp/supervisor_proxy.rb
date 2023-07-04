@@ -197,7 +197,7 @@ module RSMP
 
     def process_alarm message
       case message
-      when AlarmAcknowledged
+      when AlarmAcknowledge
         handle_alarm_acknowledge message
       when AlarmSuspend
         handle_alarm_suspend message

@@ -66,7 +66,11 @@ module RSMP
       when /^Request$/i
         AlarmRequest.new attributes
       when /^Acknowledge$/i
+        if attributes['ack'] =~ /^acknowledged$/i
         AlarmAcknowledged.new attributes
+        else
+          AlarmAcknowledge.new attributes
+        end
       when /^Suspend$/i
         if attributes['sS'] =~ /^suspended$/i
           AlarmSuspended.new attributes

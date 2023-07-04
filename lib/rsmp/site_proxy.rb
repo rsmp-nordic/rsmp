@@ -63,7 +63,7 @@ module RSMP
           process_aggregated_status message
         when AggregatedStatusRequest
           will_not_handle message
-        when AlarmIssue, AlarmSuspended, AlarmResumed
+        when AlarmIssue, AlarmSuspended, AlarmResumed, AlarmAcknowledged
           process_alarm message
         when CommandResponse
           process_command_response message

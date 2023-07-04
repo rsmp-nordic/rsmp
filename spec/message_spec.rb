@@ -33,6 +33,8 @@ RSpec.describe RSMP::Message do
 	let(:status_update_str) { '{"mType":"rSMsg","type":"StatusUpdate","cId":"AA+BBCCC=DDDEE002","sTs":"2019-07-11T06:37:56.103Z","sS":[{"sCI":"S0001","n":"signalgroupstatus","s":"98","q":"recent"}],"mId":"e0694101-4b8c-4832-9bd4-7ed598b247bd"}' }
 	let(:alarm_suspended) { '{"mType":"rSMsg","type":"Alarm","ntsOId":"","xNId":"","xACId":"","xNACId":"","aSp":"Suspend","cId":"TC","aCId":"A0301","aTs":"2022-08-24T13:35:07.058Z","ack":"notAcknowledged","sS":"suspended","aS":"inActive","cat":"D","pri":"2","rvs":[],"mId":"e2571baa-ce10-4f0b-aa7f-d50ae7881039"}' }
 	let(:alarm_resumed) { '{"mType":"rSMsg","type":"Alarm","ntsOId":"","xNId":"","xACId":"","xNACId":"","aSp":"Suspend","cId":"TC","aCId":"A0301","aTs":"2022-08-24T13:35:07.070Z","ack":"notAcknowledged","sS":"notSuspended","aS":"inActive","cat":"D","pri":"2","rvs":[],"mId":"612abbb3-46a2-4cce-b227-068cd1d4862f"}' }
+	let(:alarm_acknowledge) { '{"mType":"rSMsg","type":"Alarm","ntsOId":"","xNId":"","xACId":"","xNACId":"","aSp":"Acknowledge","cId":"TC","aCId":"A0301","aTs":"2022-08-24T13:35:07.070Z","mId":"612abbb3-46a2-4cce-b227-068cd1d4862f"}' }
+	let(:alarm_acknowledged) { '{"mType":"rSMsg","type":"Alarm","ntsOId":"","xNId":"","xACId":"","xNACId":"","aSp":"Acknowledge","cId":"TC","aCId":"A0301","aTs":"2022-08-24T13:35:07.070Z","ack":"Acknowledged","sS":"notSuspended","aS":"Active","cat":"D","pri":"2","rvs":[],"mId":"612abbb3-46a2-4cce-b227-068cd1d4862f"}' }
 	let(:unknown_str) { '{"mType":"rSMsg","type":"SomeNonExistingMessage","mId":"c014bd2d-5671-4a19-b37e-50deef301b82"}' }
 	let(:malformed_str) { '{"mType":"rSMsg",mId":"c014bd2d-5671-4a19-b37e-50deef301b82"}' }
 
@@ -92,6 +94,8 @@ RSpec.describe RSMP::Message do
 			expect(build(status_unsubscribe_str)).to be_instance_of(RSMP::StatusUnsubscribe)
 			expect(build(alarm_suspended)).to be_instance_of(RSMP::AlarmSuspended)
 			expect(build(alarm_resumed)).to be_instance_of(RSMP::AlarmResumed)
+			expect(build(alarm_acknowledge)).to be_instance_of(RSMP::AlarmAcknowledge)
+			expect(build(alarm_acknowledged)).to be_instance_of(RSMP::AlarmAcknowledged)
 			expect(build(status_update_str)).to be_instance_of(RSMP::StatusUpdate)
 			expect(build(unknown_str)).to be_instance_of(RSMP::Unknown)
 		end
