@@ -150,6 +150,9 @@ module RSMP
     end
 
     def validate schemas
+      if attributes['type'] == 'StatusResponse'
+        schemas = {:core=>"3.2"}
+      end
       errors = RSMP::Schema.validate attributes, schemas
       if errors
         error_string = errors.map {|item| item.reject {|e| e=='' } }.compact.join(', ').strip

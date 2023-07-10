@@ -538,7 +538,7 @@ module RSMP
 
       def switch_functional_position mode, timeout: nil, reverting: false, source:
         unless ['NormalControl','YellowFlash','Dark'].include? mode
-          raise RSMP::MessageRejected.new "Invalid functional position '#{mode}', must be NormalControl, YellowFlash or Dark'"
+          raise RSMP::MessageRejected.new "Invalid functional position #{mode.inspect}, must be NormalControl, YellowFlash or Dark"
         end
         if reverting
           log "Reverting to functional position #{mode} after timeout", level: :info
