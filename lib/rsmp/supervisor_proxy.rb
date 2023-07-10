@@ -67,8 +67,9 @@ module RSMP
     def connect_tcp
       @endpoint = Async::IO::Endpoint.tcp(@ip, @port)
 
+      error = nil
       # Async::IO::Endpoint#connect renames the current task. run in a subtask to avoid this see issue #22
-      @task.async do |task|
+      result = @task.async do |task|
         task.annotate 'socket task'
         # this timeout is a workaround for connect hanging on windows if the other side is not present yet
         timeout = @site_settings.dig('timeouts','connect') || 1.1
@@ -77,7 +78,11 @@ module RSMP
         end
         delay = @site_settings.dig('intervals','after_connect')
         task.sleep delay if delay
+      rescue Errno::ECONNREFUSED => e   # rescue to avoid log output
+        log "Connection refused", level: :warning
+        error = e
       end.wait
+      raise error if error  # reraise any error outside task
 
       @stream = Async::IO::Stream.new(@socket)
       @protocol = Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
@@ -276,8 +281,8 @@ module RSMP
           component.handle_command command_code,arg
         end
         log "Received #{message.type}", message: message, level: :log
-      rescue UnknownComponent => e
-        log "Received #{message.type} with unknown component id '#{component_id}'", message: message, level: :warning
+      rescue UnknownComponent
+        log "Received #{message.type} with unknown component id '#{component_id}' and cannot infer type", message: message, level: :warning
         # If the component is unknown, we must set age=undefined for all items,
         # while still acknowledge the message.
         # See https://github.com/rsmp-nordic/rsmp_validator/issues/271
@@ -302,19 +307,32 @@ module RSMP
     end
 
     def process_status_request message, options={}
-      component_id = message.attributes["cId"]
-      component = @site.find_component component_id
-      log "Received #{message.type}", message: message, level: :log
-      sS = message.attributes["sS"].map do |arg|
-        value, quality =  component.get_status arg['sCI'], arg['n'], {sxl_version: sxl_version}
-        { "s" => rsmpify_value(value), "q" => quality.to_s }.merge arg
+      sS = []
+      begin
+        component_id = message.attributes["cId"]
+        component = @site.find_component component_id
+        sS = message.attributes["sS"].map do |arg|
+          value, quality =  component.get_status arg['sCI'], arg['n'], {sxl_version: sxl_version}
+          { "s" => rsmpify_value(value), "q" => quality.to_s }.merge arg
+        end
+        log "Received #{message.type}", message: message, level: :log
+
+      rescue UnknownComponent
+        log "Received #{message.type} with unknown component id '#{component_id}' and cannot infer type", message: message, level: :warning
+        # If the component is unknown, we must set q=undefined and s=nil for all items,
+        # while still acknowledge the message.
+        sS = message.attributes["sS"].map do |arg|
+          arg.dup.merge('q'=>'undefined','s'=>nil)
+        end
       end
+
       response = StatusResponse.new({
         "cId"=>component_id,
         "sTs"=>clock.to_s,
         "sS"=>sS,
         "mId" => options[:m_id]
       })
+
       set_nts_message_attributes response
       acknowledge message
       send_message response

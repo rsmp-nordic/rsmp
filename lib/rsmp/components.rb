@@ -39,22 +39,21 @@ module RSMP
     end
 
     def infer_component_type component_id
-      Component
+      raise UnknownComponent.new("Component #{component_id} mising and cannot infer type")
     end
 
     def find_component component_id, build: true
       component = @components[component_id]
       return component if component
-      if build && !component_id.empty?
-        inferred = infer_component_type component_id
-        component = inferred.new node: self, id: component_id
+      if build
+        inferred_type = infer_component_type component_id
+        component = inferred_type.new node: self, id: component_id
         @components[ component_id] = component
         class_name = component.class.name.split('::').last
         class_name << " component" unless (class_name == 'Component' || class_name == 'ComponentProxy')
-        log "Adding component #{component_id} with the inferred type #{class_name}", level: :debug
+        log "Added component #{component_id} with the inferred type #{class_name}", level: :debug
         component
       else
-        raise UnknownComponent.new("Component #{component_id} not found") unless component
       end
     end
 

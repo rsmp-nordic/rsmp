@@ -403,8 +403,7 @@ module RSMP
       nil
     rescue SchemaError, RSMP::Schema::Error => e
       reason = "schema errors: #{e.message}"
-      str = "Received invalid #{message.type}, #{reason}"
-      log str, message: message, level: :warning
+      str = "Received invalid #{message.type}"
       notify_error e.exception(str), message: message
       dont_acknowledge message, str, reason
       message
