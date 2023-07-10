@@ -261,19 +261,31 @@ module RSMP
     end
 
     def process_command_request message
-      log "Received #{message.type}", message: message, level: :log
       component_id = message.attributes["cId"]
-      component = @site.find_component component_id
-      commands = simplify_command_requests message.attributes["arg"]
-      commands.each_pair do |command_code,arg|
-        component.handle_command command_code,arg
-      end
 
       rvs = message.attributes["arg"].map do |item|
         item = item.dup.merge('age'=>'recent')
         item.delete 'cO'
         item
       end
+
+      begin
+        component = @site.find_component component_id
+        commands = simplify_command_requests message.attributes["arg"]
+        commands.each_pair do |command_code,arg|
+          component.handle_command command_code,arg
+        end
+        log "Received #{message.type}", message: message, level: :log
+      rescue UnknownComponent => e
+        log "Received #{message.type} with unknown component id '#{component_id}'", message: message, level: :warning
+        # If the component is unknown, we must set age=undefined for all items,
+        # while still acknowledge the message.
+        # See https://github.com/rsmp-nordic/rsmp_validator/issues/271
+        rvs.map do |item|
+          item['age'] = 'undefined'
+        end
+      end
+
       response = CommandResponse.new({
         "cId"=>component_id,
         "cTS"=>clock.to_s,

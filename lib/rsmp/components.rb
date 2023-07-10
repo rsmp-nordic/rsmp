@@ -45,7 +45,7 @@ module RSMP
     def find_component component_id, build: true
       component = @components[component_id]
       return component if component
-      if build
+      if build && !component_id.empty?
         inferred = infer_component_type component_id
         component = inferred.new node: self, id: component_id
         @components[ component_id] = component
