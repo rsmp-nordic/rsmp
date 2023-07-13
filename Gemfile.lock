@@ -76,7 +76,7 @@ GEM
     multi_test (1.1.0)
     rake (13.0.6)
     regexp_parser (2.8.1)
-    rsmp_schema (0.4.4)
+    rsmp_schema (0.4.5)
       json_schemer (~> 0.2.21)
       thor (~> 1.2.1)
     rspec (3.12.0)
