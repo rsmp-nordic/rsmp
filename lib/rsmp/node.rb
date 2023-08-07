@@ -44,19 +44,19 @@ module RSMP
       @error_queue.enqueue e
     end
 
-    def defer item
-      @deferred << item
+    def defer key, item=nil
+      @deferred << [key, item]
     end
 
     def process_deferred
       cloned = @deferred.clone    # clone in case do_deferred restarts the current task
       @deferred.clear
-      cloned.each do |item|
-        do_deferred item
+      cloned.each do |pair|
+        do_deferred pair.first, pair.last
       end
     end
 
-    def do_deferred item
+    def do_deferred key,item=nil
     end
 
     def clear_deferred
