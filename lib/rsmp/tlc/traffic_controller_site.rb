@@ -149,8 +149,8 @@ module RSMP
         end
       end
 
-      def do_deferred item
-        case item
+      def do_deferred key, item=nil
+        case key
         when :restart
           log "Restarting TLC", level: :info
           restart

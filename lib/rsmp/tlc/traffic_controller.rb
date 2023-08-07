@@ -344,6 +344,45 @@ module RSMP
 
       def handle_m0013 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
+        set, clear = [], []
+        arg['status'].split(';').map do |part|
+          offset, set_bits, clear_bits = part.split(',').map { |i| i.to_i }
+          set_bits.to_s(2).reverse.each_char.with_index do |bit,i|
+            set << i + offset if bit == '1'
+          end
+          clear_bits.to_s(2).reverse.each_char.with_index do |bit,i|
+            clear << i + offset if bit == '1'
+          end
+        end
+
+        set = set.uniq.sort
+        clear = clear.uniq.sort
+
+        # if input is both activated and deacticvated, there is no need to acticate first
+        set -= (set & clear)
+
+        [set,clear].each do |inputs|
+          inputs.each do |input|
+            if input<1
+            raise MessageRejected.new("Cannot acticate inputs #{set} and deactive inputs #{clear}: input #{input} is invalid (must be 1 or higher)"
+              ) if input<1
+            end
+            if input>@inputs.size
+              raise MessageRejected.new("Cannot acticate inputs #{set} and deactive inputs #{clear}: input #{input} is invalid (only #{@inputs.size} inputs present)")
+            end
+          end
+        end
+
+        log "Activating inputs #{set} and deactivating inputs #{clear}", level: :info
+
+        set.each do |input|
+          change = @inputs.set input, true
+          input_logic input, change if change != nil
+        end
+        clear.each do |input|
+          change = @inputs.set input, false
+          input_logic input, change if change != nil
+        end
       end
 
       def find_plan plan_nr
@@ -432,6 +471,7 @@ module RSMP
           log "Releasing input #{input}", level: :info
         end
         change = @inputs.set_forcing input, force, forced_value
+
         input_logic input, change if change != nil
       end
 
