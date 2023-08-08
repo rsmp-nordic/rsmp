@@ -10,6 +10,7 @@ def expect_stdout look_for, timeout: 2
     task.with_timeout(timeout) do
       reader = Async do
         while line = input.gets         # read from pipe to receives what's written to stdout
+          STDERR.puts "stdout: #{line}"
           #$stderr.puts "Stdout: #{line}"
           task.stop if look_for.is_a?(String) && line.include?(look_for)
           task.stop if look_for.is_a?(Regexp) && look_for.match(line)
