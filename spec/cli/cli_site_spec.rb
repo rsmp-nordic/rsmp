@@ -13,11 +13,9 @@ RSpec.describe(RSMP::CLI) do
 
     describe 'with id option' do
       it 'starts site with id' do
-        AsyncRSpec.async do |task|
           expect_stdout( 'Starting site') do
             RSMP::CLI.new.invoke('site', [], id: 'RN+SI0639')
           end
-        end
       end
     end
 
