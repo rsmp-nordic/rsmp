@@ -96,9 +96,6 @@
 
           # read watchdog ack
           watchdog_ack = JSON.parse protocol.read_line
-        rescue EOFError
-          puts e
-          puts e.backtrace
         end
       } do |task|
         site.start

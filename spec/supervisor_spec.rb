@@ -1,5 +1,5 @@
 RSpec.describe RSMP::Supervisor do
-  let(:timeout) { 0.01 }
+  let(:timeout) { 1 }
 
   let(:supervisor_settings) {
     {

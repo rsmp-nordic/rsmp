@@ -30,7 +30,7 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "async", "~> 2.6.2"
+  spec.add_dependency "async", "~> 2.6.3"
   spec.add_dependency "async-io", "~> 1.35.0"
   spec.add_dependency "colorize", "~> 0.8.1"
   spec.add_dependency "thor", "~> 1.2.2"
@@ -41,6 +41,4 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.12.0"
   spec.add_development_dependency "rspec-expectations", "~> 3.12.2"
   spec.add_development_dependency "timecop", "~> 0.9.6"
-  spec.add_development_dependency "cucumber", "~> 8.0.0"
-  spec.add_development_dependency "aruba" , "~> 2.1.0"
 end
