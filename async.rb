@@ -1,12 +1,10 @@
 require 'async'
-input, output = IO.pipe
-Async do
-  puts "starting"
+IO.pipe do |input, output|
   Async do
-    puts "reading..."
-    line = input.gets
-    puts "got #{line.inspect}"
+    Async do
+      line = input.gets
+      puts "got: #{line}"
+    end
+    output.puts "hello"
   end
-  puts "writting..."
-  output.puts "hello"
 end
