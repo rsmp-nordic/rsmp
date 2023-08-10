@@ -1,13 +1,38 @@
 require 'async'
-require_relative 'spec/support/cli_helper.rb'
 
-puts 'starting...'
-Async do |task|
-  expect_stdout( 'OK') do
-    puts 'before'
-    puts 'OK'
-    puts 'after'
-    #RSMP::CLI.new.invoke('site')
-  end
+def expect_stdout look_for, timeout: 2
+  original = $stdout.clone      # keep a clone of stdout
+  input, output = IO.pipe
+  $stdout.reopen(output)        # set stdout to our new pipe
+  error = nil
+  Async do |task|
+    task.with_timeout(timeout) do
+      Async do
+        while line = input.gets         # read from pipe to receives what's written to stdout
+          STDERR.puts "stdout: #{line}"
+          task.stop if look_for.is_a?(String) && line.include?(look_for)
+          task.stop if look_for.is_a?(Regexp) && look_for.match(line)
+        end
+      end
+      yield
+      task.yield    # ensure that reader gets a chance to read
+      raise "Completed without writing #{look_for.inspect} to stdout"
+    end
+  rescue Async::TimeoutError => e
+    error = RuntimeError.new "Did not write #{look_for.inspect} to stdout within #{timeout}s"
+  rescue StandardError => e
+    error = e
+  ensure
+    task.stop
+  end.wait
+ensure
+  $stdout.reopen original if original    # reset stdout
+  raise error if error
+end
+
+
+puts 'starting'
+expect_stdout( 'OK') do
+  puts 'OK'
 end
 puts 'done'
