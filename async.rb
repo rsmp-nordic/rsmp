@@ -1,13 +1,12 @@
 require 'async'
-
-original = $stdout.clone
 input, output = IO.pipe
-STDOUT.reopen(output)
-Async do |task|
-  task.async do
-    STDERR.puts "stdout: #{ input.gets }"
+Async do
+  puts "starting"
+  Async do
+    puts "reading..."
+    line = input.gets
+    puts "got #{line.inspect}"
   end
-  puts 'OK'
+  puts "writting..."
+  output.puts "hello"
 end
-STDOUT.reopen original if original
-puts 'done'
