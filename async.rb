@@ -2,21 +2,19 @@ require 'async'
 
 error = nil
 Async do |task|
-  original = $stdout.clone      # keep a clone of stdout
+  original = $stdout.clone
   input, output = IO.pipe
-  $stdout.reopen(output)        # set stdout to our new pipe
-  task.with_timeout(1) do
-    Async do
+  STDOUT.reopen(output)
+  task.async do
+    task.with_timeout(1) do
       line = input.gets
       STDERR.puts "stdout: #{line}"
     end
-    puts 'OK'
-    task.yield    # ensure that reader gets a chance to read
   end
+  puts 'OK'
 rescue StandardError => e
   error = e
 ensure
-  $stdout.reopen original if original    # reset stdout
+  STDOUT.reopen original if original
   raise error if error
 end
-puts 'Done'
