@@ -1,6 +1,5 @@
 require 'async'
 
-error = nil
 original = $stdout.clone
 input, output = IO.pipe
 STDOUT.reopen(output)
@@ -11,3 +10,4 @@ Async do |task|
   puts 'OK'
 end
 STDOUT.reopen original if original
+puts 'done'
