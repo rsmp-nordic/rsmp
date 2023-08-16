@@ -15,6 +15,7 @@ module RSMP
 
     attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port, :node, :core_version
     def initialize options
+      warn 'new proxy'
       @node = options[:node]
       initialize_logging options
       initialize_distributor
@@ -42,6 +43,7 @@ module RSMP
 
     # close connection, but keep our main task running so we can reconnect
     def close
+      warn 'close'
       log "Closing connection", level: :warning
       close_stream
       close_socket
@@ -52,10 +54,13 @@ module RSMP
       # stop timer
       # as we're running inside the timer, code after stop_timer() will not be called,
       # unless it's in the ensure block
-      stop_timer
+      #stop_timer
+
+
     end
 
     def stop_subtasks
+      warn 'stop subtasks'
       stop_timer
       stop_reader
       clear
@@ -268,6 +273,7 @@ module RSMP
 
     def watchdog_send_timer now
       return unless @watchdog_started
+      return unless ready?
       return if @site_settings['intervals']['watchdog'] == :never
       if @latest_watchdog_send_at == nil
         send_watchdog now
@@ -305,6 +311,7 @@ module RSMP
     end
 
     def check_watchdog_timeout now
+      return unless ready?
       timeout = @site_settings['timeouts']['watchdog']
       latest = @latest_watchdog_received + timeout
       left = latest - now
@@ -336,7 +343,7 @@ module RSMP
       expect_acknowledgement message
       notify message
       log_send message, reason
-    rescue EOFError, IOError
+    rescue EOFError, IOError, NotReady
       buffer_message message
     rescue SchemaError, RSMP::Schema::Error => e
       str = "Could not send #{message.type} because schema validation failed: #{e.message}"
@@ -346,7 +353,7 @@ module RSMP
 
     def buffer_message message
       # TODO
-      #log "Cannot send #{message.type} because the connection is closed.", message: message, level: :error
+      warn "Cannot send #{message.type} because the connection is closed."#, message: message, level: :error
     end
 
     def log_send message, reason=nil

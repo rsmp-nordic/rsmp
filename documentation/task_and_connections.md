@@ -48,13 +48,11 @@ The loop then runs from the beginning, trying to connecting again.
 ## Supervisor
 The supervisor opens a port for listening.
 
-When a site connects, the tcp connection is passed to the relevant site proxy.
+When a site connects, a site proxy is created (or reused if is has previously been connected), and the tcp connection is passed to the proxy.
 
 
 ## Site Proxy
 ### Connect loop
 The proxy has a loop that:
-- waits for the supervisor to pass an open tcp connection (when the site connected)
 - reader: read a line at a time and handle messages (async task)
 
-If connecting fails, the proxy waits a while and tries again (restarting the loop)

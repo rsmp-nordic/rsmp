@@ -84,7 +84,7 @@ module RSMP
     end
 
     def mute ip, port
-      @muted["#{ip}:#{port}"] = true
+#      @muted["#{ip}:#{port}"] = true
     end
 
     def unmute ip, port

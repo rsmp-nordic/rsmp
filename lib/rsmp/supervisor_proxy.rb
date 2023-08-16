@@ -38,7 +38,8 @@ module RSMP
         break if reconnect_delay == false
       ensure
         close
-        stop_subtasks
+        #stop_subtasks
+        @awaiting_acknowledgement = {}
       end
     end
 
@@ -410,8 +411,9 @@ module RSMP
     end
 
     def status_update_timer now
+      warn 'status_update_timer'
       update_list = {}
-      # go through subscriptons and build a similarly organized list,
+      # go through subscriptions and build a similarly organized list,
       # that only contains what should be send
 
       @status_subscriptions.each_pair do |component,by_code|

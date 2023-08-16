@@ -38,7 +38,7 @@ module RSMP
         'intervals' => {
           'timer' => 0.1,
           'watchdog' => 1,
-          'reconnect' => 0.1
+          'reconnect' => 1
         },
         'timeouts' => {
           'watchdog' => 2,
