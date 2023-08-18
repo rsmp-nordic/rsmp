@@ -58,6 +58,10 @@ class Supervisor < Child
 	end
 
 	def action
+		start_children
+	end
+
+	def start_children
 		@children.values.each do |child|
 			child.start
 		end
@@ -72,7 +76,7 @@ class Supervisor < Child
 		@@blueprint[id]
 	end
 
-	def stop_children
+	def delete_children
 		while item = @children.shift
 			id = item.first
 			child = item.last
@@ -81,16 +85,16 @@ class Supervisor < Child
 	end
 
 	def stop
-		stop_children
+		delete_children
 		super
 	end
 
 	def fail error
-		stop_children
+		delete_children
 		if @supervisor
 			super
 		else
-			puts "root #{id} failed: #{error.inspect}"
+			log "root supervisor failed: #{error.inspect}"
 			stop
 		end
 	end
@@ -106,6 +110,9 @@ class Supervisor < Child
 			child = add_child(id, settings_for(id))
 			child.start
 		when :all_for_one
+			delete_children
+			setup
+			start_children
 		end
 	end
 end
@@ -114,7 +121,7 @@ end
 class Timer < Child
 	def action
 		loop do
-			sleep 0.3
+			sleep rand(10)*0.01
 			log 'tick'
 			raise 'oh no!' if rand(3)==0
 		end
@@ -123,17 +130,20 @@ end
 
 class App < Supervisor
 	@@blueprint = {
-		timer1: {class: Timer, strategy: :one_for_one},
-		timer2: {class: Timer, strategy: :one_for_one}
+		timer_1: {class: Timer, strategy: :all_for_one},
+		timer_2: {class: Timer, strategy: :one_for_one}
 	}
 
 	def action
 		super
-		sleep 1
-		raise 'bad super'
+		#sleep rand(3); raise 'major issues'
 	end
 end
 
-Async do
-	app = App.new.start
+begin
+	Async do
+		app = App.new.start
+	end
+rescue Interrupt
+	puts
 end
