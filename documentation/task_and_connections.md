@@ -56,3 +56,20 @@ When a site connects, a site proxy is created (or reused if is has previously be
 The proxy has a loop that:
 - reader: read a line at a time and handle messages (async task)
 
+
+# Proxy tasks
+A proxy has several distinct tasks, like
+- handling the initial handshake
+- responding to messages read from the tcp socket
+- checking that all send messages are acknowledged
+- checking that we receive watchdog messages
+- sending out status messages to subscribers
+
+If the connection goes down, then what each of these task do might differ:
+- timer that sends out status messages continues, buffering outgoing messages
+- checking that messages are acknowledged is paused
+- ongoing handshake is cancelled
+- reading message to respond to is paused
+
+If one of these tasks fails, e.g. has an uncaught exception, we can restart that task, instead of breaking everything. This is similar to the Elixir/Erlang principle of letting it fail, then restarting form a known good state. But we would need to ensure that we monitor and log such errors and restarts, so that bugs can be fixed.
+
