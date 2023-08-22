@@ -3,7 +3,7 @@
 require 'async'
 require 'async/queue'
 
-# A woker in a supervisor tree
+# A worker in a supervisor tree
 class Worker
   attr_reader :id
 
@@ -204,7 +204,7 @@ class Animal < Worker
   def do_task
     loop do
       sleep rand(1..10) * 0.01
-      raise 'died!' if rand(2).zero?
+      raise 'died!' if rand(3).zero?
     end
   end
 end
@@ -215,7 +215,7 @@ class Place < Supervisor
     super
     loop do
       sleep rand(1..10) * 0.01
-      raise 'burned!' if rand(2).zero?
+      raise 'burned!' if rand(3).zero?
     end
   end
 end
