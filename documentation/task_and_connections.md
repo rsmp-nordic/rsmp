@@ -73,3 +73,8 @@ If the connection goes down, then what each of these task do might differ:
 
 If one of these tasks fails, e.g. has an uncaught exception, we can restart that task, instead of breaking everything. This is similar to the Elixir/Erlang principle of letting it fail, then restarting form a known good state. But we would need to ensure that we monitor and log such errors and restarts, so that bugs can be fixed.
 
+
+
+## Supervisor Trees
+A supervisor inherits from job, and has a list of jobs. 
+A job runs the actual work inside an Async task.

@@ -76,7 +76,8 @@ class Supervisor < Worker
   # Stops workers before they are deleted.
   def delete_workers(workers = @workers.values.reverse)
     workers.each(&:stop)
-    @workers.delete workers
+    ids = workers.map {|w| w.id }
+    @workers = @workers.except(*ids)
   end
 
   # Stop.
@@ -136,16 +137,15 @@ class Supervisor < Worker
   end
 
   # Restart all workers
-  def restart_all_for_one(worker)
-    @workers.delete(worker.id)
+  def restart_all_for_one(_worker)
     delete_workers
-    workers = setup
-    run_workers workers
+    setup
+    run_workers
   end
 
   # Build string showing supervisor tree
   def hierarchy
-    super + @workers.map { |worker| worker[1].hierarchy }.join
+    @workers.transform_values(&:hierarchy)
   end
 
   # Find a worker by traversing the tree according to

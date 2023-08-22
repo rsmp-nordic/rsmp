@@ -16,6 +16,10 @@ class Worker
     @task = nil
   end
 
+  def inspect
+    "<#{@id.to_s}>"
+  end
+
   # Intend a string according to the tree level.
   def indent(str)
     '. ' * @level + str
@@ -24,12 +28,12 @@ class Worker
   # Output a string indented and with our id in front.
   def log(str)
     id_str = indent(@id.to_s)
-    puts "#{id_str.ljust(20)} #{str}"
+    puts "#{id_str.ljust(12)} #{str}"
   end
 
   # Return our id indented.
   def hierarchy
-    "#{indent(@id.to_s)}\n"
+    {}
   end
 
   # Perform actual work inside an async work task.
@@ -40,7 +44,7 @@ class Worker
       task.annotate(@id)
       do_task
     rescue StandardError => e
-      log 'fail'
+      log "#{e}"
       failed e
     end
   end

@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
 require_relative 'app'
+require 'pp'
 
 # Our worker class
 class Animal < Worker
   def do_task
     loop do
       sleep rand(1..10) * 0.01
-      raise 'died!' if rand(3).zero?
+      raise 'died!' if rand(5).zero?
+      log "grrr"
     end
   end
 end
@@ -18,7 +20,7 @@ class Place < Supervisor
     super
     loop do
       sleep rand(1..10) * 0.01
-      raise 'burned!' if rand(3).zero?
+      raise 'burned!' if rand(5).zero?
     end
   end
 end
@@ -47,13 +49,8 @@ end
 begin
   app = AnimalApp.new(blueprint: AnimalApp.instance_variable_get(:@blueprint))
   Async { app.run }
-  worker = app.dig(:farm, :horse)
-  worker.log 'fail'
-  worker.fail RuntimeError.new('bah')
-  # sleep 0.1
-  # puts app.hierarchy
 rescue Interrupt
   puts
   puts 'hierarchy:'
-  puts app.hierarchy
+  pp app.hierarchy
 end
