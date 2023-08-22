@@ -1,148 +1,276 @@
 require 'async'
-require 'async/notification'
 require 'async/queue'
 
-
-class Child
+class Worker
 	attr_reader :id
-	def initialize supervisor:nil, id:nil
+
+	def initialize blueprint:{}, supervisor:nil, id:nil, level:
 		@id = id
 		@supervisor = supervisor
+		@blueprint = blueprint
+		@level = level
 		@task = nil
-		setup
+	end
+
+	def indent str
+		'. '*@level + str
 	end
 
 	def log str
-		puts "#{id}: #{str}"
+		id_str = indent(@id.to_s)
+		puts "#{id_str.ljust(20)} #{str}"
 	end
 
-	def setup
+	def hierarchy
+		me = indent(@id.to_s) + "\n"
 	end
 
-	def start
-		log 'start'
+	def run
+		log 'run'
 		@task = Async do |task|
 			task.annotate(@id)
-			action	
+			do_task	
 		rescue StandardError => error
-			fail error
+			log 'fail'
+			failed error
 		end
-		self
 	end
 
 	def stop
+		log 'stop'
+		stop_task
+	end
+
+	def do_task
+	  log 'done'
+	end
+
+	def stop_task
 		if @task
-			log 'stop'
 			@task.stop
 			@task = nil
 		end
 	end
 
-	def fail error
-		@supervisor.child_failed self, error
+	def failed error
+		message = {type: :worker_failed, from: self, error: error}
+		@supervisor.post message
 	end
 end
 
-class Supervisor < Child
-	@@blueprint = {}
+class Supervisor < Worker
+	attr_reader :workers
 
-	def initialize supervisor:nil, id: :root
-		@children = {}
-		super supervisor: supervisor, id: id
+	def initialize blueprint:{}, supervisor:, id:, level:
+		super
+		@workers = {}
+		@messages = Async::Queue.new
+		setup
 	end
 
  	def setup
-		@@blueprint.each_pair do |id, settings|
-			add_child id, settings
+ 		setup_by_id @blueprint.keys
+	end
+
+	def setup_by_id ids
+		ids.each do |id|
+			create_worker(id) unless @workers[id]
+		end
+	end			
+
+	def do_task
+		run_workers
+		handle_post
+	end
+
+	def handle_post
+		Async do
+			loop { receive @messages.dequeue }
 		end
 	end
 
-	def action
-		start_children
-	end
-
-	def start_children
-		@children.values.each do |child|
-			child.start
+	def receive message
+		case message[:type]
+		when :worker_failed
+			worker_failed message[:from], message[:error]
+		else
+			log "unhandled #{message[:type].inspect}"
 		end
 	end
 
-	def add_child id, settings
-		child = settings[:class].new supervisor: self, id: id
-		@children[id] = child
+	def run_workers
+		@workers.values.each do |worker|
+			worker.run
+		end
+	end
+
+	def run_workers_by_id ids
+		ids.each do |id|
+			@workers[id].run
+		end
+	end
+
+	def create_worker id
+		settings = @blueprint[id]
+		klass = settings[:class]
+		blueprint = settings[:workers]
+		#log "create_worker id: #{id}, class: #{klass}, blueprint: #{blueprint}"
+		worker = klass.new(blueprint: blueprint, supervisor: self, id: id, level: @level+1 )
+		@workers[id] = worker
 	end
 
 	def settings_for id
-		@@blueprint[id]
+		@blueprint[id]
 	end
 
-	def delete_children
-		while item = @children.shift
-			id = item.first
-			child = item.last
-			child.stop
+	def delete_workers
+		delete_workers_by_id @blueprint.keys.reverse
+	end
+
+	def delete_workers_by_id ids
+		ids.each do |id|
+			worker = @workers[id]
+			worker.stop if worker
+			@workers.delete id
+		end
+	end
+
+	def stop_workers
+		stop_workers_by_id @blueprint.keys.reverse
+	end
+
+	def stop_workers_by_id ids
+		ids.each do |id|
+			worker = @workers[id]
+			worker.stop if worker
 		end
 	end
 
 	def stop
-		delete_children
+		log 'stop'
+		stop_workers
+		stop_task
+	end
+
+	def failed error
+		delete_workers
 		super
 	end
 
-	def fail error
-		delete_children
-		if @supervisor
-			super
-		else
-			log "root supervisor failed: #{error.inspect}"
-			stop
-		end
+	def post message
+		@messages.enqueue(message)
 	end
 
-	def child_failed child, error
-		id = child.id
+	def worker_failed worker, error
+		id = worker.id
 		settings = settings_for(id)
 		strategy = settings[:strategy]
-		puts "#{id} failed: #{error.inspect}, strategy: #{strategy}"
- 		@children.delete id
+		#log "worker #{id.inspect} failed: #{error.inspect}, strategy: #{strategy}"
 		case strategy
 		when :one_for_one
-			child = add_child(id, settings_for(id))
-			child.start
+ 			@workers.delete id
+			worker = create_worker(id)
+			worker.run
 		when :all_for_one
-			delete_children
+	 		@workers.delete id
+			delete_workers
 			setup
-			start_children
-		end
+			run_workers
+		when :rest_for_one
+			ids = @blueprint.keys.drop_while {|i| i!=id}
+			# failed worker is already stopped, if we call stop, the current code is skipped
+			delete_workers_by_id ids.reverse-[id]
+			setup_by_id ids
+			run_workers_by_id ids
+		end 
 	end
-end
 
+	def hierarchy
+		super + @workers.map { |worker| worker[1].hierarchy }.join
+	end
 
-class Timer < Child
-	def action
-		loop do
-			sleep rand(10)*0.01
-			log 'tick'
-			raise 'oh no!' if rand(3)==0
-		end
+	def dig *args
+		worker = @workers[args.shift]
+		return worker if args.empty?
+		return nil unless worker
+		worker.dig *args
 	end
 end
 
 class App < Supervisor
-	@@blueprint = {
-		timer_1: {class: Timer, strategy: :all_for_one},
-		timer_2: {class: Timer, strategy: :one_for_one}
-	}
+	attr_reader :workers
+	
+	def initialize blueprint:{}
+		super blueprint: blueprint, id: :app, supervisor: nil, level: 0
+	end
 
-	def action
+	def failed error
+		delete_workers
+		stop
+	end
+
+end
+
+class Timer < Worker
+	def do_task
+		loop do
+			sleep (rand(10)+1)*0.1
+			#log 'tick'
+			raise 'oh no!' if rand(2)==0
+		end
+	end
+end
+
+class Metro < Supervisor
+	def do_task
 		super
-		#sleep rand(3); raise 'major issues'
+		loop do
+			sleep (rand(10)+1)*0.1
+			raise 'oh no!' if rand(2)==0
+		end
+	end
+end
+
+class MetroApp < App
+	#3.times do |i|
+	#	@blueprint["timer_#{i}".to_s] = {class: Timer, strategy: [:rest_for_one,:one_for_all,:all_for_one].sample}
+	#end
+
+	def do_task
+		super
+		#sleep 1; raise 'bad'
 	end
 end
 
 begin
 	Async do
-		app = App.new.start
+		blueprint = {  
+			metro1: { class: Metro, strategy: :all_for_one, workers: {
+				timer1_1: { class: Worker, strategy: :all_for_one},
+				timer1_2: { class: Worker, strategy: :rest_for_one},
+				timer1_3: { class: Worker, strategy: :one_for_one}				
+				}
+			},
+			metro2: { class: Metro, strategy: :rest_for_one, workers: {
+				timer2_1: { class: Timer, strategy: :all_for_one},
+				timer2_2: { class: Timer, strategy: :rest_for_one},
+				timer2_3: { class: Timer, strategy: :one_for_one}				
+				}
+			},
+			metro3: { class: Metro, strategy: :one_for_one, workers: {
+				timer3_1: { class: Timer, strategy: :all_for_one},
+				timer3_2: { class: Timer, strategy: :rest_for_one},
+				timer3_3: { class: Timer, strategy: :one_for_one}				
+				}
+			}
+		}
+		app = MetroApp.new(blueprint: blueprint).run
+		#worker = app.dig(:metro1, :timer1_1)
+		
+		#worker.log 'fail'
+		#worker.fail RuntimeError.new('bah')
+		#sleep 0.1
+		#puts app.hierarchy
 	end
 rescue Interrupt
 	puts
