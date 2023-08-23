@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'async'
 require 'async/notification'
 require 'async/io/stream'
@@ -21,7 +23,7 @@ def job(name, _condition)
 end
 
 def run(name, endpoint)
-  network = nil
+  netnode = nil
   terminal = nil
   user = nil
   n = 1
@@ -33,7 +35,7 @@ def run(name, endpoint)
   user.write_lines name
 
   # read from server
-  network = job('network', finished) do
+  netnode = job('netnode', finished) do
     while line = user.read_line
       Console.logger.info("server: #{line}")
     end
@@ -61,8 +63,8 @@ rescue Errno::ECONNREFUSED
   Console.logger.warn('no connection')
 ensure
   # stop all the nested tasks if we are exiting
-  network.stop if network
-  network = nil
+  netnode.stop if netnode
+  netnode = nil
   terminal.stop if terminal
   terminal = nil
   user.close if user

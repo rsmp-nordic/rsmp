@@ -1,84 +1,23 @@
 # frozen_string_literal: true
 
-require 'async'
-require 'async/queue'
-
-# A worker in a supervisor tree.
+# Handles actual work.
 class Worker
-  attr_reader :id
-
-  # Create a worker
-  def initialize(level:, blueprint: {}, supervisor: nil, id: nil)
-    @id = id
-    @supervisor = supervisor
-    @blueprint = blueprint
-    @level = level
-    @task = nil
+  # Create worker
+  def initialize(node)
+    @node = node
   end
 
-  def inspect
-    "<#{@id.to_s}>"
-  end
-
-  # Intend a string according to the tree level.
-  def indent(str)
-    '. ' * @level + str
-  end
-
-  # Output a string indented and with our id in front.
+  # Log, by passing to worker.
   def log(str)
-    id_str = indent(@id.to_s)
-    puts "#{id_str.ljust(12)} #{str}"
+    @node.log str
   end
 
-  # Return our id indented.
-  def hierarchy
-    {}
-  end
+  # Do actual work.
+  def run; end
 
-  # Perform actual work inside an async work task.
-  # Any ancaught errors will be reported to our supervisor.
-  def run
-    log 'run'
-    @task = Async do |task|
-      task.annotate(@id)
-      do_task
-    rescue StandardError => e
-      log "#{e}"
-      failed e
-    end
-  end
+  # Stop any ongoing work.
+  def stop; end
 
-  # Stop.
-  # Will stop our work task.
-  def stop
-    log 'stop'
-    stop_task
-  end
-
-  # Perform actual work.
-  # This will be running inside our async work task.
-  def do_task
-    log 'done'
-  end
-
-  # Stop our work task if it's running.
-  def stop_task
-    return unless @task
-
-    @task.stop
-    @task = nil
-  end
-
-  # This is called if the actual work results in an uncaught error.
-  # Reports the error to the supervisor.
-  def failed(error)
-    report_error(error)
-  end
-
-  # Report an error to our supervisor.
-  def report_error(error)
-    message = { type: :worker_failed, from: self, error: }
-    @supervisor.post message
-  end
+  # We failed with uncaught error
+  def fail(error); end
 end

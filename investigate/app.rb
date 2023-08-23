@@ -2,19 +2,17 @@
 
 require_relative 'supervisor'
 
-# An app is the root supervisor
+# An app is a root supervisor
 class App < Supervisor
-  attr_reader :workers
-
   # Create app
-  def initialize(blueprint:)
-    super blueprint:, id: :app, supervisor: nil, level: 0
+  def initialize(blueprint: nil)
+    super(blueprint:, id: :app, supervisor: nil, worker_class: nil, strategy: :one_for_one)
   end
 
   # The app should never fail.
-  # If it does, we delete all workers, and stop.
+  # If it does, delete all nodes and stop.
   def failed(_error)
-    delete_workers
+    delete_nodes
     stop
   end
 end

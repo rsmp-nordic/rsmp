@@ -1,53 +1,62 @@
 # frozen_string_literal: true
 
-require_relative 'worker'
+require_relative 'node'
 
-# Supervises workers in a supervisor tree.
-class Supervisor < Worker
-  attr_reader :workers
+# Supervises nodes in a supervisor tree.
+class Supervisor < Node
+  attr_reader :nodes
 
   # Create supervisor
-  def initialize(supervisor:, id:, level:, blueprint:)
+  def initialize(id:, strategy:, supervisor: nil, blueprint: nil, worker_class: nil)
     super
-    @workers = {}
+    @nodes = {}
     @messages = Async::Queue.new
-    setup
+    build(blueprint) if blueprint
   end
 
-  # Create workers specified in our blueprint,
-  # but not actually existing yet.
-  def setup(ids = @blueprint.keys)
-    missing = ids - @workers.keys
+  # Build nodes according to blueprint
+  def build(blueprint)
+    missing = blueprint.keys - @nodes.keys
     add = {}
-    missing.each { |id| add[id] = create_worker(id) }
-    @workers.merge add
+    missing.each { |id| add[id] = build_node(id, blueprint) }
+    @nodes.merge add
     add.values
   end
 
-  # Create a worker, specified by id.
-  # The object class is read from our blueprint.
-  def create_worker(id)
-    return unless @workers[id].nil?
+  # Build a node in a blueprint
+  def build_node(id, blueprint)
+    return unless @nodes[id].nil?
 
-    settings = @blueprint[id]
+    settings = blueprint[id]
     return unless settings
 
-    @workers[id] = settings[:class].new(
-      blueprint: settings[:workers],
-      supervisor: self, id:, level: @level + 1
+    (settings[:nodes] ? Supervisor : Node).new(
+      id:,
+      supervisor: self,
+      worker_class: settings[:class],
+      blueprint: settings[:nodes],
+      strategy: settings[:strategy]
     )
   end
 
-  # Perform actual work. For us this means
-  # running all our workers, and then fetching  post.
-  def do_task
-    run_workers
-    fetch_post
+  # Add a node
+  def add_node(node)
+    raise "Node #{node.id.inspect} already exists" if @nodes[node.id]
+
+    @nodes[node.id] = node
+  end
+
+  # Run supervisor by watch for post,
+  # and run our own worker and our nodes.
+  def run
+    watch_messages
+    super if @worker_class
+    run_nodes
   end
 
   # Fetch post in an async task by waiting for messages
   # in our post queue.
-  def fetch_post
+  def watch_messages
     Async { loop { receive @messages.dequeue } }
   end
 
@@ -55,106 +64,86 @@ class Supervisor < Worker
   # Call the appropriate method, depending on the message type.
   def receive(message)
     case message[:type]
-    when :worker_failed
-      worker_failed message[:from], message[:error]
+    when :node_failed
+      node_failed message[:from], message[:error]
     else
       log "unhandled #{message[:type].inspect}"
     end
   end
 
-  # Run a list of workers. (Defauls to all workers.)
-  def run_workers(workers = @workers.values)
-    workers.each(&:run)
+  # Run nodes.
+  def run_nodes(nodes = @nodes.values)
+    nodes.each(&:run)
   end
 
-  # Stop a list of workers. (Defauls to all workers.)
-  def stop_workers(workers = @workers.values.reverse)
-    workers.each(&:stop)
+  # Stop nodes.
+  def stop_nodes(nodes = @nodes.values.reverse)
+    nodes.each(&:stop)
   end
 
-  # Delete a list workers. (Defauls to all workers.)
-  # Stops workers before they are deleted.
-  def delete_workers(workers = @workers.values.reverse)
-    workers.each(&:stop)
-    ids = workers.map {|w| w.id }
-    @workers = @workers.except(*ids)
+  # Delete nodes, stopping them first.
+  def delete_nodes(nodes = @nodes.values.reverse)
+    nodes.each(&:stop)
+    @nodes = @nodes.except(*@nodes.keys)
   end
 
-  # Stop.
-  # Will stop our workers, and then our work task.
+  # Stop our nodes and then our worker.
   def stop
     log 'stop'
-    stop_workers
-    stop_task
+    stop_nodes
+    stop_worker
   end
 
   # We failed.
-  # Delete our workers, and then report the error to
+  # Delete our nodes, and then report the error to
   # our supervisor higher up the tree.
   def failed(error)
-    delete_workers
+    delete_nodes
     report_error(error)
   end
 
-  # Place a message in our message queue.
+  # Send us a message
   def post(message)
     @messages.enqueue(message)
   end
 
-  # One of our workers failed.
-  # Restart the worker, and possible other workers, depending
-  # on the policy specified in our blueprint:
-  #   one for one:  just the failed worker
-  #   rest for one: the failed worker and workers specified after it in the blueprint
-  #   all for one: all our workers
-  #
-  # Note that a worker can itself be a supervisor, in which case restarting
-  # it will restart everything under it.
-  def worker_failed(worker, _error)
-    case @blueprint[worker.id][:strategy]
+  # One of our nodes failed.
+  # Restart depending on the node strategy:
+  # - one for one:  just the failed node
+  # - rest for one: the failed node and nodes specified after it in the blueprint
+  # - all for one: all our nodes
+  def node_failed(node, _error)
+    case node.strategy
     when :one_for_one
-      restart_one_for_one worker
+      restart_one_for_one node
     when :all_for_one
-      restart_all_for_one worker
+      restart_all_for_one
     when :rest_for_one
-      restart_rest_for_one worker
+      restart_rest_for_one node
     end
   end
 
-  # Restart worker
-  def restart_one_for_one(worker)
-    @workers.delete(worker.id)
-    create_worker(worker.id).run
+  # Restart node
+  def restart_one_for_one(node)
+    node.stop
+    node.run
   end
 
-  # Restart worker, plus workers specified after it in the blueprint
-  def restart_rest_for_one(worker)
-    ids = @blueprint.keys.drop_while { |i| i != worker.id }
-    rest = @workers.select { |id, _worker| ids.include?(id) }.values.reverse
-    delete_workers rest
-    workers = setup ids
-    run_workers workers
+  # Restart node and other nodes after it
+  def restart_rest_for_one(node)
+    nodes = @nodes.values.drop_while { |i| i != node }
+    nodes.reverse.each(&:stop)
+    nodes.each(&:run)
   end
 
-  # Restart all workers
-  def restart_all_for_one(_worker)
-    delete_workers
-    setup
-    run_workers
+  # Restart all nodes
+  def restart_all_for_one
+    @nodes.values.reverse.each(&:stop)
+    @nodes.each_value(&:run)
   end
 
   # Build string showing supervisor tree
   def hierarchy
-    @workers.transform_values(&:hierarchy)
-  end
-
-  # Find a worker by traversing the tree according to
-  # the list of ids.
-  def dig *args
-    worker = @workers[args.shift]
-    return worker if args.empty?
-    return nil unless worker
-
-    worker.dig(*args)
+    @nodes.transform_values(&:hierarchy)
   end
 end
