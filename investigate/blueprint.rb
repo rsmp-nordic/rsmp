@@ -1,44 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'app'
-
-# Our worker base
-class AppWorker < Worker
-  def stop
-    log 'stop'
-  end
-
-  def fail(error)
-    log error
-  end
-end
-
-# Animal
-class Animal < AppWorker
-  def run
-    log 'run'
-    loop do
-      sleep rand(1..10) * 0.1
-      raise 'stumble!' if rand(10).zero?
-
-      log @level.to_s
-      log 'grrr' if rand(2).zero?
-    end
-  end
-end
-
-# Place
-class Place < AppWorker
-  def run
-    log 'open'
-    loop do
-      sleep rand(1..10) * 0.1
-      raise 'fire!' if rand(5).zero?
-
-      log 'party' if rand(5).zero?
-    end
-  end
-end
+require_relative 'animals'
 
 blueprint = {
   zoo: { class: Place, strategy: :all_for_one, nodes: {

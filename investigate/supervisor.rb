@@ -89,7 +89,6 @@ class Supervisor < Node
 
   # Stop our nodes and then our worker.
   def stop
-    log 'stop'
     stop_nodes
     stop_worker
   end
