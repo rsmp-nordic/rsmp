@@ -7,6 +7,11 @@ class Worker
     @node = node
   end
 
+  # More readable debug output
+  def inspect
+    "Worker <#{@node.id}>"
+  end
+
   # Log, by passing to worker.
   def log(str)
     @node.log str
@@ -19,5 +24,9 @@ class Worker
   def stop; end
 
   # We failed with uncaught error
-  def fail(error); end
+  def failed(error); end
+
+  def sub_workers
+    @node.nodes.values.map(&:worker)
+  end
 end

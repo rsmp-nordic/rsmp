@@ -2,26 +2,28 @@
 
 require_relative 'app'
 
+SPEED = 1
+
 # Animal
 class Animal < Worker
   def run
     log 'wake'
     loop do
-      sleep rand(0..10) * 1
+      sleep rand(0..10) * 1.0/SPEED
       raise 'sleepy!' if rand(10).zero?
-      log 'grrr' if rand(2).zero?
+      log 'grrr' if rand(5).zero?
     end
   end
 
   def party
-      raise 'dance' if rand(10).zero?
+    log 'jump' if rand(5).zero?
   end
 
   def stop
     log 'zzz'
   end
 
-  def fail(error)
+  def failed(error)
     log error
   end
 end
@@ -31,11 +33,11 @@ class Place < Worker
   def run
     log 'open'
     loop do
-      sleep rand(0..10) * 1
+      sleep rand(0..10) * 1.0/SPEED
       raise 'late!' if rand(5).zero?
-      if rand(5).zero?
+      if rand(3).zero?
         log 'party' 
-        #@node.nodes.values.each(&:party)
+        sub_workers.each(&:party)
       end
     end
   end
@@ -44,7 +46,7 @@ class Place < Worker
     log 'close'
   end
 
-  def fail(error)
+  def failed(error)
     log error
   end
 end

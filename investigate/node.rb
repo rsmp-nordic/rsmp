@@ -10,7 +10,7 @@ require_relative 'worker'
 # then take care or restarting our worker, and other workers
 # as well, depending on our restart strategy
 class Node
-  attr_reader :id, :strategy, :level
+  attr_reader :id, :strategy, :level, :worker
 
   # Create a node
   def initialize(id:, worker_class:, strategy:, supervisor:, blueprint: nil)
@@ -32,7 +32,7 @@ class Node
 
   # More readable debug output
   def inspect
-    "<#{@id}>"
+    "Node <#{@id}>"
   end
 
   # Intend a string according to the tree level.
@@ -53,24 +53,26 @@ class Node
 
   # Construct worker, using our worker class.
   def create_worker
-    raise 'Worker already exists' if @worker
-
-    @worker = @worker_class.new self
+    @worker = @worker_class.new(self) unless @worker
   end
 
-  # Runs our  worker inside an async task.
-  # Uncaught errors are reported to supervisor,
-  # which can then restart our (and possible others) worker,
+  # Run our worker inside an async task.
+  # Uncaught errors are reported to our supervisor,
+  # which can then restart ours (and possible others) worker,
   # depending on our restart strategy.
   def run
     @task = Async do |task|
       task.annotate(@id)
-      create_worker
-      @worker.run
+      work
     rescue StandardError => e
-      @worker.fail e
+      @worker.failed(e) if @worker
       report_error e
     end
+  end
+
+  def work
+    create_worker
+    @worker.run
   end
 
   # Stop, by stopping our worker
@@ -81,8 +83,8 @@ class Node
   # Stop our worker and the async task it's running in.
   def stop_worker
     @worker&.stop
-    @task&.stop
     @worker = nil
+    @task&.stop
     @task = nil
   end
 

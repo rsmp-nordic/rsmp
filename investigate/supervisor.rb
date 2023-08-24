@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'async/barrier'
 require_relative 'node'
 
 # Supervises nodes in a supervisor tree.
@@ -46,18 +47,27 @@ class Supervisor < Node
     @nodes[node.id] = node
   end
 
-  # Run supervisor by watch for post,
-  # and run our own worker and our nodes.
-  def run
-    watch_messages
-    super if @worker_class
+  # Supervisor work is to watch for post,
+  # run our own worker and run our nodes.
+  def work
+    condition = Async::Condition.new
+
+    Async { watch_messages }
+
+    Async do
+      super if @worker_class
+    rescue StandardError => e
+      condition.signal e
+    end
+
     run_nodes
+    raise condition.wait
   end
 
   # Fetch post in an async task by waiting for messages
   # in our post queue.
   def watch_messages
-    Async { loop { receive @messages.dequeue } }
+    loop { receive @messages.dequeue }
   end
 
   # A messages was receive from our post queue
@@ -67,7 +77,7 @@ class Supervisor < Node
     when :node_failed
       node_failed message[:from], message[:error]
     else
-      log "unhandled #{message[:type].inspect}"
+      log "unhandled message #{message[:type].inspect}"
     end
   end
 
