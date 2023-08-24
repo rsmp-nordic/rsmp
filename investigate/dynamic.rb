@@ -27,7 +27,7 @@ begin
     end
 
   end
-rscue Interrupt
+rescue Interrupt
   puts
 end
 pp app.hierarchy

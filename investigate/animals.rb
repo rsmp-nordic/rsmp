@@ -7,10 +7,14 @@ class Animal < Worker
   def run
     log 'wake'
     loop do
-      sleep rand(0..10) * 0.3
+      sleep rand(0..10) * 1
       raise 'sleepy!' if rand(10).zero?
       log 'grrr' if rand(2).zero?
     end
+  end
+
+  def party
+      raise 'dance' if rand(10).zero?
   end
 
   def stop
@@ -27,9 +31,12 @@ class Place < Worker
   def run
     log 'open'
     loop do
-      sleep rand(0..10) * 0.3
+      sleep rand(0..10) * 1
       raise 'late!' if rand(5).zero?
-      log 'party' if rand(5).zero?
+      if rand(5).zero?
+        log 'party' 
+        #@node.nodes.values.each(&:party)
+      end
     end
   end
 

@@ -76,5 +76,21 @@ If one of these tasks fails, e.g. has an uncaught exception, we can restart that
 
 
 ## Supervisor Trees
+A blueprint describes a static supervisor tree, and can be used to create or maintain the tree.
 A supervisor inherits from job, and has a list of jobs. 
 A job runs the actual work inside an Async task.
+
+A TCP client tries to connect to the endpoint.
+If it fails, it waits a while and tries again.
+If it succeeds, it creates sub task, e.g. a reader and a timer.
+If a task fails due to a network error, then they signal the client,
+which then deletes tasks and reconnects
+If a task fails for another reason, it should be restarted
+
+So the supervisor tree must be dynamic. We need  a concept of a task that can automatically restart if it fails.
+E.g a Worker object could encapsulate actual work as a separate object, which can then be deleted and recreated if an uncaught error occurs. Workers can then added to a supervisor tree dynamically. The tree would consists of Workers and Supervisor. Each Worker would point to an object handling the actual work.
+
+The blueprint can be used to construct a tree of supervisor and workers.
+But the tree can also be dynamically altered.
+When you start a tree, the defined Work objected are created and run.
+If a Work object fails, it can be recreated.
