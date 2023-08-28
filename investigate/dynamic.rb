@@ -3,7 +3,7 @@
 require_relative 'animals'
 
 app = App.new
-zoo = Supervisor.new(id: :zoo, supervisor: app, worker_class: Place, strategy: :all_for_one)
+zoo = Node.new(id: :zoo, node: app, worker_class: Place, strategy: :all_for_one)
 
 begin
   Async do
@@ -21,7 +21,7 @@ begin
         type = (types - zoo.nodes.keys).sample
         if type
           strategy = [:one_for_all, :rest_for_all, :all_for_one].sample
-          Node.new(id: type, supervisor: zoo, worker_class: Animal, strategy: strategy).run
+          Node.new(id: type, node: zoo, worker_class: Animal, strategy: strategy).run
         end
       end    
     end

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative 'supervisor'
+require_relative 'node'
 
-# An app is a root supervisor
-class App < Supervisor
+# An app is a root node
+class App < Node
   # Create app
   def initialize(blueprint: nil)
     super(blueprint:, id: :app, supervisor: nil, worker_class: nil, strategy: :one_for_one)

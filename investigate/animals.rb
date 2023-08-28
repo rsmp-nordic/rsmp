@@ -2,7 +2,7 @@
 
 require_relative 'app'
 
-SPEED = 1
+SPEED = 2
 
 # Animal
 class Animal < Worker
