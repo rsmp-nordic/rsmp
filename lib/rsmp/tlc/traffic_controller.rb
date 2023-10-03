@@ -58,8 +58,8 @@ module RSMP
         @plan_source = 'startup'
         @intersection = 0
         @intersection_source = 'startup'
-        @emergency_route = false
-        @emergency_route_number = 0
+        @emergency_routes = Set.new
+        @last_emergency_route = nil
         @traffic_situation = 0
         @traffic_situation_source = 'startup'
         @day_time_table = {}
@@ -286,13 +286,22 @@ module RSMP
 
       def handle_m0005 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
-        @emergency_route = (arg['status'] == 'True')
-        @emergency_route_number = arg['emergencyroute'].to_i
+        route = arg['emergencyroute'].to_i
+        enable = (arg['status'] == 'True')
+        @last_emergency_route = route
 
-        if @emergency_route
-          log "Switching to emergency route #{@emergency_route_number}", level: :info
+        if enable
+          if @emergency_routes.add? route
+            log "Enabling emergency route #{route}", level: :info
+          else
+            log "Emergency route #{route} already enabled", level: :info
+          end
         else
-          log "Switching off emergency route", level: :info
+          if @emergency_routes.delete? route
+            log "Disabling emergency route #{route}", level: :info
+          else
+            log "Emergency route #{route} already disabled", level: :info
+          end
         end
       end
 
@@ -661,9 +670,16 @@ module RSMP
       def handle_s0006 status_code, status_name=nil, options={}
         case status_name
         when 'status'
-          TrafficControllerSite.make_status @emergency_route
+          TrafficControllerSite.make_status @emergency_routes.include?(@last_emergency_route)
         when 'emergencystage'
-          TrafficControllerSite.make_status @emergency_route_number
+          TrafficControllerSite.make_status @last_emergency_route || 0
+        end
+      end
+
+      def handle_s0035 status_code, status_name=nil, options={}
+        case status_name
+        when 'emergencyroutes'
+          TrafficControllerSite.make_status @emergency_routes
         end
       end
 
