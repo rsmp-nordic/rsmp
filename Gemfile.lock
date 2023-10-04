@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rsmp (0.22.0)
+    rsmp (0.23.0)
       async (~> 2.6.4)
       async-io (~> 1.36.0)
       colorize (~> 0.8.1)
@@ -106,6 +106,7 @@ GEM
 
 PLATFORMS
   arm64-darwin-22
+  arm64-darwin-23
   x64-mingw-ucrt
   x64-mingw32
   x86_64-darwin-19
