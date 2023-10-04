@@ -302,7 +302,7 @@ module RSMP
     end
 
     def rsmpify_value v
-      return v if v.is_a? Array
+      return v if v.is_a?(Array) || v.is_a?(Set)
       v.to_s
     end
 

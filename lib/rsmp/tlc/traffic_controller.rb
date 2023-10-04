@@ -613,7 +613,7 @@ module RSMP
              'S0008', 'S0009', 'S0010', 'S0011', 'S0012', 'S0013', 'S0014',
              'S0015', 'S0016', 'S0017', 'S0018', 'S0019', 'S0020', 'S0021',
              'S0022', 'S0023', 'S0024', 'S0026', 'S0027', 'S0028',
-             'S0029', 'S0030', 'S0031', 'S0032', 'S0033',
+             'S0029', 'S0030', 'S0031', 'S0032', 'S0033', 'S0035',
              'S0091', 'S0092', 'S0095', 'S0096', 'S0097',
              'S0205', 'S0206', 'S0207', 'S0208'
           return send("handle_#{code.downcase}", code, name, options)
@@ -679,7 +679,8 @@ module RSMP
       def handle_s0035 status_code, status_name=nil, options={}
         case status_name
         when 'emergencyroutes'
-          TrafficControllerSite.make_status @emergency_routes
+          list = @emergency_routes.sort.map {|route| {'id'=>route.to_s}}
+          TrafficControllerSite.make_status list
         end
       end
 
