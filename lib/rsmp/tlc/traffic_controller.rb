@@ -260,7 +260,7 @@ module RSMP
       def handle_m0002 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
         if TrafficControllerSite.from_rsmp_bool(arg['status'])
-          switch_plan arg['timeplan'], source: 'force'
+          switch_plan arg['timeplan'], source: 'forced'
         else
           switch_plan 0, source: 'startup'     # TODO use clock/calender
         end
