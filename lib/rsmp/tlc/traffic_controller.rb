@@ -664,6 +664,13 @@ module RSMP
         case status_name
         when 'status'
           TrafficControllerSite.make_status @is_starting
+        when 'statusByIntersection'   # from sxl 1.2
+          TrafficControllerSite.make_status([
+            {
+              "intersection"=>"1",
+              "startup" => TrafficControllerSite.to_rmsp_bool(@is_starting)
+            }
+          ])
         end
       end
 
