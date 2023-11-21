@@ -26,7 +26,7 @@ module RSMP
         uRt = subscription_list.dig(c_id,sCI,n,'uRt')
         next if uRt.to_i > 0
         sOc = subscription_list.dig(c_id,sCI,n,'sOc')
-        next if sOc == 'False'
+        next if sOc == false
         next if @allow_repeat_updates[sCI] && @allow_repeat_updates[sCI].include?(n)
         new_values = {'s'=>s,'q'=>q}
         old_values = @statuses.dig(sCI,n)
