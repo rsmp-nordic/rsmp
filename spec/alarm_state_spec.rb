@@ -88,7 +88,7 @@ RSpec.describe RSMP::AlarmState do
         "aCId"=>code_id,
         "aTs"=>now_str,
         "ack"=>"Acknowledged",
-        "sS"=>"suspended",
+        "sS"=>"Suspended",
         "aS"=>"inActive",
         "cat"=>"D",
         "pri"=>"2",

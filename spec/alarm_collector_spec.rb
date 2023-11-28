@@ -24,7 +24,7 @@ RSpec.describe RSMP::AlarmCollector do
       'aSp' => 'Suspend',
       'ack' => 'notAcknowledged',
       'aS' => 'inActive',
-      'sS' => 'suspended',
+      'sS' => 'Suspended',
       'aTs' => Time.now - 60,
       'cat' => 'T',
       'pri' => '2',

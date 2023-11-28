@@ -278,7 +278,7 @@ module RSMP
     def initialize attributes = {}
       super({
         "aSp" => "Suspend",
-        "sS" => "suspended"
+        "sS" => "Suspended"
       }.merge attributes)
     end
   end
