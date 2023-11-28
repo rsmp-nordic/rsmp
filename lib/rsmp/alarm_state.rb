@@ -90,9 +90,9 @@ module RSMP
 
     def differ_from_message? message
       return true if RSMP::Clock.to_s(@timestamp) != message.attribute('aTs')
-      return true if message.attribute('ack') && @acknowledged != (message.attribute('ack') == 'Acknowledged')
-      return true if message.attribute('sS') && @suspended != (message.attribute('sS') == 'suspended')
-      return true if message.attribute('aS') && @active != (message.attribute('aS') == 'Active')
+      return true if message.attribute('ack') && @acknowledged != (message.attribute('ack').downcase == 'acknowledged')
+      return true if message.attribute('sS') && @suspended != (message.attribute('sS').downcase == 'suspended')
+      return true if message.attribute('aS') && @active != (message.attribute('aS').downcase == 'active')
       return true if message.attribute('cat') && @category != message.attribute('cat')
       return true if message.attribute('pri') && @priority != message.attribute('pri').to_i
       #return true @rvs = message.attribute('rvs')
