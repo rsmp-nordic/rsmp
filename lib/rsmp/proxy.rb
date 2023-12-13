@@ -222,6 +222,20 @@ module RSMP
       @watchdog_started = true
     end
 
+    def stop_watchdog
+      log "Stopping watchdog", level: :debug
+      @watchdog_started = false
+    end
+
+    def with_watchdog_disabled
+      was = @watchdog_started
+      stop_watchdog if was
+      yield
+    ensure
+      start_watchdog if was
+    end
+
+
     def start_timer
       return if @timer
       name = "timer"
