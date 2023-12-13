@@ -678,11 +678,12 @@ module RSMP
         if Proxy.version_meets_requirement? options[:sxl_version], '>=1.2'
           log "S0006 is depreciated, use S0035 instead.", level: :warning
         end
+        status = @emergency_routes.any?
         case status_name
         when 'status'
-          TrafficControllerSite.make_status @emergency_routes.include?(@last_emergency_route)
+          TrafficControllerSite.make_status status
         when 'emergencystage'
-          TrafficControllerSite.make_status @last_emergency_route || 0
+          TrafficControllerSite.make_status status ? @last_emergency_route : 0
         end
       end
 
