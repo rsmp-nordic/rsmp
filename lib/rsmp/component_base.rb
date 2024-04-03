@@ -34,6 +34,10 @@ module RSMP
       node.now
     end
 
+    def clear_alarm_timestamps
+      @alarms.values.each {|alarm| alarm.clear_timestamp }
+    end
+
     def get_alarm_state alarm_code
       alarm = @alarms[alarm_code] ||= RSMP::AlarmState.new component: self, code: alarm_code
     end
