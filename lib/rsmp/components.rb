@@ -57,5 +57,8 @@ module RSMP
       end
     end
 
+    def clear_alarm_timestamps
+      @components.values.each {|component| component.clear_alarm_timestamps }
+    end
   end
 end

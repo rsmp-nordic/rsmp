@@ -99,6 +99,10 @@ module RSMP
       false
     end
 
+    def clear_timestamp
+      @timestamp = nil
+    end
+
     def older_message? message
       return false if @timestamp == nil
       RSMP::Clock.parse(message.attribute('aTs')) < @timestamp
