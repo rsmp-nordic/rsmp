@@ -30,12 +30,12 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "async", "~> 2.10.0"
-  spec.add_dependency "async-io", "~> 1.42.0"
+  spec.add_dependency "async", "~> 2.12.0"
+  spec.add_dependency "async-io", "~> 1.43.2"
   spec.add_dependency "colorize", "~> 1.1"
   spec.add_dependency "rsmp_schema", "~> 0.6.0"
 
-  spec.add_development_dependency "bundler", "~> 2.5.7"
+  spec.add_development_dependency "bundler", "~> 2.5.11"
   spec.add_development_dependency "rake", "~> 13.2.0"
   spec.add_development_dependency "rspec", "~> 3.13.0"
   spec.add_development_dependency "rspec-expectations", "~> 3.13.0"

@@ -264,6 +264,8 @@ module RSMP
           log "Timer: Connection reset by peer", level: :warning
         rescue Errno::EPIPE => e
           log "Timer: Broken pipe", level: :warning
+        rescue SystemCallError => e
+          log "Timer: Errno #{e.errno} #{e}", level: :warning
         rescue StandardError => e
           notify_error e, level: :internal
         end

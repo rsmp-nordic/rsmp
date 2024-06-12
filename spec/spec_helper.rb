@@ -1,7 +1,9 @@
 require 'bundler/setup'
+require 'tempfile'
 require 'rsmp'
 require_relative 'support/site_proxy_stub'
 require_relative 'support/async_rspec'
+require_relative 'support/cli_helper'
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
