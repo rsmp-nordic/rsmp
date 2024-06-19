@@ -5,7 +5,7 @@ PATH
       async (~> 2.10.0)
       async-io (~> 1.42.0)
       colorize (~> 1.1)
-      rsmp_schema (~> 0.6.0)
+      rsmp_schema (~> 0.7.0)
 
 GEM
   remote: https://rubygems.org/
@@ -78,7 +78,7 @@ GEM
     multi_test (1.1.0)
     rake (13.2.1)
     regexp_parser (2.9.2)
-    rsmp_schema (0.6.0)
+    rsmp_schema (0.7.0)
       json_schemer (~> 2.3.0)
       thor (~> 1.3.1)
     rspec (3.13.0)
