@@ -4,22 +4,22 @@ module RSMP
   # Can filter by message type, componet and direction.
   # Wakes up the once the desired number of messages has been collected.
   class Collector < Listener
-    attr_reader :condition, :messages, :status, :error, :task
+    attr_reader :condition, :messages, :status, :error, :task, :m_id
 
     def initialize notifier, options={}
-      super notifier, options
+      super notifier, filter: options[:filter]
       @options = {
-        cancel: {
-          schema_error: true,
-          disconnect: false,
-        }
+        schema_error: true,
+        disconnect: false,
       }.deep_merge options
-      @ingoing = options[:ingoing] == nil ? true  : options[:ingoing]
-      @outgoing = options[:outgoing] == nil ? false : options[:outgoing]
+      @timeout = options[:timeout]
+      @num = options[:num]
+      @m_id = options[:m_id]
       @condition = Async::Notification.new
-      @title = options[:title] || [@options[:type]].flatten.join('/')
-      if options[:task]
-        @task = options[:task]
+      make_title options[:title]
+      
+      if task
+        @task = task
       else
          # if notifier is a Proxy, or some other object that implements task(),
          # then try to get the task that way
@@ -28,6 +28,16 @@ module RSMP
         end
       end
       reset
+    end
+
+    def make_title title
+      if title
+        @title = title
+      elsif @filter
+        @title = [@filter.type].flatten.join('/')
+      else
+        @title = ""
+      end
     end
 
     def use_task task
@@ -110,8 +120,8 @@ module RSMP
     # the desired messages have been collected, or timeout is reached.
     def wait
       if collecting?
-        if @options[:timeout]
-          @task.with_timeout(@options[:timeout]) { @condition.wait }
+        if @timeout
+          @task.with_timeout(@timeout) { @condition.wait }
         else
           @condition.wait
         end
@@ -136,7 +146,7 @@ module RSMP
     def start &block
       raise RuntimeError.new("Can't start collectimng unless ready (currently #{@status})") unless ready?
       @block = block
-      raise ArgumentError.new("Num, timeout or block must be provided") unless @options[:num] || @options[:timeout] || @block
+      raise ArgumentError.new("Num, timeout or block must be provided") unless @num || @timeout || @block
       reset
       @status = :collecting
       log_start
@@ -146,18 +156,18 @@ module RSMP
     # Build a string describing how how progress reached before timeout
     def describe_progress
       str = "#{identifier}: #{@title.capitalize} collection "
-      str << "in response to #{@options[:m_id]} " if @options[:m_id]
-      str << "didn't complete within #{@options[:timeout]}s, "
-      str << "reached #{@messages.size}/#{@options[:num]}"
+      str << "in response to #{@m_id} " if @m_id
+      str << "didn't complete within #{@timeout}s, "
+      str << "reached #{@messages.size}/#{@num}"
       str
     end
 
     # Check if we receive a NotAck related to initiating request, identified by @m_id.
     def reject_not_ack message
-      return unless @options[:m_id]
+      return unless @m_id
       if message.is_a?(MessageNotAck)
-        if message.attribute('oMId') == @options[:m_id]
-          m_id_short = RSMP::Message.shorten_m_id @options[:m_id], 8
+        if message.attribute('oMId') == @m_id
+          m_id_short = RSMP::Message.shorten_m_id @m_id, 8
           cancel RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
           @notifier.log "#{identifier}: cancelled due to a NotAck", level: :debug
           true
@@ -166,7 +176,7 @@ module RSMP
     end
 
     # Handle message. and return true when we're done collecting
-    def notify message
+    def incoming message
       raise ArgumentError unless message
       raise RuntimeError.new("can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}") unless ready? || collecting?
       if perform_match message
@@ -185,7 +195,7 @@ module RSMP
     # Match message against our collection criteria
     def perform_match message
       return false if reject_not_ack(message)
-      return false unless type_match?(message)
+      return false unless acceptable?(message)
       #@notifier.log "#{identifier}: Looking at #{message.type} #{message.m_id_short}", level: :collect
       if @block
         status = [@block.call(message)].flatten
@@ -198,7 +208,7 @@ module RSMP
 
     # Have we collected the required number of messages?
     def done?
-      @options[:num] && @messages.size >= @options[:num]
+      @num && @messages.size >= @num
     end
 
     # Called when we're done collecting. Remove ourself as a listener,
@@ -238,7 +248,7 @@ module RSMP
       message = options[:message]
       return unless message
       klass = message.class.name.split('::').last
-      return unless @options[:type] == nil || [@options[:type]].flatten.include?(klass)
+      return unless @filter&.type == nil || [@filter&.type].flatten.include?(klass)
       @notifier.log "#{identifier}: cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
       cancel error
     end
@@ -264,31 +274,19 @@ module RSMP
 
     # Check a message against our match criteria
     # Return true if there's a match, false if not
-    def type_match? message
-      return false if message.direction == :in && @ingoing == false
-      return false if message.direction == :out && @outgoing == false
-      if @options[:type]
-        if @options[:type].is_a? Array
-          return false unless @options[:type].include? message.type
-        else
-          return false unless message.type == @options[:type]
-        end
-      end
-      if @options[:component]
-        return false if message.attributes['cId'] && message.attributes['cId'] != @options[:component]
-      end
-      true
+    def acceptable? message
+      @filter == nil || @filter.accept?(message)
     end
 
     # return a string describing the types of messages we're collecting
     def describe_types
-      [@options[:type]].flatten.join('/')
+      [@filter&.type].flatten.join('/')
     end
 
     # return a string that describes whe number of messages, and type of message we're collecting
     def describe_num_and_type
-      if @options[:num] && @options[:num] > 1
-        "#{@options[:num]} #{describe_types}s"
+      if @num && @num > 1
+        "#{@num} #{describe_types}s"
       else
         describe_types
       end
@@ -296,7 +294,7 @@ module RSMP
 
     # return a string that describes the attributes that we're looking for
     def describe_query
-      h = {component: @options[:component]}.compact
+      h = {component: @filter&.component}.compact
       if h.empty?
         describe_num_and_type
       else
@@ -306,8 +304,8 @@ module RSMP
 
     # return a string that describe how many many messages have been collected
     def describe_progress
-      if @options[:num]
-        "#{@messages.size} of #{@options[:num]} message#{'s' if @messages.size!=1} collected"
+      if @num
+        "#{@messages.size} of #{@num} message#{'s' if @messages.size!=1} collected"
       else
         "#{@messages.size} message#{'s' if @messages.size!=1} collected"
       end        

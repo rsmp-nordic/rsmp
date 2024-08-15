@@ -3,10 +3,13 @@ module RSMP
   # Filter messages based on type, direction and component id.
   # Used by Collectors.
   class Filter
-    def initialize ingoing:true, outgoing:true, type:, component:nil
+
+    attr_reader :ingoing, :outgoing, :type, :component
+
+    def initialize ingoing:true, outgoing:true, type:nil, component:nil
       @ingoing = ingoing
       @outgoing = outgoing
-      @type = type
+      @type = type ? [type].flatten : nil
       @component = component
     end
 
@@ -16,16 +19,18 @@ module RSMP
       return false if message.direction == :in && @ingoing == false
       return false if message.direction == :out && @outgoing == false
       if @type
-        if @type.is_a? Array
+        unless message.is_a?(MessageNotAck)
           return false unless @type.include? message.type
-        else
-          return false unless message.type == @type
         end
       end
       if @component
         return false if message.attributes['cId'] && message.attributes['cId'] != @component
       end
       true
+    end
+
+    def reject? message
+      !accept? message
     end
   end
 end
