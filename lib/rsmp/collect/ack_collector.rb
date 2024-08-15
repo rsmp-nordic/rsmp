@@ -8,9 +8,8 @@ module RSMP
     end
 
     # Check if we the MessageAck related to initiating request, identified by @m_id.
-    def type_match? message
-      return false if super(message) == false
-      return message.attribute('oMId') == @options[:m_id]
+    def acceptable? message
+      super(message) && message.attribute('oMId') == @m_id
     end
   end
 end
