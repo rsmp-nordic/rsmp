@@ -1,6 +1,6 @@
 module RSMP
   class SiteProxyStub
-    include RSMP::Notifier
+    include RSMP::Distributor
     include RSMP::Logging
     attr_reader :task
 

@@ -98,7 +98,7 @@ module RSMP
           return unless collecting?
           if matched != nil
             #type = {true=>'match',false=>'mismatch'}[matched]
-            #@notifier.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
+            #@distributor.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
             if matched == true
               query.keep message, item
             elsif matched == false
@@ -207,7 +207,7 @@ module RSMP
 
     # log when we end collecting
     def log_complete
-      @notifier.log "#{identifier}: Completed with #{query_got_hash.to_s}", level: :collect
+      @distributor.log "#{identifier}: Completed with #{query_got_hash.to_s}", level: :collect
     end
   end
 end

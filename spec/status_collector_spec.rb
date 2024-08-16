@@ -45,7 +45,7 @@ RSpec.describe StatusCollector do
         expect(collector.done?).to be(false)
 
         collector.start
-        collector.notify build_status_message(ok.values)
+        collector.receive build_status_message(ok.values)
         expect(collector.summary).to eq([true,true,true])
         expect(collector.done?).to be(true)
       end
@@ -59,15 +59,15 @@ RSpec.describe StatusCollector do
         expect(collector.done?).to be(false)
 
         collector.start
-        collector.notify build_status_message(ok[:s5])
+        collector.receive build_status_message(ok[:s5])
         expect(collector.summary).to eq([true,false,false])
         expect(collector.done?).to be(false)
 
-        collector.notify build_status_message(ok[:s7])
+        collector.receive build_status_message(ok[:s7])
         expect(collector.summary).to eq([true,true,false])
         expect(collector.done?).to be(false)
 
-        collector.notify build_status_message(ok[:s11])
+        collector.receive build_status_message(ok[:s11])
         expect(collector.summary).to eq([true,true,true])
         expect(collector.done?).to be(true)
       end
@@ -81,23 +81,23 @@ RSpec.describe StatusCollector do
         expect(collector.summary).to eq([false,false,false])
 
         collector.start
-        collector.notify build_status_message(ok[:s5])      # set s5
+        collector.receive build_status_message(ok[:s5])      # set s5
         expect(collector.summary).to eq([true,false,false])
         expect(collector.done?).to be(false)
 
-        collector.notify build_status_message(ok[:s7])
+        collector.receive build_status_message(ok[:s7])
         expect(collector.summary).to eq([true,true,false])
         expect(collector.done?).to be(false)
 
-        collector.notify build_status_message(reject[:s5])    # clear s5
+        collector.receive build_status_message(reject[:s5])    # clear s5
         expect(collector.summary).to eq([false,true,false])
         expect(collector.done?).to be(false)
 
-        collector.notify build_status_message(ok[:s11])
+        collector.receive build_status_message(ok[:s11])
         expect(collector.summary).to eq([false,true,true])
         expect(collector.done?).to be(false)
 
-        collector.notify build_status_message(ok[:s5])      # set s5 againt
+        collector.receive build_status_message(ok[:s5])      # set s5 againt
         expect(collector.summary).to eq([true,true,true])
         expect(collector.done?).to be(true)
       end
@@ -108,9 +108,9 @@ RSpec.describe StatusCollector do
        proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         collector.start
-        collector.notify build_status_message(ok.values)
+        collector.receive build_status_message(ok.values)
         expect(collector.done?).to be(true)
-        expect { collector.notify build_status_message(ok.values) }.to raise_error(RuntimeError)
+        expect { collector.receive build_status_message(ok.values) }.to raise_error(RuntimeError)
       end
     end
 
@@ -119,27 +119,27 @@ RSpec.describe StatusCollector do
        proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         collector.use_task task
-        # proxy should have no listeners initially
-        expect(proxy.listeners.size).to eq(0)
+        # proxy should have no receivers initially
+        expect(proxy.receivers.size).to eq(0)
 
         # start collection
         collect_task = task.async do
           collector.collect
         end
 
-        # collector should have inserted inself as a listener on the proxy
-        expect(proxy.listeners.size).to eq(1)
+        # collector should have inserted inself as a receiver on the proxy
+        expect(proxy.receivers.size).to eq(1)
         expect(collector.done?).to be(false)
 
         # send required values
-        proxy.notify build_status_message(ok.values)
+        proxy.distribute build_status_message(ok.values)
 
-        # should be done, and should have rmeoved itself as a listener
+        # should be done, and should have rmeoved itself as a receiver
         expect(collector.done?).to be(true)
-        expect(proxy.listeners.size).to eq(0)
+        expect(proxy.receivers.size).to eq(0)
 
         # additional messages should there not reach the collector, and should not affect the result
-        proxy.notify build_status_message(reject.values)
+        proxy.distribute build_status_message(reject.values)
         expect(collector.done?).to be(true)
       end
     end
@@ -166,7 +166,7 @@ RSpec.describe StatusCollector do
           expect(items.size).to eq(3)
           expect(collector.messages.size).to eq(1)
         end
-        collector.notify build_status_message([ok[:s5],ok[:s7],ok[:s11]])  # one message with 3 items
+        collector.receive build_status_message([ok[:s5],ok[:s7],ok[:s11]])  # one message with 3 items
         collect_task.wait
       end
     end
@@ -187,9 +187,9 @@ RSpec.describe StatusCollector do
           expect(items.size).to eq(3)
           expect(collector.messages.size).to eq(1)
         end
-        collector.notify build_status_message([want.merge('s'=>'1')])
-        collector.notify build_status_message([want.merge('s'=>'2')])
-        collector.notify build_status_message([want.merge('s'=>'3')])
+        collector.receive build_status_message([want.merge('s'=>'1')])
+        collector.receive build_status_message([want.merge('s'=>'2')])
+        collector.receive build_status_message([want.merge('s'=>'3')])
         collect_task.wait
       end
     end
@@ -205,7 +205,7 @@ RSpec.describe StatusCollector do
           expect(result).to eq(:cancelled)
           expect(collector.messages.size).to eq(0)
         end
-        collector.notify build_status_message([ok[:s5],ok[:s7],ok[:s11]])  # one message with 3 items
+        collector.receive build_status_message([ok[:s5],ok[:s7],ok[:s11]])  # one message with 3 items
         collect_task.wait
       end
     end

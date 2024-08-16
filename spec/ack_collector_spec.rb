@@ -16,8 +16,8 @@ RSpec.describe RSMP::Collector do
           expect(collector.messages.first).to be_an(RSMP::MessageAck)
           expect(collector.messages.first.attributes['oMId']).to eq(m_id)
         end
-        proxy.notify RSMP::MessageAck.new "oMId" => other_m_id    # should be ignored because oMId does not match
-        proxy.notify RSMP::MessageAck.new "oMId" => m_id          # should be collected, because oMID matches
+        proxy.distribute RSMP::MessageAck.new "oMId" => other_m_id    # should be ignored because oMId does not match
+        proxy.distribute RSMP::MessageAck.new "oMId" => m_id          # should be collected, because oMID matches
         collect_task.wait
       end
     end

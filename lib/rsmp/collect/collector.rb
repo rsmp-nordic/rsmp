@@ -1,13 +1,14 @@
 module RSMP
 
-  # Collects messages from a notifier.
+  # Collects messages from a distributor.
   # Can filter by message type, componet and direction.
   # Wakes up the once the desired number of messages has been collected.
-  class Collector < Listener
+  class Collector
+    include Receiver
     attr_reader :condition, :messages, :status, :error, :task, :m_id
 
-    def initialize notifier, options={}
-      super notifier, filter: options[:filter]
+    def initialize distributor, options={}
+      initialize_receiver distributor, filter: options[:filter]
       @options = {
         cancel: {
           schema_error: true,
@@ -23,10 +24,10 @@ module RSMP
       if task
         @task = task
       else
-         # if notifier is a Proxy, or some other object that implements task(),
+         # if distributor is a Proxy, or some other object that implements task(),
          # then try to get the task that way
-        if notifier.respond_to? 'task'
-          @task = notifier.task
+        if distributor.respond_to? 'task'
+          @task = distributor.task
         end
       end
       reset
@@ -107,7 +108,7 @@ module RSMP
       wait
       @status
     ensure
-      @notifier.remove_listener self if @notifier
+      @distributor.remove_receiver self if @distributor
     end
 
     # Collect message
@@ -152,7 +153,7 @@ module RSMP
       reset
       @status = :collecting
       log_start
-      @notifier.add_listener self if @notifier
+      @distributor.add_receiver self if @distributor
     end
 
     # Build a string describing how how progress reached before timeout
@@ -171,14 +172,14 @@ module RSMP
         if message.attribute('oMId') == @m_id
           m_id_short = RSMP::Message.shorten_m_id @m_id, 8
           cancel RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
-          @notifier.log "#{identifier}: cancelled due to a NotAck", level: :debug
+          @distributor.log "#{identifier}: cancelled due to a NotAck", level: :debug
           true
         end
       end
     end
 
     # Handle message. and return true when we're done collecting
-    def incoming message
+    def receive message
       raise ArgumentError unless message
       unless ready? || collecting?
         raise RuntimeError.new("can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}") 
@@ -200,7 +201,7 @@ module RSMP
     def perform_match message
       return false if reject_not_ack(message)
       return false unless acceptable?(message)
-      #@notifier.log "#{identifier}: Looking at #{message.type} #{message.m_id_short}", level: :collect
+      #@distributor.log "#{identifier}: Looking at #{message.type} #{message.m_id_short}", level: :collect
       if @block
         status = [@block.call(message)].flatten
         return unless collecting?
@@ -215,7 +216,7 @@ module RSMP
       @num && @messages.size >= @num
     end
 
-    # Called when we're done collecting. Remove ourself as a listener,
+    # Called when we're done collecting. Remove ourself as a receiver,
     # se we don't receive message notifications anymore
     def complete
       @status = :ok
@@ -228,39 +229,39 @@ module RSMP
       log_incomplete
     end
 
-    # Remove ourself as a listener, so we don't receive message notifications anymore,
+    # Remove ourself as a receiver, so we don't receive message notifications anymore,
     # and wake up the async condition
     def do_stop
-      @notifier.remove_listener self
+      @distributor.remove_receiver self
       @condition.signal
     end
 
     # An error occured upstream.
     # Check if we should cancel.
-    def notify_error error, options={}
+    def receive_error error, options={}
       case error
       when RSMP::SchemaError
-        notify_schema_error error, options
+        receive_schema_error error, options
       when RSMP::DisconnectError
-        notify_disconnect error, options
+        receive_disconnect error, options
       end
     end
 
     # Cancel if we received e schema error for a message type we're collecting
-    def notify_schema_error error, options
+    def receive_schema_error error, options
       return unless @options.dig(:cancel,:schema_error)
       message = options[:message]
       return unless message
       klass = message.class.name.split('::').last
       return unless @filter&.type == nil || [@filter&.type].flatten.include?(klass)
-      @notifier.log "#{identifier}: cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
+      @distributor.log "#{identifier}: cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
       cancel error
     end
 
     # Cancel if we received e notificaiton about a disconnect
-    def notify_disconnect error, options
+    def receive_disconnect error, options
       return unless @options.dig(:cancel,:disconnect)
-      @notifier.log "#{identifier}: cancelled due to a connection error: #{error.to_s}", level: :debug
+      @distributor.log "#{identifier}: cancelled due to a connection error: #{error.to_s}", level: :debug
       cancel error
     end
 
@@ -317,17 +318,17 @@ module RSMP
 
     # log when we start collecting
     def log_start
-      @notifier.log "#{identifier}: Waiting for #{describe_query}".strip, level: :collect
+      @distributor.log "#{identifier}: Waiting for #{describe_query}".strip, level: :collect
     end
 
     # log current progress
     def log_incomplete
-      @notifier.log "#{identifier}: #{describe_progress}", level: :collect
+      @distributor.log "#{identifier}: #{describe_progress}", level: :collect
     end
 
     # log when we end collecting
     def log_complete
-      @notifier.log "#{identifier}: Done", level: :collect
+      @distributor.log "#{identifier}: Done", level: :collect
     end
 
     # get a short id in hex format, identifying ourself

@@ -34,7 +34,7 @@ module RSMP
         log e, level: :error
         break if reconnect_delay == false
       rescue StandardError => e
-        notify_error e, level: :internal
+        distribute_error e, level: :internal
         break if reconnect_delay == false
       ensure
         close

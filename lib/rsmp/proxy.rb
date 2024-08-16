@@ -9,7 +9,7 @@ module RSMP
     WRAPPING_DELIMITER = "\f"
 
     include Logging
-    include Notifier
+    include Distributor
     include Inspect
     include Task
 
@@ -47,7 +47,7 @@ module RSMP
       close_socket
       stop_reader
       set_state :disconnected
-      notify_error DisconnectError.new("Connection was closed")
+      distribute_error DisconnectError.new("Connection was closed")
 
       # stop timer
       # as we're running inside the timer, code after stop_timer() will not be called,
@@ -188,7 +188,7 @@ module RSMP
     rescue Errno::EPIPE
       log "Broken pipe", level: :warning
     rescue StandardError => e
-      notify_error e, level: :internal
+      distribute_error e, level: :internal
     end
 
     def read_line
@@ -213,8 +213,8 @@ module RSMP
       log str, level: :statistics
     end
 
-    def notify_error e, options={}
-      @node.notify_error e, options
+    def receive_error e, options={}
+      @node.receive_error e, options
     end
 
     def start_watchdog
@@ -265,7 +265,7 @@ module RSMP
         rescue Errno::EPIPE => e
           log "Timer: Broken pipe", level: :warning
         rescue StandardError => e
-          notify_error e, level: :internal
+          distribute_error e, level: :internal
         end
       ensure
         next_time += interval
@@ -312,7 +312,7 @@ module RSMP
           begin
             close
           ensure
-            notify_error MissingAcknowledgment.new(str)
+            distribute_error MissingAcknowledgment.new(str)
           end
         end
       end
@@ -325,7 +325,7 @@ module RSMP
       if left < 0
         str = "No Watchdog received within #{timeout} seconds"
         log str, level: :warning
-        notify MissingWatchdog.new(str)
+        distribute MissingWatchdog.new(str)
       end
     end
 
@@ -348,14 +348,14 @@ module RSMP
       message.validate get_schemas unless validate==false
       @protocol.write_lines message.json
       expect_acknowledgement message
-      notify message
+      distribute message
       log_send message, reason
     rescue EOFError, IOError
       buffer_message message
     rescue SchemaError, RSMP::Schema::Error => e
       str = "Could not send #{message.type} because schema validation failed: #{e.message}"
       log str, message: message, level: :error
-      notify_error e.exception("#{str} #{message.json}")
+      distribute_error e.exception("#{str} #{message.json}")
     end
 
     def buffer_message message
@@ -398,39 +398,39 @@ module RSMP
       message = Message.build attributes, json
       message.validate(get_schemas) if should_validate_ingoing_message?(message)
       verify_sequence message
-      deferred_notify do
-        notify message
+      with_deferred_distribution do
+        distribute message
         process_message message
       end
       process_deferred
       message
     rescue InvalidPacket => e
       str = "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}"
-      notify_error e.exception(str)
+      distribute_error e.exception(str)
       log str, level: :warning
       nil
     rescue MalformedMessage => e
       str = "Received malformed message, #{e.message}"
-      notify_error e.exception(str)
+      distribute_error e.exception(str)
       log str, message: Malformed.new(attributes), level: :warning
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
       nil
     rescue SchemaError, RSMP::Schema::Error => e
       reason = "schema errors: #{e.message}"
       str = "Received invalid #{message.type}"
-      notify_error e.exception(str), message: message
+      distribute_error e.exception(str), message: message
       dont_acknowledge message, str, reason
       message
     rescue InvalidMessage => e
       reason = "#{e.message}"
       str = "Received invalid #{message.type},"
-      notify_error e.exception("#{str} #{message.json}"), message: message
+      distribute_error e.exception("#{str} #{message.json}"), message: message
       dont_acknowledge message, str, reason
       message
     rescue FatalError => e
       reason = e.message
       str = "Rejected #{message.type},"
-      notify_error e.exception(str), message: message
+      distribute_error e.exception(str), message: message
       dont_acknowledge message, str, reason
       close
       message

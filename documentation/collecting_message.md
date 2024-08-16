@@ -3,11 +3,11 @@ You often need to collect messages or responses. The collector classes are used 
 
 A collector can collect ingoing and/or outgoing messages.
 
-An object that includes the Notifier module (or implements the same functionality) must be provided when you construct a Collected. The collector will attach itself to this notifier when it starts collecting, to receive messages. The SiteProxy and SupervisorProxy classes both include the Notifier module, and can therefore be used as message sources.
+An object that includes the Distributor module (or implements the same functionality) must be provided when you construct a Collected. The collector will attach itself to this distributor when it starts collecting, to receive messages. The SiteProxy and SupervisorProxy classes both include the Distributor module, and can therefore be used as message sources.
 
 Messages that match the relevant criteria are stored by the collector.
 
-When the collection is done, the collector detaches from the notifier, and returns the status.
+When the collection is done, the collector detaches from the distributor, and returns the status.
 
 
 ## Collector
@@ -22,7 +22,7 @@ When you create a collector, you specify the messages types you want to collect.
 You can also specify ingoing and/or outgoing direction and the RSMP component.
 
 ```ruby
-collector = MessageCollector.new notifier, num: 10, ingoing: true, outgoing: true
+collector = MessageCollector.new distributor, num: 10, ingoing: true, outgoing: true
 ```
 
 num: The number of messages to collect. If not provided, a timeout must be set instead.

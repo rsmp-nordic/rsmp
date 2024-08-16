@@ -51,8 +51,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.first).to be(right)
           expect(collector.messages.last).to be(wrong)
         end
-        proxy.notify right
-        proxy.notify wrong
+        proxy.distribute right
+        proxy.distribute wrong
         collect_task.wait
       end
     end
@@ -82,8 +82,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
@@ -100,8 +100,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
@@ -118,8 +118,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
@@ -136,8 +136,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
@@ -154,8 +154,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
@@ -172,8 +172,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
@@ -190,8 +190,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
@@ -208,8 +208,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
@@ -226,8 +226,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
@@ -248,8 +248,8 @@ RSpec.describe RSMP::AlarmCollector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to eq(right)
         end
-        proxy.notify wrong
-        proxy.notify right
+        proxy.distribute wrong
+        proxy.distribute right
         collect_task.wait
       end
     end
