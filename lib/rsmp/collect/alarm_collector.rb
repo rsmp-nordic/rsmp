@@ -10,7 +10,7 @@ module RSMP
     end
 
     # match alarm attributes
-    def type_match? message
+    def acceptable? message
       return false if super(message) == false
 
       # match fixed attributes

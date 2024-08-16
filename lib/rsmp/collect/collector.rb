@@ -9,8 +9,10 @@ module RSMP
     def initialize notifier, options={}
       super notifier, filter: options[:filter]
       @options = {
-        schema_error: true,
-        disconnect: false,
+        cancel: {
+          schema_error: true,
+          disconnect: false,
+        }
       }.deep_merge options
       @timeout = options[:timeout]
       @num = options[:num]
@@ -178,7 +180,9 @@ module RSMP
     # Handle message. and return true when we're done collecting
     def incoming message
       raise ArgumentError unless message
-      raise RuntimeError.new("can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}") unless ready? || collecting?
+      unless ready? || collecting?
+        raise RuntimeError.new("can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}") 
+      end
       if perform_match message
         if done?
           complete
