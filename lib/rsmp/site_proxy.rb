@@ -24,7 +24,7 @@ module RSMP
     rescue RSMP::ConnectionError => e
       log e, level: :error
     rescue StandardError => e
-      notify_error e, level: :internal
+      distribute_error e, level: :internal
     ensure
       close
     end
@@ -77,7 +77,7 @@ module RSMP
     rescue RSMP::RepeatedAlarmError, RSMP::RepeatedStatusError, RSMP::TimestampError => e
       str = "Rejected #{message.type} message,"
       dont_acknowledge message, str, "#{e}"
-      notify_error e.exception("#{str}#{e.message} #{message.json}")
+      distribute_error e.exception("#{str}#{e.message} #{message.json}")
     end
 
     def process_command_response message
@@ -367,8 +367,8 @@ module RSMP
       end
     end
 
-    def notify_error e, options={}
-      @supervisor.notify_error e, options if @supervisor
+    def receive_error e, options={}
+      @supervisor.receive_error e, options if @supervisor
       distribute_error e, options
     end
 

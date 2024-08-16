@@ -14,7 +14,7 @@ RSpec.describe RSMP::Collector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to be_an(RSMP::Watchdog)
         end
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         collect_task.wait
       end
     end
@@ -32,7 +32,7 @@ RSpec.describe RSMP::Collector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to be_an(RSMP::Watchdog)
         end
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         collect_task.wait
       end
     end
@@ -51,8 +51,8 @@ RSpec.describe RSMP::Collector do
           expect(collector.messages.first).to be_an(RSMP::Watchdog)
           expect(collector.messages.last).to be_an(RSMP::Watchdog)
         end
-        proxy.notify RSMP::Watchdog.new
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         collect_task.wait
       end
     end
@@ -70,7 +70,7 @@ RSpec.describe RSMP::Collector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to be_an(RSMP::MessageAck)
         end
-        proxy.notify RSMP::MessageAck.new
+        proxy.distribute RSMP::MessageAck.new
         collect_task.wait
       end
     end
@@ -88,7 +88,7 @@ RSpec.describe RSMP::Collector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to be_an(RSMP::MessageNotAck)
         end
-        proxy.notify RSMP::MessageNotAck.new
+        proxy.distribute RSMP::MessageNotAck.new
         collect_task.wait
       end
     end
@@ -114,7 +114,7 @@ RSpec.describe RSMP::Collector do
           result = collector.collect
           expect(result).to eq(:ok)
         end
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         collect_task.wait
       end
     end
@@ -132,8 +132,8 @@ RSpec.describe RSMP::Collector do
           expect(collector.messages.size).to eq(1)
           expect(collector.messages.first).to be_an(RSMP::StatusUpdate)
         end
-        proxy.notify RSMP::StatusUpdate.new(cId: 'bad')    # should be ignored
-        proxy.notify RSMP::StatusUpdate.new(cId: 'good')   # should be kept
+        proxy.distribute RSMP::StatusUpdate.new(cId: 'bad')    # should be ignored
+        proxy.distribute RSMP::StatusUpdate.new(cId: 'good')   # should be kept
         collect_task.wait
       end
     end
@@ -167,7 +167,7 @@ RSpec.describe RSMP::Collector do
           expect(collector.messages.size).to eq(0)
           expect(collector.error).to be_a(RSMP::MessageRejected )
         end
-        proxy.notify RSMP::MessageNotAck.new 'oMId' => message.m_id
+        proxy.distribute RSMP::MessageNotAck.new 'oMId' => message.m_id
         collect_task.wait
       end
     end
@@ -188,8 +188,8 @@ RSpec.describe RSMP::Collector do
           expect(messages.size).to eq(2)
           expect(collector.messages.size).to eq(1)
         end
-        proxy.notify RSMP::Watchdog.new
-        proxy.notify RSMP::AggregatedStatus.new
+        proxy.distribute RSMP::Watchdog.new
+        proxy.distribute RSMP::AggregatedStatus.new
         collect_task.wait
       end
     end
@@ -205,7 +205,7 @@ RSpec.describe RSMP::Collector do
           expect(result).to eq(:cancelled)
           expect(collector.messages.size).to eq(0)
         end
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         collect_task.wait
       end
     end
@@ -256,8 +256,8 @@ RSpec.describe RSMP::Collector do
           expect(messages.size).to eq(2)
           expect(collector.messages.size).to eq(0)
         end
-        proxy.notify RSMP::Watchdog.new
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         collect_task.wait
       end
     end
@@ -285,7 +285,7 @@ RSpec.describe RSMP::Collector do
           expect(messages.size).to eq(1)
           expect(messages.first).to be_an(RSMP::Watchdog)
         end
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         collect_task.wait
       end
     end
@@ -305,7 +305,7 @@ RSpec.describe RSMP::Collector do
           expect { collector.collect! }.to raise_error(RSMP::MessageRejected)
 
         end
-        proxy.notify RSMP::MessageNotAck.new 'oMId' => message.m_id
+        proxy.distribute RSMP::MessageNotAck.new 'oMId' => message.m_id
         collect_task.wait
       end
     end
@@ -328,7 +328,7 @@ RSpec.describe RSMP::Collector do
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
         collector.start
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         expect(collector.messages.size).to eq(1)
         expect(collector.status).to eq(:ok)
         expect(collector.wait).to eq(:ok)
@@ -343,7 +343,7 @@ RSpec.describe RSMP::Collector do
         collect_task = task.async do
           collector.wait
         end
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         expect(collect_task.wait).to eq(:ok)
         expect(collector.messages.size).to eq(1)
         expect(collector.status).to eq(:ok)
@@ -366,7 +366,7 @@ RSpec.describe RSMP::Collector do
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
         collector.start
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         expect(collector.messages.size).to eq(1)
         messages = collector.wait!
         expect(messages).to be_an(Array)
@@ -383,7 +383,7 @@ RSpec.describe RSMP::Collector do
         collect_task = task.async do
           collector.wait!
         end
-        proxy.notify RSMP::Watchdog.new
+        proxy.distribute RSMP::Watchdog.new
         messages = collect_task.wait
         expect(messages).to be_an(Array)
         expect(messages.size).to eq(1)

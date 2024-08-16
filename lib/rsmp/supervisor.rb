@@ -69,11 +69,11 @@ module RSMP
       tasks = @endpoint.accept do |socket|  # creates async tasks
         handle_connection(socket)
       rescue StandardError => e
-        notify_error e, level: :internal
+        distribute_error e, level: :internal
       end
       tasks.each { |task| task.wait }
     rescue StandardError => e
-      notify_error e, level: :internal
+      distribute_error e, level: :internal
     end
 
     # stop
@@ -96,10 +96,10 @@ module RSMP
       end
     rescue ConnectionError => e
       log "Rejected connection from #{remote_ip}:#{remote_port}, #{e.to_s}", level: :warning
-      notify_error e
+      distribute_error e
     rescue StandardError => e
       log "Connection: #{e.to_s}", exception: e, level: :error
-      notify_error e, level: :internal
+      distribute_error e, level: :internal
     ensure
       close socket, info
     end

@@ -88,7 +88,7 @@ module RSMP
           begin
             timer(@clock.now)
           rescue StandardError => e
-            notify_error e, level: :internal
+            distribute_error e, level: :internal
           ensure
             # adjust sleep duration to avoid drift. so wake up always happens on the
             # same fractional second.
