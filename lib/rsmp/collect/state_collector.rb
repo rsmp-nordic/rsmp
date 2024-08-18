@@ -97,8 +97,8 @@ module RSMP
           matched = query.perform_match(item,message,@block)
           return unless collecting?
           if matched != nil
-            #type = {true=>'match',false=>'mismatch'}[matched]
-            #@distributor.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
+            type = {true=>'match',false=>'mismatch'}[matched]
+            @distributor.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{query.want}, item #{item}", level: :debug
             if matched == true
               query.keep message, item
             elsif matched == false
