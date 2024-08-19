@@ -37,7 +37,7 @@ module RSMP
     # Initialize with a list of wanted statuses
     def initialize proxy, want, options={}
       raise ArgumentError.new("num option cannot be used") if options[:num]
-      super proxy, options.merge( ingoing: true, outgoing: false)
+      super proxy, options
       @queries = want.map { |item| build_query item }
     end
 

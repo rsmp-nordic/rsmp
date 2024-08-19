@@ -3,7 +3,7 @@ module RSMP
   class CommandResponseCollector < StateCollector
     def initialize proxy, want, options={}
       super proxy, want, options.merge(
-        type: 'CommandResponse',
+        filter: RSMP::Filter.new(ingoing: true, outgoing: false, type: 'CommandResponse'),
         title:'command response'
       )
     end
