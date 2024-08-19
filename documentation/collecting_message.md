@@ -11,22 +11,37 @@ When the collection is done, the collector detaches from the distributor, and re
 
 
 ## Collector
-Class uses for collecting messages filtered by message type, direction and/or component id. A block can be used for custom filtering.
+Class used for collecting messages filtered by message type, direction and/or component id. A block can be used for custom filtering.
 
 You can choose to collect a specific number of message and/or for a specific duration.
 
 A collector has a status, which is `:ready` initialialy. When you start collecting, it changes to `:collecting`. It will be `:ok` once collection completes successfully, or `:cancel` if it was cancelled to to some error or by a filter block.
 
 ### Initialization
-When you create a collector, you specify the messages types you want to collect.
-You can also specify ingoing and/or outgoing direction and the RSMP component.
+When you create a collector, you provide a Filter to specify the messages types you want to collect. You can also specify ingoing and/or outgoing direction and the RSMP component.
 
 ```ruby
-collector = MessageCollector.new distributor, num: 10, ingoing: true, outgoing: true
+collector = MessageCollector.new(distributor,
+	num: 10,
+	filter: Filter.new(ingoing: true, outgoing: true)
 ```
 
 num: The number of messages to collect. If not provided, a timeout must be set instead.
-timeout: The number of seconds to collect
+filter: filter to identify the types of messages to look for.
+
+### Filter
+The Filter class is used to filter messages according to message type, direction and component.
+
+```ruby
+filter = Filter.new(
+	type: 'Alarm',
+	ingoing: true,
+	outgoing: false,
+	component: 'DL1'
+	)
+```
+
+type: a string, or an array of string, specifiying one or more RSMP message types.
 ingoing: Whether to collect ingoing messages. Defaults to true
 outgoing: Whether to collect outgoing messages. Defaults to true
 component: An RSMP component id.
@@ -48,7 +63,7 @@ result = collector.wait
 ```
 
 ### Custom filtering
-You can use a block to do extra filtering. The block will be callled for each messages that fulfils the  correct message type, direction and component id.
+You can use a block to do extra filtering. The block will be callled for each messages that passes the Filter provided when initializing the collector.
 
 The block must return nil or a list of symbols to indicate whether the message should be kept, and whether collection should be cancelled.
 
@@ -69,7 +84,7 @@ Exceptions in the block will cause the collector to abort. If the collect! or wa
 The method collect!() will raise exceptions in case of errors, and will return the collect message directly.
 
 ```ruby
-message = collector.collect # => collected message.
+message = collector.collect! # => collected message.
 ```
 
 Similar, `wait!()` will raise an exception in case of timeouts or errors:
@@ -181,7 +196,7 @@ result[:collector].messages # => list of collected messages
 
 ### Processing responses
 If you pass a block, the block will be used to construct a collector. The block will be called for each matching  status item received.
-Collection will continue until the block returns :cancel, or it times.
+Collection will continue until the block returns :cancel, or it times out.
 
 ```ruby
 options = {

@@ -15,9 +15,9 @@ A module that handles distributing messages to receivers.
 Receives messages as long as it's installed into a distributor.
 
 ## Collector
-A subclass of Receiver that wait for specific messages. Once received
+Includes the Receiver module to wait for specific messages. Once received
 the client receives the collection.
 
 ## Proxy
-A proxy includes the Distributor module and distributes each message to listerens after processing it.
+A proxy includes the Distributor module and distributes each message to receivers after processing it.
 
