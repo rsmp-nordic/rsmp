@@ -2,11 +2,14 @@ module RSMP
   # Base class for waiting for status updates or responses
   class StatusCollector < StateCollector
     def initialize proxy, want, options={}
-      super proxy, want, options.merge(title: 'status response')
+      type = []
+      type << 'StatusUpdate' unless options[:updates] == false
+      type << 'StatusResponse' unless options[:reponses] == false
 
-      @options[:type] ||= []
-      @options[:type] << 'StatusUpdate' unless options[:updates] == false
-      @options[:type] << 'StatusResponse' unless options[:reponses] == false
+      super proxy, want, options.merge(
+        title: 'status response',
+        filter: RSMP::Filter.new(ingoing: true, outgoing: false, type: type)
+      )
     end
 
     def build_query want

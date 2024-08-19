@@ -4,7 +4,7 @@ module RSMP
     def initialize proxy,options={}
       @query = options[:query] || {}
       super proxy, options.merge(
-        type: 'Alarm',
+        filter: RSMP::Filter.new(ingoing: true, outgoing: false, type: 'Alarm'),
         title:'alarm'
       )
     end
