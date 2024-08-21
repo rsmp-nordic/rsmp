@@ -23,6 +23,7 @@ module RSMP
           return false unless @type.include? message.type
         end
       end
+      p message
       if @component
         return false if message.attributes['cId'] && message.attributes['cId'] != @component
       end
@@ -30,7 +31,7 @@ module RSMP
     end
 
     def reject? message
-      !accept? message
+      !accept?(message)
     end
   end
 end

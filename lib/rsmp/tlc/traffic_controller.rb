@@ -521,6 +521,7 @@ module RSMP
         when 'cancel'
           if priority
             @signal_priorities.delete priority
+            log "Priority request with id #{id} cancelled", level: :info
           else
             raise MessageRejected.new("Cannot cancel priority request #{id}, not found")
           end    
