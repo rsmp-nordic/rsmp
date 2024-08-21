@@ -11,25 +11,30 @@ module RSMP
       @filter = filter
     end
 
+    def start_receiving
+      @distributor.add_receiver(self)
+    end
+
+    def stop_receiving
+      @distributor.remove_receiver(self)
+    end
+
     def receive message
-      handle_message(message) unless reject_message?(message) 
+      handle_message(message) if accept_message?(message) 
     end
 
     def receive_error error, options={}
     end
 
     def accept_message? message
-      !reject_message?(message)
+      !reject_message? message
     end
 
     def reject_message? message
-      @filter&.reject?(message)
+      @filter&.reject?(message) == true
     end
 
     def handle_message message
     end
-
-
-  
   end
 end
