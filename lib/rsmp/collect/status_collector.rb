@@ -12,8 +12,8 @@ module RSMP
       )
     end
 
-    def build_query want
-      RSMP::StatusQuery.new want
+    def build_matcher want
+      RSMP::StatusMatcher.new want
     end
 
     # Get items, in our case status values

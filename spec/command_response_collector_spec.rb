@@ -70,7 +70,7 @@ RSpec.describe RSMP::CommandResponseCollector do
       end
     end
 
-    it 'cannot marks queries as not done' do
+    it 'cannot marks matchers as not done' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::CommandResponseCollector.new(proxy, want.values, timeout: timeout)

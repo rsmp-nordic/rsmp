@@ -47,7 +47,7 @@ module RSMP
       @task = task
     end
 
-    # Clear all query results
+    # Clear all matcher results
     def reset
       @messages = []
       @error = nil
@@ -298,7 +298,7 @@ module RSMP
     end
 
     # return a string that describes the attributes that we're looking for
-    def describe_query
+    def describe_matcher
       h = {component: @filter&.component}.compact
       if h.empty?
         describe_num_and_type
@@ -318,7 +318,7 @@ module RSMP
 
     # log when we start collecting
     def log_start
-      @distributor.log "#{identifier}: Waiting for #{describe_query}".strip, level: :collect
+      @distributor.log "#{identifier}: Waiting for #{describe_matcher}".strip, level: :collect
     end
 
     # log current progress

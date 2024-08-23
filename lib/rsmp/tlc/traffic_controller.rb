@@ -107,10 +107,7 @@ module RSMP
 
       def timer now
         # TODO use monotone timer, to avoid jumps in case the user sets the system time
-        time = Time.now.to_i
-        return if time == @time_int
-        @time_int = time
-        move_cycle_counter
+        return unless move_cycle_counter
         check_functional_position_timeout
         move_startup_sequence if @startup_sequence_active
 
@@ -118,17 +115,20 @@ module RSMP
         @signal_priorities.each {|priority| priority.timer }
 
         output_states
-        prune_priorities
       end
 
       def signal_priority_changed priority, state
-        #puts "priority #{priority.id} -> #{state}"
       end
 
+      # remove all stale priority requests
       def prune_priorities
-        # TODO spec states that update must be send one time when it reaches the state 'completed',
-        # and then be removed. so we need to know when it has been sent
-        @signal_priorities.delete_if {|priority| priority.state=='completed' && priority.age >= 1.5 }
+        @signal_priorities.delete_if {|priority| priority.prune? }
+      end
+      
+      # this method is called by the supervisor proxy each time status updates have been send
+      # we can then prune our priority request list    
+      def status_updates_sent
+        prune_priorities
       end
 
       def get_priority_list
@@ -143,7 +143,9 @@ module RSMP
 
       def move_cycle_counter
         counter = Time.now.to_i % @cycle_time
+        changed = counter != @cycle_counter
         @cycle_counter = counter
+        changed
       end
 
       def check_functional_position_timeout
@@ -251,10 +253,20 @@ module RSMP
 
       def handle_m0001 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
-        switch_functional_position arg['status'],
-          timeout: arg['timeout'].to_i*60,
-          source: 'forced'
 
+        # timeout is specified in minutes, but we take 1 to mean 1s
+        # this is not according to the curent rsmp spec, but is done
+        # to speed up testing
+        timeout = arg['timeout'].to_i
+        if timeout == 1
+          timeout = 1
+        else
+          timeout *= 60
+        end
+
+        switch_functional_position arg['status'],
+          timeout: timeout,
+          source: 'forced'
       end
 
       def handle_m0002 arg, options={}
@@ -510,18 +522,19 @@ module RSMP
             eta = arg['eta']
             vehicleType = arg['vehicleType']
             @signal_priorities << SignalPriority.new(node:self, id:id, level:level, eta:eta, vehicleType:vehicleType)
-            log "Priority request for signal group #{signal_group.c_id} received with id #{id}", level: :info
+            log "Priority request #{id} for signal group #{signal_group.c_id} received.", level: :info
           end          
         when 'update'
           if priority
-            log "Priority Request #{id} updated", level: :info
+            log "Updating Priority Request #{id}", level: :info
+
           else
             raise MessageRejected.new("Cannot update priority request #{id}, not found")
           end
         when 'cancel'
           if priority
-            @signal_priorities.delete priority
-            log "Priority request with id #{id} cancelled", level: :info
+            priority.cancel
+            log "Priority request with id #{id} cancelled.", level: :info
           else
             raise MessageRejected.new("Cannot cancel priority request #{id}, not found")
           end    

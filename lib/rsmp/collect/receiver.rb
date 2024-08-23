@@ -27,11 +27,11 @@ module RSMP
     end
 
     def accept_message? message
-      !reject_message? message
+      @filter == nil || @filter.accept?(message)
     end
 
     def reject_message? message
-      @filter&.reject?(message) == true
+      !accept_message?(message)
     end
 
     def handle_message message

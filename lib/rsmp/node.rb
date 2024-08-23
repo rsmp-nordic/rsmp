@@ -36,7 +36,7 @@ module RSMP
       @ignore_errors = was
     end
 
-    def receive_error e, options={}
+    def distribute_error e, options={}
       return if @ignore_errors.find { |klass| e.is_a? klass }
       if options[:level] == :internal
         log ["#{e.to_s} in task: #{Async::Task.current.to_s}",e.backtrace].flatten.join("\n"), level: :error

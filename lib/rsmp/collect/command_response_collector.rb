@@ -8,8 +8,8 @@ module RSMP
       )
     end
 
-    def build_query want
-      CommandQuery.new want
+    def build_matcher want
+      CommandMatcher.new want
     end
 
     # Get items, in our case the return values

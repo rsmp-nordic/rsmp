@@ -56,5 +56,9 @@ module RSMP
       log "Deactivating alarm #{alarm_code}", level: :info
       @node.alarm_activated_or_deactivated alarm
     end
+
+    def status_updates_sent
+    end
+    
   end
 end
