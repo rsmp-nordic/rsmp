@@ -1,7 +1,7 @@
 module RSMP
   # Match a specific status response or update
-  class StatusQuery < Query
-    # Match a status value against a query
+  class StatusMatcher < Matcher
+    # Match a status value against a matcher
     def match? item
       return nil if @want['sCI'] && @want['sCI'] != item['sCI']
       return nil if @want['cO'] && @want['cO'] != item['cO']

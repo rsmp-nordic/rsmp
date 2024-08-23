@@ -1,7 +1,7 @@
 module RSMP
 
   # Class that matches a single status or command item
-  class Query
+  class Matcher
     attr_reader :want, :got, :message
 
     def initialize want

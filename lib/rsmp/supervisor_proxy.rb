@@ -474,6 +474,7 @@ module RSMP
         set_nts_message_attributes update
         send_message update
         store_last_sent_status update
+        component.status_updates_sent
       end
     end
 

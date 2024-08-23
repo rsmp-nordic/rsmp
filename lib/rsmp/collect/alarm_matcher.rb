@@ -1,7 +1,7 @@
 module RSMP
   # Match a specific alarm
-  class AlarmQuery < Query
-    # Match an alarm value against a query
+  class AlarmMatcher < Matcher
+    # Match an alarm value against a matcher
     def match? item
       return false if @want['n'] && @want['n'] != item['n']
       if @want['v'].is_a? Regexp

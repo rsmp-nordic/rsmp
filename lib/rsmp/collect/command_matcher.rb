@@ -1,7 +1,7 @@
 module RSMP
   # Match a specific command responses
-  class CommandQuery < Query
-    # Match a return value item against a query
+  class CommandMatcher < Matcher
+    # Match a return value item against a matcher
     def match? item
       return nil if @want['cCI'] && @want['cCI'] != item['cCI']
       return nil if @want['n'] && @want['n'] != item['n']

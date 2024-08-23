@@ -10,19 +10,35 @@ class RSMP::TLC::SignalPriority
     set_state 'received'
   end
 
+  def prune?
+    @state == 'stale' || @state == 'completed'
+  end
+
+  def cancel
+    if @state == 'activated'
+      set_state 'completed'
+    end
+  end
+
   def set_state state
     @state = state
     @updated = node.clock.now
-    node.signal_priority_changed self, @state
+    @node.signal_priority_changed self, @state
   end
 
   def timer
     @age = @node.clock.now - @updated
     case @state
     when 'received'
-      set_state 'activated' if @age >= 0.5
+      if @age >= 0.5
+        @node.log "Priority request #{@id} activated.", level: :info
+        set_state 'activated'
+      end
     when 'activated'
-      set_state 'completed' if @age >= 0.5
+      if @age >= 1
+        @node.log "Priority request #{@id} became stale.", level: :info
+        set_state 'stale'
+      end
     end
   end
 end
