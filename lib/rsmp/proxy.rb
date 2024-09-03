@@ -340,8 +340,8 @@ module RSMP
       schemas
     end
 
-    def send_message message, reason=nil, validate: true
-      raise NotReady unless connected?
+    def send_message message, reason=nil, validate: true, force: false
+      raise NotReady unless connected? unless force
       raise IOError unless @protocol
       message.direction = :out
       message.generate_json
@@ -486,7 +486,9 @@ module RSMP
       if candidates.any?
         @core_version = candidates.sort_by { |v| Gem::Version.new(v) }.last  # pick latest version
       else
-        raise HandshakeError.new "RSMP versions [#{message.versions.join(',')}] requested, but only [#{versions.join(',')}] supported."
+        reason = "RSMP versions [#{message.versions.join(',')}] requested, but only [#{versions.join(',')}] supported."
+        dont_acknowledge message, "Version message rejected", reason, force: true
+        raise HandshakeError.new reason
       end
     end
 
@@ -501,7 +503,7 @@ module RSMP
       check_ingoing_acknowledged original
     end
 
-    def dont_acknowledge original, prefix=nil, reason=nil
+    def dont_acknowledge original, prefix=nil, reason=nil, force: true
       raise InvalidArgument unless original
       str = [prefix,reason].join(' ')
       log str, message: original, level: :warning if reason
@@ -510,7 +512,7 @@ module RSMP
         "rea" => reason || "Unknown reason"
       })
       message.original = original.clone
-      send_message message, "for #{original.type} #{original.m_id_short}"
+      send_message message, "for #{original.type} #{original.m_id_short}", force: force
     end
 
     def wait_for_state state, timeout:

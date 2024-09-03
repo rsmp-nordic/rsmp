@@ -18,7 +18,10 @@ module RSMP
         unless main
           raise ConfigurationError.new "TLC must have a main component"
         end
+      end
 
+      def site_type_name
+        "TLC"
       end
 
       def start

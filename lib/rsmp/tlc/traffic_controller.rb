@@ -15,7 +15,7 @@ module RSMP
         @signal_groups = []
         @detector_logics = []
         @plans = signal_plans
-        @cycle_time = cycle_time
+        @cycle_time = cycle_time || 10
         @num_traffic_situations = 1
 
         if inputs

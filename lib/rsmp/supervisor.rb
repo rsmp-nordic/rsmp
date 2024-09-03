@@ -94,7 +94,7 @@ module RSMP
       else
         reject_connection socket, info
       end
-    rescue ConnectionError => e
+    rescue ConnectionError, HandshakeError => e
       log "Rejected connection from #{remote_ip}:#{remote_port}, #{e.to_s}", level: :warning
       distribute_error e
     rescue StandardError => e
