@@ -12,9 +12,10 @@ module RSMP
     method_option :config, :type => :string, :aliases => "-c", banner: 'Path to .yaml config file'
     method_option :id, :type => :string, :aliases => "-i", banner: 'RSMP site id'
     method_option :supervisors, :type => :string, :aliases => "-s", banner: 'ip:port,... list of supervisor to connect to'
+    method_option :core, :string => :string, banner: "Core version: [#{RSMP::Schema.core_versions.join(' ')}]", enum: RSMP::Schema.core_versions
+    method_option :type, :type => :string, :aliases => "-t", banner: 'Type of site: [tlc]', enum: ['tlc'], default: 'tlc'
     method_option :log, :type => :string, :aliases => "-l", banner: 'Path to log file'
     method_option :json, :type => :boolean, :aliases => "-j", banner: 'Show JSON messages in log'
-    method_option :type, :type => :string, :aliases => "-t", banner: 'Type of site: [tlc]'
     def site
       settings = {}
       log_settings = { 'active' => true }
@@ -43,6 +44,20 @@ module RSMP
         end
       end
 
+      if options[:core]
+        settings['core_versions'] = [options[:core]]
+      end
+
+      site_class = RSMP::Site
+      site_type = options[:type] || settings['type']
+      case site_type
+        when 'tlc'
+          site_class = RSMP::TLC::TrafficControllerSite
+        else
+          puts "Error: Unknown site type #{site_type}"
+          exit
+      end
+
       if options[:log]
         log_settings['path'] = options[:log]
       end
@@ -51,22 +66,25 @@ module RSMP
         log_settings['json'] = options[:json]
       end
 
-      site_class = RSMP::Site
-      if options[:type]
-        case options[:type]
-          when 'tlc'
-            site_class = RSMP::TLC::TrafficControllerSite
-          else
-            site_class = RSMP::Site
-        end
-      end
       Async do |task|
         task.annotate 'cli'
         loop do
           begin
-            site = site_class.new(site_settings:settings, log_settings: log_settings)
+            site = site_class.new(site_settings: settings, log_settings: log_settings)
             site.start
             site.wait
+          rescue Psych::SyntaxError => e
+            puts "Cannot read config file #{e}"
+            break
+          rescue RSMP::Schema::UnknownSchemaTypeError => e
+            puts "Cannot start site: #{e}"
+            break
+          rescue RSMP::Schema::UnknownSchemaVersionError => e
+            puts "Cannot start site: #{e}"
+            break
+          rescue RSMP::ConfigurationError => e
+            puts "Cannot start site: #{e}"
+            break
           rescue RSMP::Restart
             site.stop
           end
@@ -74,12 +92,6 @@ module RSMP
       end
     rescue Interrupt
       # cntr-c
-    rescue RSMP::Schema::UnknownSchemaTypeError => e
-      puts "Cannot start site: #{e}"
-    rescue RSMP::Schema::UnknownSchemaVersionError => e
-      puts "Cannot start site: #{e}"
-    rescue Psych::SyntaxError => e
-      puts "Cannot read config file #{e}"
     rescue Exception => e
       puts "Uncaught error: #{e}"
       puts caller.join("\n")
@@ -90,6 +102,7 @@ module RSMP
     method_option :id, :type => :string, :aliases => "-i", banner: 'RSMP site id'
     method_option :ip, :type => :numeric, banner: 'IP address to listen on'
     method_option :port, :type => :string, :aliases => "-p", banner: 'Port to listen on'
+    method_option :core, :string => :string, banner: "Core version: [#{RSMP::Schema.core_versions.join(' ')}]", enum: RSMP::Schema.core_versions
     method_option :log, :type => :string, :aliases => "-l", banner: 'Path to log file'
     method_option :json, :type => :boolean, :aliases => "-j", banner: 'Show JSON messages in log'
     def supervisor
@@ -118,6 +131,11 @@ module RSMP
         settings['port'] = options[:port]
       end
 
+      if options[:core]
+        settings['guest'] = {}
+        settings['guest']['core_versions'] = [options[:core]]
+      end
+
       if options[:log]
         log_settings['path'] = options[:log]
       end
@@ -131,11 +149,17 @@ module RSMP
         supervisor = RSMP::Supervisor.new(supervisor_settings:settings,log_settings:log_settings)
         supervisor.start
         supervisor.wait
+      rescue Psych::SyntaxError => e
+        puts "Cannot read config file #{e}"
+      rescue RSMP::Schema::UnknownSchemaTypeError => e
+        puts "Cannot start supervisor: #{e}"
+      rescue RSMP::Schema::UnknownSchemaVersionError => e
+        puts "Cannot start supervisor: #{e}"
+      rescue RSMP::ConfigurationError => e
+        puts "Cannot start supervisor: #{e}"
       end
     rescue Interrupt
       # ctrl-c
-    rescue RSMP::ConfigurationError => e
-      puts "Cannot start supervisor: #{e}"
     end
 
     desc "convert", "Convert SXL from YAML to JSON Schema"

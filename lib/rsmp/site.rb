@@ -58,6 +58,7 @@ module RSMP
 
       @site_settings = defaults.deep_merge options[:site_settings]
       check_sxl_version
+      check_core_versions
       setup_components @site_settings['components']
     end
 
@@ -67,10 +68,49 @@ module RSMP
       RSMP::Schema::find_schema! sxl, version, lenient: true
     end
 
+  def check_core_versions
+      return if @site_settings['core_versions'] == 'all'
+      requested = [@site_settings['core_versions']].flatten
+      invalid = requested - RSMP::Schema::core_versions
+      if invalid.any?
+        if invalid.size == 1
+          error_str = "Unknown core version: #{invalid.first}"
+        else
+          error_str = "Unknown core versions: [#{invalid.join(' ')}]"
+        end
+
+        raise RSMP::ConfigurationError.new(error_str)
+      end
+    end
+
+    def site_type_name
+      "site"
+    end
+
+    def log_site_starting
+      log "Starting #{site_type_name} #{@site_settings["site_id"]}", level: :info, timestamp: @clock.now
+
+      sxl = "Using #{@site_settings["sxl"]} sxl #{@site_settings["sxl_version"]}"
+
+      versions = @site_settings["core_versions"]
+      if versions.is_a?(Array) && versions.size == 1
+        versions = versions.first
+      end
+      if versions == 'all'
+        core = "accepting all core versions [#{RSMP::Schema.core_versions.join(', ')}]"
+      else
+        if versions.is_a?(String)
+          core = "accepting only core version #{versions}"
+        else
+          core = "accepting core versions [#{versions.join(', ')}]"
+        end
+      end
+
+      log "#{sxl}, #{core}", level: :info, timestamp: @clock.now
+    end
+
     def run
-      log "Starting site #{@site_settings["site_id"]}",
-          level: :info,
-          timestamp: @clock.now
+      log_site_starting
       @proxies.each { |proxy| proxy.start }
       @proxies.each { |proxy| proxy.wait }
     end
