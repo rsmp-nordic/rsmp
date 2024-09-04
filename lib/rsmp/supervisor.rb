@@ -4,7 +4,7 @@
 
 module RSMP
   class Supervisor < Node
-    attr_reader :core_versions, :site_id, :supervisor_settings, :proxies, :logger
+    attr_reader :core_version, :site_id, :supervisor_settings, :proxies, :logger
 
     def initialize options={}
       handle_supervisor_settings( options[:supervisor_settings] || {} )
@@ -22,7 +22,6 @@ module RSMP
         'port' => 12111,
         'ips' => 'all',
         'guest' => {
-          'core_versions' => 'all',
           'sxl' => 'tlc',
           'intervals' => {
             'timer' => 1,
@@ -37,7 +36,7 @@ module RSMP
 
       # merge options into defaults
       @supervisor_settings = defaults.deep_merge(supervisor_settings)
-      @core_versions = @supervisor_settings["guest"]["core_versions"]
+      @core_version = @supervisor_settings["guest"]["core_version"]
       check_site_sxl_types
     end
 

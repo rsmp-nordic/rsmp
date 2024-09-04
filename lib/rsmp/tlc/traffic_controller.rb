@@ -408,7 +408,7 @@ module RSMP
 
       def find_plan plan_nr
         plan = @plans[plan_nr.to_i]
-        raise InvalidMessage.new "unknown signal plan #{plan_nr}, known only [#{@plans.keys.join(',')}]" unless plan
+        raise InvalidMessage.new "unknown signal plan #{plan_nr}, known only [#{@plans.keys.join(', ')}]" unless plan
         plan
       end
 

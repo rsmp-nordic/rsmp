@@ -45,7 +45,7 @@ module RSMP
       end
 
       if options[:core]
-        settings['core_versions'] = [options[:core]]
+        settings['core_version'] = options[:core]
       end
 
       site_class = RSMP::Site
@@ -133,7 +133,7 @@ module RSMP
 
       if options[:core]
         settings['guest'] = {}
-        settings['guest']['core_versions'] = [options[:core]]
+        settings['guest']['core_version'] = options[:core]
       end
 
       if options[:log]
