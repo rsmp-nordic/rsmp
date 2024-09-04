@@ -6,7 +6,7 @@ module RSMP
   class Site < Node
     include Components
 
-    attr_reader :core_versions, :site_settings, :logger, :proxies
+    attr_reader :core_version, :site_settings, :logger, :proxies
 
     def initialize options={}
       super options
@@ -32,7 +32,6 @@ module RSMP
         'supervisors' => [
           { 'ip' => '127.0.0.1', 'port' => 12111 }
         ],
-        'core_versions' => 'all',
         'sxl' => 'tlc',
         'sxl_version' => RSMP::Schema.latest_version(:tlc),
         'intervals' => {
@@ -57,6 +56,7 @@ module RSMP
       end
 
       @site_settings = defaults.deep_merge options[:site_settings]
+
       check_sxl_version
       check_core_versions
       setup_components @site_settings['components']
@@ -69,16 +69,10 @@ module RSMP
     end
 
   def check_core_versions
-      return if @site_settings['core_versions'] == 'all'
-      requested = [@site_settings['core_versions']].flatten
-      invalid = requested - RSMP::Schema::core_versions
-      if invalid.any?
-        if invalid.size == 1
-          error_str = "Unknown core version: #{invalid.first}"
-        else
-          error_str = "Unknown core versions: [#{invalid.join(' ')}]"
-        end
-
+    version = @site_settings['core_version']
+      return unless version
+      unless RSMP::Schema::core_versions.include? version
+        error_str = "Unknown core version: #{version}"
         raise RSMP::ConfigurationError.new(error_str)
       end
     end
@@ -89,23 +83,13 @@ module RSMP
 
     def log_site_starting
       log "Starting #{site_type_name} #{@site_settings["site_id"]}", level: :info, timestamp: @clock.now
-
       sxl = "Using #{@site_settings["sxl"]} sxl #{@site_settings["sxl_version"]}"
-
-      versions = @site_settings["core_versions"]
-      if versions.is_a?(Array) && versions.size == 1
-        versions = versions.first
-      end
-      if versions == 'all'
+      version = @site_settings["core_version"]
+      unless version
         core = "accepting all core versions [#{RSMP::Schema.core_versions.join(', ')}]"
       else
-        if versions.is_a?(String)
-          core = "accepting only core version #{versions}"
-        else
-          core = "accepting core versions [#{versions.join(', ')}]"
-        end
+        core = "accepting only core version #{version}"
       end
-
       log "#{sxl}, #{core}", level: :info, timestamp: @clock.now
     end
 

@@ -474,9 +474,14 @@ module RSMP
     end
 
     def core_versions
-      return [RSMP::Schema.latest_core_version] if @site_settings["core_versions"] == 'latest'
-      return RSMP::Schema.core_versions if @site_settings["core_versions"] == 'all'
-      [@site_settings["core_versions"]].flatten
+      version = @site_settings["core_version"]
+      if version == 'latest'
+        [RSMP::Schema.latest_core_version]
+      elsif version
+        [version]
+      else
+        RSMP::Schema.core_versions
+      end
     end
 
     def check_core_version message
@@ -486,7 +491,7 @@ module RSMP
       if candidates.any?
         @core_version = candidates.sort_by { |v| Gem::Version.new(v) }.last  # pick latest version
       else
-        reason = "RSMP versions [#{message.versions.join(',')}] requested, but only [#{versions.join(',')}] supported."
+        reason = "RSMP versions [#{message.versions.join(', ')}] requested, but only [#{versions.join(', ')}] supported."
         dont_acknowledge message, "Version message rejected", reason, force: true
         raise HandshakeError.new reason
       end
