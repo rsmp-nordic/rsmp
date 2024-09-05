@@ -30,16 +30,18 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "async", "~> 2.12.0"
-  spec.add_dependency "async-io", "~> 1.43.0"
+  spec.add_dependency "logger", "~> 1.6"
+  spec.add_dependency "ostruct", "~> 0.6"
+  spec.add_dependency "async", "~> 2.16"
+  spec.add_dependency "async-io", "~> 1.43"
   spec.add_dependency "colorize", "~> 1.1"
-  spec.add_dependency "rsmp_schema", "~> 0.7.0"
+  spec.add_dependency "rsmp_schema", "~> 0.7"
 
-  spec.add_development_dependency "bundler", "~> 2.5.7"
-  spec.add_development_dependency "rake", "~> 13.2.0"
-  spec.add_development_dependency "rspec", "~> 3.13.0"
-  spec.add_development_dependency "rspec-expectations", "~> 3.13.1"
-  spec.add_development_dependency "timecop", "~> 0.9.9"
-  spec.add_development_dependency "cucumber", "~> 9.2.0"
-  spec.add_development_dependency "aruba" , "~> 2.2.0"
+  spec.add_development_dependency "bundler", "~> 2.5"
+  spec.add_development_dependency "rake", "~> 13.2"
+  spec.add_development_dependency "rspec", "~> 3.13"
+  spec.add_development_dependency "rspec-expectations", "~> 3.13"
+  spec.add_development_dependency "timecop", "~> 0.9"
+  spec.add_development_dependency "cucumber", "~> 9.2"
+  spec.add_development_dependency "aruba" , "~> 2.2"
 end
