@@ -35,7 +35,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "async", "~> 2.16"
   spec.add_dependency "async-io", "~> 1.43"
   spec.add_dependency "colorize", "~> 1.1"
-  spec.add_dependency "rsmp_schema", "~> 0.7"
+  spec.add_dependency "rsmp_schema", "~> 0.8"
 
   spec.add_development_dependency "bundler", "~> 2.5"
   spec.add_development_dependency "rake", "~> 13.2"
