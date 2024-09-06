@@ -170,7 +170,14 @@ module RSMP
     end
 
     def generate_json
-      @json = JSON.generate @attributes
+      # ensure compact format on all platforms
+      options = {
+        array_nl: nil,
+        object_nl: nil,
+        space_before: nil,
+        space: nil
+      }
+      @json = JSON.generate @attributes, options
     end
 
   end
