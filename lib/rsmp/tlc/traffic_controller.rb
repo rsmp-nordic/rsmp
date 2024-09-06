@@ -678,7 +678,7 @@ module RSMP
         case status_name
         when 'status'
           TrafficControllerSite.make_status @is_starting
-        when 'statusByIntersection'   # from sxl 1.2
+        when 'statusByIntersection'   # from sxl 1.2.0
           TrafficControllerSite.make_status([
             {
               "intersection"=>"1",
@@ -689,7 +689,7 @@ module RSMP
       end
 
       def handle_s0006 status_code, status_name=nil, options={}
-        if Proxy.version_meets_requirement? options[:sxl_version], '>=1.2'
+        if Proxy.version_meets_requirement? options[:sxl_version], '>=1.2.0'
           log "S0006 is depreciated, use S0035 instead.", level: :warning
         end
         status = @emergency_routes.any?
