@@ -2,9 +2,10 @@ Bundler.require(:default, :development)
 
 def build json
 	attributes = RSMP::Message.parse_attributes(json)
-	message = RSMP::Message.build(attributes,json)
+	core_version = RSMP::Schema.latest_core_version
+	message = RSMP::Message.build(core_version, attributes, json)
 	message.validate({
-		core: RSMP::Schema.latest_core_version,
+		core: core_version,
 		tlc: RSMP::Schema.latest_version(:tlc)
 	}) unless message.is_a? RSMP::Unknown
 	message
@@ -81,6 +82,10 @@ RSpec.describe RSMP::Message do
 		}}
 
 		it 'builds right type of objects when parsing JSON' do
+			expect(build(alarm_acknowledged)).to be_instance_of(RSMP::AlarmAcknowledged)
+		end
+
+		it 'builds right type of objects when parsing JSON' do
 			expect(build(version_str)).to be_instance_of(RSMP::Version)
 			expect(build(ack_str)).to be_instance_of(RSMP::MessageAck)
 			expect(build(not_ack_str)).to be_instance_of(RSMP::MessageNotAck)
@@ -132,23 +137,24 @@ RSpec.describe RSMP::Message do
 		end
 
 		it 'builds specific message types' do
-			expect(RSMP::Version.new.type).to eq("Version")
-			expect(RSMP::MessageAck.new.type).to eq("MessageAck")
-			expect(RSMP::MessageNotAck.new.type).to eq("MessageNotAck")
-			expect(RSMP::AggregatedStatus.new.type).to eq("AggregatedStatus")
-			expect(RSMP::Watchdog.new.type).to eq("Watchdog")
-			expect(RSMP::Alarm.new.type).to eq("Alarm")
-			expect(RSMP::CommandRequest.new.type).to eq("CommandRequest")
-			expect(RSMP::CommandResponse.new.type).to eq("CommandResponse")
-			expect(RSMP::StatusRequest.new.type).to eq("StatusRequest")
-			expect(RSMP::StatusResponse.new.type).to eq("StatusResponse")
-			expect(RSMP::StatusSubscribe.new.type).to eq("StatusSubscribe")
-			expect(RSMP::StatusUnsubscribe.new.type).to eq("StatusUnsubscribe")
-			expect(RSMP::StatusUpdate.new.type).to eq("StatusUpdate")
-			expect(RSMP::Unknown.new.type).to be_nil
-			expect(RSMP::Malformed.new.type).to be_nil
-			expect(RSMP::Unknown.new.type).to be_nil
-			expect(RSMP::Message.new.type).to be_nil
+			core_version = RSMP::Schema.latest_core_version
+			expect(RSMP::Version.new(core_version).type).to eq("Version")
+			expect(RSMP::MessageAck.new(core_version).type).to eq("MessageAck")
+			expect(RSMP::MessageNotAck.new(core_version).type).to eq("MessageNotAck")
+			expect(RSMP::AggregatedStatus.new(core_version).type).to eq("AggregatedStatus")
+			expect(RSMP::Watchdog.new(core_version).type).to eq("Watchdog")
+			expect(RSMP::Alarm.new(core_version).type).to eq("Alarm")
+			expect(RSMP::CommandRequest.new(core_version).type).to eq("CommandRequest")
+			expect(RSMP::CommandResponse.new(core_version).type).to eq("CommandResponse")
+			expect(RSMP::StatusRequest.new(core_version).type).to eq("StatusRequest")
+			expect(RSMP::StatusResponse.new(core_version).type).to eq("StatusResponse")
+			expect(RSMP::StatusSubscribe.new(core_version).type).to eq("StatusSubscribe")
+			expect(RSMP::StatusUnsubscribe.new(core_version).type).to eq("StatusUnsubscribe")
+			expect(RSMP::StatusUpdate.new(core_version).type).to eq("StatusUpdate")
+			expect(RSMP::Unknown.new(core_version).type).to be_nil
+			expect(RSMP::Malformed.new(core_version).type).to be_nil
+			expect(RSMP::Unknown.new(core_version).type).to be_nil
+			expect(RSMP::Message.new(core_version).type).to be_nil
 		end
 
 		it 'generates json' do

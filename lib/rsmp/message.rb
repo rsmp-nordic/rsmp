@@ -20,69 +20,69 @@ module RSMP
       raise InvalidPacket, bin_to_chars(json)
     end
 
-    def self.build attributes, json
+    def self.build core_version, attributes, json
       validate_message_type attributes
       case attributes["type"]
       when "MessageAck"
-        message = MessageAck.new attributes
+        message = MessageAck.new core_version, attributes
       when "MessageNotAck"
-        message = MessageNotAck.new attributes
+        message = MessageNotAck.new core_version, attributes
       when "Version"
-        message = Version.new attributes
+        message = Version.new core_version, attributes
       when "AggregatedStatus"
-        message = AggregatedStatus.new attributes
+        message = AggregatedStatus.new core_version, attributes
       when "AggregatedStatusRequest"
-        message = AggregatedStatusRequest.new attributes
+        message = AggregatedStatusRequest.new core_version, attributes
       when "Watchdog"
-        message = Watchdog.new attributes
+        message = Watchdog.new core_version, attributes
       when "Alarm"
-        message = self.build_alarm attributes
+        message = self.build_alarm core_version, attributes
       when "CommandRequest"
-        message = CommandRequest.new attributes
+        message = CommandRequest.new core_version, attributes
       when "CommandResponse"
-        message = CommandResponse.new attributes
+        message = CommandResponse.new core_version, attributes
       when "StatusRequest"
-        message = StatusRequest.new attributes
+        message = StatusRequest.new core_version, attributes
       when "StatusResponse"
-        message = StatusResponse.new attributes
+        message = StatusResponse.new core_version, attributes
       when "StatusSubscribe"
-        message = StatusSubscribe.new attributes
+        message = StatusSubscribe.new core_version, attributes
       when "StatusUnsubscribe"
-        message = StatusUnsubscribe.new attributes
+        message = StatusUnsubscribe.new core_version, attributes
       when "StatusUpdate"
-        message = StatusUpdate.new attributes
+        message = StatusUpdate.new core_version, attributes
       else
-        message = Unknown.new attributes
+        message = Unknown.new core_version, attributes
       end
       message.json = json
       message.direction = :in
       message
     end
 
-    def self.build_alarm attributes
+    def self.build_alarm core_version, attributes
       case attributes["aSp"]
       when /^Issue$/i
-        AlarmIssue.new attributes
+        AlarmIssue.new core_version, attributes
       when /^Request$/i
-        AlarmRequest.new attributes
+        AlarmRequest.new core_version, attributes
       when /^Acknowledge$/i
         if attributes['ack'] =~ /^acknowledged$/i
-        AlarmAcknowledged.new attributes
+        AlarmAcknowledged.new core_version, attributes
         else
-          AlarmAcknowledge.new attributes
+          AlarmAcknowledge.new core_version, attributes
         end
       when /^Suspend$/i
         if attributes['sS'] =~ /^suspended$/i
-          AlarmSuspended.new attributes
+          AlarmSuspended.new core_version, attributes
         elsif attributes['sS'] =~ /^notSuspended$/i
-          AlarmResumed.new attributes
+          AlarmResumed.new core_version, attributes
         else
-          AlarmSuspend.new attributes
+          AlarmSuspend.new core_version, attributes
         end
       when /^Resume$/i
-        AlarmResume.new attributes
+        AlarmResume.new core_version, attributes
       else
-        Alarm.new attributes
+        Alarm.new core_version, attributes
       end
     end
 
@@ -135,11 +135,10 @@ module RSMP
       raise MalformedMessage.new("'type' must be a String, got #{attributes["type"].class}") unless attributes["type"].is_a? String
     end
 
-    def initialize attributes = {}
+    def initialize core_version, attributes = {}
       @timestamp = Time.now   # this timestamp is for internal use, and does not use the clock
                               # in the node, which can be set by an rsmp supervisor
-
-      @attributes = { "mType"=> "rSMsg" }.merge attributes
+      @attributes = attributes.merge( "mType"=> "rSMsg" )
 
       ensure_message_id
     end
@@ -183,7 +182,7 @@ module RSMP
   end
 
   class Malformed < Message
-    def initialize attributes = {}
+    def initialize core_version, attributes = {}
       # don't call super, just copy (potentially invalid) attributes
       @attributes = {}
       @invalid_attributes = attributes
@@ -191,10 +190,10 @@ module RSMP
   end
 
   class Version < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "Version",
-      }.merge attributes)
+      ))
     end
 
     def versions
@@ -206,30 +205,30 @@ module RSMP
   end
 
   class AggregatedStatus < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "AggregatedStatus",
-      }.merge attributes)
+      ))
     end
   end
 
   class AggregatedStatusRequest < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "AggregatedStatusRequest",
-      }.merge attributes)
+      ))
     end
   end
 
   class Alarm < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "Alarm",
         "ntsOId" => '',
         "xNId" => '',
         "xACId" => '',
         "xNACId" => ''
-      }.merge attributes)
+      ))
     end
 
     def differ? from
@@ -242,84 +241,85 @@ module RSMP
   end
 
   class AlarmIssue < Alarm
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "aSp" => "Issue"
-      }.merge attributes)
+      ))
     end
   end
 
   class AlarmRequest < Alarm
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "aSp" => "Request",
-      }.merge attributes)
+      ))
     end
   end
 
   class AlarmAcknowledge < Alarm
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "aSp" => "Acknowledge",
-      }.merge attributes)
+      ))
     end
   end
 
   class AlarmAcknowledged < Alarm
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "aSp" => "Acknowledge",
-        "ack" => "acknowledged"
-      }.merge attributes)
+        "ack" => "Acknowledged"
+      ))
+      p @attributes
     end
   end
   class AlarmSuspend < Alarm
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "aSp" => "Suspend",
-      }.merge attributes)
+      ))
     end
   end
 
   class AlarmSuspended < Alarm
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "aSp" => "Suspend",
         "sS" => "Suspended"
-      }.merge attributes)
+      ))
     end
   end
 
   class AlarmResume < Alarm
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "aSp" => "Resume",
-      }.merge attributes)
+      ))
     end
   end
 
   class AlarmResumed < Alarm
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "aSp" => "Suspend",
         "sS" => "notSuspended"
-      }.merge attributes)
+      ))
     end
   end
 
   class Watchdog < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "Watchdog",
-      }.merge attributes)
+      ))
     end
   end
 
   class MessageAcking < Message
     attr_reader :original
 
-    def self.build_from message
-      return new({
+    def self.build_from message, core_version
+      return new(core_version, {
         "oMId" => message.attributes["mId"]
       })
     end
@@ -332,83 +332,84 @@ module RSMP
     def validate_id
       true
     end
-  end
-
-  class MessageAck < MessageAcking
-    def initialize attributes = {}
-      super({
-        "type" => "MessageAck",
-      }.merge attributes)
-    end
-
-    def ensure_message_id
+ 
+     def ensure_message_id
       # Ack and NotAck does not have a mId
     end
   end
 
+  class MessageAck < MessageAcking
+    def initialize core_version, attributes = {}
+      p attributes
+      super(core_version, attributes.merge(
+        "type" => "MessageAck",
+      ))
+    end
+  end
+
   class MessageNotAck < MessageAcking
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "MessageNotAck",
         "rea" => "Unknown reason"
-      }.merge attributes)
+      ))
       @attributes.delete "mId"
    end
   end
 
   class CommandRequest < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "CommandRequest",
-      }.merge attributes)
+      ))
     end
   end
 
   class CommandResponse < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "CommandResponse",
-      }.merge attributes)
+      ))
     end
   end
 
   class StatusRequest < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "StatusRequest",
-      }.merge attributes)
+      ))
     end
   end
 
   class StatusResponse < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "StatusResponse",
-      }.merge attributes)
+      ))
     end
   end
 
   class StatusSubscribe < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "StatusSubscribe",
-      }.merge attributes)
+      ))
     end
   end
 
   class StatusUnsubscribe < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "StatusUnsubscribe",
-      }.merge attributes)
+      ))
     end
   end
 
   class StatusUpdate < Message
-    def initialize attributes = {}
-      super({
+    def initialize core_version, attributes = {}
+      super(core_version, attributes.merge(
         "type" => "StatusUpdate",
-      }.merge attributes)
+      ))
     end
   end
 

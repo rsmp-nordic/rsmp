@@ -395,7 +395,7 @@ module RSMP
 
     def process_packet json
       attributes = Message.parse_attributes json
-      message = Message.build attributes, json
+      message = Message.build core_version, attributes, json
       message.validate(get_schemas) if should_validate_ingoing_message?(message)
       verify_sequence message
       with_deferred_distribution do
@@ -502,7 +502,7 @@ module RSMP
 
     def acknowledge original
       raise InvalidArgument unless original
-      ack = MessageAck.build_from(original)
+      ack = MessageAck.build_from(original, core_version)
       ack.original = original.clone
       send_message ack, "for #{ack.original.type} #{original.m_id_short}"
       check_ingoing_acknowledged original

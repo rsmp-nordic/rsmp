@@ -137,7 +137,7 @@ module RSMP
     def peek_version_message protocol
       json = protocol.peek_line
       attributes = Message.parse_attributes json
-       Message.build attributes, json
+      Message.build core_version, attributes, json
     end
 
     # accept an incoming connecting by creating and starting a proxy

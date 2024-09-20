@@ -37,7 +37,7 @@ RSpec.describe RSMP::CommandResponseCollector do
   describe '#collect' do
     it 'completes with a single command response' do
       AsyncRSpec.async do |task|
-        proxy = RSMP::SiteProxyStub.new task
+        proxy = RSMP::SiteProxyStub.new(RSMP::Schema.latest_core_version, task)
         collector = RSMP::CommandResponseCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.summary).to eq([false,false,false])
         expect(collector.done?).to be(false)
@@ -50,7 +50,7 @@ RSpec.describe RSMP::CommandResponseCollector do
 
     it 'completes with sequential status updates' do
       AsyncRSpec.async do |task|
-        proxy = RSMP::SiteProxyStub.new task
+        proxy = RSMP::SiteProxyStub.new(RSMP::Schema.latest_core_version, task)
         collector = RSMP::CommandResponseCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.summary).to eq([false,false,false])
         expect(collector.done?).to be(false)
@@ -72,7 +72,7 @@ RSpec.describe RSMP::CommandResponseCollector do
 
     it 'cannot marks matchers as not done' do
       AsyncRSpec.async do |task|
-        proxy = RSMP::SiteProxyStub.new task
+        proxy = RSMP::SiteProxyStub.new(RSMP::Schema.latest_core_version, task)
         collector = RSMP::CommandResponseCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.done?).to be(false)
         expect(collector.summary).to eq([false,false,false])
@@ -102,7 +102,7 @@ RSpec.describe RSMP::CommandResponseCollector do
 
     it 'raises if notified after being complete' do
       AsyncRSpec.async do |task|
-        proxy = RSMP::SiteProxyStub.new task
+        proxy = RSMP::SiteProxyStub.new(RSMP::Schema.latest_core_version, task)
         collector = RSMP::CommandResponseCollector.new(proxy, want.values, timeout: timeout)
         collector.start
         collector.receive build_command_reponse(ok.values)
@@ -113,7 +113,7 @@ RSpec.describe RSMP::CommandResponseCollector do
 
     it 'extra status updates are ignored' do
       AsyncRSpec.async do |task|
-        proxy = RSMP::SiteProxyStub.new task
+        proxy = RSMP::SiteProxyStub.new(RSMP::Schema.latest_core_version, task)
         collector = RSMP::CommandResponseCollector.new(proxy, want.values, timeout: timeout)
         collector.use_task task
         # proxy should have no receivers initially
@@ -145,7 +145,7 @@ RSpec.describe RSMP::CommandResponseCollector do
   describe '#collect with block' do
     it 'gets message and each item' do
       AsyncRSpec.async do |task|
-        proxy = RSMP::SiteProxyStub.new task
+        proxy = RSMP::SiteProxyStub.new(RSMP::Schema.latest_core_version, task)
         collector = RSMP::CommandResponseCollector.new(proxy, want.values, task: task, timeout: timeout)
         collect_task = task.async do
           messages = []
@@ -170,7 +170,7 @@ RSpec.describe RSMP::CommandResponseCollector do
 
     it 'can keep or reject items' do
       AsyncRSpec.async do |task|
-        proxy = RSMP::SiteProxyStub.new task
+        proxy = RSMP::SiteProxyStub.new(RSMP::Schema.latest_core_version, task)
         want = {"sCI" => "S0001","n" => "status"}
         collector = RSMP::CommandResponseCollector.new(proxy, [want], task: task, timeout: timeout)
         collect_task = task.async do
@@ -193,7 +193,7 @@ RSpec.describe RSMP::CommandResponseCollector do
 
     it 'can cancel' do
       AsyncRSpec.async do |task|
-        proxy = RSMP::SiteProxyStub.new task
+        proxy = RSMP::SiteProxyStub.new(RSMP::Schema.latest_core_version, task)
         collector = RSMP::CommandResponseCollector.new(proxy, want.values, task: task)
         collect_task = task.async do
           result = collector.collect do |message, item|
@@ -210,7 +210,7 @@ RSpec.describe RSMP::CommandResponseCollector do
     it 'can cancel on MessageNotAck' do
       AsyncRSpec.async do |task|
         m_id = RSMP::Message.make_m_id
-        proxy = RSMP::SiteProxyStub.new task
+        proxy = RSMP::SiteProxyStub.new(RSMP::Schema.latest_core_version, task)
         collector = RSMP::CommandResponseCollector.new proxy, want.values, m_id: m_id, timeout: timeout
         collector.start
         expect(collector.status).to eq(:collecting)
