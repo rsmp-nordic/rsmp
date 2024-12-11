@@ -30,7 +30,8 @@ module RSMP
         states = plan.states[c_id]
         return default unless states
 
-        state = states[cycle_counter]
+        counter = [cycle_counter, states.length-1].min
+        state = states[counter]
         return default unless state =~ /[a-hA-G0-9N-P]/  # valid signal group states
         state
       end

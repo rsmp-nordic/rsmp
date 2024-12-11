@@ -41,10 +41,11 @@ module RSMP
         signal_plans.each_pair do |id,settings|
           states = nil
           bands = nil
+          cycle_time = settings['cycle_time']
           states = settings['states'] if settings
           dynamic_bands = settings['dynamic_bands'] if settings
 
-          @signal_plans[id.to_i] = SignalPlan.new(nr: id.to_i, states:states,dynamic_bands:dynamic_bands)
+          @signal_plans[id.to_i] = SignalPlan.new(nr: id.to_i, cycle_time: cycle_time, states: states, dynamic_bands: dynamic_bands)
         end
       end
 
@@ -59,7 +60,6 @@ module RSMP
             id: id,
             ntsOId: settings['ntsOId'],
             xNId: settings['xNId'],
-            cycle_time: settings['cycle_time'],
             startup_sequence: @startup_sequence,
             signal_plans: @signal_plans,
             live_output: @site_settings['live_output'],

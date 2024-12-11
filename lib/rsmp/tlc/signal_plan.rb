@@ -4,11 +4,12 @@ module RSMP
     # A signal plan is a description of how all signal groups should change
     # state over time.
     class SignalPlan
-      attr_reader :nr, :states, :dynamic_bands
-      def initialize nr:, states:, dynamic_bands:
+      attr_reader :nr, :states, :dynamic_bands, :cycle_time
+      def initialize nr:, cycle_time:, states:, dynamic_bands:
         @nr = nr
         @states = states
         @dynamic_bands = dynamic_bands || {}
+        @cycle_time = cycle_time
       end
 
       def dynamic_bands_string
@@ -23,6 +24,11 @@ module RSMP
 
       def get_band band
         @dynamic_bands[ band.to_i ]
+      end
+
+      def set_cycle_time cycle_time
+        raise ArgumentError if cycle_time < 0
+        @cycle_time = cycle_time
       end
     end
   end

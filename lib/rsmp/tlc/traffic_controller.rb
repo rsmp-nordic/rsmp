@@ -9,13 +9,12 @@ module RSMP
         :functional_position,
         :startup_sequence_active, :startup_sequence, :startup_sequence_pos
 
-      def initialize node:, id:, ntsOId: nil, xNId: nil, cycle_time: 10, signal_plans:,
+      def initialize node:, id:, ntsOId: nil, xNId: nil, signal_plans:,
           startup_sequence:, live_output:nil, inputs:{}
         super node: node, id: id, ntsOId: ntsOId, xNId: xNId, grouped: true
         @signal_groups = []
         @detector_logics = []
         @plans = signal_plans
-        @cycle_time = cycle_time || 10
         @num_traffic_situations = 1
 
         if inputs
@@ -142,7 +141,7 @@ module RSMP
       end
 
       def move_cycle_counter
-        counter = Time.now.to_i % @cycle_time
+        counter = Time.now.to_i % current_plan.cycle_time
         changed = counter != @cycle_counter
         @cycle_counter = counter
         changed
@@ -450,6 +449,13 @@ module RSMP
 
       def handle_m0018 arg, options={}
         @node.verify_security_code 2, arg['securityCode']
+        nr = arg['plan'].to_i
+        cycle_time = arg['status'].to_i
+        plan = @plans[nr]
+        raise RSMP::MessageRejected.new "Plan '#{nr}' not found" unless plan
+        raise RSMP::MessageRejected.new "Cycle time must be greater or equal to zero" if cycle_time < 0
+        log "Set plan #{nr} cycle time to #{cycle_time}", level: :info
+        plan.set_cycle_time cycle_time
       end
 
       def string_to_bool bool_str
@@ -889,8 +895,11 @@ module RSMP
       def handle_s0028 status_code, status_name=nil, options={}
         case status_name
         when 'status'
-          TrafficControllerSite.make_status '00-00'
+          times = @plans.map {|nr,plan| "#{"%02d" % plan.nr}-#{"%02d" % plan.cycle_time}"}.join(",")
+          TrafficControllerSite.make_status times
         end
+      rescue StandardError => e
+        puts e
       end
 
       def handle_s0029 status_code, status_name=nil, options={}
