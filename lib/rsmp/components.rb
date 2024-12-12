@@ -18,6 +18,7 @@ module RSMP
       settings.each_pair do |type,components_by_type|
         if components_by_type
           components_by_type.each_pair do |id,component_settings|
+            component_settings ||= {}
             @components[id] = build_component(id:id, type:type, settings:component_settings)
             @main = @components[id] if type=='main'
           end
