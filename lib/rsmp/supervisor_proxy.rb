@@ -180,6 +180,12 @@ module RSMP
         "se" => component.aggregated_status_bools,
         "mId" => m_id,
       })
+
+      # Core 3.1.2 or earlier requires that se items to be send as strings
+      if Proxy::version_meets_requirement?(core_version,"<=3.1.2")
+        message.attributes["se"].map! {|bool| bool ? "true" : "false"}
+      end
+
       set_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
         Collector.new self, collect_options.merge(task:@task, type: 'MessageAck')
