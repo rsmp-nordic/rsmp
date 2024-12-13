@@ -634,7 +634,7 @@ module RSMP
              'S0015', 'S0016', 'S0017', 'S0018', 'S0019', 'S0020', 'S0021',
              'S0022', 'S0023', 'S0024', 'S0026', 'S0027', 'S0028',
              'S0029', 'S0030', 'S0031', 'S0032', 'S0033', 'S0035',
-             'S0091', 'S0092', 'S0095', 'S0096', 'S0097',
+             'S0091', 'S0092', 'S0095', 'S0096', 'S0097', 'S0098',
              'S0205', 'S0206', 'S0207', 'S0208'
           return send("handle_#{code.downcase}", code, name, options)
         else
@@ -1005,6 +1005,20 @@ module RSMP
         when 'timestamp'
           now = clock.to_s
           TrafficControllerSite.make_status now
+        end
+      end
+
+      def handle_s0098 status_code, status_name=nil, options={}
+        settings = node.site_settings.slice('components','signal_plans','inputs','startup_sequence')
+        json = JSON.generate(settings)
+        case status_name
+        when 'config'
+          TrafficControllerSite.make_status json
+        when 'timestamp'
+          now = clock.to_s
+          TrafficControllerSite.make_status now
+        when 'version'
+          TrafficControllerSite.make_status Digest::MD5.hexdigest(json)
         end
       end
 
