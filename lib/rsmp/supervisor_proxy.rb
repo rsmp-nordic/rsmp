@@ -172,19 +172,24 @@ module RSMP
 
     def send_aggregated_status component, options={}
       m_id = options[:m_id] || RSMP::Message.make_m_id
+
+      # For core <=3.1.2, se items must be send as strings
+      # For core > 3.1.2, se items must be send as booleans
+      if Proxy::version_meets_requirement?(core_version,"<=3.1.2")
+        se = component.aggregated_status_bools.map {|bool| bool ? "true" : "false"}
+      else
+        se = component.aggregated_status_bools
+      end
+
       message = AggregatedStatus.new({
         "aSTS" => clock.to_s,
         "cId" =>  component.c_id,
         "fP" => nil,
         "fS" => nil,
-        "se" => component.aggregated_status_bools,
+        "se" => se,
         "mId" => m_id,
       })
 
-      # Core 3.1.2 or earlier requires that se items to be send as strings
-      if Proxy::version_meets_requirement?(core_version,"<=3.1.2")
-        message.attributes["se"].map! {|bool| bool ? "true" : "false"}
-      end
 
       set_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
@@ -200,7 +205,7 @@ module RSMP
 
     def process_aggregated_status message
       se = message.attribute("se")
-      validate_aggregated_status(message,se) == false
+      validate_aggregated_status(message,se)
       on = set_aggregated_status se
       log "Received #{message.type} status [#{on.join(', ')}]", message: message, level: :log
       acknowledge message

@@ -137,7 +137,7 @@ module RSMP
 
     def process_aggregated_status message
       se = message.attribute("se")
-      validate_aggregated_status(message,se) == false
+      validate_aggregated_status(message,se)
       c_id = message.attributes["cId"]
       component = find_component c_id
       unless component
