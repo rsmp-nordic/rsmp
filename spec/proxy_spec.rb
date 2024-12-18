@@ -92,7 +92,7 @@ RSpec.describe RSMP::Proxy do
 
 	describe 'version_meets_requirement?' do
 		# the version_meets_requirement? helper is just a wrapper for the Gem class helper
-		# so we donøt do a lot of testing, just enough, to verify that our wrapping is as expected
+		# so we don't do a lot of testing, just enough, to verify that our wrapping is as expected
 
 		it 'is equal to' do
 			expect(RSMP::Proxy.version_meets_requirement?('1.0.9','1.0.10')).to be(false)
