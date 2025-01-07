@@ -156,15 +156,6 @@ module RSMP
       @distributor.add_receiver self if @distributor
     end
 
-    # Build a string describing how how progress reached before timeout
-    def describe_progress
-      str = "#{identifier}: #{@title.capitalize} collection "
-      str << "in response to #{@m_id} " if @m_id
-      str << "didn't complete within #{@timeout}s, "
-      str << "reached #{@messages.size}/#{@num}"
-      str
-    end
-
     # Check if we receive a NotAck related to initiating request, identified by @m_id.
     def reject_not_ack message
       return unless @m_id
@@ -307,13 +298,13 @@ module RSMP
       end
     end
 
-    # return a string that describe how many many messages have been collected
+    # Build a string describing how how progress reached before timeout
     def describe_progress
-      if @num
-        "#{@messages.size} of #{@num} message#{'s' if @messages.size!=1} collected"
-      else
-        "#{@messages.size} message#{'s' if @messages.size!=1} collected"
-      end        
+      str = "#{@title.capitalize} #{identifier} "
+      str << "in response to #{@m_id} " if @m_id
+      str << "timed out after #{@timeout}s, "
+      str << "reaching #{@messages.size}/#{@num}"
+      str
     end
 
     # log when we start collecting
