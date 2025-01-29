@@ -12,7 +12,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    aruba (2.2.0)
+    aruba (2.3.0)
       bundler (>= 1.17, < 3.0)
       contracts (>= 0.16.0, < 0.18.0)
       cucumber (>= 8.0, < 10.0)
@@ -111,8 +111,8 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  aruba (~> 2.2)
-  bundler (~> 2.5)
+  aruba (~> 2.3)
+  bundler (~> 2.6)
   cucumber (~> 9.2)
   rake (~> 13.2)
   rsmp!
@@ -121,4 +121,4 @@ DEPENDENCIES
   timecop (~> 0.9)
 
 BUNDLED WITH
-   2.5.18
+   2.6.3
