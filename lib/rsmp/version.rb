@@ -1,3 +1,3 @@
 module RSMP
-  VERSION = "0.34.3"
+  VERSION = "0.35.0"
 end
