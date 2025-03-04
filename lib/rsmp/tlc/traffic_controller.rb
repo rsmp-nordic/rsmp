@@ -1045,7 +1045,10 @@ module RSMP
         when 'start'
           TrafficControllerSite.make_status clock.to_s
         when 'occupancy'
-          TrafficControllerSite.make_status 0
+          values = [-1,0,50,100]
+          output = @detector_logics.each_with_index.map {|dl,i| values[i%values.size] }.join(",")
+          p values
+          TrafficControllerSite.make_status output
         end
       end
 
