@@ -9,6 +9,7 @@ module RSMP
 	end
 
 	class SchemaError < Error
+		attr_accessor :schemas
 	end
 
 	class InvalidMessage < Error
