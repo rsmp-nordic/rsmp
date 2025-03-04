@@ -353,7 +353,8 @@ module RSMP
     rescue EOFError, IOError
       buffer_message message
     rescue SchemaError, RSMP::Schema::Error => e
-      str = "Could not send #{message.type} because schema validation failed: #{e.message}"
+      schemas_string = e.schemas.map {|schema| "#{schema.first}: #{schema.last}"}.join(", ")
+      str = "Could not send #{message.type} because schema validation failed (#{schemas_string}): #{e.message}"
       log str, message: message, level: :error
       distribute_error e.exception("#{str} #{message.json}")
     end
@@ -416,7 +417,8 @@ module RSMP
       # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
       nil
     rescue SchemaError, RSMP::Schema::Error => e
-      reason = "schema errors: #{e.message}"
+      schemas_string = e.schemas.map {|schema| "#{schema.first}: #{schema.last}"}.join(", ")
+      reason = "schema errors (#{schemas_string}): #{e.message}"
       str = "Received invalid #{message.type}"
       distribute_error e.exception(str), message: message
       dont_acknowledge message, str, reason

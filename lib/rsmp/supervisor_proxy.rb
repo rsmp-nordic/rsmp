@@ -312,9 +312,14 @@ module RSMP
       send_message response
     end
 
-    def rsmpify_value v
-      return v if v.is_a?(Array) || v.is_a?(Set)
-      v.to_s
+    def rsmpify_value v, q
+      if v.is_a?(Array) || v.is_a?(Set)
+        v
+      elsif ['undefined','unknown'].include?(q.to_s)
+        nil
+      else
+        v.to_s
+      end
     end
 
     def process_status_request message, options={}
@@ -324,7 +329,7 @@ module RSMP
         component = @site.find_component component_id
         sS = message.attributes["sS"].map do |arg|
           value, quality =  component.get_status arg['sCI'], arg['n'], {sxl_version: sxl_version}
-          { "s" => rsmpify_value(value), "q" => quality.to_s }.merge arg
+          { "s" => rsmpify_value(value, quality), "q" => quality.to_s }.merge arg
         end
         log "Received #{message.type}", message: message, level: :log
 
@@ -434,8 +439,8 @@ module RSMP
             if subscription[:interval] == 0
               # send as soon as the data changes
               if component_object
-                current, age = *(component_object.get_status code, name)
-                current = rsmpify_value(current)
+                current, quality = *(component_object.get_status code, name)
+                current = rsmpify_value(current,quality)
               end
               last_sent = fetch_last_sent_status component, code, name
               if current != last_sent
@@ -473,7 +478,7 @@ module RSMP
             end
             sS << { "sCI" => code,
                      "n" => status_name,
-                     "s" => rsmpify_value(value),
+                     "s" => rsmpify_value(value, quality),
                      "q" => quality }
           end
         end
