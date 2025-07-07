@@ -125,6 +125,11 @@ RN+SU0001     RN+SI0001     -->  f8c7  Received Version message for sites [RN+SI
 ### JSON Schema validation
 All messages sent and received will be validated against the core [RSMP JSON Schema](https://github.com/rsmp-nordic/rsmp_schema).
 
+### Message Buffering
+RSMP sites implement message buffering to handle temporary disconnections. When a site loses connection to a supervisor, data messages (StatusUpdate, AlarmIssue, AggregatedStatus) are buffered and sent when the connection is reestablished. Status messages have their quality changed to "old" to indicate they are no longer current. Control messages (commands, versions, watchdogs, acknowledgements) are not buffered.
+
+See [Message Buffering Documentation](documentation/message_buffering.md) for more details.
+
 ## Command-line tool
 Tools for easily running RSMP supervisors and sites. The binary is called ```rsmp```.
 
