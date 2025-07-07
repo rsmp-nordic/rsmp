@@ -1,5 +1,0 @@
-{
-  "title" :  "StatusRequest",
-  "description" :  "Status request",
-  "$ref": "status.json"
-}

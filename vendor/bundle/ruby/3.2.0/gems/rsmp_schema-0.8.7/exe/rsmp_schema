@@ -1,4 +1,0 @@
-#!/usr/bin/env ruby
-require 'bundler/setup'
-require 'rsmp_schema/cli'
-RSMP::Schema::CLI.start

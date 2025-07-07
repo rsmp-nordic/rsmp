@@ -1,7 +1,0 @@
-{
-  "properties" : {
-    "rvs" : {
-      "$ref" : "commands.json"
-    }
-  }
-}
