@@ -1,0 +1,82 @@
+{
+  "description" : "Traffic Counting: Occupancy.\nThis status was introduced to improve performance in case traffic counting is done on all all detectors.",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "occupancy",
+            "start"
+          ]
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "start"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "description" : "Time stamp for start of measuring. Format according to W3C\nXML dateTime with a resolution of 3 decimal places. All time stamps\nin UTC. E.g. 2009-10-02T14:34:34.341Z"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/timestamp"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "occupancy"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "description" : "Occupancy in percent (%) (0-100)\n- Value expressed as an integer with a range of 0-100.\n- Contains data from all detector logics. Each detector logic is separated with a comma.\n- The value is set to \"-1\" if no data could be measured (e.g. detector fault)",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

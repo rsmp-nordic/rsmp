@@ -1,0 +1,55 @@
+{
+  "description" : "Forced output status.\nProvide status of output (1-255) regarding if they are forced or not. Can be used for all types of output where the traffic light controller needs to control other equipment.\nCan be used for bus priority, coordination between traffic controllers, external control systems, and much more.",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "status"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "description" : "Forced output status as text field",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

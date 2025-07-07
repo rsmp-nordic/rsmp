@@ -1,0 +1,132 @@
+{
+  "description" : "Detector error (hardware).\nIs a \"minor fault\" defined according to 3.11 in EN12675.",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "detector",
+            "errormode",
+            "manual",
+            "type"
+          ]
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "detector"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "description" : "Designation of the detector (hardware)",
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "type"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "description" : "Type of detector",
+                  "type" : "string",
+                  "enum" : [
+                    "input",
+                    "loop"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "errormode"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "description" : "Detector forced on/off while detector error",
+                  "type" : "string",
+                  "enum" : [
+                    "off",
+                    "on"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "manual"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "allOf" : [
+                    {
+                      "description" : "Manually controlled detector logic (True/False)"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/boolean"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "description" : "Manually set detector logic.\nProvides status of detector logic (1-255) regarding if they are either forced to true or false.\nCan be used to connect RSMP compatible detection equipment to the traffic light controller. Can also be used for prioritization.",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "detectorlogics"
+          ]
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "detectorlogics"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "description" : "Manually set detector logic as text field.\nEach character represent the state in consecutive order,\nwhere the leftmost character starts with detector logic 1.\n0 : Detector logic not manually set\n1 : Detector logic manually set\n- : Detector logic is undefined/does not exist",
+                  "type" : "string",
+                  "pattern" : "^[01]*$"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

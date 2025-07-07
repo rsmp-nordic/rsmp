@@ -1,0 +1,88 @@
+{
+  "description" : "Police key\nThe controller is forced to dark mode or yellow flash.\nThe \"police key\" is a external control switch present in some controllers that manually switches the controller to either dark mode or yellow flash.",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "intersection",
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "intersection"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "description" : "0: Not applicable (only one intersection exists or applicable for all intersection of the traffic light controller)\nOther value: Intersection number"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer_list"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "status"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "pattern" : "(?-mix:^(0|1|2)(?:,(0|1|2))*$)"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer_list"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

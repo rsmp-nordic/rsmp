@@ -1,0 +1,88 @@
+{
+  "description" : "Manual control.\nTraffic control deactivated in controller\nSignal timings is controlled manually by service personnel using the operating panel of the controller.",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "intersection",
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "intersection"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "description" : "0: Not applicable (only one intersection exists or applicable for all intersection of the traffic light controller)\nOther value: Intersection number"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer_list"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "status"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "description" : "False: Manual control inactive\nTrue: Manual control active"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/boolean_list"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

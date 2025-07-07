@@ -1,0 +1,137 @@
+{
+  "description" : "Signal group status.\nProvides the status of each signal group, including basic information such as green, yellow and red. But also detailed technical information.\nCan be used to draw a live signal group diagram as well provide diagnostic information about the performance of the controller.",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "basecyclecounter",
+            "cyclecounter",
+            "signalgroupstatus",
+            "stage"
+          ]
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "signalgroupstatus"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "description" : "Signal group status as text field",
+                  "type" : "string",
+                  "pattern" : "^[a-hA-G0-9N-P]*$"
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "cyclecounter"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "description" : "Cycle counter"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "basecyclecounter"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "description" : "Base cycle counter"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "stage"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "description" : "Current stage (isolated)"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

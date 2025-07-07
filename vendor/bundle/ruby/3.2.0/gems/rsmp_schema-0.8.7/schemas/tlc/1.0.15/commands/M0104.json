@@ -1,0 +1,220 @@
+{
+  "description" : "Set clock.\nCan be used to manually set the clock of the traffic light controller if automatic  time synchronization (NTP or watchdog sync) is not available. For instance, during maintenance work.\nRequires security code 1",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "day",
+            "hour",
+            "minute",
+            "month",
+            "second",
+            "securityCode",
+            "year"
+          ]
+        },
+        "cO" : {
+          "const" : "setDate"
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "securityCode"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "description" : "Security code 1",
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "year"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "allOf" : [
+                    {
+                      "description" : "Changes internal clock. Note: UTC is used\nYear according to YYYY"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "month"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "allOf" : [
+                    {
+                      "description" : "Changes internal clock. Note: UTC is used\nMonth according to MM (01-12)"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "day"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "allOf" : [
+                    {
+                      "description" : "Changes internal clock. Note: UTC is used\nDay in month according to DD (01-31)"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "hour"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "allOf" : [
+                    {
+                      "description" : "Changes internal clock. Note: UTC is used\nHour according to HH (00-23)"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "minute"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "allOf" : [
+                    {
+                      "description" : "Changes internal clock. Note: UTC is used\nMinute according to MM (00-59)"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "second"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "allOf" : [
+                    {
+                      "description" : "Changes internal clock. Note: UTC is used\nSecond according to SS (00-59)"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

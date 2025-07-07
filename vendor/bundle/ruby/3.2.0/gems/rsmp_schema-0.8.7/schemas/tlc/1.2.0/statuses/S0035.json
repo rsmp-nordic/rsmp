@@ -1,0 +1,74 @@
+{
+  "description" : "Emergency route.\nThe status is active during emergency prioritization.\nUsed in situations where full priority is given in the emergency vehicle program\nor for other types of priority in some cases.\n\nThis status is similar to S0006, but supports multiple routes",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "emergencyroutes"
+          ]
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "emergencyroutes"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "description" : "Active emergency routes",
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "required" : [
+                      "id"
+                    ],
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "id" : {
+                        "allOf" : [
+                          {
+                            "description" : "ID of active emergency route"
+                          },
+                          {
+                            "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
