@@ -12,5 +12,6 @@ log
 /spec/reports/
 /tmp/
 /config/private/
+/vendor/
 
 

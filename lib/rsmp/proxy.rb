@@ -155,6 +155,7 @@ module RSMP
       @ingoing_acknowledged = {}
       @outgoing_acknowledged = {}
       @latest_watchdog_send_at = nil
+      @message_buffer = []
 
       @acknowledgements = {}
       @acknowledgement_condition = Async::Notification.new
@@ -360,8 +361,51 @@ module RSMP
     end
 
     def buffer_message message
-      # TODO
-      #log "Cannot send #{message.type} because the connection is closed.", message: message, level: :error
+      # Don't buffer certain message types as per RSMP spec
+      unbuffered_types = %w[CommandRequest CommandResponse Version Watchdog MessageAck MessageNotAck]
+      
+      if unbuffered_types.include?(message.type)
+        log "Cannot send #{message.type} because the connection is closed (message discarded)", message: message, level: :warning
+        return
+      end
+      
+      # Buffer the message and modify quality for status messages
+      buffered_message = clone_message_for_buffer(message)
+      @message_buffer << buffered_message
+      log "Buffered #{message.type} (#{@message_buffer.size} messages in buffer)", message: message, level: :info
+    end
+
+    def clone_message_for_buffer message
+      # Create a copy of the message with modified quality for status messages
+      cloned_attributes = message.attributes.dup
+      
+      # For status messages, set quality to 'old' as per RSMP spec
+      if message.type == 'StatusUpdate' && cloned_attributes['sS']
+        cloned_attributes['sS'] = cloned_attributes['sS'].map do |status|
+          status.merge('q' => 'old')
+        end
+      end
+      
+      # Create new message of the same type with modified attributes
+      message.class.new(cloned_attributes)
+    end
+
+    def send_buffered_messages
+      return if @message_buffer.empty?
+      
+      log "Sending #{@message_buffer.size} buffered messages", level: :info
+      
+      @message_buffer.each do |buffered_message|
+        begin
+          # Send with force: true to bypass connection checks since we're reconnecting
+          send_message buffered_message, "buffered message", force: true
+        rescue => e
+          log "Failed to send buffered #{buffered_message.type}: #{e.message}", level: :error
+        end
+      end
+      
+      @message_buffer.clear
+      log "Finished sending buffered messages", level: :info
     end
 
     def log_send message, reason=nil

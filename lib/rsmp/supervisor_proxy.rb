@@ -98,6 +98,8 @@ module RSMP
         send_all_aggregated_status
         send_active_alarms
       end
+      # Send buffered messages after handshake and initial messages
+      send_buffered_messages
       super
     end
 
