@@ -107,10 +107,6 @@ module RSMP
       true
     end
 
-    def build_proxy settings
-      SiteProxy.new settings
-    end
-
     def format_ip_and_port info
       if @logger.settings['hide_ip_and_port']
          '********'
@@ -179,7 +175,15 @@ module RSMP
         end
       else
         check_max_sites
-        proxy = build_proxy settings.merge(site_id:id)    # keep the id learned by peeking above
+        
+        # Determine the appropriate proxy type based on site settings
+        site_settings = check_site_id id
+        if site_settings && site_settings['sxl'] == 'tlc'
+          proxy = TLC::TrafficLightControllerProxy.new settings.merge(site_id:id)
+        else
+          proxy = SiteProxy.new settings.merge(site_id:id)
+        end
+        
         @proxies.push proxy
       end
 
