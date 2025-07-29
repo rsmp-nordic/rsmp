@@ -25,7 +25,7 @@ Please follow these guidelines when contributing:
 - Follow Ruby best practices and idiomatic patterns.´
 - Maintain existing code structure and organization.
 - The code used the 'async' gem to run concurrent Ruby code. Follow existing async patterns already used in the project.
-- Code behaviour should adhere to the RSMP specifications defined at https://rsmp-nordic.org/specification/.
+- Code behaviour should adhere to the RSMP specifications defined at https://github.com/rsmp-nordic/rsmp_core.
 - Write and verify RSpec tests for new functionality.
 - Document public APIs and complex logic. Suggest changes to the `documentation/` folder when appropriate.
 - Don't commit example scripts.
