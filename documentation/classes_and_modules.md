@@ -10,6 +10,8 @@ Super    Site - - include Components
               Proxy - - include Logging, Wait
               /    \
 SupervisorProxy    SiteProxy - - include Components, SiteProxyWait
+                      \
+                       TrafficLightControllerProxy
 ```
 
 ## Modules
@@ -48,6 +50,12 @@ A proxy has an async task listening for messages on an TCP/IP socket. Incoming R
 A proxy also has a repaating async timer task for handling watchdog and acknowledgement timeouts.
 
 Proxy has to child classes: SiteProxy and SupervisorProxy.
+
+### SiteProxy
+A SiteProxy represents a connection from a Supervisor to a remote Site. It provides methods for sending commands and requesting status from the connected site.
+
+### TrafficLightControllerProxy
+A TrafficLightControllerProxy is a specialized SiteProxy for Traffic Light Controller (TLC) sites. It provides high-level methods for common TLC operations like setting signal plans and fetching current plan status. The supervisor automatically creates TLCProxy instances when TLC sites connect (based on the site configuration having `sxl: 'tlc'`).
 
 ### SiteProxy
 A connection to a remote Site.
