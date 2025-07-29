@@ -1,0 +1,85 @@
+{
+  "description" : "Set timeout for dynamic bands\nSwitch to a designated time plan if this timeout is reached due to lost connection with the supervisor.\nDisable by setting timeout to '0'.\nUsed in conjunction with dynamic bands, M0014\nRequires security code 2.",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "securityCode",
+            "status"
+          ]
+        },
+        "cO" : {
+          "const" : "setTimeout"
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "status"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "allOf" : [
+                    {
+                      "description" : "Timeout, in minutes"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "securityCode"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "description" : "Security code 2",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+/.bundle/
+/pkg/
+/spec/reports/
+/tmp/
+/.DS_Store
+/.rspec_status

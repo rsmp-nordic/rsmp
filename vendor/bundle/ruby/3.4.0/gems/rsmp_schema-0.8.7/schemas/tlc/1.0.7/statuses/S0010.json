@@ -1,0 +1,88 @@
+{
+  "description" : "Isolated control.\nIsolated control mode indicates that the controller operates independently of any other traffic light controllers. This may different depending on traffic program (time plan).\nUsed to determine if the controller is operating independently or operating with other controllers (coordination).",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "intersection",
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "intersection"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "description" : "0: Not applicable (only one intersection exists or applicable for all intersection of the traffic light controller)\nOther value: Intersection number"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/integer_list"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "status"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "s" : {
+                  "allOf" : [
+                    {
+                      "description" : "False: Isolated control disabled\nTrue: Isolated control enabled (Vehicle actuated control or Fixed time control)"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/boolean_list"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

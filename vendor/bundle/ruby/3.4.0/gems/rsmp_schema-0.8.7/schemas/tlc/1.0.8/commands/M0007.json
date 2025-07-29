@@ -1,0 +1,85 @@
+{
+  "description" : "Activate fixed time control.\nDeactivates the traffic actuated control using detectors and activates pre-timed control.\nCan be used in case normal detectors can't be used, e.g. during maintenance work.\nRequires security code 2.",
+  "allOf" : [
+    {
+      "properties" : {
+        "n" : {
+          "enum" : [
+            "securityCode",
+            "status"
+          ]
+        },
+        "cO" : {
+          "const" : "setFixedTime"
+        }
+      }
+    },
+    {
+      "if" : {
+        "required" : [
+          "q"
+        ],
+        "properties" : {
+          "q" : {
+            "enum" : [
+              "undefined",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then" : {
+      },
+      "else" : {
+        "allOf" : [
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "status"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "allOf" : [
+                    {
+                      "description" : "False: Deactivate fixed time control\nTrue: Activate fixed time control"
+                    },
+                    {
+                      "$ref" : "../../../core/3.1.2/definitions.json#/boolean"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if" : {
+              "required" : [
+                "n"
+              ],
+              "properties" : {
+                "n" : {
+                  "const" : "securityCode"
+                }
+              }
+            },
+            "then" : {
+              "properties" : {
+                "v" : {
+                  "description" : "Security code 2",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

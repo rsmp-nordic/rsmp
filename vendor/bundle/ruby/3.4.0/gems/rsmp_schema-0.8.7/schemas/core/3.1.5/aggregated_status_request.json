@@ -1,0 +1,9 @@
+{
+  "title" :  "Aggregated Status Request",
+  "description" :  "Aggregated status request message",
+  "properties" : {
+    "mId" : { "$ref": "../3.1.2/definitions.json#/message_id" },
+    "cId" : { "$ref": "../3.1.2/definitions.json#/component_id" }
+  },
+  "required" : [ "mId", "cId" ]
+}

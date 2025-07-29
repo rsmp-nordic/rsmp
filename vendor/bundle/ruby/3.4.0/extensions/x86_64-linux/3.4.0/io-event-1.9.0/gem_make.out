@@ -1,0 +1,38 @@
+current directory: /home/runner/work/rsmp/rsmp/vendor/bundle/ruby/3.4.0/gems/io-event-1.9.0/ext
+/opt/hostedtoolcache/Ruby/3.4.5/x64/bin/ruby extconf.rb
+checking for rb_ext_ractor_safe()... yes
+checking for &rb_fiber_transfer()... yes
+checking for -luring... no
+checking for sys/epoll.h... yes
+checking for sys/event.h... no
+checking for sys/wait.h... yes
+checking for sys/eventfd.h... yes
+checking for rb_io_descriptor()... yes
+checking for &rb_process_status_wait()... yes
+checking for rb_fiber_current()... yes
+checking for &rb_fiber_raise()... yes
+checking for epoll_pwait2()... yes
+checking for ruby/io/buffer.h... yes
+creating extconf.h
+creating Makefile
+
+current directory: /home/runner/work/rsmp/rsmp/vendor/bundle/ruby/3.4.0/gems/io-event-1.9.0/ext
+make DESTDIR\= sitearchdir\=./.gem.20250729-2098-l8yjy0 sitelibdir\=./.gem.20250729-2098-l8yjy0 clean
+
+current directory: /home/runner/work/rsmp/rsmp/vendor/bundle/ruby/3.4.0/gems/io-event-1.9.0/ext
+make DESTDIR\= sitearchdir\=./.gem.20250729-2098-l8yjy0 sitelibdir\=./.gem.20250729-2098-l8yjy0
+compiling ./io/event/event.c
+compiling ./io/event/time.c
+compiling ./io/event/fiber.c
+compiling ./io/event/profiler.c
+compiling ./io/event/selector/selector.c
+compiling ./io/event/selector/epoll.c
+compiling ./io/event/interrupt.c
+linking shared-object IO_Event.so
+
+current directory: /home/runner/work/rsmp/rsmp/vendor/bundle/ruby/3.4.0/gems/io-event-1.9.0/ext
+make DESTDIR\= sitearchdir\=./.gem.20250729-2098-l8yjy0 sitelibdir\=./.gem.20250729-2098-l8yjy0 install
+/usr/bin/install -c -m 0755 IO_Event.so ./.gem.20250729-2098-l8yjy0
+
+current directory: /home/runner/work/rsmp/rsmp/vendor/bundle/ruby/3.4.0/gems/io-event-1.9.0/ext
+make DESTDIR\= sitearchdir\=./.gem.20250729-2098-l8yjy0 sitelibdir\=./.gem.20250729-2098-l8yjy0 clean

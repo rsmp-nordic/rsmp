@@ -1,0 +1,7 @@
+{
+  "properties" : {
+    "arg" : {
+      "$ref" : "commands.json"
+    }
+  }
+}
