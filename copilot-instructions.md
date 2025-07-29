@@ -11,6 +11,7 @@ Please follow these guidelines when contributing:
 ## Development Flow
 - The Ruby version specified in .tool-versions must be used for running and validating code.
 - Before any commit, run `rspec` to verify that all tests in the spec/ folder passes.
+- Never add or commit files from vendor/.
 
 ## Repository Structure
 - `bin/`: Main service entry points and executables
