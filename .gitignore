@@ -9,8 +9,9 @@ log
 /coverage/
 /doc/
 /pkg/
-/spec/reports/
 /tmp/
+/vendor/
+/spec/reports/
 /config/private/
 
 
