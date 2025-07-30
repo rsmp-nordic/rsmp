@@ -1,6 +1,7 @@
 port: 12111
 guest:
   sxl: tlc
+  type: tlc
   intervals:
     timer: 0.1
     watchdog: 0.1

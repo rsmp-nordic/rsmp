@@ -15,7 +15,7 @@ The TLC proxy provides convenient methods that abstract away the low-level RSMP 
 
 ## Automatic Detection
 
-When a TLC site connects to a supervisor, the supervisor automatically detects that it's a TLC based on the site configuration (`sxl: 'tlc'`) and creates a `TrafficLightControllerProxy` instead of a generic `SiteProxy`.
+When a TLC site connects to a supervisor, the supervisor automatically detects that it's a TLC based on the site configuration (`type: 'tlc'`) and creates a `TrafficLightControllerProxy` instead of a generic `SiteProxy`.
 
 This happens in the supervisor's connection handling:
 
@@ -23,9 +23,9 @@ This happens in the supervisor's connection handling:
 # In supervisor configuration
 supervisor_settings = {
   'sites' => {
-    'TLC001' => { 'sxl' => 'tlc' }
+    'TLC001' => { 'sxl' => 'tlc', 'type' => 'tlc' }
   },
-  'guest' => { 'sxl' => 'tlc' }  # For unknown TLC sites
+  'guest' => { 'sxl' => 'tlc', 'type' => 'tlc' }  # For unknown TLC sites
 }
 
 # When TLC001 connects, supervisor creates TLCProxy automatically

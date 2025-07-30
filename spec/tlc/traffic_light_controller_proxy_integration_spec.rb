@@ -28,10 +28,11 @@ RSpec.describe 'TLC Proxy Integration' do
     {
       'port' => port,
       'sites' => {
-        site_id => { 'sxl' => 'tlc' }
+        site_id => { 'sxl' => 'tlc', 'type' => 'tlc' }
       },
       'guest' => {
-        'sxl' => 'tlc'  # Use valid schema type
+        'sxl' => 'tlc',  # Use valid schema type
+        'type' => 'tlc'   # Proxy type
       }
     }
   }
@@ -122,7 +123,7 @@ RSpec.describe 'TLC Proxy Integration' do
     AsyncRSpec.async do |task|
       # Create a supervisor with TLC configuration to avoid schema errors
       supervisor_without_connection = RSMP::Supervisor.new(
-        supervisor_settings: { 'port' => 13113, 'guest' => { 'sxl' => 'tlc' } },
+        supervisor_settings: { 'port' => 13113, 'guest' => { 'sxl' => 'tlc', 'type' => 'tlc' } },
         log_settings: log_settings
       )
       
