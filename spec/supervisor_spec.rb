@@ -164,8 +164,8 @@ RSpec.describe RSMP::Supervisor do
 
   describe '#proxy creation' do
     context 'when site has TLC SXL in configuration' do
-      it 'creates TLCProxy for configured TLC sites' do
-        # Test the site settings determination logic directly
+      it 'creates TrafficControllerProxy for configured TLC sites' do
+        # Test the supervisor's build_proxy method directly
         supervisor = RSMP::Supervisor.new(
           supervisor_settings: {
             'port' => 13113,
@@ -176,10 +176,6 @@ RSpec.describe RSMP::Supervisor do
           },
           log_settings: log_settings
         )
-        
-        # The site_id_to_site_setting method should return the tlc config
-        site_settings = supervisor.site_id_to_site_setting('TLC001')
-        expect(site_settings['sxl']).to eq('tlc')
         
         settings = {
           supervisor: supervisor,
@@ -192,12 +188,8 @@ RSpec.describe RSMP::Supervisor do
           archive: double('archive')
         }
         
-        # Test the logic that would be used in accept_connection
-        if site_settings && site_settings['type'] == 'tlc'
-          proxy = RSMP::TLC::TrafficControllerProxy.new settings.merge(site_id: 'TLC001')
-        else
-          proxy = RSMP::SiteProxy.new settings.merge(site_id: 'TLC001')
-        end
+        # Test the supervisor's build_proxy method
+        proxy = supervisor.build_proxy('TLC001', settings)
         
         expect(proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
       end
@@ -208,7 +200,7 @@ RSpec.describe RSMP::Supervisor do
         # Test the core proxy creation logic directly
         # Create a basic supervisor for the test
         test_supervisor = RSMP::Supervisor.new(
-          supervisor_settings: { 'port' => 13115, 'guest' => { 'sxl' => 'tlc', 'type' => 'tlc' } },
+          supervisor_settings: { 'port' => 13115, 'sites' => { 'guest' => { 'sxl' => 'tlc', 'type' => 'tlc' } } },
           log_settings: log_settings
         )
         
@@ -224,19 +216,10 @@ RSpec.describe RSMP::Supervisor do
           archive: double('archive')
         }
         
-        # Test with TLC-like settings
-        tlc_site_settings = { 'sxl' => 'tlc', 'type' => 'tlc' }
-        non_tlc_site_settings = { 'sxl' => 'core', 'type' => 'core' }
+        # Test the supervisor's build_proxy method for a guest site (unknown site_id)
+        proxy = test_supervisor.build_proxy('UNKNOWN_SITE', settings)
         
-        # Test TLC proxy creation
-        tlc_proxy = RSMP::TLC::TrafficControllerProxy.new settings.merge(site_id: 'TLC001')
-        
-        # Test non-TLC proxy creation
-        non_tlc_proxy = RSMP::SiteProxy.new settings.merge(site_id: 'OTHER001')
-        
-        expect(tlc_proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
-        expect(non_tlc_proxy).to be_an(RSMP::SiteProxy)
-        expect(non_tlc_proxy).not_to be_an(RSMP::TLC::TrafficControllerProxy)
+        expect(proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
       end
     end
 
@@ -244,12 +227,9 @@ RSpec.describe RSMP::Supervisor do
       it 'creates regular SiteProxy for non-TLC guest sites' do
         # Use basic supervisor with non-TLC guest settings
         supervisor = RSMP::Supervisor.new(
-          supervisor_settings: supervisor_settings,  # This has guest sxl as 'tlc', which will get non-TLC treatment in this test
+          supervisor_settings: { 'port' => 13116, 'sites' => { 'guest' => { 'sxl' => 'core', 'type' => 'core' } } },
           log_settings: log_settings
         )
-        
-        # Manually override the site settings to simulate non-TLC
-        site_settings = { 'sxl' => 'other_type' }  # This won't be validated since we're testing logic directly
         
         settings = {
           supervisor: supervisor,
@@ -262,12 +242,8 @@ RSpec.describe RSMP::Supervisor do
           archive: double('archive')
         }
         
-        # Test the logic for non-TLC sites
-        if site_settings && site_settings['type'] == 'tlc'
-          proxy = RSMP::TLC::TrafficControllerProxy.new settings.merge(site_id: 'OTHER001')
-        else
-          proxy = RSMP::SiteProxy.new settings.merge(site_id: 'OTHER001')
-        end
+        # Test the supervisor's build_proxy method for a guest site (unknown site_id) with non-TLC guest config
+        proxy = supervisor.build_proxy('UNKNOWN_SITE', settings)
         
         expect(proxy).to be_an(RSMP::SiteProxy)
         expect(proxy).not_to be_an(RSMP::TLC::TrafficControllerProxy)
