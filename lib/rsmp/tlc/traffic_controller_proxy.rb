@@ -31,8 +31,8 @@ module RSMP
         }]
 
         # Use the main component (TLC controller)
-        raise "TLC main component not found" unless @main
-        send_command @main.c_id, command_list, options
+        raise "TLC main component not found" unless main
+        send_command main.c_id, command_list, options
       end
 
       # Fetch the current signal plan from the remote TLC
@@ -50,8 +50,8 @@ module RSMP
         }]
 
         # Use the main component (TLC controller)
-        raise "TLC main component not found" unless @main
-        request_status @main.c_id, status_list, options
+        raise "TLC main component not found" unless main
+        request_status main.c_id, status_list, options
       end
     end
   end
