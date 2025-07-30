@@ -31,8 +31,8 @@ module RSMP
         }]
 
         # Use the main component (TLC controller)
-        main_component = find_main_component
-        send_command main_component.c_id, command_list, options
+        raise "TLC main component not found" unless @main
+        send_command @main.c_id, command_list, options
       end
 
       # Fetch the current signal plan from the remote TLC
@@ -50,19 +50,8 @@ module RSMP
         }]
 
         # Use the main component (TLC controller)
-        main_component = find_main_component
-        request_status main_component.c_id, status_list, options
-      end
-
-      private
-
-      # Find the main component of the TLC
-      # @return [ComponentProxy] The main component
-      # @raise [RuntimeError] If main component is not found
-      def find_main_component
-        main_component = @components.values.find { |component| component.grouped == true }
-        raise "TLC main component not found" unless main_component
-        main_component
+        raise "TLC main component not found" unless @main
+        request_status @main.c_id, status_list, options
       end
     end
   end

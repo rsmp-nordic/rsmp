@@ -38,6 +38,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     # Mock the components collection to include a main component
     allow(proxy).to receive(:find_component).and_return(main_component)
     proxy.instance_variable_set(:@components, { 'TLC001' => main_component })
+    proxy.instance_variable_set(:@main, main_component)
   end
   
   describe '#set_plan' do
@@ -118,6 +119,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       before do
         allow(proxy).to receive(:validate_ready)
         proxy.instance_variable_set(:@components, {})
+        proxy.instance_variable_set(:@main, nil)
       end
       
       it 'raises error' do
@@ -174,6 +176,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       before do
         allow(proxy).to receive(:validate_ready)
         proxy.instance_variable_set(:@components, {})
+        proxy.instance_variable_set(:@main, nil)
       end
       
       it 'raises error' do
