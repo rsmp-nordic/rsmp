@@ -23,6 +23,7 @@ module RSMP
         'ips' => 'all',
         'guest' => {
           'sxl' => 'tlc',
+          'type' => 'tlc',
           'intervals' => {
             'timer' => 1,
             'watchdog' => 1
@@ -107,10 +108,6 @@ module RSMP
       true
     end
 
-    def build_proxy settings
-      SiteProxy.new settings
-    end
-
     def format_ip_and_port info
       if @logger.settings['hide_ip_and_port']
          '********'
@@ -179,7 +176,10 @@ module RSMP
         end
       else
         check_max_sites
-        proxy = build_proxy settings.merge(site_id:id)    # keep the id learned by peeking above
+        
+        # Build the appropriate proxy type based on site settings
+        proxy = build_proxy(id, settings)
+        
         @proxies.push proxy
       end
 
@@ -192,6 +192,16 @@ module RSMP
     ensure
       site_ids_changed
       stop if @supervisor_settings['one_shot']
+    end
+
+    def build_proxy(site_id, settings)
+      # Determine the appropriate proxy type based on site settings
+      site_settings = check_site_id site_id
+      if site_settings && site_settings['type'] == 'tlc'
+        TLC::TrafficControllerProxy.new settings.merge(site_id: site_id)
+      else
+        SiteProxy.new settings.merge(site_id: site_id)
+      end
     end
 
     def site_ids_changed
@@ -264,11 +274,18 @@ module RSMP
 
     def site_id_to_site_setting site_id
       return {} unless @supervisor_settings['sites']
-      @supervisor_settings['sites'].each_pair do |id,settings|
-        if id == 'guest' || id == site_id
+      
+      # First look for specific site_id
+      @supervisor_settings['sites'].each_pair do |id, settings|
+        if id == site_id
           return settings
         end
       end
+      
+      # Fall back to guest configuration if site_id not found
+      guest_settings = @supervisor_settings['sites']['guest']
+      return guest_settings if guest_settings
+      
       raise HandshakeError.new "site id #{site_id} unknown"
     end
 

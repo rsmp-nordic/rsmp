@@ -161,4 +161,93 @@ RSpec.describe RSMP::Supervisor do
       end
     end
   end
+
+  describe '#proxy creation' do
+    context 'when site has TLC SXL in configuration' do
+      it 'creates TrafficControllerProxy for configured TLC sites' do
+        # Test the supervisor's build_proxy method directly
+        supervisor = RSMP::Supervisor.new(
+          supervisor_settings: {
+            'port' => 13113,
+            'sites' => {
+              'TLC001' => { 'sxl' => 'tlc', 'type' => 'tlc' }
+            },
+            'guest' => { 'sxl' => 'tlc', 'type' => 'tlc' }
+          },
+          log_settings: log_settings
+        )
+        
+        settings = {
+          supervisor: supervisor,
+          ip: '127.0.0.1',
+          port: 12345,
+          socket: double('socket'),
+          stream: double('stream'),
+          protocol: double('protocol'),
+          logger: double('logger'),
+          archive: double('archive')
+        }
+        
+        # Test the supervisor's build_proxy method
+        proxy = supervisor.build_proxy('TLC001', settings)
+        
+        expect(proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
+      end
+    end
+
+    context 'when site uses guest configuration with tlc' do
+      it 'creates TLCProxy when guest sxl is tlc' do
+        # Test the core proxy creation logic directly
+        # Create a basic supervisor for the test
+        test_supervisor = RSMP::Supervisor.new(
+          supervisor_settings: { 'port' => 13115, 'sites' => { 'guest' => { 'sxl' => 'tlc', 'type' => 'tlc' } } },
+          log_settings: log_settings
+        )
+        
+        # Mock settings that would be passed to the proxy constructor
+        settings = {
+          supervisor: test_supervisor,
+          ip: '127.0.0.1',
+          port: 12345,
+          socket: double('socket'),
+          stream: double('stream'),
+          protocol: double('protocol'),
+          logger: double('logger'),
+          archive: double('archive')
+        }
+        
+        # Test the supervisor's build_proxy method for a guest site (unknown site_id)
+        proxy = test_supervisor.build_proxy('UNKNOWN_SITE', settings)
+        
+        expect(proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
+      end
+    end
+
+    context 'when guest configuration is not tlc' do
+      it 'creates regular SiteProxy for non-TLC guest sites' do
+        # Use basic supervisor with non-TLC guest settings
+        supervisor = RSMP::Supervisor.new(
+          supervisor_settings: { 'port' => 13116, 'sites' => { 'guest' => { 'sxl' => 'core', 'type' => 'core' } } },
+          log_settings: log_settings
+        )
+        
+        settings = {
+          supervisor: supervisor,
+          ip: '127.0.0.1',
+          port: 12345,
+          socket: double('socket'),
+          stream: double('stream'),
+          protocol: double('protocol'),
+          logger: double('logger'),
+          archive: double('archive')
+        }
+        
+        # Test the supervisor's build_proxy method for a guest site (unknown site_id) with non-TLC guest config
+        proxy = supervisor.build_proxy('UNKNOWN_SITE', settings)
+        
+        expect(proxy).to be_an(RSMP::SiteProxy)
+        expect(proxy).not_to be_an(RSMP::TLC::TrafficControllerProxy)
+      end
+    end
+  end
 end
