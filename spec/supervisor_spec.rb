@@ -194,12 +194,12 @@ RSpec.describe RSMP::Supervisor do
         
         # Test the logic that would be used in accept_connection
         if site_settings && site_settings['type'] == 'tlc'
-          proxy = RSMP::TLC::TrafficLightControllerProxy.new settings.merge(site_id: 'TLC001')
+          proxy = RSMP::TLC::TrafficControllerProxy.new settings.merge(site_id: 'TLC001')
         else
           proxy = RSMP::SiteProxy.new settings.merge(site_id: 'TLC001')
         end
         
-        expect(proxy).to be_an(RSMP::TLC::TrafficLightControllerProxy)
+        expect(proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
       end
     end
 
@@ -229,22 +229,14 @@ RSpec.describe RSMP::Supervisor do
         non_tlc_site_settings = { 'sxl' => 'core', 'type' => 'core' }
         
         # Test TLC proxy creation
-        if tlc_site_settings && tlc_site_settings['type'] == 'tlc'
-          tlc_proxy = RSMP::TLC::TrafficLightControllerProxy.new settings.merge(site_id: 'TLC001')
-        else
-          tlc_proxy = RSMP::SiteProxy.new settings.merge(site_id: 'TLC001')
-        end
+        tlc_proxy = RSMP::TLC::TrafficControllerProxy.new settings.merge(site_id: 'TLC001')
         
         # Test non-TLC proxy creation
-        if non_tlc_site_settings && non_tlc_site_settings['type'] == 'tlc'
-          non_tlc_proxy = RSMP::TLC::TrafficLightControllerProxy.new settings.merge(site_id: 'OTHER001')
-        else
-          non_tlc_proxy = RSMP::SiteProxy.new settings.merge(site_id: 'OTHER001')
-        end
+        non_tlc_proxy = RSMP::SiteProxy.new settings.merge(site_id: 'OTHER001')
         
-        expect(tlc_proxy).to be_an(RSMP::TLC::TrafficLightControllerProxy)
+        expect(tlc_proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
         expect(non_tlc_proxy).to be_an(RSMP::SiteProxy)
-        expect(non_tlc_proxy).not_to be_an(RSMP::TLC::TrafficLightControllerProxy)
+        expect(non_tlc_proxy).not_to be_an(RSMP::TLC::TrafficControllerProxy)
       end
     end
 
@@ -272,13 +264,13 @@ RSpec.describe RSMP::Supervisor do
         
         # Test the logic for non-TLC sites
         if site_settings && site_settings['type'] == 'tlc'
-          proxy = RSMP::TLC::TrafficLightControllerProxy.new settings.merge(site_id: 'OTHER001')
+          proxy = RSMP::TLC::TrafficControllerProxy.new settings.merge(site_id: 'OTHER001')
         else
           proxy = RSMP::SiteProxy.new settings.merge(site_id: 'OTHER001')
         end
         
         expect(proxy).to be_an(RSMP::SiteProxy)
-        expect(proxy).not_to be_an(RSMP::TLC::TrafficLightControllerProxy)
+        expect(proxy).not_to be_an(RSMP::TLC::TrafficControllerProxy)
       end
     end
   end

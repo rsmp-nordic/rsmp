@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `RSMP::TLC::TrafficLightControllerProxy` is a specialized proxy class for handling communication with remote Traffic Light Controller (TLC) sites. It extends the base `SiteProxy` class to provide high-level methods for common TLC operations.
+The `RSMP::TLC::TrafficControllerProxy` is a specialized proxy class for handling communication with remote Traffic Light Controller (TLC) sites. It extends the base `SiteProxy` class to provide high-level methods for common TLC operations.
 
 ## Features
 
@@ -15,7 +15,7 @@ The TLC proxy provides convenient methods that abstract away the low-level RSMP 
 
 ## Automatic Detection
 
-When a TLC site connects to a supervisor, the supervisor automatically detects that it's a TLC based on the site configuration (`type: 'tlc'`) and creates a `TrafficLightControllerProxy` instead of a generic `SiteProxy`.
+When a TLC site connects to a supervisor, the supervisor automatically detects that it's a TLC based on the site configuration (`type: 'tlc'`) and creates a `TrafficControllerProxy` instead of a generic `SiteProxy`.
 
 This happens in the supervisor's connection handling:
 
@@ -30,7 +30,7 @@ supervisor_settings = {
 
 # When TLC001 connects, supervisor creates TLCProxy automatically
 tlc_proxy = supervisor.wait_for_site('TLC001')
-# tlc_proxy is now an instance of TrafficLightControllerProxy
+# tlc_proxy is now an instance of TrafficControllerProxy
 ```
 
 ## Usage Examples
@@ -125,4 +125,4 @@ Comprehensive tests are included:
 - The TLC proxy automatically finds the main TLC component (grouped component)
 - All security and validation is handled by the underlying TLC site implementation
 - The proxy provides a cleaner API while maintaining full RSMP protocol compliance
-- Thread-safe and async-compatible with the rest of the RSMP framework
+- Fiber-safe and async-compatible with the rest of the RSMP framework

@@ -1,5 +1,5 @@
 RSpec.describe 'TLC Proxy Integration' do
-  let(:timeout) { 1 }
+  let(:timeout) { 3 }
   let(:ip) { 'localhost' }
   let(:port) { 13112 }  # Different port to avoid conflicts
   let(:site_id) { 'TLC001' }
@@ -70,52 +70,49 @@ RSpec.describe 'TLC Proxy Integration' do
       tlc_proxy = supervisor.wait_for_site site_id, timeout: timeout
       supervisor_proxy = tlc_site.wait_for_supervisor ip, timeout: timeout
       
-      # Verify that supervisor created a TLCProxy instead of regular SiteProxy
-      expect(tlc_proxy).to be_an(RSMP::TLC::TrafficLightControllerProxy)
+      # Verify that supervisor created a TrafficControllerProxy instead of regular SiteProxy
+      expect(tlc_proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
       expect(tlc_proxy.site_id).to eq(site_id)
       
-      # Wait a bit for handshake to complete
-      if tlc_proxy.ready?
-        # If ready, verify that the TLC proxy has the expected methods
-        expect(tlc_proxy).to respond_to(:set_plan)
-        expect(tlc_proxy).to respond_to(:fetch_signal_plan)
-        
-        # Test fetching signal plan (this should work without errors)
-        result = tlc_proxy.fetch_signal_plan(collect: { timeout: 0.1 })
-        expect(result).to have_key(:sent)
-        expect(result).to have_key(:collector)
-        
-        # The collector should receive a StatusResponse
-        collector = result[:collector]
-        expect(collector.messages.size).to eq(1)
-        response = collector.messages.first
-        expect(response).to be_an(RSMP::StatusResponse)
-        expect(response.attribute('sS')).to be_an(Array)
-        
-        # Check that we get status and source for the signal plan
-        status_items = response.attribute('sS')
-        status_names = status_items.map { |item| item['n'] }
-        expect(status_names).to include('status', 'source')
-        
-        # Test setting signal plan (this should work without errors)
-        result = tlc_proxy.set_plan(2, security_code: '2222', options: { collect: { timeout: 0.1 } })
-        expect(result).to have_key(:sent)
-        expect(result).to have_key(:collector)
-        
-        # The collector should receive a CommandResponse
-        collector = result[:collector]
-        expect(collector.messages.size).to eq(1)
-        response = collector.messages.first
-        expect(response).to be_an(RSMP::CommandResponse)
-        
-        # Verify plan was actually changed on the TLC
-        tlc_controller = tlc_site.main
-        expect(tlc_controller.plan).to eq(2)
-      else
-        # If not ready, just verify that the proxy has the expected methods
-        expect(tlc_proxy).to respond_to(:set_plan)
-        expect(tlc_proxy).to respond_to(:fetch_signal_plan)
-      end
+      # Verify that the TLC proxy has the expected methods  
+      expect(tlc_proxy).to respond_to(:set_plan)
+      expect(tlc_proxy).to respond_to(:fetch_signal_plan)
+      
+      # Wait for handshake to complete on both sides
+      tlc_proxy.wait_for_state(:ready, timeout: timeout)
+      supervisor_proxy.wait_for_state(:ready, timeout: timeout)
+      
+      # Test fetching signal plan (this should work without errors)
+      result = tlc_proxy.fetch_signal_plan(collect: { timeout: 0.1 })
+      expect(result).to have_key(:sent)
+      expect(result).to have_key(:collector)
+      
+      # The collector should receive a StatusResponse
+      collector = result[:collector]
+      expect(collector.messages.size).to eq(1)
+      response = collector.messages.first
+      expect(response).to be_an(RSMP::StatusResponse)
+      expect(response.attribute('sS')).to be_an(Array)
+      
+      # Check that we get status and source for the signal plan
+      status_items = response.attribute('sS')
+      status_names = status_items.map { |item| item['n'] }
+      expect(status_names).to include('status', 'source')
+      
+      # Test setting signal plan (this should work without errors)
+      result = tlc_proxy.set_plan(2, security_code: '2222', options: { collect: { timeout: 0.1 } })
+      expect(result).to have_key(:sent)
+      expect(result).to have_key(:collector)
+      
+      # The collector should receive a CommandResponse
+      collector = result[:collector]
+      expect(collector.messages.size).to eq(1)
+      response = collector.messages.first
+      expect(response).to be_an(RSMP::CommandResponse)
+      
+      # Verify plan was actually changed on the TLC
+      tlc_controller = tlc_site.main
+      expect(tlc_controller.plan).to eq(2)
     end
   end
   
@@ -142,7 +139,7 @@ RSpec.describe 'TLC Proxy Integration' do
       
       allow(supervisor_without_connection).to receive(:supervisor_settings).and_return({})
       
-      tlc_proxy = RSMP::TLC::TrafficLightControllerProxy.new(settings)
+      tlc_proxy = RSMP::TLC::TrafficControllerProxy.new(settings)
       
       # Should raise NotReady error when trying to use methods on disconnected proxy
       expect { tlc_proxy.set_plan(1, security_code: '1234') }.to raise_error(RSMP::NotReady)

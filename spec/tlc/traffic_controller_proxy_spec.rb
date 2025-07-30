@@ -1,4 +1,4 @@
-RSpec.describe RSMP::TLC::TrafficLightControllerProxy do
+RSpec.describe RSMP::TLC::TrafficControllerProxy do
   let(:supervisor) { double('supervisor') }
   let(:socket) { double('socket') }
   let(:stream) { double('stream') }

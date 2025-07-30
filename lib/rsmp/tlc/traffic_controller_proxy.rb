@@ -3,7 +3,7 @@
 
 module RSMP
   module TLC
-    class TrafficLightControllerProxy < SiteProxy
+    class TrafficControllerProxy < SiteProxy
 
       # Set the signal plan on the remote TLC
       # @param plan_nr [Integer] The signal plan number to set

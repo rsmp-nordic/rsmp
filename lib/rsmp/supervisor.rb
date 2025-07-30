@@ -180,7 +180,7 @@ module RSMP
         # Determine the appropriate proxy type based on site settings
         site_settings = check_site_id id
         if site_settings && site_settings['type'] == 'tlc'
-          proxy = TLC::TrafficLightControllerProxy.new settings.merge(site_id:id)
+          proxy = TLC::TrafficControllerProxy.new settings.merge(site_id:id)
         else
           proxy = SiteProxy.new settings.merge(site_id:id)
         end
