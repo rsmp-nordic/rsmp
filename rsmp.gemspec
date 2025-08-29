@@ -32,8 +32,8 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "logger", "~> 1.7"
   spec.add_dependency "ostruct", "~> 0.6"
-  spec.add_dependency "async", "~> 2.23.0"
-  spec.add_dependency "async-io", "~> 1.43"
+  spec.add_dependency "async", "~> 2.28"
+  spec.add_dependency "io-stream", "~> 0.10"
   spec.add_dependency "colorize", "~> 1.1"
   spec.add_dependency "rsmp_schema", "~> 0.8.9"
 

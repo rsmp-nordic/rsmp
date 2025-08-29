@@ -55,13 +55,14 @@
       AsyncRSpec.async context: lambda {
         # acts as a supervisior by listening for connections
         # and exhcanging RSMP handhake
-        endpoint = Async::IO::Endpoint.tcp('localhost', port)
-        tasks = endpoint.accept do |socket|  # creates async tasks
-          stream = Async::IO::Stream.new(socket)
-          protocol = Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+        server = TCPServer.new('localhost', port)
+        task = Async::Task.current
+        task.async do
+          socket = server.accept
+          stream = IO::Stream(socket)
 
           # read version
-          message = JSON.parse protocol.read_line
+          message = JSON.parse stream.read_until(RSMP::Proxy::WRAPPING_DELIMITER)
           core_versions = RSMP::Schema.core_versions
           core_versions_array = core_versions.map { |version| { "vers" => version } }
           sxl_version = site.sxl_version
@@ -72,33 +73,43 @@
           expect(message['SXL']).to eq(sxl_version)
 
           # send version ack
-          protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>message["mId"])
+          stream.write(JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>message["mId"]))
+          stream.write(RSMP::Proxy::WRAPPING_DELIMITER)
+          stream.flush
 
           # write version message
-          protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_versions.last}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"51931724-b143-45a3-aa43-171f79ebb337"}/
+          stream.write(%/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_versions.last}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"51931724-b143-45a3-aa43-171f79ebb337"}/)
+          stream.write(RSMP::Proxy::WRAPPING_DELIMITER)
+          stream.flush
 
           # read version ack
-          message = JSON.parse protocol.read_line
+          message = JSON.parse stream.read_until(RSMP::Proxy::WRAPPING_DELIMITER)
           expect(message['mType']).to eq('rSMsg')
           expect(message['type']).to eq('MessageAck')
           expect(message['mId']).to be_nil
 
           # read watchdog
-          message = JSON.parse protocol.read_line
+          message = JSON.parse stream.read_until(RSMP::Proxy::WRAPPING_DELIMITER)
           expect(message['mType']).to eq('rSMsg')
           expect(message['type']).to eq('Watchdog')
 
           # send watchdog ack
-          protocol.write_lines %/{"mType":"rSMsg","type":"MessageAck","oMId":"#{message["mId"]}"}/
+          stream.write(%/{"mType":"rSMsg","type":"MessageAck","oMId":"#{message["mId"]}"}/)
+          stream.write(RSMP::Proxy::WRAPPING_DELIMITER)
+          stream.flush
 
           # send watchdog
-          protocol.write_lines %/{"mType":"rSMsg","type":"Watchdog","wTs":"2022-09-08T13:10:24.695Z","mId":"439e5748-0662-4ab2-a0d7-80fc680f04f5"}/
+          stream.write(%/{"mType":"rSMsg","type":"Watchdog","wTs":"2022-09-08T13:10:24.695Z","mId":"439e5748-0662-4ab2-a0d7-80fc680f04f5"}/)
+          stream.write(RSMP::Proxy::WRAPPING_DELIMITER)
+          stream.flush
 
           # read watchdog ack
-          watchdog_ack = JSON.parse protocol.read_line
+          watchdog_ack = JSON.parse stream.read_until(RSMP::Proxy::WRAPPING_DELIMITER)
         rescue EOFError
           puts e
           puts e.backtrace
+        ensure
+          server.close if server
         end
       } do |task|
         site.start

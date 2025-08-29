@@ -58,19 +58,21 @@ module RSMP
     end
 
     # listen for connections
-    # Async::IO::Endpoint#accept createa an async task that we will wait for
+    # TCPServer#accept creates async tasks that we will wait for
     def run
       log "Starting supervisor on port #{@supervisor_settings["port"]}",
           level: :info,
           timestamp: @clock.now
 
-      @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
-      tasks = @endpoint.accept do |socket|  # creates async tasks
-        handle_connection(socket)
-      rescue StandardError => e
-        distribute_error e, level: :internal
+      @server = TCPServer.new('0.0.0.0', @supervisor_settings["port"])
+      loop do
+        socket = @server.accept
+        @task.async do
+          handle_connection(socket)
+        rescue StandardError => e
+          distribute_error e, level: :internal
+        end
       end
-      tasks.each { |task| task.wait }
     rescue StandardError => e
       distribute_error e, level: :internal
     end
@@ -134,10 +136,18 @@ module RSMP
       end
     end
 
-    def peek_version_message protocol
-      json = protocol.peek_line
+    def peek_version_message stream
+      json = nil
+      stream.peek do |read_buffer|
+        if index = read_buffer.index(Proxy::WRAPPING_DELIMITER)
+          json = read_buffer.slice(0, index)
+        end
+      end
+      
+      raise EOFError unless json
+      
       attributes = Message.parse_attributes json
-       Message.build attributes, json
+      Message.build attributes, json
     end
 
     # accept an incoming connecting by creating and starting a proxy
@@ -150,8 +160,7 @@ module RSMP
 
       authorize_ip info[:ip]
 
-      stream = Async::IO::Stream.new socket
-      protocol = Async::IO::Protocol::Line.new stream, Proxy::WRAPPING_DELIMITER
+      stream = IO::Stream(socket)
 
       settings = {
         supervisor: self,
@@ -161,13 +170,12 @@ module RSMP
         collect: @collect,
         socket: socket,
         stream: stream,
-        protocol: protocol,
         info: info,
         logger: @logger,
         archive: @archive
       }
 
-      version_message = peek_version_message protocol
+      version_message = peek_version_message stream
       id = version_message.attribute('siteId').first['sId']
 
       proxy = find_site id

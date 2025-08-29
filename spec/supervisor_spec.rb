@@ -42,20 +42,12 @@ RSpec.describe RSMP::Supervisor do
       )
     }
 
-    let(:endpoint) {
-      Async::IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
-    }
-
     let(:socket) {
-      endpoint.connect
+      TCPSocket.new("127.0.0.1", supervisor.supervisor_settings['port'])
     }
 
     let(:stream) {
-      Async::IO::Stream.new(socket)
-    }
-
-    let(:protocol) {
-      Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+      IO::Stream(socket)
     }
 
     def connect task, core_versions:, sxl_version:
@@ -75,33 +67,41 @@ RSpec.describe RSMP::Supervisor do
       core_versions_array = core_versions.map {|version| {"vers" => version} }
 
       # write version message
-      protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions_array.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":#{sxl_version.to_json},"mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"})
+      stream.write(%({"mType":"rSMsg","type":"Version","RSMP":#{core_versions_array.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":#{sxl_version.to_json},"mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}))
+      stream.write(RSMP::Proxy::WRAPPING_DELIMITER)
+      stream.flush
 
       # read version ack
-      version_ack = JSON.parse protocol.read_line
+      version_ack = JSON.parse stream.read_until(RSMP::Proxy::WRAPPING_DELIMITER)
       expect(version_ack['mType']).to eq('rSMsg')
       expect(version_ack['type']).to eq('MessageAck')
       expect(version_ack['oMId']).to eq('8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6')
       expect(version_ack['mId']).to be_nil
 
       # read version
-      version = JSON.parse protocol.read_line
+      version = JSON.parse stream.read_until(RSMP::Proxy::WRAPPING_DELIMITER)
       expect(version).to eq({"RSMP"=>core_versions_array, "SXL"=>sxl_version, "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version"})
 
       # send version ack
-      protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())
+      stream.write(JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid()))
+      stream.write(RSMP::Proxy::WRAPPING_DELIMITER)
+      stream.flush
 
       # send watchdog
-      protocol.write_lines %/{"mType":"rSMsg","type":"Watchdog","wTs":"2022-09-08T13:10:24.695Z","mId":"439e5748-0662-4ab2-a0d7-80fc680f04f5"}/
+      stream.write(%/{"mType":"rSMsg","type":"Watchdog","wTs":"2022-09-08T13:10:24.695Z","mId":"439e5748-0662-4ab2-a0d7-80fc680f04f5"}/)
+      stream.write(RSMP::Proxy::WRAPPING_DELIMITER)
+      stream.flush
 
       # read watchdog ack
-      watchdog_ack = JSON.parse protocol.read_line
+      watchdog_ack = JSON.parse stream.read_until(RSMP::Proxy::WRAPPING_DELIMITER)
 
       # read watchdog
-      watchdog = JSON.parse protocol.read_line
+      watchdog = JSON.parse stream.read_until(RSMP::Proxy::WRAPPING_DELIMITER)
 
       # send watchdog ack
-      protocol.write_lines %/{"mType":"rSMsg","type":"MessageAck","oMId":"1e363b78-a67a-40f0-a2b1-acb231656594"}/
+      stream.write(%/{"mType":"rSMsg","type":"MessageAck","oMId":"1e363b78-a67a-40f0-a2b1-acb231656594"}/)
+      stream.write(RSMP::Proxy::WRAPPING_DELIMITER)
+      stream.flush
 
       # supervisor should see our tcp socket and create a proxy
       proxy = supervisor.wait_for_site "RN+SI0001", timeout: timeout
@@ -149,7 +149,9 @@ RSpec.describe RSMP::Supervisor do
         # write version message
         core_version = '3.1.3'
         sxl_version = RSMP::Schema.latest_version(:tlc).to_s
-        protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}/
+        stream.write(%/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}/)
+        stream.write(RSMP::Proxy::WRAPPING_DELIMITER)
+        stream.flush
 
         # wait for site to connect
         proxy = supervisor.wait_for_site "RN+SI0001", timeout: timeout
