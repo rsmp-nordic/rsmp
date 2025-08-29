@@ -65,14 +65,17 @@ module RSMP
     end
 
     def connect_tcp
+      addr = Addrinfo.tcp(@ip, @port)
+      endpoint = IO::Endpoint::AddressEndpoint.new(addr)
+      
       error = nil
-      # TCPSocket#new creates a connection. run in a subtask to avoid issues see issue #22
+      # IO::Endpoint#connect. run in a subtask to avoid issues see issue #22
       result = @task.async do |task|
         task.annotate 'socket task'
         # this timeout is a workaround for connect hanging on windows if the other side is not present yet
         timeout = @site_settings.dig('timeouts','connect') || 1.1
         task.with_timeout timeout do
-          @socket = TCPSocket.new(@ip, @port)
+          @socket = endpoint.connect
         end
         delay = @site_settings.dig('intervals','after_connect')
         task.sleep delay if delay

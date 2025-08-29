@@ -1,6 +1,7 @@
 require 'yaml'
 require 'socket'
 require 'time'
+require 'io/endpoint'
 require 'io/stream'
 require 'colorize'
 require 'json'

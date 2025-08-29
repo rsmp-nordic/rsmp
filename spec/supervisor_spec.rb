@@ -42,8 +42,13 @@ RSpec.describe RSMP::Supervisor do
       )
     }
 
+    let(:endpoint) {
+      addr = Addrinfo.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
+      IO::Endpoint::AddressEndpoint.new(addr)
+    }
+
     let(:socket) {
-      TCPSocket.new("127.0.0.1", supervisor.supervisor_settings['port'])
+      endpoint.connect
     }
 
     let(:stream) {

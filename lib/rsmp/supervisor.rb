@@ -58,20 +58,18 @@ module RSMP
     end
 
     # listen for connections
-    # TCPServer#accept creates async tasks that we will wait for
+    # IO::Endpoint accept handles multiple connections automatically  
     def run
       log "Starting supervisor on port #{@supervisor_settings["port"]}",
           level: :info,
           timestamp: @clock.now
 
-      @server = TCPServer.new('0.0.0.0', @supervisor_settings["port"])
-      loop do
-        socket = @server.accept
-        @task.async do
-          handle_connection(socket)
-        rescue StandardError => e
-          distribute_error e, level: :internal
-        end
+      addr = Addrinfo.tcp('0.0.0.0', @supervisor_settings["port"])
+      endpoint = IO::Endpoint::AddressEndpoint.new(addr)
+      endpoint.accept do |socket|
+        handle_connection(socket)
+      rescue StandardError => e
+        distribute_error e, level: :internal
       end
     rescue StandardError => e
       distribute_error e, level: :internal

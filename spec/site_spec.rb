@@ -55,11 +55,13 @@
       AsyncRSpec.async context: lambda {
         # acts as a supervisior by listening for connections
         # and exhcanging RSMP handhake
-        server = TCPServer.new('localhost', port)
-        task = Async::Task.current
-        task.async do
-          socket = server.accept
-          stream = IO::Stream(socket)
+        addr = Addrinfo.tcp('localhost', port)
+        endpoint = IO::Endpoint::AddressEndpoint.new(addr)
+        endpoint.bind do |server|
+          task = Async::Task.current
+          task.async do
+            socket = server.accept
+            stream = IO::Stream(socket)
 
           # read version
           message = JSON.parse stream.read_until(RSMP::Proxy::WRAPPING_DELIMITER)
@@ -108,9 +110,8 @@
         rescue EOFError
           puts e
           puts e.backtrace
-        ensure
-          server.close if server
         end
+      end
       } do |task|
         site.start
         proxy = site.wait_for_supervisor :any, timeout
