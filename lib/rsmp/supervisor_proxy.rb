@@ -65,16 +65,17 @@ module RSMP
     end
 
     def connect_tcp
-      @endpoint = Async::IO::Endpoint.tcp(@ip, @port)
-
+      addr = Addrinfo.tcp(@ip, @port)
+      endpoint = IO::Endpoint::AddressEndpoint.new(addr)
+      
       error = nil
-      # Async::IO::Endpoint#connect renames the current task. run in a subtask to avoid this see issue #22
+      # IO::Endpoint#connect. run in a subtask to avoid issues see issue #22
       result = @task.async do |task|
         task.annotate 'socket task'
         # this timeout is a workaround for connect hanging on windows if the other side is not present yet
         timeout = @site_settings.dig('timeouts','connect') || 1.1
         task.with_timeout timeout do
-          @socket = @endpoint.connect
+          @socket = endpoint.connect
         end
         delay = @site_settings.dig('intervals','after_connect')
         task.sleep delay if delay
@@ -84,8 +85,7 @@ module RSMP
       end.wait
       raise error if error  # reraise any error outside task
 
-      @stream = Async::IO::Stream.new(@socket)
-      @protocol = Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+      @stream = IO::Stream(@socket)
       set_state :connected
     end
 

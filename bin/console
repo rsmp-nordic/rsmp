@@ -14,19 +14,15 @@ module IRB
   class MyInputMethod < StdioInputMethod
     def initialize
       super
-      @input = Async::IO::Protocol::Line.new(
-        Async::IO::Stream.new(
-          Async::IO::Generic.new($stdin)
-        )
-      )
+      @input = IO::Stream($stdin)
     end
 
     def gets
-      # since this is an async stream, the call to read_line()
+      # since this is an async stream, the call to read_until()
       # will give the Async reactor a chance to schedule other task
       print @prompt
-      line = @input.read_line
-      @line[@line_no += 1] = "#{line}\n"
+      line = @input.read_until("\n")
+      @line[@line_no += 1] = "#{line}"
     end
   end
 
