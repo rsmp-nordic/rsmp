@@ -66,7 +66,7 @@ module RSMP
 
       addr = Addrinfo.tcp('0.0.0.0', @supervisor_settings["port"])
       endpoint = IO::Endpoint::AddressEndpoint.new(addr)
-      endpoint.accept do |socket|
+      endpoint.accept do |socket, address|
         handle_connection(socket)
       rescue StandardError => e
         distribute_error e, level: :internal
