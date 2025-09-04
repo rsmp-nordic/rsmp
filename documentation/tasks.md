@@ -74,16 +74,16 @@ SiteProxy and SupervisorProxy both inherit from Proxy and have a reader task and
 ## Task Hierachy
 When you start an Async task, the parent will be the currently running task, unless you specify a different parent task.
 
-The Async task hierarchy is similar to the object hierachy, with the difference that proxies have reader and timer tasks. And Async::IO which is used to handle TPC connections concurently, will create some intermediate tasks:
+The Async task hierarchy is similar to the object hierachy, with the difference that proxies have reader and timer tasks. And IO::Endpoint which is used to handle TCP connections concurently, will create some intermediate tasks:
 
 ```
 Supervisor @task
-	accepting connections      # this task is created by Async::IO
-		incoming connection 1    # this task is created by Async::IO
+	accepting connections      # this task is created by IO::Endpoint
+		incoming connection 1    # this task is created by IO::Endpoint
 			SiteProxy @task
 				SiteProxy @reader
 				SiteProxy @timer
-		incoming connection 2    # this task is created by Async::IO
+		incoming connection 2    # this task is created by IO::Endpoint
 			SiteProxy @task
 				SiteProxy @reader
 				SiteProxy @timer

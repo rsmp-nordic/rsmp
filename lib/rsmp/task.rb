@@ -13,12 +13,24 @@ module RSMP
     # run() will be called inside the task to perform actual long-running work
     def start
       return if @task
-      Async do |task|
-        task.annotate "#{self.class.name} main task"
-        @task = task
-        run
-        stop_subtasks
-        @task = nil
+      
+      # Use current task context if available, otherwise create new reactor
+      if Async::Task.current?
+        Async::Task.current.async do |task|
+          task.annotate "#{self.class.name} main task"
+          @task = task
+          run
+          stop_subtasks
+          @task = nil
+        end
+      else
+        Async do |task|
+          task.annotate "#{self.class.name} main task"
+          @task = task
+          run
+          stop_subtasks
+          @task = nil
+        end
       end
       self
     end

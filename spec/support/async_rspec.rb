@@ -1,5 +1,3 @@
-require 'async'
-
 # A helper for running RSpec test code inside an Async reactor.
 # You can optially pass a lambda, which will be run in a separate Async,
 # for example, if you need server task running to perform the test.

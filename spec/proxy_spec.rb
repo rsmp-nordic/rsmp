@@ -66,23 +66,25 @@ RSpec.describe RSMP::Proxy do
 		it 'wakes up' do
 			AsyncRSpec.async do |task|
 				condition = Async::Notification.new
+	      result_condition = Async::Notification.new
 				result = nil
 				subtask = task.async do |subtask|
 					proxy.wait_for_condition condition, timeout: 1 do |state|
 						result = (state == :banana)
+	          result_condition.signal
 						result
 					end
 				end
 				condition.signal :pear
-				task.yield
+	      result_condition.wait
 				expect(result).to be(false)
 
 				condition.signal :apple
-				task.yield
+  	    result_condition.wait
 				expect(result).to be(false)
 
 				condition.signal :banana
-				task.yield
+	      result_condition.wait
 				expect(result).to be(true)
 
 				subtask.result

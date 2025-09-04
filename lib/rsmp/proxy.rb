@@ -169,16 +169,14 @@ module RSMP
     end
 
     def run_reader
-      @stream ||= Async::IO::Stream.new(@socket)
-      @protocol ||= Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+      @stream ||= IO::Stream::Buffered.new(@socket)
+      @protocol ||= RSMP::Protocol.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
       loop do
         read_line
       end
     rescue Restart
       log "Closing connection", level: :warning
       raise
-    rescue Async::Wrapper::Cancelled
-      # ignore exceptions raised when a wait is aborted because a task is stopped
     rescue EOFError, Async::Stop
       log "Connection closed", level: :warning
     rescue IOError => e

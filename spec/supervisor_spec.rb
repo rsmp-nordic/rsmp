@@ -43,7 +43,7 @@ RSpec.describe RSMP::Supervisor do
     }
 
     let(:endpoint) {
-      Async::IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
+      IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
     }
 
     let(:socket) {
@@ -51,11 +51,11 @@ RSpec.describe RSMP::Supervisor do
     }
 
     let(:stream) {
-      Async::IO::Stream.new(socket)
+      IO::Stream::Buffered.new(socket)
     }
 
     let(:protocol) {
-      Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+      RSMP::Protocol.new(stream) # rsmp messages are json terminated with a form-feed
     }
 
     def connect task, core_versions:, sxl_version:

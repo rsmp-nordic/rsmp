@@ -14,10 +14,8 @@ module IRB
   class MyInputMethod < StdioInputMethod
     def initialize
       super
-      @input = Async::IO::Protocol::Line.new(
-        Async::IO::Stream.new(
-          Async::IO::Generic.new($stdin)
-        )
+      @input = RSMP::Protocol.new(
+        IO::Stream::Buffered.new($stdin)
       )
     end
 

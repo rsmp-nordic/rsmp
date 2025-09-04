@@ -6,6 +6,8 @@ module RSMP
   class Supervisor < Node
     attr_reader :core_version, :site_id, :supervisor_settings, :proxies, :logger
 
+    attr_accessor :site_id_condition
+
     def initialize options={}
       handle_supervisor_settings( options[:supervisor_settings] || {} )
       super options
@@ -58,19 +60,25 @@ module RSMP
     end
 
     # listen for connections
-    # Async::IO::Endpoint#accept createa an async task that we will wait for
     def run
       log "Starting supervisor on port #{@supervisor_settings["port"]}",
           level: :info,
           timestamp: @clock.now
 
-      @endpoint = Async::IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
-      tasks = @endpoint.accept do |socket|  # creates async tasks
-        handle_connection(socket)
+      @endpoint = IO::Endpoint.tcp('0.0.0.0', @supervisor_settings["port"])
+      @accept_task = Async::Task.current.async do |task|
+        task.annotate "supervisor accept loop"
+        @endpoint.accept() do |socket|  # creates fibers
+          handle_connection(socket)
+        rescue StandardError => e
+          distribute_error e, level: :internal
+        end
+      rescue Async::Stop   # will happen at shutdown
       rescue StandardError => e
         distribute_error e, level: :internal
       end
-      tasks.each { |task| task.wait }
+
+      @accept_task.wait
     rescue StandardError => e
       distribute_error e, level: :internal
     end
@@ -78,6 +86,11 @@ module RSMP
     # stop
     def stop
       log "Stopping supervisor #{@supervisor_settings["site_id"]}", level: :info
+
+      @accept_task.stop if @accept_task
+      @accept_task = nil
+
+      @endpoint = nil
       super
     end
 
@@ -150,8 +163,8 @@ module RSMP
 
       authorize_ip info[:ip]
 
-      stream = Async::IO::Stream.new socket
-      protocol = Async::IO::Protocol::Line.new stream, Proxy::WRAPPING_DELIMITER
+      stream = IO::Stream::Buffered.new(socket)
+      protocol = RSMP::Protocol.new stream
 
       settings = {
         supervisor: self,
