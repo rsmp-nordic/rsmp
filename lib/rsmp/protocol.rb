@@ -28,7 +28,7 @@ module RSMP
     protected
     def read
       line = @stream.gets(RSMP::Proxy::WRAPPING_DELIMITER)
-      return nil unless line
+      raise EOFError, "Stream closed or no data available" unless line
       line.chomp(RSMP::Proxy::WRAPPING_DELIMITER)
     end
   end
