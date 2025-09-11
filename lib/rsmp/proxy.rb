@@ -191,6 +191,7 @@ module RSMP
 
     def read_line
       json = @protocol.read_line
+      raise EOFError, "Connection closed - no more data to read" unless json
       beginning = Time.now
       message = process_packet json
       duration = Time.now - beginning
