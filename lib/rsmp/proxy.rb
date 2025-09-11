@@ -170,7 +170,7 @@ module RSMP
 
     def run_reader
       @stream ||= IO::Stream::Buffered.new(@socket)
-      @protocol ||= RSMP::Protocol.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+      @protocol ||= RSMP::Protocol.new(@stream) # rsmp messages are json terminated with a form-feed
       loop do
         read_line
       end
