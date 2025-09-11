@@ -171,8 +171,19 @@ module RSMP
     def run_reader
       @stream ||= IO::Stream::Buffered.new(@socket)
       @protocol ||= RSMP::Protocol.new(@stream) # rsmp messages are json terminated with a form-feed
+      nil_count = 0
       loop do
-        read_line
+        result = read_line
+        if result == :nil_received
+          nil_count += 1
+          # Allow a few nil reads for connection establishment, but not too many
+          if nil_count > 10
+            raise EOFError, "Connection closed - received too many consecutive nil reads"
+          end
+          sleep 0.01  # Small delay to avoid busy waiting
+        else
+          nil_count = 0  # Reset counter on successful read
+        end
       end
     rescue Restart
       log "Closing connection", level: :warning
@@ -191,7 +202,8 @@ module RSMP
 
     def read_line
       json = @protocol.read_line
-      raise EOFError, "Connection closed - no more data to read" unless json
+      # If protocol returns nil, indicate this to caller for handling
+      return :nil_received unless json
       beginning = Time.now
       message = process_packet json
       duration = Time.now - beginning
