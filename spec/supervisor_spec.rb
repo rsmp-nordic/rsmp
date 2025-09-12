@@ -58,6 +58,10 @@ RSpec.describe RSMP::Supervisor do
       RSMP::Protocol.new(stream) # rsmp messages are json terminated with a form-feed
     }
 
+    let(:supervisor_ready) {
+      Async::Condition.new
+    }
+
     def connect task, core_versions:, sxl_version:
       # mock SecureRandom.uui() so we get known message ids:
       allow(SecureRandom).to receive(:uuid).and_return(
@@ -110,9 +114,13 @@ RSpec.describe RSMP::Supervisor do
     end
 
     it 'completes' do
-      AsyncRSpec.async context: lambda { supervisor.start } do |task|
+      AsyncRSpec.async context: lambda {
+        supervisor.start
+        supervisor_ready.signal
+      } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
+        supervisor_ready.wait
         proxy = connect task, core_versions:core_versions, sxl_version:sxl_version
 
         expect(proxy).to be_an(RSMP::SiteProxy)

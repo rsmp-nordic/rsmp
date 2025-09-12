@@ -11,7 +11,7 @@ module AsyncRSpec
     Async do |task|
       if context     # run context as a separate task
         Async do
-          context.call       
+          context.call
         rescue StandardError, RSpec::Expectations::ExpectationNotMetError => e
           error = e                 # store error
           task.stop                  # stop parent task and all child task, including context task
@@ -22,10 +22,7 @@ module AsyncRSpec
       error = e                     # store error, but no not re-raise
     ensure
       task.stop                     # stop parent task and all child task, including context task
-    end.wait                        # wait for main block to complete (needed if we're already inside a task)
+    end
     raise error if error            # re-raise outside async block, so rspec will catch it
-  rescue IOError => e               # work-around for async still being work-in-progress on Windows
-    puts e
-    puts e.backtrace
   end
 end
