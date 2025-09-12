@@ -38,7 +38,7 @@ RSpec.describe RSMP::Supervisor do
       RSMP::Protocol.new(stream) # rsmp messages are json terminated with a form-feed
     }
 
-    let(:supervisor_ready) {
+    let(:ready) {
       Async::Condition.new
     }
 
@@ -144,7 +144,7 @@ RSpec.describe RSMP::Supervisor do
             puts e.backtrace
           end
           ##puts "[DEBUG] #{Time.now} - signaling supervisor is ready"
-          #supervisor_ready.signal
+          ready.signal
         rescue Async::Stop   # will happen at cleanup
           #puts "[DEBUG] #{Time.now} - Accept task stopped"
         rescue StandardError => e
@@ -160,7 +160,7 @@ RSpec.describe RSMP::Supervisor do
         #puts "[DEBUG] #{Time.now} - Site endpoint created"
 
         ##puts "[DEBUG] #{Time.now} - waiting to supervisor ready condition"
-        #supervisor_ready.wait
+        ready.wait
 
         #puts "[DEBUG] #{Time.now} - Connect to supervisor"
         site_socket = site_endpoint.connect
