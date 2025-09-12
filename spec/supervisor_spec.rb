@@ -74,6 +74,7 @@ RSpec.describe RSMP::Supervisor do
         '0459805f-73aa-41b1-beed-11852f62756d',
         '16ec49e4-6ac1-4da6-827c-2a6562b91731'
       )
+      supervisor_ready.wait
 
       # get core versions array
       core_versions_array = core_versions.map {|version| {"vers" => version} }
@@ -120,7 +121,6 @@ RSpec.describe RSMP::Supervisor do
       } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
-        supervisor_ready.wait
         proxy = connect task, core_versions:core_versions, sxl_version:sxl_version
 
         expect(proxy).to be_an(RSMP::SiteProxy)
@@ -129,7 +129,10 @@ RSpec.describe RSMP::Supervisor do
     end
 
     it 'logs' do
-      AsyncRSpec.async context: lambda { supervisor.start } do |task|
+      AsyncRSpec.async context: lambda {
+        supervisor.start
+        supervisor_ready.signal
+      } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
         proxy = connect task, core_versions:core_versions, sxl_version:sxl_version
@@ -153,7 +156,11 @@ RSpec.describe RSMP::Supervisor do
     end
 
     it 'validates initial messages with correct core version' do
-      AsyncRSpec.async context: lambda { supervisor.start } do |task|
+      AsyncRSpec.async context: lambda {
+        supervisor.start
+        supervisor_ready.signal
+      } do |task|
+        supervisor_ready.wait
         # write version message
         core_version = '3.1.3'
         sxl_version = RSMP::Schema.latest_version(:tlc).to_s

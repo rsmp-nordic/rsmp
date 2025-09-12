@@ -12,7 +12,6 @@ module RSMP
       handle_supervisor_settings( options[:supervisor_settings] || {} )
       super options
       @proxies = []
-      @ready_condition = Async::Notification.new
       @site_id_condition = Async::Notification.new
     end
 
