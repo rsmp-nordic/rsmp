@@ -42,7 +42,7 @@ RSpec.describe RSMP::Supervisor do
       )
     }
 
-    def connect task
+    def site_connect task
       # mock SecureRandom.uui() so we get known message ids:
       allow(SecureRandom).to receive(:uuid).and_return(
         '1b206e56-31be-4739-9164-3a24d47b0aa2',
@@ -56,7 +56,7 @@ RSpec.describe RSMP::Supervisor do
       )
 
       endpoint = IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
-      #supervisor.ready_condition.wait
+      supervisor.ready_condition.wait
       socket = endpoint.connect
       stream = IO::Stream::Buffered.new(socket)
       protocol = RSMP::Protocol.new(stream)
@@ -107,7 +107,7 @@ RSpec.describe RSMP::Supervisor do
       } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
-        protocol = connect task
+        protocol = site_connect task
         proxy = handshake(protocol, core_versions:core_versions, sxl_version:sxl_version)
 
         expect(proxy).to be_an(RSMP::SiteProxy)
@@ -121,7 +121,7 @@ RSpec.describe RSMP::Supervisor do
       } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
-        protocol = connect task
+        protocol = site_connect task
         proxy = handshake(protocol, core_versions:core_versions, sxl_version:sxl_version)
 
         # verify log content
@@ -150,7 +150,7 @@ RSpec.describe RSMP::Supervisor do
         core_version = '3.1.3'
         sxl_version = RSMP::Schema.latest_version(:tlc).to_s
 
-        protocol = connect task
+        protocol = site_connect task
         protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}/
 
         # wait for site to connect
