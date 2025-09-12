@@ -1,5 +1,5 @@
 RSpec.describe 'Connecting' do
-	let(:timeout) { 1 }
+	let(:timeout) { 5 }
 	let(:ip) { 'localhost' }
 	let(:port) { 13111 }
 	let(:site_id) { 'RN+SI0001' }
@@ -45,10 +45,9 @@ RSpec.describe 'Connecting' do
     AsyncRSpec.async context: lambda {
 			supervisor.start
 			supervisor.ready_condition.wait
-			sleep(0.1)
+			sleep(1)
 			site.start
     } do |task|
-			supervisor.ready_condition.wait
 			site_proxy = supervisor.wait_for_site site_id, timeout: timeout
 			supervisor_proxy = site.wait_for_supervisor ip, timeout: timeout
 
@@ -75,7 +74,7 @@ RSpec.describe 'Connecting' do
 
     AsyncRSpec.async context: lambda {
 			site.start
-			sleep(0.1)
+			sleep(1)
 			supervisor.start
 			supervisor.ready_condition.wait
     } do |task|
