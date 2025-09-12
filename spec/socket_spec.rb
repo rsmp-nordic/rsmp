@@ -38,6 +38,10 @@ RSpec.describe RSMP::Supervisor do
       RSMP::Protocol.new(stream) # rsmp messages are json terminated with a form-feed
     }
 
+    let(:supervisor_ready) {
+      Async::Notification.new
+    }
+
     it 'exchanges messages manually without Site or Supervisor objects' do
       puts "[DEBUG] #{Time.now} - Starting test"
       
@@ -54,7 +58,6 @@ RSpec.describe RSMP::Supervisor do
       )
 
       accept_task = nil
-      ready_condition = Async::Notification.new
       
       AsyncRSpec.async context: lambda {
         puts "[DEBUG] #{Time.now} - Setting up supervisor endpoint"
@@ -141,7 +144,7 @@ RSpec.describe RSMP::Supervisor do
             puts e.backtrace
           end
           puts "[DEBUG] #{Time.now} - signaling supervisor is ready"
-          ready_condition.signal
+          supervisor_ready.signal
         rescue Async::Stop   # will happen at cleanup
           puts "[DEBUG] #{Time.now} - Accept task stopped"
         rescue StandardError => e
@@ -154,10 +157,12 @@ RSpec.describe RSMP::Supervisor do
         puts "[DEBUG] #{Time.now} - Starting site side"
         # Acts as a site by connecting to supervisor
         site_endpoint = IO::Endpoint.tcp('localhost', 13112)
-        puts "[DEBUG] #{Time.now} - Site endpoint created, attempting connection"
+        puts "[DEBUG] #{Time.now} - Site endpoint created"
 
         puts "[DEBUG] #{Time.now} - waiting to supervisor ready condition"
-        ready_condition.wait
+        supervisor_ready.wait
+
+        puts "[DEBUG] #{Time.now} - Connect to supervisor"
         site_socket = site_endpoint.connect
         puts "[DEBUG] #{Time.now} - Site connected successfully"
         site_stream = IO::Stream::Buffered.new(site_socket)
