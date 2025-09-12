@@ -149,7 +149,7 @@ RSpec.describe RSMP::Supervisor do
         # Return accept_task so it's accessible in the main block
         accept_task
       } do |accept_task|
-        sleep(0.1)
+        Async::Task.current.yield
         puts "[DEBUG] #{Time.now} - Starting site side"
         # Acts as a site by connecting to supervisor
         site_endpoint = IO::Endpoint.tcp('localhost', 13112)
