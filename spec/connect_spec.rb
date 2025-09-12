@@ -37,6 +37,10 @@ RSpec.describe 'Connecting' do
 		)
 	}
 
+	let(:ready) {
+      Async::Condition.new
+    }
+
 	it 'works when the supervisor is started first' do
 		expect(supervisor.proxies.size).to eq(0)
 		expect(site.proxies.size).to eq(1)
@@ -45,7 +49,9 @@ RSpec.describe 'Connecting' do
     AsyncRSpec.async context: lambda {
 			supervisor.start
 			site.start
+			ready.signal
     } do |task|
+			ready.wait
 			site_proxy = supervisor.wait_for_site site_id, timeout: timeout
 			supervisor_proxy = site.wait_for_supervisor ip, timeout: timeout
 
@@ -73,7 +79,9 @@ RSpec.describe 'Connecting' do
     AsyncRSpec.async context: lambda {
 			site.start
 			supervisor.start
+			ready.signal
     } do |task|
+			ready.wait
 			site_proxy = supervisor.wait_for_site site_id, timeout: timeout
 			supervisor_proxy = site.wait_for_supervisor ip, timeout: timeout
 
