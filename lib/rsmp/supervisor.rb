@@ -12,6 +12,7 @@ module RSMP
       handle_supervisor_settings( options[:supervisor_settings] || {} )
       super options
       @proxies = []
+      @ready_condition = Async::Notification.new
       @site_id_condition = Async::Notification.new
     end
 
@@ -78,6 +79,7 @@ module RSMP
         distribute_error e, level: :internal
       end
 
+      @ready_condition.signal
       @accept_task.wait
     rescue StandardError => e
       distribute_error e, level: :internal

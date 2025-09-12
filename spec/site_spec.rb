@@ -102,6 +102,7 @@ RSpec.describe RSMP::Site do
         end
       } do |task|
         site.start
+        task.yield
         proxy = site.wait_for_supervisor :any, timeout
         expect(proxy).to be_an(RSMP::SupervisorProxy)
         proxy.wait_for_state(:ready, timeout: timeout)

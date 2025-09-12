@@ -12,7 +12,7 @@ RSpec.describe RSMP::Supervisor do
 
   let(:log_settings) {
     {
-      'active' => true,
+      'active' => false,
       'hide_ip_and_port' => true,
       'debug' => false,
       'json' => true,
@@ -42,29 +42,6 @@ RSpec.describe RSMP::Supervisor do
       )
     }
 
-   let(:ready) {
-      Async::Condition.new
-    }
-    
-#    let(:endpoint) {
-#      IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
-#    }
-#
-#    let(:socket) {
-#      ready.wait
-#      endpoint.connect
-#    }
-#
-#    let(:stream) {
-#      IO::Stream::Buffered.new(socket)
-#    }
-#
-#    let(:protocol) {
-#      RSMP::Protocol.new(stream) # rsmp messages are json terminated with a form-feed
-#    }
-
-
-
     def connect task
       # mock SecureRandom.uui() so we get known message ids:
       allow(SecureRandom).to receive(:uuid).and_return(
@@ -79,7 +56,7 @@ RSpec.describe RSMP::Supervisor do
       )
 
       endpoint = IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
-      ready.wait
+      supervisor.ready_condition.wait
       socket = endpoint.connect
       stream = IO::Stream::Buffered.new(socket)
       protocol = RSMP::Protocol.new(stream)
@@ -127,7 +104,6 @@ RSpec.describe RSMP::Supervisor do
     it 'completes' do
       AsyncRSpec.async context: lambda {
         supervisor.start
-        ready.signal
       } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
@@ -142,7 +118,6 @@ RSpec.describe RSMP::Supervisor do
     it 'logs' do
       AsyncRSpec.async context: lambda {
         supervisor.start
-        ready.signal
       } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
@@ -170,7 +145,6 @@ RSpec.describe RSMP::Supervisor do
     it 'validates initial messages with correct core version' do
       AsyncRSpec.async context: lambda {
         supervisor.start
-        ready.signal
       } do |task|
         # write version message
         core_version = '3.1.3'
