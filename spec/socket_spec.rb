@@ -1,6 +1,4 @@
 RSpec.describe RSMP::Supervisor do
-  let(:timeout) { 0.01 }
-
   let(:supervisor_settings) {
     {
       'port' => 13111,    # use special port to avoid sites connection during test

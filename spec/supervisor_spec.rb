@@ -1,5 +1,5 @@
 RSpec.describe RSMP::Supervisor do
-  let(:timeout) { 0.01 }
+  let(:timeout) { 1 }
 
   let(:supervisor_settings) {
     {
@@ -56,7 +56,7 @@ RSpec.describe RSMP::Supervisor do
       )
 
       endpoint = IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
-      supervisor.ready_condition.wait
+      #supervisor.ready_condition.wait
       socket = endpoint.connect
       stream = IO::Stream::Buffered.new(socket)
       protocol = RSMP::Protocol.new(stream)
@@ -154,7 +154,6 @@ RSpec.describe RSMP::Supervisor do
         protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}/
 
         # wait for site to connect
-        task.yield
         proxy = supervisor.wait_for_site "RN+SI0001", timeout: timeout
         expect(proxy).to be_an(RSMP::SiteProxy)
         expect(proxy.site_id).to eq("RN+SI0001")

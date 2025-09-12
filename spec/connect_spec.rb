@@ -44,6 +44,7 @@ RSpec.describe 'Connecting' do
 
     AsyncRSpec.async context: lambda {
 			supervisor.start
+			sleep(0.1)
 			site.start
     } do |task|
 			supervisor.ready_condition.wait
@@ -73,6 +74,7 @@ RSpec.describe 'Connecting' do
 
     AsyncRSpec.async context: lambda {
 			site.start
+			sleep(0.1)
 			supervisor.start
     } do |task|
 			supervisor.ready_condition.wait
