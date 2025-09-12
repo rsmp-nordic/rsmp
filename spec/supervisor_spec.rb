@@ -12,7 +12,7 @@ RSpec.describe RSMP::Supervisor do
 
   let(:log_settings) {
     {
-      'active' => false,
+      'active' => true,
       'hide_ip_and_port' => true,
       'debug' => false,
       'json' => true,
@@ -42,27 +42,30 @@ RSpec.describe RSMP::Supervisor do
       )
     }
 
-    let(:endpoint) {
-      IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
-    }
-
-    let(:socket) {
-      endpoint.connect
-    }
-
-    let(:stream) {
-      IO::Stream::Buffered.new(socket)
-    }
-
-    let(:protocol) {
-      RSMP::Protocol.new(stream) # rsmp messages are json terminated with a form-feed
-    }
-
-    let(:supervisor_ready) {
+   let(:ready) {
       Async::Condition.new
     }
+    
+#    let(:endpoint) {
+#      IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
+#    }
+#
+#    let(:socket) {
+#      ready.wait
+#      endpoint.connect
+#    }
+#
+#    let(:stream) {
+#      IO::Stream::Buffered.new(socket)
+#    }
+#
+#    let(:protocol) {
+#      RSMP::Protocol.new(stream) # rsmp messages are json terminated with a form-feed
+#    }
 
-    def connect task, core_versions:, sxl_version:
+
+
+    def connect task
       # mock SecureRandom.uui() so we get known message ids:
       allow(SecureRandom).to receive(:uuid).and_return(
         '1b206e56-31be-4739-9164-3a24d47b0aa2',
@@ -74,8 +77,15 @@ RSpec.describe RSMP::Supervisor do
         '0459805f-73aa-41b1-beed-11852f62756d',
         '16ec49e4-6ac1-4da6-827c-2a6562b91731'
       )
-      supervisor_ready.wait
 
+      endpoint = IO::Endpoint.tcp("127.0.0.1", supervisor.supervisor_settings['port'])
+      ready.wait
+      socket = endpoint.connect
+      stream = IO::Stream::Buffered.new(socket)
+      protocol = RSMP::Protocol.new(stream)
+    end
+
+    def handshake(protocol, core_versions:, sxl_version:)
       # get core versions array
       core_versions_array = core_versions.map {|version| {"vers" => version} }
 
@@ -117,11 +127,12 @@ RSpec.describe RSMP::Supervisor do
     it 'completes' do
       AsyncRSpec.async context: lambda {
         supervisor.start
-        supervisor_ready.signal
+        ready.signal
       } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
-        proxy = connect task, core_versions:core_versions, sxl_version:sxl_version
+        protocol = connect task
+        proxy = handshake(protocol, core_versions:core_versions, sxl_version:sxl_version)
 
         expect(proxy).to be_an(RSMP::SiteProxy)
         expect(proxy.site_id).to eq("RN+SI0001")
@@ -131,11 +142,12 @@ RSpec.describe RSMP::Supervisor do
     it 'logs' do
       AsyncRSpec.async context: lambda {
         supervisor.start
-        supervisor_ready.signal
+        ready.signal
       } do |task|
         core_versions = RSMP::Schema.core_versions
         sxl_version = RSMP::Schema.latest_version(:tlc)
-        proxy = connect task, core_versions:core_versions, sxl_version:sxl_version
+        protocol = connect task
+        proxy = handshake(protocol, core_versions:core_versions, sxl_version:sxl_version)
 
         # verify log content
         got = supervisor.archive.by_level([:log, :info]).map { |item| item[:text] }
@@ -158,15 +170,17 @@ RSpec.describe RSMP::Supervisor do
     it 'validates initial messages with correct core version' do
       AsyncRSpec.async context: lambda {
         supervisor.start
-        supervisor_ready.signal
+        ready.signal
       } do |task|
-        supervisor_ready.wait
         # write version message
         core_version = '3.1.3'
         sxl_version = RSMP::Schema.latest_version(:tlc).to_s
+
+        protocol = connect task
         protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}/
 
         # wait for site to connect
+        task.yield
         proxy = supervisor.wait_for_site "RN+SI0001", timeout: timeout
         expect(proxy).to be_an(RSMP::SiteProxy)
         expect(proxy.site_id).to eq("RN+SI0001")

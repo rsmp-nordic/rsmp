@@ -78,7 +78,6 @@ module RSMP
         distribute_error e, level: :internal
       end
 
-      @ready_condition.signal
       @accept_task.wait
     rescue StandardError => e
       distribute_error e, level: :internal
