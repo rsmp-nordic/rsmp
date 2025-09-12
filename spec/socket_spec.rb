@@ -54,6 +54,7 @@ RSpec.describe RSMP::Supervisor do
       )
 
       accept_task = nil
+      ready_condition = Async::Notification.new
       
       AsyncRSpec.async context: lambda {
         puts "[DEBUG] #{Time.now} - Setting up supervisor endpoint"
@@ -61,6 +62,7 @@ RSpec.describe RSMP::Supervisor do
         endpoint = IO::Endpoint.tcp('localhost', 13112)  # use different port to avoid conflicts
         puts "[DEBUG] #{Time.now} - Created supervisor endpoint"
         
+
         accept_task = Async::Task.current.async do |task|
           task.annotate "test supervisor accept loop"
           puts "[DEBUG] #{Time.now} - Starting accept loop"
@@ -138,6 +140,8 @@ RSpec.describe RSMP::Supervisor do
             puts "[DEBUG] #{Time.now} - StandardError in supervisor: #{e}"
             puts e.backtrace
           end
+          puts "[DEBUG] #{Time.now} - signaling supervisor is ready"
+          ready_condition.signal
         rescue Async::Stop   # will happen at cleanup
           puts "[DEBUG] #{Time.now} - Accept task stopped"
         rescue StandardError => e
@@ -146,14 +150,14 @@ RSpec.describe RSMP::Supervisor do
         end
         
         puts "[DEBUG] #{Time.now} - Accept task created"
-        # Return accept_task so it's accessible in the main block
-        accept_task
-      } do |accept_task|
-        Async::Task.current.yield
+      } do
         puts "[DEBUG] #{Time.now} - Starting site side"
         # Acts as a site by connecting to supervisor
         site_endpoint = IO::Endpoint.tcp('localhost', 13112)
         puts "[DEBUG] #{Time.now} - Site endpoint created, attempting connection"
+
+        puts "[DEBUG] #{Time.now} - waiting to supervisor ready condition"
+        ready_condition.wait
         site_socket = site_endpoint.connect
         puts "[DEBUG] #{Time.now} - Site connected successfully"
         site_stream = IO::Stream::Buffered.new(site_socket)
