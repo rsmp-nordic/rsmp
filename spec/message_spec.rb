@@ -19,7 +19,7 @@ def sxl_version
 end
 
 RSpec.describe RSMP::Message do
-	let(:version_str) { %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}) }
+	let(:version_str) { %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","step":"Request"}) }
 	let(:ack_str) { '{"mType":"rSMsg","type":"MessageAck","oMId":"a54dc38b-7ddb-42a6-b6e8-95b0d00dad19"}' }
 	let(:not_ack_str) { '{"mType":"rSMsg","type":"MessageNotAck","rea":"since we are a rsmp::SupervisorProxy","oMId":"24b5e2d1-fd32-4f12-80cf-f32f8b2772af"}' }
 	let(:watchdog_str) { '{"mType":"rSMsg","type":"Watchdog","wTs":"2015-06-08T12:01:39.654Z","mId":"a8cafa58-31bc-40bb-b335-645b5ac985cd"}' }
@@ -78,6 +78,7 @@ RSpec.describe RSMP::Message do
        "mType" => "rSMsg",
        "siteId" => [{"sId"=>"RN+SI0001"}],
        "type" => "Version",
+			 "step" => "Request"
 		}}
 
 		it 'builds right type of objects when parsing JSON' do
@@ -154,7 +155,7 @@ RSpec.describe RSMP::Message do
 		it 'generates json' do
 			message = RSMP::Version.new(json)
 			message.generate_json
-			str = %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions.to_json},"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","siteId":[{"sId":"RN+SI0001"}]})
+			str = %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions.to_json},"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","siteId":[{"sId":"RN+SI0001"}],"step":"Request"})
 			expect(message.json).to eq(str)
 		end
 

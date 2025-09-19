@@ -75,7 +75,7 @@ RSpec.describe RSMP::Supervisor do
       core_versions_array = core_versions.map {|version| {"vers" => version} }
 
       # write version message
-      protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions_array.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":#{sxl_version.to_json},"mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"})
+      protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions_array.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":#{sxl_version.to_json},"mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","step":"Request"})
 
       # read version ack
       version_ack = JSON.parse protocol.read_line
@@ -86,7 +86,7 @@ RSpec.describe RSMP::Supervisor do
 
       # read version
       version = JSON.parse protocol.read_line
-      expect(version).to eq({"RSMP"=>core_versions_array, "SXL"=>sxl_version, "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version"})
+      expect(version).to eq({"RSMP"=>core_versions_array, "SXL"=>sxl_version, "mId"=>"1b206e56-31be-4739-9164-3a24d47b0aa2", "mType"=>"rSMsg", "siteId"=>[{"sId"=>"RN+SI0001"}], "type"=>"Version", "step"=>"Response"})
 
       # send version ack
       protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>version["mId"],"mId"=>SecureRandom.uuid())

@@ -75,7 +75,7 @@
           protocol.write_lines JSON.generate("mType"=>"rSMsg","type"=>"MessageAck","oMId"=>message["mId"])
 
           # write version message
-          protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_versions.last}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"51931724-b143-45a3-aa43-171f79ebb337"}/
+          protocol.write_lines %/{"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_versions.last}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"51931724-b143-45a3-aa43-171f79ebb337","step":"Request"}/
 
           # read version ack
           message = JSON.parse protocol.read_line

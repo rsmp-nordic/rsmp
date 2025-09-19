@@ -533,7 +533,7 @@ module RSMP
       raise RSMP::TimeoutError.new "Did not reach state #{state} within #{timeout}s"
     end
 
-    def send_version site_id, core_versions
+    def send_version site_id, core_versions, step:
       if core_versions=='latest'
         versions = [RSMP::Schema.latest_core_version]
       elsif core_versions=='all'
@@ -548,7 +548,8 @@ module RSMP
       version_response = Version.new({
         "RSMP"=>versions_array,
         "siteId"=>site_id_array,
-        "SXL"=>sxl_version.to_s
+        "SXL"=>sxl_version.to_s,
+        "step" => step
       })
       send_message version_response
     end

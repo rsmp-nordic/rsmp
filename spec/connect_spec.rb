@@ -21,7 +21,8 @@ RSpec.describe 'Connecting' do
 	}
 	let(:log_settings) {
 		{
-			'active' => false
+			'active' => false,
+			'json' => true
 		}
 	}
 	let(:site) {
