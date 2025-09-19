@@ -89,7 +89,7 @@ module RSMP
       log "Received Version message for site #{@site_id}", message: message, level: :log
       start_timer
       acknowledge message
-      send_version @site_id, core_versions
+      send_version @site_id, core_versions, step: "Response"
       @version_determined = true
     end
 

@@ -43,7 +43,7 @@ module RSMP
     end
 
     def start_handshake
-      send_version @site_settings['site_id'], core_versions
+      send_version @site_settings['site_id'], core_versions, step: "Request"
     end
 
     # connect to the supervisor and initiate handshake supervisor
