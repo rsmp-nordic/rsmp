@@ -45,7 +45,6 @@ RSpec.describe 'Connecting' do
     AsyncRSpec.async context: lambda {
 			supervisor.start
 			supervisor.ready_condition.wait
-			sleep(1)
 			site.start
     } do |task|
 			site_proxy = supervisor.wait_for_site site_id, timeout: timeout
@@ -74,7 +73,6 @@ RSpec.describe 'Connecting' do
 
     AsyncRSpec.async context: lambda {
 			site.start
-			sleep(1)
 			supervisor.start
 			supervisor.ready_condition.wait
     } do |task|

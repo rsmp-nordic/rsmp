@@ -22,7 +22,7 @@ module RSMP
 
     def write_lines(data)
       @stream.write(data + RSMP::Proxy::WRAPPING_DELIMITER)
-      @stream.flush
+      @stream.flush unless @stream.closed?
     end
   
     protected
