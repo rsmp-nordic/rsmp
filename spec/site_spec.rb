@@ -1,4 +1,4 @@
- RSpec.describe RSMP::Site do
+RSpec.describe RSMP::Site do
   let(:timeout) { 1 }
 
   let(:ip) { 'localhost' }
@@ -55,10 +55,10 @@
       AsyncRSpec.async context: lambda {
         # acts as a supervisior by listening for connections
         # and exhcanging RSMP handhake
-        endpoint = Async::IO::Endpoint.tcp('localhost', port)
-        tasks = endpoint.accept do |socket|  # creates async tasks
-          stream = Async::IO::Stream.new(socket)
-          protocol = Async::IO::Protocol::Line.new(stream,RSMP::Proxy::WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+        endpoint = IO::Endpoint.tcp('localhost', port)
+        endpoint.accept do |socket, address|  # creates async tasks
+          stream = IO::Stream::Buffered.new(socket)
+          protocol = RSMP::Protocol.new(stream) # rsmp messages are json terminated with a form-feed
 
           # read version
           message = JSON.parse protocol.read_line
@@ -96,7 +96,7 @@
 
           # read watchdog ack
           watchdog_ack = JSON.parse protocol.read_line
-        rescue EOFError
+        rescue EOFError => e
           puts e
           puts e.backtrace
         end

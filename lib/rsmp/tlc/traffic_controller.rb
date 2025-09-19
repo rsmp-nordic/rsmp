@@ -141,7 +141,12 @@ module RSMP
       end
 
       def move_cycle_counter
-        counter = Time.now.to_i % current_plan.cycle_time
+        plan = current_plan
+        if plan
+          counter = Time.now.to_i % plan.cycle_time
+        else
+          counter = 0
+        end
         changed = counter != @cycle_counter
         @cycle_counter = counter
         changed

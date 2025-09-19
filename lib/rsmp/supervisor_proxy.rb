@@ -65,28 +65,22 @@ module RSMP
     end
 
     def connect_tcp
-      @endpoint = Async::IO::Endpoint.tcp(@ip, @port)
+      @endpoint = IO::Endpoint.tcp(@ip, @port)
 
-      error = nil
-      # Async::IO::Endpoint#connect renames the current task. run in a subtask to avoid this see issue #22
-      result = @task.async do |task|
-        task.annotate 'socket task'
-        # this timeout is a workaround for connect hanging on windows if the other side is not present yet
-        timeout = @site_settings.dig('timeouts','connect') || 1.1
-        task.with_timeout timeout do
-          @socket = @endpoint.connect
-        end
-        delay = @site_settings.dig('intervals','after_connect')
-        task.sleep delay if delay
-      rescue Errno::ECONNREFUSED => e   # rescue to avoid log output
-        log "Connection refused", level: :warning
-        error = e
-      end.wait
-      raise error if error  # reraise any error outside task
+      # this timeout is a workaround for connect hanging on windows if the other side is not present yet
+      timeout = @site_settings.dig('timeouts','connect') || 1.1
+      task.with_timeout timeout do
+        @socket = @endpoint.connect
+      end
+      delay = @site_settings.dig('intervals','after_connect')
+      task.sleep delay if delay
 
-      @stream = Async::IO::Stream.new(@socket)
-      @protocol = Async::IO::Protocol::Line.new(@stream,WRAPPING_DELIMITER) # rsmp messages are json terminated with a form-feed
+      @stream = IO::Stream::Buffered.new(@socket)
+      @protocol = RSMP::Protocol.new(@stream) # rsmp messages are json terminated with a form-feed
       set_state :connected
+    rescue Errno::ECONNREFUSED => e   # rescue to avoid log output
+      log "Connection refused", level: :warning
+      raise e
     end
 
     def handshake_complete
