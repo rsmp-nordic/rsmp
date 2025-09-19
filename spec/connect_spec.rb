@@ -1,5 +1,5 @@
 RSpec.describe 'Connecting' do
-	let(:timeout) { 5 }
+	let(:timeout) { 1 }
 	let(:ip) { 'localhost' }
 	let(:port) { 13111 }
 	let(:site_id) { 'RN+SI0001' }
