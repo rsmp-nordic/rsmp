@@ -4,6 +4,15 @@
 module RSMP
   module TLC
     class TrafficControllerProxy < SiteProxy
+      
+      # Attribute readers for current status values
+      attr_reader :current_plan, :plan_source
+      
+      def initialize(options)
+        super(options)
+        @current_plan = nil
+        @plan_source = nil
+      end
 
       # Set the signal plan on the remote TLC
       # @param plan_nr [Integer] The signal plan number to set
@@ -51,7 +60,22 @@ module RSMP
 
         # Use the main component (TLC controller)
         raise "TLC main component not found" unless main
-        request_status main.c_id, status_list, options
+        result = request_status main.c_id, status_list, options
+        
+        # If a collector was used, wait for the response and store the values
+        if result&.dig(:collector) && options[:collect] != false
+          status_response = result[:collector].wait
+          if status_response&.dig('sS')
+            status_values = status_response['sS']
+            status_value = status_values.find { |s| s['n'] == 'status' }
+            source_value = status_values.find { |s| s['n'] == 'source' }
+            
+            @current_plan = status_value['s'].to_i if status_value
+            @plan_source = source_value['s'] if source_value
+          end
+        end
+        
+        result
       end
     end
   end

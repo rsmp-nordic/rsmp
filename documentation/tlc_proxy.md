@@ -13,6 +13,13 @@ The TLC proxy provides convenient methods that abstract away the low-level RSMP 
 - **`set_plan(plan_nr, security_code:, options: {})`** - Sets the active signal plan using M0002 command
 - **`fetch_signal_plan(options: {})`** - Retrieves current signal plan information using S0014 status request
 
+### Status Value Storage
+
+The TLC proxy automatically stores retrieved status values for easy access:
+
+- **`current_plan`** - The currently active signal plan number (Integer)
+- **`plan_source`** - The source of the current plan (String, e.g., "forced", "startup", "clock")
+
 ## Automatic Detection
 
 When a TLC site connects to a supervisor, the supervisor automatically detects that it's a TLC based on the site configuration (`type: 'tlc'`) and creates a `TrafficControllerProxy` instead of a generic `SiteProxy`.
@@ -58,19 +65,34 @@ end
 ### Fetching Current Signal Plan
 
 ```ruby
-# Get current signal plan information
-result = tlc_proxy.fetch_signal_plan(collect: { timeout: 5 })
+# Get current signal plan information and store in proxy
+result = tlc_proxy.fetch_signal_plan(options: { collect: { timeout: 5 } })
 
 if result[:collector].ok?
-  response = result[:collector].messages.first
-  status_items = response.attribute('sS')
-  
-  # Find current plan and source
-  current_plan = status_items.find { |item| item['n'] == 'status' }['s']
-  plan_source = status_items.find { |item| item['n'] == 'source' }['s']
-  
-  puts "Current signal plan: #{current_plan} (source: #{plan_source})"
+  # Status values are automatically stored in the proxy
+  puts "Current signal plan: #{tlc_proxy.current_plan}"
+  puts "Plan source: #{tlc_proxy.plan_source}"
+else
+  puts "Failed to retrieve signal plan status"
 end
+
+# You can also access the raw response if needed
+response = result[:collector].messages.first
+status_items = response.attribute('sS')
+```
+
+### Accessing Stored Status Values
+
+```ruby
+# Status values are automatically updated when fetch_signal_plan is called with collection
+tlc_proxy.fetch_signal_plan(options: { collect: { timeout: 5 } })
+
+# Access the stored values directly
+puts "Current plan: #{tlc_proxy.current_plan}"
+puts "Plan source: #{tlc_proxy.plan_source}"
+
+# Values persist until the next successful fetch
+puts "Plan is still: #{tlc_proxy.current_plan}" # Same value
 ```
 
 ### Error Handling
