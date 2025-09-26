@@ -58,4 +58,5 @@ require 'rsmp/tlc/signal_priority'
 require 'rsmp/convert/import/yaml'
 require 'rsmp/convert/export/json_schema'
 
+require 'rsmp/options'
 require 'rsmp/version'
