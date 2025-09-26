@@ -367,37 +367,52 @@ module RSMP
 
       def handle_m0013(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
+        set, clear = parse_input_status(arg['status'])
+        validate_input_ranges(set, clear)
+        apply_input_changes(set, clear)
+      end
+
+      private
+
+      def parse_input_status(status_string)
         set = []
         clear = []
-        arg['status'].split(';').map do |part|
+        status_string.split(';').each do |part|
           offset, set_bits, clear_bits = part.split(',').map(&:to_i)
-          set_bits.to_s(2).reverse.each_char.with_index do |bit, i|
-            set << (i + offset) if bit == '1'
-          end
-          clear_bits.to_s(2).reverse.each_char.with_index do |bit, i|
-            clear << (i + offset) if bit == '1'
-          end
+          extract_input_bits(set_bits, offset, set)
+          extract_input_bits(clear_bits, offset, clear)
         end
 
         set = set.uniq.sort
         clear = clear.uniq.sort
-
-        # if input is both activated and deacticvated, there is no need to acticate first
+        # if input is both activated and deactivated, there is no need to activate first
         set -= (set & clear)
 
+        [set, clear]
+      end
+
+      def extract_input_bits(bits, offset, target_array)
+        bits.to_s(2).reverse.each_char.with_index do |bit, i|
+          target_array << (i + offset) if bit == '1'
+        end
+      end
+
+      def validate_input_ranges(set, clear)
         [set, clear].each do |inputs|
           inputs.each do |input|
-            if (input < 1) && (input < 1)
+            if input < 1
               raise MessageRejected,
-                    "Cannot acticate inputs #{set} and deactive inputs #{clear}: input #{input} is invalid (must be 1 or higher)"
+                    "Cannot activate inputs #{set} and deactivate inputs #{clear}: input #{input} is invalid (must be 1 or higher)"
             end
             if input > @inputs.size
               raise MessageRejected,
-                    "Cannot acticate inputs #{set} and deactive inputs #{clear}: input #{input} is invalid (only #{@inputs.size} inputs present)"
+                    "Cannot activate inputs #{set} and deactivate inputs #{clear}: input #{input} is invalid (only #{@inputs.size} inputs present)"
             end
           end
         end
+      end
 
+      def apply_input_changes(set, clear)
         log "Activating inputs #{set} and deactivating inputs #{clear}", level: :info
 
         set.each do |input|
@@ -409,6 +424,8 @@ module RSMP
           input_logic input, change unless change.nil?
         end
       end
+
+      public
 
       def find_plan(plan_nr)
         plan = @plans[plan_nr.to_i]
@@ -585,10 +602,10 @@ module RSMP
         log "Clock set to #{time}, (adjustment is #{clock.adjustment}s)", level: :info
       end
 
-      def set_input(i, _value)
-        return unless i >= 0 && i < @num_inputs
+      def set_input(input_index, _value)
+        return unless input_index >= 0 && input_index < @num_inputs
 
-        @inputs[i] = bool_to_digit arg['value']
+        @inputs[input_index] = bool_to_digit arg['value']
       end
 
       def set_fixed_time_control(status, source:)

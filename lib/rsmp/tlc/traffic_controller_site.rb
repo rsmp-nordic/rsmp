@@ -144,12 +144,12 @@ module RSMP
         str == 'True'
       end
 
-      def self.make_status(value, q = 'recent')
+      def self.make_status(value, quality = 'recent')
         case value
         when true, false
-          [to_rmsp_bool(value), q]
+          [to_rmsp_bool(value), quality]
         else
-          [value, q]
+          [value, quality]
         end
       end
 

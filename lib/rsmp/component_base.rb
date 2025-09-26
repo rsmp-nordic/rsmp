@@ -67,7 +67,7 @@ module RSMP
       aggregated_status_changed options
     end
 
-    def set_aggregated_status_bools(status)
+    def aggregated_status_bools=(status)
       raise InvalidArgument unless status.is_a? Array
       raise InvalidArgument unless status.size == 8
 

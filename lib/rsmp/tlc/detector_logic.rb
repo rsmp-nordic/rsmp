@@ -49,23 +49,7 @@ module RSMP
         case status_name
         when 'starttime'
           TrafficControllerSite.make_status @node.clock.to_s
-        when 'P'
-          TrafficControllerSite.make_status 0
-        when 'PS'
-          TrafficControllerSite.make_status 0
-        when 'L'
-          TrafficControllerSite.make_status 0
-        when 'LS'
-          TrafficControllerSite.make_status 0
-        when 'B'
-          TrafficControllerSite.make_status 0
-        when 'SP'
-          TrafficControllerSite.make_status 0
-        when 'MC'
-          TrafficControllerSite.make_status 0
-        when 'C'
-          TrafficControllerSite.make_status 0
-        when 'F'
+        when 'P', 'PS', 'L', 'LS', 'B', 'SP', 'MC', 'C', 'F'
           TrafficControllerSite.make_status 0
         end
       end

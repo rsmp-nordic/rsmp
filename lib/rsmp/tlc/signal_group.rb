@@ -72,21 +72,9 @@ module RSMP
       def handle_s0025(_status_code, status_name = nil, _options = {})
         now = @node.clock.to_s
         case status_name
-        when 'minToGEstimate'
+        when 'minToGEstimate', 'maxToGEstimate', 'likelyToGEstimate', 'minToREstimate', 'maxToREstimate', 'likelyToREstimate'
           TrafficControllerSite.make_status now
-        when 'maxToGEstimate'
-          TrafficControllerSite.make_status now
-        when 'likelyToGEstimate'
-          TrafficControllerSite.make_status now
-        when 'ToGConfidence'
-          TrafficControllerSite.make_status 0
-        when 'minToREstimate'
-          TrafficControllerSite.make_status now
-        when 'maxToREstimate'
-          TrafficControllerSite.make_status now
-        when 'likelyToREstimate'
-          TrafficControllerSite.make_status now
-        when 'ToRConfidence'
+        when 'ToGConfidence', 'ToRConfidence'
           TrafficControllerSite.make_status 0
         end
       end

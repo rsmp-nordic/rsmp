@@ -22,9 +22,7 @@ module RSMP
                 class_name.start_with?('RSMP')
 
         if short
-          if var.is_a? Array
-            "#{var_name}: #<#{class_name}:#{class_name.object_id}, #{var.size} items>"
-          elsif var.is_a? Hash
+          if var.is_a?(Array) || var.is_a?(Hash)
             "#{var_name}: #<#{class_name}:#{class_name.object_id}, #{var.size} items>"
           else
             "#{var_name}: #{var}"

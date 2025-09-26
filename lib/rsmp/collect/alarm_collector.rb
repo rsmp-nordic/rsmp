@@ -12,8 +12,15 @@ module RSMP
     # match alarm attributes
     def acceptable?(message)
       return false if super == false
+      return false unless fixed_attributes_match?(message)
+      return false unless rvs_attributes_match?(message)
 
-      # match fixed attributes
+      true
+    end
+
+    private
+
+    def fixed_attributes_match?(message)
       %w[cId aCId aSp ack aS sS cat pri].each do |key|
         want = @matcher[key]
         got = message.attribute(key)
@@ -24,22 +31,24 @@ module RSMP
           return false if got != want
         end
       end
-
-      # match rvs items
-      if @matcher['rvs']
-        matcher_rvs = @matcher['rvs']
-        message_rvs = message.attributes['rvs']
-        return false unless message_rvs
-        return false unless matcher_rvs.all? do |matcher_item|
-          return false unless message_rvs.any? do |message_item|
-            next message_item['n'] == matcher_item['n'] && message_item['v'] == matcher_item['v']
-          end
-
-          next true
-        end
-      end
       true
     end
+
+    def rvs_attributes_match?(message)
+      return true unless @matcher['rvs']
+
+      matcher_rvs = @matcher['rvs']
+      message_rvs = message.attributes['rvs']
+      return false unless message_rvs
+
+      matcher_rvs.all? do |matcher_item|
+        message_rvs.any? do |message_item|
+          message_item['n'] == matcher_item['n'] && message_item['v'] == matcher_item['v']
+        end
+      end
+    end
+
+    public
 
     # return a string that describes what we're collecting
     def describe_matcher

@@ -146,7 +146,7 @@ module RSMP
         return
       end
 
-      component.set_aggregated_status_bools se
+      component.aggregated_status_bools = se
       log "Received #{message.type} status for component #{c_id} [#{component.aggregated_status.join(', ')}]",
           message: message
       acknowledge message
