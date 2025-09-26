@@ -61,7 +61,6 @@ module RSMP
         raise "TLC main component not found" unless main
         
         result = subscribe_to_status main.c_id, status_list, merged_options
-        track_subscription(main.c_id, status_list)  # Use parent's tracking method
         result
       end
       

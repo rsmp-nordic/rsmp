@@ -98,11 +98,26 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
         proxy.subscribe_to_timeplan(options: custom_options)
       end
       
-      it 'tracks the subscription for later cleanup' do
+      it 'adds subscription to status_subscriptions tracking' do
+        # Mock the subscribe_to_status to simulate adding to @status_subscriptions
+        allow(proxy).to receive(:subscribe_to_status) do |component_id, status_list, options|
+          # Simulate what the real subscribe_to_status does - add to @status_subscriptions
+          proxy.instance_variable_get(:@status_subscriptions)[component_id] ||= {}
+          status_list.each do |item|
+            sCI, n = item['sCI'], item['n']
+            proxy.instance_variable_get(:@status_subscriptions)[component_id][sCI] ||= {}
+            proxy.instance_variable_get(:@status_subscriptions)[component_id][sCI][n] = { 'uRt' => nil, 'sOc' => item['sOc'] }
+          end
+          { sent: double('message') }
+        end
+        
         proxy.subscribe_to_timeplan
-        subscriptions = proxy.instance_variable_get(:@auto_subscriptions)
-        expect(subscriptions.length).to eq(1)
-        expect(subscriptions.first[:component_id]).to eq('TLC001')
+        
+        status_subscriptions = proxy.instance_variable_get(:@status_subscriptions)
+        expect(status_subscriptions['TLC001']).not_to be_nil
+        expect(status_subscriptions['TLC001']['S0014']).not_to be_nil
+        expect(status_subscriptions['TLC001']['S0014']['status']).not_to be_nil
+        expect(status_subscriptions['TLC001']['S0014']['source']).not_to be_nil
       end
     end
   end
@@ -232,23 +247,24 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   
   describe '#unsubscribe_all' do
     before do
-      # Mock some subscriptions
-      proxy.instance_variable_set(:@auto_subscriptions, [
-        { component_id: 'TLC001', status_list: [{ 'sCI' => 'S0014', 'n' => 'status' }] }
-      ])
+      # Set up some test subscriptions in @status_subscriptions
+      status_subscriptions = {
+        'TLC001' => {
+          'S0014' => {
+            'status' => { 'uRt' => nil, 'sOc' => true },
+            'source' => { 'uRt' => nil, 'sOc' => true }
+          }
+        }
+      }
+      proxy.instance_variable_set(:@status_subscriptions, status_subscriptions)
       allow(proxy).to receive(:unsubscribe_to_status)
       allow(proxy).to receive(:log)
     end
     
-    it 'unsubscribes from all auto subscriptions' do
-      expected_status_list = [{ 'sCI' => 'S0014', 'n' => 'status' }]
-      expect(proxy).to receive(:unsubscribe_to_status).with('TLC001', expected_status_list)
+    it 'unsubscribes from all tracked subscriptions' do
+      expect(proxy).to receive(:unsubscribe_to_status).with('TLC001', [{ 'sCI' => 'S0014', 'n' => 'status' }])
+      expect(proxy).to receive(:unsubscribe_to_status).with('TLC001', [{ 'sCI' => 'S0014', 'n' => 'source' }])
       proxy.unsubscribe_all
-    end
-    
-    it 'clears the auto subscriptions list' do
-      proxy.unsubscribe_all
-      expect(proxy.instance_variable_get(:@auto_subscriptions)).to be_empty
     end
     
     it 'handles unsubscribe errors gracefully' do

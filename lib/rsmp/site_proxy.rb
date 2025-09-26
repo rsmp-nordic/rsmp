@@ -13,7 +13,6 @@ module RSMP
       @settings = @supervisor.supervisor_settings.clone
       @site_id = options[:site_id]
       @status_subscriptions = {}
-      @auto_subscriptions = []  # Track auto-subscriptions for cleanup
     end
 
     # handle communication
@@ -387,22 +386,21 @@ module RSMP
       ComponentProxy
     end
 
-    # Unsubscribe from all auto-subscriptions
-    # This method provides a centralized way to clean up subscriptions
+    # Unsubscribe from all subscriptions
+    # This method provides a centralized way to clean up all subscriptions
     def unsubscribe_all
-      @auto_subscriptions.each do |subscription|
-        begin
-          unsubscribe_to_status subscription[:component_id], subscription[:status_list].map { |item| item.slice('sCI', 'n') }
-        rescue => e
-          log "Failed to unsubscribe from #{subscription[:component_id]}: #{e.message}", level: :warn
+      @status_subscriptions.each do |component_id, component_subscriptions|
+        component_subscriptions.each do |sCI, sCI_subscriptions|
+          sCI_subscriptions.each do |n, _subscription_data|
+            status_list = [{ 'sCI' => sCI, 'n' => n }]
+            begin
+              unsubscribe_to_status component_id, status_list
+            rescue => e
+              log "Failed to unsubscribe from #{component_id} #{sCI}/#{n}: #{e.message}", level: :warn
+            end
+          end
         end
       end
-      @auto_subscriptions.clear
-    end
-
-    # Track an auto-subscription for later cleanup
-    def track_subscription(component_id, status_list)
-      @auto_subscriptions << { component_id: component_id, status_list: status_list }
     end
   end
 end
