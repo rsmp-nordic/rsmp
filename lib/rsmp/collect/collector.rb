@@ -33,11 +33,11 @@ module RSMP
 
     def make_title(title)
       @title = if title
-        title
-      elsif @filter
-        [@filter.type].flatten.join('/')
-      else
-        ""
+                 title
+               elsif @filter
+                 [@filter.type].flatten.join('/')
+               else
+                 ''
                end
     end
 
@@ -107,7 +107,7 @@ module RSMP
       wait
       @status
     ensure
-      @distributor.remove_receiver self if @distributor
+      @distributor&.remove_receiver self
     end
 
     # Collect message
@@ -150,12 +150,12 @@ module RSMP
       raise "Can't start collectimng unless ready (currently #{@status})" unless ready?
 
       @block = block
-      raise ArgumentError.new("Num, timeout or block must be provided") unless @num || @timeout || @block
+      raise ArgumentError, 'Num, timeout or block must be provided' unless @num || @timeout || @block
 
       reset
       @status = :collecting
       log_start
-      @distributor.add_receiver self if @distributor
+      @distributor&.add_receiver self
     end
 
     # Check if we receive a NotAck related to initiating request, identified by @m_id.
@@ -163,21 +163,18 @@ module RSMP
       return unless @m_id
 
       return unless message.is_a?(MessageNotAck)
-        return unless message.attribute('oMId') == @m_id
-          m_id_short = RSMP::Message.shorten_m_id @m_id, 8
-          cancel RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
-          @distributor.log "#{identifier}: cancelled due to a NotAck", level: :debug
-          true
-        
-      
+      return unless message.attribute('oMId') == @m_id
+
+      m_id_short = RSMP::Message.shorten_m_id @m_id, 8
+      cancel RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
+      @distributor.log "#{identifier}: cancelled due to a NotAck", level: :debug
+      true
     end
 
     # Handle message. and return true when we're done collecting
     def receive(message)
       raise ArgumentError unless message
-      unless ready? || collecting?
-        raise "can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}"
-      end
+      raise "can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}" unless ready? || collecting?
 
       if perform_match message
         if done?

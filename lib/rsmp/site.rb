@@ -51,9 +51,7 @@ module RSMP
         }
       }
       # only one main component can be defined, so replace the default if options define one
-      if options.dig(:site_settings, 'components', 'main')
-        defaults['components']['main'] = options[:site_settings]['components']['main']
-      end
+      defaults['components']['main'] = options[:site_settings]['components']['main'] if options.dig(:site_settings, 'components', 'main')
 
       @site_settings = defaults.deep_merge options[:site_settings]
 

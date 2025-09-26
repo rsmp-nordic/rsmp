@@ -554,9 +554,7 @@ module RSMP
       def handle_m0023(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
         timeout = arg['status'].to_i
-        unless (timeout >= 0) && (timeout <= 65_535)
-          raise RSMP::MessageRejected, "Timeout must be in the range 0-65535, got #{timeout}"
-        end
+        raise RSMP::MessageRejected, "Timeout must be in the range 0-65535, got #{timeout}" unless (timeout >= 0) && (timeout <= 65_535)
 
         if timeout.zero?
           log 'Dynamic bands timeout disabled', level: :info
@@ -699,9 +697,7 @@ module RSMP
       end
 
       def handle_s0006(_status_code, status_name = nil, options = {})
-        if Proxy.version_meets_requirement? options[:sxl_version], '>=1.2.0'
-          log 'S0006 is depreciated, use S0035 instead.', level: :warning
-        end
+        log 'S0006 is depreciated, use S0035 instead.', level: :warning if Proxy.version_meets_requirement? options[:sxl_version], '>=1.2.0'
         status = @emergency_routes.any?
         case status_name
         when 'status'

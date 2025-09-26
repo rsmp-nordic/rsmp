@@ -17,9 +17,7 @@ module RSMP
                                 not_connected].freeze
 
     def initialize(node:, id:, ntsOId: nil, xNId: nil, grouped: false)
-      if grouped == false && (ntsOId || xNId)
-        raise RSMP::ConfigurationError, 'ntsOId and xNId are only allowed for grouped objects'
-      end
+      raise RSMP::ConfigurationError, 'ntsOId and xNId are only allowed for grouped objects' if grouped == false && (ntsOId || xNId)
 
       @c_id = id
       @ntsOId = ntsOId

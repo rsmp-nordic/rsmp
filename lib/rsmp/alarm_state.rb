@@ -118,9 +118,7 @@ module RSMP
     # update from rsmp message
     # component id, alarm code and specialization are not updated
     def update_from_message(message)
-      unless differ_from_message? message
-        raise RepeatedAlarmError, "no changes from previous alarm #{message.m_id_short}"
-      end
+      raise RepeatedAlarmError, "no changes from previous alarm #{message.m_id_short}" unless differ_from_message? message
       raise TimestampError, "timestamp is earlier than previous alarm #{message.m_id_short}" if older_message? message
     ensure
       @timestamp = RSMP::Clock.parse message.attribute('aTs')

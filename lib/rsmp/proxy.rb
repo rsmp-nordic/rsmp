@@ -287,9 +287,7 @@ module RSMP
         # we add half the timer interval to pick the timer
         # event closes to the wanted wathcdog interval
         diff = now - @latest_watchdog_send_at
-        if (diff + (0.5 * @site_settings['intervals']['timer'])) >= @site_settings['intervals']['watchdog']
-          send_watchdog now
-        end
+        send_watchdog now if (diff + (0.5 * @site_settings['intervals']['timer'])) >= @site_settings['intervals']['watchdog']
       end
     end
 
