@@ -9,7 +9,11 @@ module RSMP
     attr_accessor :site_id_condition
 
     def initialize options={}
-      handle_supervisor_settings( options[:supervisor_settings] || {} )
+      # Use new configuration system
+      supervisor_settings = options[:supervisor_settings] || {}
+      @supervisor_options = RSMP::Options::SupervisorOptions.new(supervisor_settings)
+      @supervisor_settings = @supervisor_options.to_h  # For backward compatibility
+      
       super options
       @proxies = []
       @ready_condition = Async::Notification.new
@@ -17,47 +21,20 @@ module RSMP
     end
 
     def site_id
-      @supervisor_settings['site_id']
+      @supervisor_options.site_id
     end
 
+    # Deprecated: Configuration handling is now done in SupervisorOptions
+    # This method is kept for backward compatibility but no longer performs validation
     def handle_supervisor_settings supervisor_settings
-      defaults = {
-        'port' => 12111,
-        'ips' => 'all',
-        'guest' => {
-          'sxl' => 'tlc',
-          'intervals' => {
-            'timer' => 1,
-            'watchdog' => 1
-          },
-          'timeouts' => {
-            'watchdog' => 2,
-            'acknowledgement' => 2
-          }
-        }
-      }
-
-      # merge options into defaults
-      @supervisor_settings = defaults.deep_merge(supervisor_settings)
-      @core_version = @supervisor_settings["guest"]["core_version"]
-      check_site_sxl_types
+      # Validation and defaults are now handled by SupervisorOptions in initialize
+      # This method is deprecated and will be removed in a future version
+      @core_version = @supervisor_options.core_version
     end
 
+    # Deprecated: SXL validation is now handled by SupervisorOptions
     def check_site_sxl_types
-      sites = @supervisor_settings['sites'].clone || {}
-      sites['guest'] = @supervisor_settings['guest']
-      sites.each do |site_id,settings|
-        unless settings
-          raise RSMP::ConfigurationError.new("Configuration for site '#{site_id}' is empty")
-        end
-        sxl = settings['sxl']
-        unless sxl
-          raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': No SXL specified")
-        end
-        RSMP::Schema.find_schemas! sxl if sxl
-      rescue RSMP::Schema::UnknownSchemaError => e
-        raise RSMP::ConfigurationError.new("Configuration error for site '#{site_id}': #{e}")
-      end
+      # Validation is now handled by SupervisorOptions
     end
 
     # listen for connections

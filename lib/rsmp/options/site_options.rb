@@ -99,8 +99,7 @@ module RSMP
                 "type" => "object",
                 "properties" => {
                   "ip" => {
-                    "type" => "string",
-                    "format" => "ipv4"
+                    "type" => "string"
                   },
                   "port" => {
                     "type" => "integer",

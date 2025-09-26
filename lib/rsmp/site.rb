@@ -11,7 +11,13 @@ module RSMP
     def initialize options={}
       super options
       initialize_components
-      handle_site_settings options
+      
+      # Use new configuration system
+      site_settings = options[:site_settings] || {}
+      @site_options = RSMP::Options::SiteOptions.new(site_settings)
+      @site_settings = @site_options.to_h  # For backward compatibility
+      
+      setup_components @site_options.components
       @proxies = []
       @sleep_condition = Async::Notification.new
       @proxies_condition = Async::Notification.new
@@ -19,62 +25,28 @@ module RSMP
     end
 
     def sxl_version
-      @site_settings['sxl_version']
+      @site_options.sxl_version
     end
 
     def site_id
-      @site_settings['site_id']
+      @site_options.site_id
     end
 
+    # Deprecated: Configuration handling is now done in SiteOptions
+    # This method is kept for backward compatibility but no longer performs validation
     def handle_site_settings options={}
-      defaults = {
-        'site_id' => 'RN+SI0001',
-        'supervisors' => [
-          { 'ip' => '127.0.0.1', 'port' => 12111 }
-        ],
-        'sxl' => 'tlc',
-        'sxl_version' => RSMP::Schema.latest_version(:tlc),
-        'intervals' => {
-          'timer' => 0.1,
-          'watchdog' => 1,
-          'reconnect' => 0.1
-        },
-        'timeouts' => {
-          'watchdog' => 2,
-          'acknowledgement' => 2
-        },
-        'send_after_connect' => true,
-        'components' => {
-          'main' => {
-            'C1' => {}
-          }
-        }
-      }
-      # only one main component can be defined, so replace the default if options define one
-      if options.dig(:site_settings,'components','main')
-        defaults['components']['main'] = options[:site_settings]['components']['main']
-      end
-
-      @site_settings = defaults.deep_merge options[:site_settings]
-
-      check_sxl_version
-      check_core_versions
-      setup_components @site_settings['components']
+      # Validation and defaults are now handled by SiteOptions in initialize
+      # This method is deprecated and will be removed in a future version
     end
 
+    # Deprecated: SXL version validation is now handled by SiteOptions
     def check_sxl_version
-      sxl = @site_settings['sxl']
-      version = @site_settings['sxl_version'].to_s
-      RSMP::Schema::find_schema! sxl, version, lenient: true
+      # Validation is now handled by SiteOptions
     end
 
-  def check_core_versions
-    version = @site_settings['core_version']
-      return unless version
-      unless RSMP::Schema::core_versions.include? version
-        error_str = "Unknown core version: #{version}"
-        raise RSMP::ConfigurationError.new(error_str)
-      end
+    # Deprecated: Core version validation is now handled by SiteOptions  
+    def check_core_versions
+      # Validation is now handled by SiteOptions
     end
 
     def site_type_name
