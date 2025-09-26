@@ -19,47 +19,66 @@ module RSMP
     method_option :log, type: :string, aliases: '-l', banner: 'Path to log file'
     method_option :json, type: :boolean, aliases: '-j', banner: 'Show JSON messages in log'
     def site
+      settings, log_settings = load_site_configuration
+      apply_site_options(settings, log_settings)
+      site_class = determine_site_class(settings)
+      run_site(site_class, settings, log_settings)
+    rescue Interrupt
+      # ctrl-c
+    rescue Exception => e
+      puts "Uncaught error: #{e}"
+      puts caller.join("\n")
+    end
+
+    private
+
+    def load_site_configuration
       settings = {}
       log_settings = { 'active' => true }
 
-      if options[:config]
-        if File.exist? options[:config]
-          settings = YAML.load_file options[:config]
-          log_settings = settings.delete('log') || {}
-        else
-          puts "Error: Config #{options[:config]} not found"
-          exit
-        end
+      return [settings, log_settings] unless options[:config]
+
+      if File.exist? options[:config]
+        settings = YAML.load_file options[:config]
+        log_settings = settings.delete('log') || {}
+      else
+        puts "Error: Config #{options[:config]} not found"
+        exit
       end
 
+      [settings, log_settings]
+    end
+
+    def apply_site_options(settings, log_settings)
       settings['site_id'] = options[:id] if options[:id]
-
-      if options[:supervisors]
-        settings['supervisors'] = []
-        options[:supervisors].split(',').each do |supervisor|
-          ip, port = supervisor.split ':'
-          ip = '127.0.0.1' if ip.empty?
-          port = '12111' if port.empty?
-          settings['supervisors'] << { 'ip' => ip, 'port' => port }
-        end
-      end
-
       settings['core_version'] = options[:core] if options[:core]
+      parse_supervisors(settings) if options[:supervisors]
+      log_settings['path'] = options[:log] if options[:log]
+      log_settings['json'] = options[:json] if options[:json]
+    end
 
-      site_class = RSMP::Site
+    def parse_supervisors(settings)
+      settings['supervisors'] = []
+      options[:supervisors].split(',').each do |supervisor|
+        ip, port = supervisor.split ':'
+        ip = '127.0.0.1' if ip.empty?
+        port = '12111' if port.empty?
+        settings['supervisors'] << { 'ip' => ip, 'port' => port }
+      end
+    end
+
+    def determine_site_class(settings)
       site_type = options[:type] || settings['type']
       case site_type
       when 'tlc'
-        site_class = RSMP::TLC::TrafficControllerSite
+        RSMP::TLC::TrafficControllerSite
       else
         puts "Error: Unknown site type #{site_type}"
         exit
       end
+    end
 
-      log_settings['path'] = options[:log] if options[:log]
-
-      log_settings['json'] = options[:json] if options[:json]
-
+    def run_site(site_class, settings, log_settings)
       Async do |task|
         task.annotate 'cli'
         loop do
@@ -82,11 +101,6 @@ module RSMP
           site.stop
         end
       end
-    rescue Interrupt
-      # cntr-c
-    rescue Exception => e
-      puts "Uncaught error: #{e}"
-      puts caller.join("\n")
     end
 
     desc 'supervisor', 'Run RSMP supervisor'
@@ -98,23 +112,33 @@ module RSMP
     method_option :log, type: :string, aliases: '-l', banner: 'Path to log file'
     method_option :json, type: :boolean, aliases: '-j', banner: 'Show JSON messages in log'
     def supervisor
+      settings, log_settings = load_supervisor_configuration
+      apply_supervisor_options(settings, log_settings)
+      run_supervisor(settings, log_settings)
+    rescue Interrupt
+      # ctrl-c
+    end
+
+    def load_supervisor_configuration
       settings = {}
       log_settings = { 'active' => true }
 
-      if options[:config]
-        if File.exist? options[:config]
-          settings = YAML.load_file options[:config]
-          log_settings = settings.delete 'log'
-        else
-          puts "Error: Config #{options[:config]} not found"
-          exit
-        end
+      return [settings, log_settings] unless options[:config]
+
+      if File.exist? options[:config]
+        settings = YAML.load_file options[:config]
+        log_settings = settings.delete 'log'
+      else
+        puts "Error: Config #{options[:config]} not found"
+        exit
       end
 
+      [settings, log_settings]
+    end
+
+    def apply_supervisor_options(settings, log_settings)
       settings['site_id'] = options[:id] if options[:id]
-
       settings['ip'] = options[:ip] if options[:ip]
-
       settings['port'] = options[:port] if options[:port]
 
       if options[:core]
@@ -123,9 +147,10 @@ module RSMP
       end
 
       log_settings['path'] = options[:log] if options[:log]
-
       log_settings['json'] = options[:json] if options[:json]
+    end
 
+    def run_supervisor(settings, log_settings)
       Async do |task|
         task.annotate 'cli'
         supervisor = RSMP::Supervisor.new(supervisor_settings: settings, log_settings: log_settings)
@@ -140,8 +165,6 @@ module RSMP
       rescue RSMP::ConfigurationError => e
         puts "Cannot start supervisor: #{e}"
       end
-    rescue Interrupt
-      # ctrl-c
     end
 
     desc 'convert', 'Convert SXL from YAML to JSON Schema'

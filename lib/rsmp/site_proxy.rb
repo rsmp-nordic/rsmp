@@ -373,7 +373,7 @@ module RSMP
       settings ||= {}
       if type == 'main'
         ComponentProxy.new id: id, node: self, grouped: true,
-                           ntsOId: settings['ntsOId'], xNId: settings['xNId']
+                           ntsoid: settings['ntsOId'], xnid: settings['xNId']
       else
         ComponentProxy.new id: id, node: self, grouped: false
       end

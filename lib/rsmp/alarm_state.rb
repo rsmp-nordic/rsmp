@@ -8,9 +8,7 @@ module RSMP
     attr_reader :component_id, :code, :acknowledged, :suspended, :active, :timestamp, :category, :priority, :rvs
 
     def self.create_from_message(component, message)
-      new(
-        component: component,
-        code: message.attribute('aCId'),
+      options = {
         timestamp: RSMP::Clock.parse(message.attribute('aTs')),
         acknowledged: message.attribute('ack') == 'Acknowledged',
         suspended: message.attribute('aS') == 'Suspended',
@@ -18,22 +16,21 @@ module RSMP
         category: message.attribute('cat'),
         priority: message.attribute('pri').to_i,
         rvs: message.attribute('rvs')
-      )
+      }
+      new(component: component, code: message.attribute('aCId'), **options)
     end
 
-    def initialize(component:, code:,
-                   suspended: false, acknowledged: false, active: false, timestamp: nil,
-                   category: 'D', priority: 2, rvs: [])
+    def initialize(component:, code:, **options)
       @component = component
       @component_id = component.c_id
       @code = code
-      @suspended = !!suspended
-      @acknowledged = !!acknowledged
-      @active = !!active
-      @timestamp = timestamp
-      @category = category || 'D'
-      @priority = priority || 2
-      @rvs = rvs
+      @suspended = !!options[:suspended]
+      @acknowledged = !!options[:acknowledged]
+      @active = !!options[:active]
+      @timestamp = options[:timestamp]
+      @category = options[:category] || 'D'
+      @priority = options[:priority] || 2
+      @rvs = options[:rvs] || []
     end
 
     def to_hash
@@ -118,7 +115,10 @@ module RSMP
     # update from rsmp message
     # component id, alarm code and specialization are not updated
     def update_from_message(message)
-      raise RepeatedAlarmError, "no changes from previous alarm #{message.m_id_short}" unless differ_from_message? message
+      unless differ_from_message? message
+        raise RepeatedAlarmError,
+              "no changes from previous alarm #{message.m_id_short}"
+      end
       raise TimestampError, "timestamp is earlier than previous alarm #{message.m_id_short}" if older_message? message
     ensure
       @timestamp = RSMP::Clock.parse message.attribute('aTs')

@@ -102,8 +102,8 @@ module RSMP
 
     # Collect message
     # Will return once all messages have been collected, or timeout is reached
-    def collect(&block)
-      start(&block)
+    def collect(&)
+      start(&)
       wait
       @status
     ensure
@@ -112,8 +112,8 @@ module RSMP
 
     # Collect message
     # Returns the collected messages, or raise an exception in case of a time out.
-    def collect!(&block)
-      collect(&block)
+    def collect!(&)
+      collect(&)
       ok!
       @messages
     end
@@ -174,7 +174,9 @@ module RSMP
     # Handle message. and return true when we're done collecting
     def receive(message)
       raise ArgumentError unless message
-      raise "can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}" unless ready? || collecting?
+      unless ready? || collecting?
+        raise "can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}"
+      end
 
       if perform_match message
         if done?

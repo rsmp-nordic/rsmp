@@ -59,8 +59,8 @@ module RSMP
         when 'main'
           TrafficController.new node: self,
                                 id: id,
-                                ntsOId: settings['ntsOId'],
-                                xNId: settings['xNId'],
+                                ntsoid: settings['ntsOId'],
+                                xnid: settings['xNId'],
                                 startup_sequence: @startup_sequence,
                                 signal_plans: @signal_plans,
                                 live_output: @site_settings['live_output'],

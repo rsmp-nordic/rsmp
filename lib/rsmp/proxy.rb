@@ -287,7 +287,9 @@ module RSMP
         # we add half the timer interval to pick the timer
         # event closes to the wanted wathcdog interval
         diff = now - @latest_watchdog_send_at
-        send_watchdog now if (diff + (0.5 * @site_settings['intervals']['timer'])) >= @site_settings['intervals']['watchdog']
+        if (diff + (0.5 * @site_settings['intervals']['timer'])) >= @site_settings['intervals']['watchdog']
+          send_watchdog now
+        end
       end
     end
 
@@ -671,8 +673,8 @@ module RSMP
     end
 
     def set_nts_message_attributes(message)
-      message.attributes['ntsOId'] = main && main.ntsOId ? main.ntsOId : ''
-      message.attributes['xNId'] = main && main.xNId ? main.xNId : ''
+      message.attributes['ntsOId'] = main && main.ntsoid ? main.ntsoid : ''
+      message.attributes['xNId'] = main && main.xnid ? main.xnid : ''
     end
 
     # Use Gem class to check version requirement

@@ -1,14 +1,14 @@
 module RSMP
   module TLC
     class SignalPriority
-      attr_reader :state, :node, :id, :level, :eta, :vehicleType, :age, :updated
+      attr_reader :state, :node, :id, :level, :eta, :vehicle_type, :age, :updated
 
-      def initialize(node:, id:, level:, eta:, vehicleType:)
+      def initialize(node:, id:, level:, eta:, vehicle_type:)
         @node = node
         @id = id
         @level = level
         @eta = eta
-        @vehicleType = vehicleType
+        @vehicle_type = vehicle_type
         set_state 'received'
       end
 

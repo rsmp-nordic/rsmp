@@ -4,7 +4,7 @@ module RSMP
   class ComponentBase
     include Inspect
 
-    attr_reader :c_id, :ntsOId, :xNId, :node, :alarms, :statuses,
+    attr_reader :c_id, :ntsoid, :xnid, :node, :alarms, :statuses,
                 :aggregated_status, :aggregated_status_bools, :grouped
 
     AGGREGATED_STATUS_KEYS = %i[local_control
@@ -16,12 +16,15 @@ module RSMP
                                 rest
                                 not_connected].freeze
 
-    def initialize(node:, id:, ntsOId: nil, xNId: nil, grouped: false)
-      raise RSMP::ConfigurationError, 'ntsOId and xNId are only allowed for grouped objects' if grouped == false && (ntsOId || xNId)
+    def initialize(node:, id:, ntsoid: nil, xnid: nil, grouped: false)
+      if grouped == false && (ntsoid || xnid)
+        raise RSMP::ConfigurationError,
+              'ntsoid and xnid are only allowed for grouped objects'
+      end
 
       @c_id = id
-      @ntsOId = ntsOId
-      @xNId = xNId
+      @ntsoid = ntsoid
+      @xnid = xnid
       @node = node
       @grouped = grouped
       clear_aggregated_status

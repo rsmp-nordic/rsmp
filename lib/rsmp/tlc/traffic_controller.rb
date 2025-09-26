@@ -9,8 +9,8 @@ module RSMP
                   :functional_position,
                   :startup_sequence_active, :startup_sequence, :startup_sequence_pos
 
-      def initialize(node:, id:, signal_plans:, startup_sequence:, ntsOId: nil, xNId: nil, live_output: nil, inputs: {})
-        super(node: node, id: id, ntsOId: ntsOId, xNId: xNId, grouped: true)
+      def initialize(node:, id:, signal_plans:, startup_sequence:, ntsoid: nil, xnid: nil, live_output: nil, inputs: {})
+        super(node: node, id: id, ntsoid: ntsoid, xnid: xnid, grouped: true)
         @signal_groups = []
         @detector_logics = []
         @plans = signal_plans
@@ -530,9 +530,9 @@ module RSMP
 
           level = arg['level']
           eta = arg['eta']
-          vehicleType = arg['vehicleType']
+          vehicle_type = arg['vehicleType']
           @signal_priorities << SignalPriority.new(node: self, id: id, level: level, eta: eta,
-                                                   vehicleType: vehicleType)
+                                                   vehicle_type: vehicle_type)
           log "Priority request #{id} for signal group #{signal_group.c_id} received.", level: :info
 
         when 'update'
@@ -554,7 +554,10 @@ module RSMP
       def handle_m0023(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
         timeout = arg['status'].to_i
-        raise RSMP::MessageRejected, "Timeout must be in the range 0-65535, got #{timeout}" unless (timeout >= 0) && (timeout <= 65_535)
+        unless (timeout >= 0) && (timeout <= 65_535)
+          raise RSMP::MessageRejected,
+                "Timeout must be in the range 0-65535, got #{timeout}"
+        end
 
         if timeout.zero?
           log 'Dynamic bands timeout disabled', level: :info
@@ -697,7 +700,11 @@ module RSMP
       end
 
       def handle_s0006(_status_code, status_name = nil, options = {})
-        log 'S0006 is depreciated, use S0035 instead.', level: :warning if Proxy.version_meets_requirement? options[:sxl_version], '>=1.2.0'
+        if Proxy.version_meets_requirement? options[:sxl_version],
+                                            '>=1.2.0'
+          log 'S0006 is depreciated, use S0035 instead.',
+              level: :warning
+        end
         status = @emergency_routes.any?
         case status_name
         when 'status'

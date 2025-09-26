@@ -51,7 +51,8 @@ module RSMP
         }
       }
       # only one main component can be defined, so replace the default if options define one
-      defaults['components']['main'] = options[:site_settings]['components']['main'] if options.dig(:site_settings, 'components', 'main')
+      defaults['components']['main'] = options[:site_settings]['components']['main'] if options.dig(:site_settings,
+                                                                                                    'components', 'main')
 
       @site_settings = defaults.deep_merge options[:site_settings]
 
@@ -181,7 +182,7 @@ module RSMP
       settings ||= {}
       if type == 'main'
         Component.new id: id, node: self, grouped: true,
-                      ntsOId: settings['ntsOId'], xNId: settings['xNId']
+                      ntsoid: settings['ntsOId'], xnid: settings['xNId']
       else
         Component.new id: id, node: self, grouped: false
       end

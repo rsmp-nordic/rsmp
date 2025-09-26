@@ -40,7 +40,10 @@ module RSMP
     def distribute_error(e, options = {})
       return if @ignore_errors.find { |klass| e.is_a? klass }
 
-      log ["#{e} in task: #{Async::Task.current}", e.backtrace].flatten.join("\n"), level: :error if options[:level] == :internal
+      if options[:level] == :internal
+        log ["#{e} in task: #{Async::Task.current}", e.backtrace].flatten.join("\n"),
+            level: :error
+      end
       @error_queue.enqueue e
     end
 

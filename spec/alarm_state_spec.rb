@@ -11,10 +11,9 @@ RSpec.describe RSMP::AlarmState do
   let(:code_id) { 'A0301' }
   let(:state) { RSMP::AlarmState.new component: component, code: code_id, timestamp: now }
 
-  def create_state(acknowledged: nil, suspended: nil, active: nil, timestamp: nil, category: nil, priority: nil)
-    RSMP::AlarmState.new component: component, code: code_id,
-                         acknowledged: acknowledged, suspended: suspended, active: active, timestamp: now,
-                         category: category, priority: priority
+  def create_state(**options)
+    options[:timestamp] ||= now
+    RSMP::AlarmState.new component: component, code: code_id, **options
   end
 
   describe '#initialize' do

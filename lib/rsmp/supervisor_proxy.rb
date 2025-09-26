@@ -377,8 +377,8 @@ module RSMP
       send_status_updates update_list # send status after subscribing is accepted
     end
 
-    def get_status_subscribe_interval(component_id, sCI, n)
-      @status_subscriptions.dig component_id, sCI, n
+    def get_status_subscribe_interval(component_id, sci, n)
+      @status_subscriptions.dig component_id, sci, n
     end
 
     def process_status_unsubcribe(message)

@@ -128,8 +128,15 @@ module RSMP
     def self.validate_message_type(attributes)
       raise MalformedMessage, "JSON must be a Hash, got #{attributes.class} " unless attributes.is_a?(Hash)
       raise MalformedMessage, "'mType' is missing" unless attributes['mType']
-      raise MalformedMessage, "'mType' must be a String, got #{attributes['mType'].class}" unless attributes['mType'].is_a? String
-      raise MalformedMessage, "'mType' must be 'rSMsg', got '#{attributes['mType']}'" unless attributes['mType'] == 'rSMsg'
+
+      unless attributes['mType'].is_a? String
+        raise MalformedMessage,
+              "'mType' must be a String, got #{attributes['mType'].class}"
+      end
+      unless attributes['mType'] == 'rSMsg'
+        raise MalformedMessage,
+              "'mType' must be 'rSMsg', got '#{attributes['mType']}'"
+      end
       raise MalformedMessage, "'type' is missing" unless attributes['type']
       return if attributes['type'].is_a? String
 
