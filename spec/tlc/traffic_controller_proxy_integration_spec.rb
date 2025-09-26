@@ -27,6 +27,7 @@ RSpec.describe 'TLC Proxy Integration' do
   let(:supervisor_settings) {
     {
       'port' => port,
+      'proxy_type' => 'auto',  # Enable auto-detection for integration tests
       'sites' => {
         site_id => { 'sxl' => 'tlc', 'type' => 'tlc' }
       },
@@ -79,7 +80,7 @@ RSpec.describe 'TLC Proxy Integration' do
       expect(tlc_proxy.site_id).to eq(site_id)
       
       # Verify that the TLC proxy has the expected methods  
-      expect(tlc_proxy).to respond_to(:set_plan)
+      expect(tlc_proxy).to respond_to(:set_timeplan)
       expect(tlc_proxy).to respond_to(:fetch_signal_plan)
       
       # Verify the supervisor proxy was created correctly
@@ -118,7 +119,7 @@ RSpec.describe 'TLC Proxy Integration' do
       tlc_proxy = RSMP::TLC::TrafficControllerProxy.new(settings)
       
       # Should raise NotReady error when trying to use methods on disconnected proxy
-      expect { tlc_proxy.set_plan(1, security_code: '1234') }.to raise_error(RSMP::NotReady)
+      expect { tlc_proxy.set_timeplan(1, security_code: '1234') }.to raise_error(RSMP::NotReady)
       expect { tlc_proxy.fetch_signal_plan }.to raise_error(RSMP::NotReady)
     end
   end

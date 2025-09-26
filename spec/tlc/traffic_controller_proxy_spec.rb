@@ -3,6 +3,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   let(:supervisor_settings) do
     {
       'port' => 13113,
+      'proxy_type' => 'auto',  # Enable auto-detection for tests
       'sites' => {
         'TLC001' => { 'sxl' => 'tlc', 'type' => 'tlc' }
       }
@@ -226,13 +227,6 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
         expect(proxy).to receive(:send_command).with(anything, anything, expected_options)
         proxy.set_timeplan(plan_nr, security_code: security_code, options: custom_options)
       end
-    end
-  end
-  
-  describe '#set_plan' do
-    it 'is an alias for set_timeplan' do
-      expect(proxy).to receive(:set_timeplan).with(2, security_code: '1111', options: { test: true })
-      proxy.set_plan(2, security_code: '1111', options: { test: true })
     end
   end
   

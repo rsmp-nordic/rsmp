@@ -15,7 +15,6 @@ module RSMP
         @plan_source = nil
         @timeplan = nil
         @timeouts = options[:timeouts] || {}
-        @auto_subscriptions = []
         
         # Schedule auto-subscription after handshake is complete
         # This will be called once the connection is established
@@ -62,7 +61,7 @@ module RSMP
         raise "TLC main component not found" unless main
         
         result = subscribe_to_status main.c_id, status_list, merged_options
-        @auto_subscriptions << { component_id: main.c_id, status_list: status_list }
+        track_subscription(main.c_id, status_list)  # Use parent's tracking method
         result
       end
       
@@ -146,15 +145,6 @@ module RSMP
         result
       end
 
-      # Set the signal plan on the remote TLC (alias for compatibility)
-      # @param plan_nr [Integer] The signal plan number to set
-      # @param security_code [String] Security code for authentication
-      # @param options [Hash] Additional options for the command
-      # @return [Hash] Result containing sent message and optional collector
-      def set_plan(plan_nr, security_code:, options: {})
-        set_timeplan(plan_nr, security_code: security_code, options: options)
-      end
-
       # Fetch the current signal plan from the remote TLC
       # @param options [Hash] Additional options for the status request
       # @return [Hash] Result containing sent message and optional collector
@@ -193,21 +183,9 @@ module RSMP
         result
       end
       
-      # Unsubscribe from all auto-subscriptions
-      def unsubscribe_all
-        @auto_subscriptions.each do |subscription|
-          begin
-            unsubscribe_to_status subscription[:component_id], subscription[:status_list].map { |item| item.slice('sCI', 'n') }
-          rescue => e
-            log "Failed to unsubscribe from #{subscription[:component_id]}: #{e.message}", level: :warn
-          end
-        end
-        @auto_subscriptions.clear
-      end
-      
       # Override close to clean up subscriptions
       def close
-        unsubscribe_all
+        unsubscribe_all  # Uses parent's unsubscribe_all method
         super
       end
     end

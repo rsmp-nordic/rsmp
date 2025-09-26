@@ -11,7 +11,6 @@ The TLC proxy provides convenient methods that abstract away the low-level RSMP 
 ### Signal Plan Management
 
 - **`set_timeplan(plan_nr, security_code:, options: {})`** - Sets the active signal plan using M0002 command
-- **`set_plan(plan_nr, security_code:, options: {})`** - Alias for `set_timeplan` for compatibility
 - **`fetch_signal_plan(options: {})`** - Retrieves current signal plan information using S0014 status request
 
 ### Status Value Storage & Automatic Synchronization
@@ -34,7 +33,7 @@ The proxy **automatically subscribes to key TLC statuses** after connection is e
 ### Additional Methods
 
 - **`subscribe_to_timeplan(options: {})`** - Manually subscribe to S0014 status updates
-- **`unsubscribe_all()`** - Unsubscribe from all auto-subscriptions
+- **`unsubscribe_all()`** - Unsubscribe from all auto-subscriptions (inherited from SiteProxy)
 
 ### Timeout Configuration
 
@@ -58,22 +57,38 @@ proxy = TrafficControllerProxy.new(
 
 ## Automatic Detection
 
-When a TLC site connects to a supervisor, the supervisor automatically detects that it's a TLC based on the site configuration (`type: 'tlc'`) and creates a `TrafficControllerProxy` instead of a generic `SiteProxy`.
+When a TLC site connects to a supervisor, the supervisor can automatically detect that it's a TLC and create a `TrafficControllerProxy` instead of a generic `SiteProxy`. This behavior is controlled by the `proxy_type` setting in the supervisor configuration:
 
-This happens in the supervisor's connection handling:
+### Proxy Type Configuration
 
 ```ruby
 # In supervisor configuration
 supervisor_settings = {
+  'proxy_type' => 'auto',  # Can be 'auto', 'generic', or 'tlc'
   'sites' => {
     'TLC001' => { 'sxl' => 'tlc', 'type' => 'tlc' }
-  },
-  'guest' => { 'sxl' => 'tlc', 'type' => 'tlc' }  # For unknown TLC sites
+  }
+}
+```
+
+**Proxy Type Options:**
+- **`'generic'`** (default) - Always creates generic `SiteProxy` for compatibility
+- **`'auto'`** - Auto-detects based on site configuration (`type: 'tlc'`)
+- **`'tlc'`** - Always creates `TrafficControllerProxy` regardless of site type
+
+**Example:**
+```ruby
+# Auto-detection mode for testing
+supervisor_settings = {
+  'proxy_type' => 'auto',
+  'sites' => {
+    'TLC001' => { 'sxl' => 'tlc', 'type' => 'tlc' }
+  }
 }
 
-# When TLC001 connects, supervisor creates TLCProxy automatically
+# When TLC001 connects, supervisor creates TrafficControllerProxy automatically
 tlc_proxy = supervisor.wait_for_site('TLC001')
-# tlc_proxy is now an instance of TrafficControllerProxy
+# tlc_proxy is now TrafficControllerProxy with automatic mirroring
 ```
 
 ## Usage Examples
@@ -81,11 +96,8 @@ tlc_proxy = supervisor.wait_for_site('TLC001')
 ### Setting a Signal Plan
 
 ```ruby
-# Set signal plan 3 with security code using new method name
+# Set signal plan 3 with security code
 result = tlc_proxy.set_timeplan(3, security_code: '2222')
-
-# Or use the compatibility alias
-result = tlc_proxy.set_plan(3, security_code: '2222')
 
 # Set plan and collect the response
 result = tlc_proxy.set_timeplan(2, 

@@ -21,6 +21,7 @@ module RSMP
       defaults = {
         'port' => 12111,
         'ips' => 'all',
+        'proxy_type' => 'generic',  # Control proxy creation: 'generic', 'auto', or specific type
         'guest' => {
           'sxl' => 'tlc',
           'type' => 'tlc',
@@ -195,11 +196,23 @@ module RSMP
     end
 
     def build_proxy(site_id, settings)
-      # Determine the appropriate proxy type based on site settings
-      site_settings = check_site_id site_id
-      if site_settings && site_settings['type'] == 'tlc'
+      # Determine the appropriate proxy type based on supervisor configuration
+      proxy_type_setting = @supervisor_settings['proxy_type'] 
+      
+      case proxy_type_setting
+      when 'auto'
+        # Auto-detect based on site settings
+        site_settings = check_site_id site_id
+        if site_settings && site_settings['type'] == 'tlc'
+          TLC::TrafficControllerProxy.new settings.merge(site_id: site_id)
+        else
+          SiteProxy.new settings.merge(site_id: site_id)
+        end
+      when 'tlc'
+        # Force TLC proxy
         TLC::TrafficControllerProxy.new settings.merge(site_id: site_id)
-      else
+      else # 'generic' or any other value defaults to generic SiteProxy
+        # Use generic SiteProxy (default for compatibility)
         SiteProxy.new settings.merge(site_id: site_id)
       end
     end
