@@ -35,91 +35,83 @@ module RSMP
     attr_reader :matchers
 
     # Initialize with a list of wanted statuses
-    def initialize proxy, want, options={}
-      raise ArgumentError.new("num option cannot be used") if options[:num]
-      super proxy, options
+    def initialize(proxy, want, options = {})
+      raise ArgumentError, 'num option cannot be used' if options[:num]
+
+      super(proxy, options)
       @matchers = want.map { |item| build_matcher item }
     end
 
     # Build a matcher object.
     # Sub-classes should override to use their own matcher classes.
-    def build_matcher want
+    def build_matcher(want)
       Matcher.new want
     end
 
     # Get a results
-    def matcher_result want
-      matcher = @matchers.find { |q| q.want == want}
+    def matcher_result(want)
+      matcher = @matchers.find { |q| q.want == want }
       raise unless matcher
+
       matcher.got
     end
 
     # Get an array of the last item received for each matcher
     def reached
-      @matchers.map { |matcher| matcher.got }.compact
+      @matchers.map(&:got).compact
     end
 
     # Get messages from results
     def messages
-      @matchers.map { |matcher| matcher.message }.uniq.compact
+      @matchers.map(&:message).uniq.compact
     end
 
     # Return progress as completes matchers vs. total number of matchers
     def progress
       need = @matchers.size
-      reached =  @matchers.count { |matcher| matcher.done? }
+      reached = @matchers.count(&:done?)
       { need: need, reached: reached }
     end
 
     # Are there matchers left to type_match?
     def done?
-      @matchers.all? { |matcher| matcher.done? }
+      @matchers.all?(&:done?)
     end
 
     # Get a simplified hash of matchers, with values set to either true or false,
     # indicating which matchers have been matched.
     def matcher_status
-      @matchers.map { |matcher| [matcher.want, matcher.done?] }.to_h
+      @matchers.to_h { |matcher| [matcher.want, matcher.done?] }
     end
 
     # Get a simply array of bools, showing which matchers have been matched.
     def summary
-      @matchers.map { |matcher| matcher.done? }
+      @matchers.map(&:done?)
     end
 
     # Check if a messages matches our criteria.
     # Match each matcher against each item in the message
-    def perform_match message
-      return false if super(message) == false
+    def perform_match(message)
+      return false if super == false
       return unless collecting?
-      @matchers.each do |matcher|       # look through matchers
-        get_items(message).each do |item|  # look through items in message
-          matched = matcher.perform_match(item,message,@block)
-          return unless collecting?
-          if matched != nil
-            type = {true=>'match',false=>'mismatch'}[matched]
-            @distributor.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{matcher.want}, item #{item}", level: :debug
-            if matched == true
-              matcher.keep message, item
-            elsif matched == false
-              matcher.forget
-            end
-          end
-        end
+
+      @matchers.each do |matcher|
+        break unless collecting?
+
+        process_matcher(matcher, message)
       end
     end
 
     # don't collect anything. Matcher will collect them instead
-    def keep message
-    end
+    def keep(message); end
 
     def describe
-      @matchers.map {|q| q.want.to_s }
+      @matchers.map { |q| q.want.to_s }
     end
 
     # return a string that describes the attributes that we're looking for
     def describe_matcher
-      "#{super} matching #{matcher_want_hash.to_s}"
+      "#{super} matching #{matcher_want_hash}"
     end
 
     # return a hash that describe the status of all matchers
@@ -128,33 +120,67 @@ module RSMP
       @matchers.each do |matcher|
         want = matcher.want
         if want['cCI']
-          cCI = want['cCI']
-          h[cCI] ||= {}
-          cO = h['cO']
-          n = h['n']
-          v = h['v']
-          h[cCI][cO] ||= {}
-          h[cCI][cO][n] = v
+          process_command_matcher(h, matcher, want)
         elsif want['sCI']
-          sCI = want['sCI']
-          h[sCI] ||= {}
-          n = want['n']
-          s = want['s']
-          if matcher.got && matcher.got['s']
-            h[sCI][n] = { {s=>matcher.got['s']} => matcher.done? }
-          else
-            h[sCI][n] = { s=>nil }
-          end
+          process_status_matcher(h, matcher, want)
         end
       end
       h
     end
 
+    private
+
+    def process_matcher(matcher, message)
+      get_items(message).each do |item|
+        result = matcher.perform_match(item, message, @block)
+        break unless collecting?
+
+        handle_match_result(matcher, message, item, result)
+      end
+    end
+
+    def handle_match_result(matcher, message, item, result)
+      return if result.nil?
+
+      log_match_result(message, matcher, item, result)
+      result ? matcher.keep(message, item) : matcher.forget
+    end
+
+    def log_match_result(message, matcher, item, result)
+      type = result ? 'match' : 'mismatch'
+      @distributor.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{matcher.want}, item #{item}",
+                       level: :debug
+    end
+
+    def process_command_matcher(hash, _matcher, want)
+      cci = want['cCI']
+      hash[cci] ||= {}
+      co = want['cO']
+      n = want['n']
+      v = want['v']
+      hash[cci][co] ||= {}
+      hash[cci][co][n] = v
+    end
+
+    def process_status_matcher(hash, matcher, want)
+      sci = want['sCI']
+      hash[sci] ||= {}
+      n = want['n']
+      s = want['s']
+      hash[sci][n] = if matcher.got && matcher.got['s']
+                       { { s => matcher.got['s'] } => matcher.done? }
+                     else
+                       { s => nil }
+                     end
+    end
+
+    public
+
     # return a string that describe how many many messages have been collected
     def describe_progress
       num_matchers = @matchers.size
-      num_matched =  @matchers.count { |matcher| matcher.done? }
-      ".. Matched #{num_matched}/#{num_matchers} with #{progress_hash.to_s}"
+      num_matched =  @matchers.count(&:done?)
+      ".. Matched #{num_matched}/#{num_matchers} with #{progress_hash}"
     end
 
     def matcher_want_hash
@@ -162,52 +188,69 @@ module RSMP
       @matchers.each do |matcher|
         item = matcher.want
         if item['cCI']
-          cCI = item['cCI']
-          h[cCI] ||= {}
-          cO = item['cO']
-          h[cCI][cO] ||= {}
-          n = item['n']
-          v = item['v']
-          h[cCI][cO][n] = v || :any
+          add_command_want_to_hash(h, item)
         elsif item['sCI']
-          sCI = item['sCI']
-          h[sCI] ||= {}
-          n = item['n']
-          s = item['s']
-          h[sCI][n] = s || :any
+          add_status_want_to_hash(h, item)
         end
       end
       h
+    end
+
+    def add_command_want_to_hash(hash, item)
+      cci = item['cCI']
+      hash[cci] ||= {}
+      co = item['cO']
+      hash[cci][co] ||= {}
+      n = item['n']
+      v = item['v']
+      hash[cci][co][n] = v || :any
+    end
+
+    def add_status_want_to_hash(hash, item)
+      sci = item['sCI']
+      hash[sci] ||= {}
+      n = item['n']
+      s = item['s']
+      hash[sci][n] = s || :any
     end
 
     # return a hash that describe the end result
     def matcher_got_hash
-      h = {}
-      @matchers.each do |matcher|
+      @matchers.each_with_object({}) do |matcher, hash|
         want = matcher.want
-        got = matcher.got
         if want['cCI']
-          cCI = want['cCI']
-          h[cCI] ||= {}
-          cO = want['cO']
-          h[cCI][cO] ||= {}
-          n = want['n']
-          v = got ? got['v'] : nil
-          h[cCI][cO][n] = v
+          add_command_result(hash, matcher)
         elsif want['sCI']
-          sCI = want['sCI']
-          h[sCI] ||= {}
-          n = want['n']
-          s = got ? got['s'] : nil
-          h[sCI][n] = s
+          add_status_result(hash, matcher)
         end
       end
-      h
     end
 
     # log when we end collecting
     def log_complete
-      @distributor.log "#{identifier}: Completed with #{matcher_got_hash.to_s}", level: :collect
+      @distributor.log "#{identifier}: Completed with #{matcher_got_hash}", level: :collect
+    end
+
+    private
+
+    def add_command_result(hash, matcher)
+      want = matcher.want
+      got = matcher.got
+      cci = want['cCI']
+      co = want['cO']
+      n = want['n']
+      hash[cci] ||= {}
+      hash[cci][co] ||= {}
+      hash[cci][co][n] = got ? got['v'] : nil
+    end
+
+    def add_status_result(hash, matcher)
+      want = matcher.want
+      got = matcher.got
+      sci = want['sCI']
+      n = want['n']
+      hash[sci] ||= {}
+      hash[sci][n] = got ? got['s'] : nil
     end
   end
 end

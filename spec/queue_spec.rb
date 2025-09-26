@@ -18,9 +18,9 @@ RSpec.describe RSMP::Queue do
         queue = RSMP::Queue.new nil, task: task
         queue.receive RSMP::Watchdog.new
         queue.receive RSMP::StatusUpdate.new
-        
-        expect(queue.wait_for_message).to be_a(RSMP::Watchdog)    
-        expect(queue.wait_for_message).to be_a(RSMP::StatusUpdate)    
+
+        expect(queue.wait_for_message).to be_a(RSMP::Watchdog)
+        expect(queue.wait_for_message).to be_a(RSMP::StatusUpdate)
       end
     end
 
@@ -30,7 +30,7 @@ RSpec.describe RSMP::Queue do
         wait_task = task.async do
           got = queue.wait_for_message timeout: timeout
           expect(got).to be_a(RSMP::StatusUpdate)
-          expect queue.messages.size == 0
+          expect queue.messages.empty?
         end
         queue.receive RSMP::StatusUpdate.new
         wait_task.wait
@@ -39,14 +39,13 @@ RSpec.describe RSMP::Queue do
 
     it 'respects filter' do
       AsyncRSpec.async do |task|
-        queue = RSMP::Queue.new nil, task: task, filter: RSMP::Filter.new(type:'StatusUpdate')
+        queue = RSMP::Queue.new nil, task: task, filter: RSMP::Filter.new(type: 'StatusUpdate')
         queue.receive RSMP::Watchdog.new
         queue.receive RSMP::StatusUpdate.new
-        
-        expect(queue.wait_for_message).to be_a(RSMP::StatusUpdate)    
+
+        expect(queue.wait_for_message).to be_a(RSMP::StatusUpdate)
       end
     end
-
 
     it 'times out if no mesage received' do
       AsyncRSpec.async do |task|

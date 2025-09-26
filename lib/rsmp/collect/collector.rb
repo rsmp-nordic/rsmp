@@ -1,18 +1,18 @@
 module RSMP
-
   # Collects messages from a distributor.
   # Can filter by message type, componet and direction.
   # Wakes up the once the desired number of messages has been collected.
   class Collector
     include Receiver
+
     attr_reader :condition, :messages, :status, :error, :task, :m_id
 
-    def initialize distributor, options={}
+    def initialize(distributor, options = {})
       initialize_receiver distributor, filter: options[:filter]
       @options = {
         cancel: {
           schema_error: true,
-          disconnect: false,
+          disconnect: false
         }
       }.deep_merge options
       @timeout = options[:timeout]
@@ -20,30 +20,28 @@ module RSMP
       @m_id = options[:m_id]
       @condition = Async::Notification.new
       make_title options[:title]
-      
+
       if task
         @task = task
-      else
-         # if distributor is a Proxy, or some other object that implements task(),
-         # then try to get the task that way
-        if distributor.respond_to? 'task'
-          @task = distributor.task
-        end
+      elsif distributor.respond_to? 'task'
+        # if distributor is a Proxy, or some other object that implements task(),
+        # then try to get the task that way
+        @task = distributor.task
       end
       reset
     end
 
-    def make_title title
-      if title
-        @title = title
-      elsif @filter
-        @title = [@filter.type].flatten.join('/')
-      else
-        @title = ""
-      end
+    def make_title(title)
+      @title = if title
+                 title
+               elsif @filter
+                 [@filter.type].flatten.join('/')
+               else
+                 ''
+               end
     end
 
-    def use_task task
+    def use_task(task)
       @task = task
     end
 
@@ -56,7 +54,7 @@ module RSMP
 
     # Inspect formatter that shows the message we have collected
     def inspect
-      "#<#{self.class.name}:#{self.object_id}, #{inspector(:@messages)}>"
+      "#<#{self.class.name}:#{object_id}, #{inspector(:@messages)}>"
     end
 
     # Is collection active?
@@ -98,23 +96,24 @@ module RSMP
     # return self, so this can be tucked on to calls that return a collector
     def ok!
       raise @error if @error
+
       self
     end
 
     # Collect message
     # Will return once all messages have been collected, or timeout is reached
-    def collect &block
-      start &block
+    def collect(&)
+      start(&)
       wait
       @status
     ensure
-      @distributor.remove_receiver self if @distributor
+      @distributor&.remove_receiver self
     end
 
     # Collect message
     # Returns the collected messages, or raise an exception in case of a time out.
-    def collect! &block
-      collect(&block)
+    def collect!(&)
+      collect(&)
       ok!
       @messages
     end
@@ -141,40 +140,44 @@ module RSMP
     def wait!
       wait
       raise @error if timeout?
+
       @messages
     end
 
     # Start collection and return immediately
     # You can later use wait() to wait for completion
-    def start &block
-      raise RuntimeError.new("Can't start collectimng unless ready (currently #{@status})") unless ready?
+    def start(&block)
+      raise "Can't start collectimng unless ready (currently #{@status})" unless ready?
+
       @block = block
-      raise ArgumentError.new("Num, timeout or block must be provided") unless @num || @timeout || @block
+      raise ArgumentError, 'Num, timeout or block must be provided' unless @num || @timeout || @block
+
       reset
       @status = :collecting
       log_start
-      @distributor.add_receiver self if @distributor
+      @distributor&.add_receiver self
     end
 
     # Check if we receive a NotAck related to initiating request, identified by @m_id.
-    def reject_not_ack message
+    def reject_not_ack(message)
       return unless @m_id
-      if message.is_a?(MessageNotAck)
-        if message.attribute('oMId') == @m_id
-          m_id_short = RSMP::Message.shorten_m_id @m_id, 8
-          cancel RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
-          @distributor.log "#{identifier}: cancelled due to a NotAck", level: :debug
-          true
-        end
-      end
+
+      return unless message.is_a?(MessageNotAck)
+      return unless message.attribute('oMId') == @m_id
+
+      m_id_short = RSMP::Message.shorten_m_id @m_id, 8
+      cancel RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
+      @distributor.log "#{identifier}: cancelled due to a NotAck", level: :debug
+      true
     end
 
     # Handle message. and return true when we're done collecting
-    def receive message
+    def receive(message)
       raise ArgumentError unless message
       unless ready? || collecting?
-        raise RuntimeError.new("can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}") 
+        raise "can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}"
       end
+
       if perform_match message
         if done?
           complete
@@ -185,17 +188,18 @@ module RSMP
       @status
     end
 
-    def describe
-    end
+    def describe; end
 
     # Match message against our collection criteria
-    def perform_match message
+    def perform_match(message)
       return false if reject_not_ack(message)
       return false unless acceptable?(message)
-      #@distributor.log "#{identifier}: Looking at #{message.type} #{message.m_id_short}", level: :collect
+
+      # @distributor.log "#{identifier}: Looking at #{message.type} #{message.m_id_short}", level: :collect
       if @block
         status = [@block.call(message)].flatten
         return unless collecting?
+
         keep message if status.include?(:keep)
       else
         keep message
@@ -227,51 +231,15 @@ module RSMP
       @condition.signal
     end
 
-    # An error occured upstream.
-    # Check if we should cancel.
-    def receive_error error, options={}
-      case error
-      when RSMP::SchemaError
-        receive_schema_error error, options
-      when RSMP::DisconnectError
-        receive_disconnect error, options
-      end
-    end
-
-    # Cancel if we received e schema error for a message type we're collecting
-    def receive_schema_error error, options
-      return unless @options.dig(:cancel,:schema_error)
-      message = options[:message]
-      return unless message
-      klass = message.class.name.split('::').last
-      return unless @filter&.type == nil || [@filter&.type].flatten.include?(klass)
-      @distributor.log "#{identifier}: cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
-      cancel error
-    end
-
-    # Cancel if we received e notificaiton about a disconnect
-    def receive_disconnect error, options
-      return unless @options.dig(:cancel,:disconnect)
-      @distributor.log "#{identifier}: cancelled due to a connection error: #{error.to_s}", level: :debug
-      cancel error
-    end
-
-    # Abort collection
-    def cancel error=nil
-      @error = error
-      @status = :cancelled
-      do_stop
-    end
-
     # Store a message in the result array
-    def keep message
+    def keep(message)
       @messages << message
     end
 
     # Check a message against our match criteria
     # Return true if there's a match, false if not
-    def acceptable? message
-      @filter == nil || @filter.accept?(message)
+    def acceptable?(message)
+      @filter.nil? || @filter.accept?(message)
     end
 
     # return a string describing the types of messages we're collecting
@@ -290,7 +258,7 @@ module RSMP
 
     # return a string that describes the attributes that we're looking for
     def describe_matcher
-      h = {component: @filter&.component}.compact
+      h = { component: @filter&.component }.compact
       if h.empty?
         describe_num_and_type
       else
@@ -324,8 +292,9 @@ module RSMP
 
     # get a short id in hex format, identifying ourself
     def identifier
-      "Collect #{self.object_id.to_s(16)}"
+      "Collect #{object_id.to_s(16)}"
     end
-
   end
 end
+
+require_relative 'collector/cancellation'

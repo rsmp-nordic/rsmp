@@ -1,10 +1,9 @@
 module RSMP
-
   # Class that matches a single status or command item
   class Matcher
     attr_reader :want, :got, :message
 
-    def initialize want
+    def initialize(want)
       @want = want
       @got = nil
       @message = nil
@@ -17,18 +16,16 @@ module RSMP
 
     # Check an item and set @done to true if it matches
     # Store the item and corresponding message if there's a positive or negative match
-    def perform_match item, message, block
+    def perform_match(item, _message, block)
       matched = match? item
-      if matched != nil
-        if block
-          status = block.call(nil,item)
-          matched = status if status == true || status == false
-        end
+      if !matched.nil? && block
+        status = block.call(nil, item)
+        matched = status if [true, false].include?(status)
       end
       matched
     end
 
-    def keep message, item
+    def keep(message, item)
       @message = message
       @got = item
     end
@@ -38,7 +35,6 @@ module RSMP
       @got = nil
     end
 
-    def match? item
-    end
+    def match?(item); end
   end
 end
