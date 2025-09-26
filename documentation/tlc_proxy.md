@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `RSMP::TLC::TrafficControllerProxy` is a specialized proxy class for handling communication with remote Traffic Light Controller (TLC) sites. It extends the base `SiteProxy` class to provide high-level methods for common TLC operations.
+The `RSMP::TLC::TrafficControllerProxy` is a specialized proxy class for handling communication with remote Traffic Light Controller (TLC) sites. It extends the base `SiteProxy` class to provide high-level methods for common TLC operations and **acts as a mirror of the remote TLC** by automatically subscribing to status updates to keep the proxy synchronized.
 
 ## Features
 
@@ -10,15 +10,51 @@ The TLC proxy provides convenient methods that abstract away the low-level RSMP 
 
 ### Signal Plan Management
 
-- **`set_plan(plan_nr, security_code:, options: {})`** - Sets the active signal plan using M0002 command
+- **`set_timeplan(plan_nr, security_code:, options: {})`** - Sets the active signal plan using M0002 command
+- **`set_plan(plan_nr, security_code:, options: {})`** - Alias for `set_timeplan` for compatibility
 - **`fetch_signal_plan(options: {})`** - Retrieves current signal plan information using S0014 status request
 
-### Status Value Storage
+### Status Value Storage & Automatic Synchronization
 
-The TLC proxy automatically stores retrieved status values for easy access:
+The proxy automatically stores retrieved status values and provides convenient attribute readers:
 
-- **`current_plan`** - The currently active signal plan number (Integer)
-- **`plan_source`** - The source of the current plan (String, e.g., "forced", "startup", "clock")
+- **`timeplan`** - The currently active signal plan number (Integer)
+- **`current_plan`** - Alias for `timeplan` for compatibility (Integer) 
+- **`plan_source`** - Source of current plan (String, e.g., "forced", "startup", "clock")
+- **`timeplan_attributes`** - All S0014 attributes stored in the main component
+
+### Automatic Status Subscription
+
+The proxy **automatically subscribes to key TLC statuses** after connection is established:
+
+- **Auto-subscribes to S0014** (timeplan status) with "update on change" 
+- **Automatically processes status updates** to keep local values synchronized
+- **Handles subscription cleanup** when the proxy is closed
+
+### Additional Methods
+
+- **`subscribe_to_timeplan(options: {})`** - Manually subscribe to S0014 status updates
+- **`unsubscribe_all()`** - Unsubscribe from all auto-subscriptions
+
+### Timeout Configuration
+
+The proxy accepts a `timeouts` configuration option for RSMP operations:
+
+```ruby
+timeouts = {
+  'watchdog' => 0.2,
+  'acknowledgement' => 0.2,
+  'command_timeout' => 5.0
+}
+
+proxy = TrafficControllerProxy.new(
+  supervisor: supervisor,
+  ip: '127.0.0.1', 
+  port: 12345,
+  site_id: 'TLC001',
+  timeouts: timeouts
+)
+```
 
 ## Automatic Detection
 
@@ -45,11 +81,14 @@ tlc_proxy = supervisor.wait_for_site('TLC001')
 ### Setting a Signal Plan
 
 ```ruby
-# Set signal plan 3 with security code
+# Set signal plan 3 with security code using new method name
+result = tlc_proxy.set_timeplan(3, security_code: '2222')
+
+# Or use the compatibility alias
 result = tlc_proxy.set_plan(3, security_code: '2222')
 
 # Set plan and collect the response
-result = tlc_proxy.set_plan(2, 
+result = tlc_proxy.set_timeplan(2, 
   security_code: '2222', 
   options: { collect: { timeout: 5 } }
 )
@@ -70,7 +109,7 @@ result = tlc_proxy.fetch_signal_plan(options: { collect: { timeout: 5 } })
 
 if result[:collector].ok?
   # Status values are automatically stored in the proxy
-  puts "Current signal plan: #{tlc_proxy.current_plan}"
+  puts "Current signal plan: #{tlc_proxy.timeplan}"
   puts "Plan source: #{tlc_proxy.plan_source}"
 else
   puts "Failed to retrieve signal plan status"
@@ -84,15 +123,33 @@ status_items = response.attribute('sS')
 ### Accessing Stored Status Values
 
 ```ruby
-# Status values are automatically updated when fetch_signal_plan is called with collection
-tlc_proxy.fetch_signal_plan(options: { collect: { timeout: 5 } })
+# Status values are automatically updated when:
+# 1. fetch_signal_plan is called with collection
+# 2. Status updates are received from subscriptions
 
-# Access the stored values directly
-puts "Current plan: #{tlc_proxy.current_plan}"
+# Access the stored values directly  
+puts "Current plan: #{tlc_proxy.timeplan}"
+puts "Current plan (alias): #{tlc_proxy.current_plan}"
 puts "Plan source: #{tlc_proxy.plan_source}"
 
-# Values persist until the next successful fetch
-puts "Plan is still: #{tlc_proxy.current_plan}" # Same value
+# Get all timeplan attributes from the component
+attributes = tlc_proxy.timeplan_attributes
+puts "All S0014 attributes: #{attributes}"
+
+# Values persist until updated by new data
+puts "Plan is still: #{tlc_proxy.timeplan}" # Same value
+```
+
+### Manual Subscription Management
+
+```ruby
+# The proxy automatically subscribes to timeplan status, but you can also:
+
+# Manually subscribe (usually not needed)
+tlc_proxy.subscribe_to_timeplan
+
+# Unsubscribe from all auto-subscriptions
+tlc_proxy.unsubscribe_all
 ```
 
 ### Error Handling

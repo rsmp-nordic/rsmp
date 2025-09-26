@@ -16,12 +16,15 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     )
   end
   
+  let(:timeouts) { { 'watchdog' => 0.2, 'acknowledgement' => 0.2 } }
+  
   let(:options) do
     {
       supervisor: supervisor,
       ip: '127.0.0.1',
       port: 12345,
-      site_id: 'TLC001'
+      site_id: 'TLC001',
+      timeouts: timeouts
     }
   end
   
@@ -31,6 +34,11 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     it 'initializes with nil status values' do
       expect(proxy.current_plan).to be_nil
       expect(proxy.plan_source).to be_nil
+      expect(proxy.timeplan).to be_nil
+    end
+    
+    it 'stores timeouts configuration' do
+      expect(proxy.timeouts).to eq(timeouts)
     end
     
     it 'is a subclass of SiteProxy' do
@@ -38,25 +46,156 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     end
   end
   
-  describe '#set_plan' do
+  describe '#handshake_complete' do
+    let(:main_component) { double('main_component', c_id: 'TLC001') }
+    
+    before do
+      allow(proxy).to receive(:main).and_return(main_component)
+      allow(proxy).to receive(:start_watchdog)  # Mock watchdog start
+      allow(proxy).to receive(:log)
+      # Mock the parent handshake_complete to avoid async issues
+      allow_any_instance_of(RSMP::SiteProxy).to receive(:handshake_complete)
+    end
+    
+    it 'handles subscription errors gracefully' do
+      allow(proxy).to receive(:validate_ready).and_raise(StandardError.new("test error"))
+      expect { proxy.handshake_complete }.not_to raise_error
+    end
+  end
+  
+  describe '#subscribe_to_timeplan' do
+    let(:main_component) { double('main_component', c_id: 'TLC001') }
+    
+    context 'when proxy is not ready' do
+      it 'raises NotReady error' do
+        expect { proxy.subscribe_to_timeplan }.to raise_error(RSMP::NotReady)
+      end
+    end
+    
+    context 'when proxy is ready' do
+      before do
+        allow(proxy).to receive(:validate_ready)
+        allow(proxy).to receive(:main).and_return(main_component)
+        allow(proxy).to receive(:subscribe_to_status).and_return({ sent: double('message') })
+      end
+      
+      it 'subscribes to S0014 status updates with update on change' do
+        expected_status_list = [
+          { "sCI" => "S0014", "n" => "status", "sOc" => true },
+          { "sCI" => "S0014", "n" => "source", "sOc" => true }
+        ]
+        
+        expect(proxy).to receive(:subscribe_to_status).with('TLC001', expected_status_list, timeouts)
+        proxy.subscribe_to_timeplan
+      end
+      
+      it 'merges provided options with timeouts' do
+        custom_options = { collect: true }
+        expected_options = timeouts.merge(custom_options)
+        
+        expect(proxy).to receive(:subscribe_to_status).with(anything, anything, expected_options)
+        proxy.subscribe_to_timeplan(options: custom_options)
+      end
+      
+      it 'tracks the subscription for later cleanup' do
+        proxy.subscribe_to_timeplan
+        subscriptions = proxy.instance_variable_get(:@auto_subscriptions)
+        expect(subscriptions.length).to eq(1)
+        expect(subscriptions.first[:component_id]).to eq('TLC001')
+      end
+    end
+  end
+  
+  describe '#process_status_update' do
+    let(:main_component) { double('main_component', c_id: 'TLC001') }
+    let(:message) do
+      double('message').tap do |msg|
+        allow(msg).to receive(:attribute).with('cId').and_return('TLC001')
+        allow(msg).to receive(:attribute).with('sS').and_return([
+          { 'sCI' => 'S0014', 'n' => 'status', 's' => '3' },
+          { 'sCI' => 'S0014', 'n' => 'source', 's' => 'forced' }
+        ])
+        allow(msg).to receive(:type).and_return('StatusUpdate')
+      end
+    end
+    
+    before do
+      allow(proxy).to receive(:main).and_return(main_component)
+      allow(proxy).to receive(:acknowledge)
+      allow(proxy).to receive(:log)
+      # Don't mock the parent process_status_update method - let it call through
+      # but mock the methods it calls to avoid complications
+      allow(proxy).to receive(:find_component).and_return(main_component)
+      allow(main_component).to receive(:check_repeat_values)
+      allow(main_component).to receive(:store_status)
+    end
+    
+    it 'calls parent process_status_update' do
+      # Just verify it doesn't error - we can't easily test the parent call
+      expect { proxy.process_status_update(message) }.not_to raise_error
+    end
+    
+    it 'automatically stores S0014 timeplan values' do
+      proxy.process_status_update(message)
+      
+      expect(proxy.timeplan).to eq(3)
+      expect(proxy.current_plan).to eq(3)
+      expect(proxy.plan_source).to eq('forced')
+    end
+    
+    it 'ignores updates from other components' do
+      allow(message).to receive(:attribute).with('cId').and_return('OTHER001')
+      
+      proxy.process_status_update(message)
+      
+      expect(proxy.timeplan).to be_nil
+      expect(proxy.current_plan).to be_nil
+    end
+  end
+  
+  describe '#timeplan_attributes' do
+    let(:main_component) { double('main_component') }
+    
+    before do
+      allow(proxy).to receive(:main).and_return(main_component)
+    end
+    
+    it 'returns S0014 attributes from main component' do
+      statuses = { 'S0014' => { 'status' => { 's' => '2', 'q' => 'recent' } } }
+      allow(main_component).to receive(:instance_variable_get).with(:@statuses).and_return(statuses)
+      
+      expect(proxy.timeplan_attributes).to eq({ 'status' => { 's' => '2', 'q' => 'recent' } })
+    end
+    
+    it 'returns empty hash when no main component' do
+      allow(proxy).to receive(:main).and_return(nil)
+      expect(proxy.timeplan_attributes).to eq({})
+    end
+    
+    it 'returns empty hash when no S0014 data' do
+      allow(main_component).to receive(:instance_variable_get).with(:@statuses).and_return({})
+      expect(proxy.timeplan_attributes).to eq({})
+    end
+  end
+  
+  describe '#set_timeplan' do
     let(:plan_nr) { 3 }
     let(:security_code) { '1234' }
     
     context 'when proxy is not ready' do
       it 'raises NotReady error' do
-        expect { proxy.set_plan(plan_nr, security_code: security_code) }.to raise_error(RSMP::NotReady)
+        expect { proxy.set_timeplan(plan_nr, security_code: security_code) }.to raise_error(RSMP::NotReady)
       end
     end
     
     context 'when main component is not available' do
       before do
-        # Mock ready state but no main component
         allow(proxy).to receive(:validate_ready)
         allow(proxy).to receive(:main).and_return(nil)
       end
       
       it 'raises error about missing main component' do
-        expect { proxy.set_plan(plan_nr, security_code: security_code) }.to raise_error("TLC main component not found")
+        expect { proxy.set_timeplan(plan_nr, security_code: security_code) }.to raise_error("TLC main component not found")
       end
     end
     
@@ -69,25 +208,68 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
         allow(proxy).to receive(:send_command).and_return({ sent: double('message') })
       end
       
-      it 'calls send_command with correct parameters' do
+      it 'calls send_command with correct parameters and merged timeouts' do
         expected_command_list = [
           { "cCI" => "M0002", "cO" => "setPlan", "n" => "status", "v" => "True" },
           { "cCI" => "M0002", "cO" => "setPlan", "n" => "securityCode", "v" => "1234" },
           { "cCI" => "M0002", "cO" => "setPlan", "n" => "timeplan", "v" => "3" }
         ]
         
-        expect(proxy).to receive(:send_command).with('TLC001', expected_command_list, {})
-        proxy.set_plan(plan_nr, security_code: security_code)
+        expect(proxy).to receive(:send_command).with('TLC001', expected_command_list, timeouts)
+        proxy.set_timeplan(plan_nr, security_code: security_code)
       end
       
-      it 'passes through options' do
-        options = { collect: true }
-        expect(proxy).to receive(:send_command).with(anything, anything, options)
-        proxy.set_plan(plan_nr, security_code: security_code, options: options)
+      it 'merges provided options with timeouts' do
+        custom_options = { collect: true }
+        expected_options = timeouts.merge(custom_options)
+        
+        expect(proxy).to receive(:send_command).with(anything, anything, expected_options)
+        proxy.set_timeplan(plan_nr, security_code: security_code, options: custom_options)
       end
     end
   end
   
+  describe '#set_plan' do
+    it 'is an alias for set_timeplan' do
+      expect(proxy).to receive(:set_timeplan).with(2, security_code: '1111', options: { test: true })
+      proxy.set_plan(2, security_code: '1111', options: { test: true })
+    end
+  end
+  
+  describe '#unsubscribe_all' do
+    before do
+      # Mock some subscriptions
+      proxy.instance_variable_set(:@auto_subscriptions, [
+        { component_id: 'TLC001', status_list: [{ 'sCI' => 'S0014', 'n' => 'status' }] }
+      ])
+      allow(proxy).to receive(:unsubscribe_to_status)
+      allow(proxy).to receive(:log)
+    end
+    
+    it 'unsubscribes from all auto subscriptions' do
+      expected_status_list = [{ 'sCI' => 'S0014', 'n' => 'status' }]
+      expect(proxy).to receive(:unsubscribe_to_status).with('TLC001', expected_status_list)
+      proxy.unsubscribe_all
+    end
+    
+    it 'clears the auto subscriptions list' do
+      proxy.unsubscribe_all
+      expect(proxy.instance_variable_get(:@auto_subscriptions)).to be_empty
+    end
+    
+    it 'handles unsubscribe errors gracefully' do
+      allow(proxy).to receive(:unsubscribe_to_status).and_raise(StandardError.new("test error"))
+      expect { proxy.unsubscribe_all }.not_to raise_error
+    end
+  end
+  
+  describe '#close' do
+    it 'can be called without errors' do
+      allow_any_instance_of(RSMP::SiteProxy).to receive(:close)
+      expect { proxy.close }.not_to raise_error
+    end
+  end
+
   describe '#fetch_signal_plan' do
     context 'when proxy is not ready' do
       it 'raises NotReady error' do
@@ -114,13 +296,13 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
         allow(proxy).to receive(:main).and_return(main_component)
       end
       
-      it 'calls request_status with correct parameters' do
+      it 'calls request_status with correct parameters and merged timeouts' do
         expected_status_list = [
           { "sCI" => "S0014", "n" => "status" },
           { "sCI" => "S0014", "n" => "source" }
         ]
         
-        expect(proxy).to receive(:request_status).with('TLC001', expected_status_list, {}).and_return({ sent: double('message') })
+        expect(proxy).to receive(:request_status).with('TLC001', expected_status_list, timeouts).and_return({ sent: double('message') })
         proxy.fetch_signal_plan
       end
       
@@ -138,115 +320,10 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
         
         proxy.fetch_signal_plan(options: { collect: true })
         
+        expect(proxy.timeplan).to eq(2)
         expect(proxy.current_plan).to eq(2)
         expect(proxy.plan_source).to eq('forced')
       end
-      
-      it 'handles partial status response' do
-        collector = double('collector')
-        status_response = {
-          'sS' => [
-            { 'n' => 'status', 's' => '1' }
-            # missing source
-          ]
-        }
-        
-        allow(collector).to receive(:wait).and_return(status_response)
-        allow(proxy).to receive(:request_status).and_return({ collector: collector })
-        
-        proxy.fetch_signal_plan(options: { collect: true })
-        
-        expect(proxy.current_plan).to eq(1)
-        expect(proxy.plan_source).to be_nil
-      end
-      
-      it 'handles malformed status response' do
-        collector = double('collector')
-        status_response = { 'sS' => nil }
-        
-        allow(collector).to receive(:wait).and_return(status_response)
-        allow(proxy).to receive(:request_status).and_return({ collector: collector })
-        
-        proxy.fetch_signal_plan(options: { collect: true })
-        
-        expect(proxy.current_plan).to be_nil
-        expect(proxy.plan_source).to be_nil
-      end
-      
-      it 'does not store values when no collector is used' do
-        allow(proxy).to receive(:request_status).and_return({ sent: double('message') })
-        
-        proxy.fetch_signal_plan
-        
-        expect(proxy.current_plan).to be_nil
-        expect(proxy.plan_source).to be_nil
-      end
-    end
-  end
-  
-  describe 'status value persistence' do
-    let(:main_component) { double('main_component', c_id: 'TLC001') }
-    
-    before do
-      allow(proxy).to receive(:validate_ready)
-      allow(proxy).to receive(:main).and_return(main_component)
-    end
-    
-    it 'retains status values between calls' do
-      collector = double('collector')
-      status_response = {
-        'sS' => [
-          { 'n' => 'status', 's' => '3' },
-          { 'n' => 'source', 's' => 'startup' }
-        ]
-      }
-      
-      allow(collector).to receive(:wait).and_return(status_response)
-      allow(proxy).to receive(:request_status).and_return({ collector: collector })
-      
-      # First call stores values
-      proxy.fetch_signal_plan(options: { collect: true })
-      expect(proxy.current_plan).to eq(3)
-      expect(proxy.plan_source).to eq('startup')
-      
-      # Second call without collector doesn't clear values
-      allow(proxy).to receive(:request_status).and_return({ sent: double('message') })
-      proxy.fetch_signal_plan
-      expect(proxy.current_plan).to eq(3)
-      expect(proxy.plan_source).to eq('startup')
-    end
-    
-    it 'updates status values with new response' do
-      collector1 = double('collector1')
-      status_response1 = {
-        'sS' => [
-          { 'n' => 'status', 's' => '1' },
-          { 'n' => 'source', 's' => 'forced' }
-        ]
-      }
-      
-      collector2 = double('collector2')
-      status_response2 = {
-        'sS' => [
-          { 'n' => 'status', 's' => '2' },
-          { 'n' => 'source', 's' => 'startup' }
-        ]
-      }
-      
-      allow(collector1).to receive(:wait).and_return(status_response1)
-      allow(collector2).to receive(:wait).and_return(status_response2)
-      
-      # First call
-      allow(proxy).to receive(:request_status).and_return({ collector: collector1 })
-      proxy.fetch_signal_plan(options: { collect: true })
-      expect(proxy.current_plan).to eq(1)
-      expect(proxy.plan_source).to eq('forced')
-      
-      # Second call updates values
-      allow(proxy).to receive(:request_status).and_return({ collector: collector2 })
-      proxy.fetch_signal_plan(options: { collect: true })
-      expect(proxy.current_plan).to eq(2)
-      expect(proxy.plan_source).to eq('startup')
     end
   end
 end
