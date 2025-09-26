@@ -14,7 +14,7 @@ module RSMP
         @current_plan = nil
         @plan_source = nil
         @timeplan = nil
-        @timeouts = options[:timeouts] || {}
+        @timeouts = node.supervisor_settings.dig("guest", "timeouts") || {}
         
         # Schedule auto-subscription after handshake is complete
         # This will be called once the connection is established
