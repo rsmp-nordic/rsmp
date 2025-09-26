@@ -36,20 +36,20 @@ RSpec.describe RSMP::Options::BaseOptions do
     it 'uses defaults when no config provided' do
       options = test_class.new
       expect(options.get('key1')).to eq('default1')
-      expect(options.get('nested.key2')).to eq('default2')
+      expect(options.get('nested', 'key2')).to eq('default2')
     end
 
     it 'merges provided config with defaults' do
       options = test_class.new({'key1' => 'custom1', 'key3' => 'new3'})
       expect(options.get('key1')).to eq('custom1')
-      expect(options.get('nested.key2')).to eq('default2')
+      expect(options.get('nested', 'key2')).to eq('default2')
       expect(options.get('key3')).to eq('new3')
     end
 
     it 'deep merges nested configurations' do
       options = test_class.new({'nested' => {'key3' => 'new3'}})
-      expect(options.get('nested.key2')).to eq('default2')
-      expect(options.get('nested.key3')).to eq('new3')
+      expect(options.get('nested', 'key2')).to eq('default2')
+      expect(options.get('nested', 'key3')).to eq('new3')
     end
   end
 
@@ -61,7 +61,7 @@ RSpec.describe RSMP::Options::BaseOptions do
     end
 
     it 'returns value for nested key' do
-      expect(options.get('nested.key2')).to eq('default2')
+      expect(options.get('nested', 'key2')).to eq('default2')
     end
 
     it 'returns nil for non-existing key' do
@@ -69,7 +69,7 @@ RSpec.describe RSMP::Options::BaseOptions do
     end
 
     it 'returns nil for non-existing nested key' do
-      expect(options.get('nested.nonexistent')).to be_nil
+      expect(options.get('nested', 'nonexistent')).to be_nil
     end
   end
 
@@ -83,12 +83,12 @@ RSpec.describe RSMP::Options::BaseOptions do
 
     it 'sets value for nested key' do
       options.set('nested.key2', 'new_nested_value')
-      expect(options.get('nested.key2')).to eq('new_nested_value')
+      expect(options.get('nested', 'key2')).to eq('new_nested_value')
     end
 
     it 'creates nested structure for new nested key' do
       options.set('new.nested.key', 'value')
-      expect(options.get('new.nested.key')).to eq('value')
+      expect(options.get('new', 'nested', 'key')).to eq('value')
     end
   end
 
@@ -116,7 +116,7 @@ RSpec.describe RSMP::Options::BaseOptions do
       options.merge!({'key1' => 'merged1', 'key3' => 'new3'})
       expect(options.get('key1')).to eq('merged1')
       expect(options.get('key3')).to eq('new3')
-      expect(options.get('nested.key2')).to eq('default2')
+      expect(options.get('nested', 'key2')).to eq('default2')
     end
 
     it 'returns self' do

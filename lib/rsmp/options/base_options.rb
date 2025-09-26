@@ -19,15 +19,9 @@ module RSMP
         validate!
       end
 
-      # Get a configuration value by key path (e.g., 'intervals.timer')
-      def get(key_path)
-        keys = key_path.to_s.split('.')
-        value = @config
-        keys.each do |key|
-          return nil unless value.is_a?(Hash) && value.key?(key)
-          value = value[key]
-        end
-        value
+      # Get a configuration value by key path using Ruby's dig method
+      def get(*keys)
+        @config.dig(*keys)
       end
 
       # Set a configuration value by key path

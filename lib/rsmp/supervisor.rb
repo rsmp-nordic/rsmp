@@ -12,7 +12,8 @@ module RSMP
       # Use new configuration system
       supervisor_settings = options[:supervisor_settings] || {}
       @supervisor_options = RSMP::Options::SupervisorOptions.new(supervisor_settings)
-      @supervisor_settings = @supervisor_options.to_h  # For backward compatibility
+      @supervisor_settings = @supervisor_options.to_h
+      @core_version = @supervisor_options.core_version
       
       super options
       @proxies = []
@@ -22,19 +23,6 @@ module RSMP
 
     def site_id
       @supervisor_options.site_id
-    end
-
-    # Deprecated: Configuration handling is now done in SupervisorOptions
-    # This method is kept for backward compatibility but no longer performs validation
-    def handle_supervisor_settings supervisor_settings
-      # Validation and defaults are now handled by SupervisorOptions in initialize
-      # This method is deprecated and will be removed in a future version
-      @core_version = @supervisor_options.core_version
-    end
-
-    # Deprecated: SXL validation is now handled by SupervisorOptions
-    def check_site_sxl_types
-      # Validation is now handled by SupervisorOptions
     end
 
     # listen for connections

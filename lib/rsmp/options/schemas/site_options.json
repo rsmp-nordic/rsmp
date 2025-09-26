@@ -1,0 +1,84 @@
+{
+  "type": "object",
+  "properties": {
+    "site_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+=-]+$"
+    },
+    "supervisors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ip": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        "required": ["ip", "port"]
+      },
+      "minItems": 1
+    },
+    "sxl": {
+      "type": "string"
+    },
+    "sxl_version": {
+      "type": "string"
+    },
+    "core_version": {
+      "type": "string"
+    },
+    "intervals": {
+      "type": "object",
+      "properties": {
+        "timer": {
+          "type": "number",
+          "minimum": 0
+        },
+        "watchdog": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reconnect": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "timeouts": {
+      "type": "object",
+      "properties": {
+        "watchdog": {
+          "type": "number",
+          "minimum": 0
+        },
+        "acknowledgement": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "send_after_connect": {
+      "type": "boolean"
+    },
+    "components": {
+      "type": "object",
+      "properties": {
+        "main": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": {
+        "type": "object"
+      }
+    }
+  },
+  "required": ["site_id", "supervisors", "sxl"],
+  "additionalProperties": true
+}

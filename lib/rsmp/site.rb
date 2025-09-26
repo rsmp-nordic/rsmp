@@ -15,7 +15,7 @@ module RSMP
       # Use new configuration system
       site_settings = options[:site_settings] || {}
       @site_options = RSMP::Options::SiteOptions.new(site_settings)
-      @site_settings = @site_options.to_h  # For backward compatibility
+      @site_settings = @site_options.to_h
       
       setup_components @site_options.components
       @proxies = []
@@ -30,23 +30,6 @@ module RSMP
 
     def site_id
       @site_options.site_id
-    end
-
-    # Deprecated: Configuration handling is now done in SiteOptions
-    # This method is kept for backward compatibility but no longer performs validation
-    def handle_site_settings options={}
-      # Validation and defaults are now handled by SiteOptions in initialize
-      # This method is deprecated and will be removed in a future version
-    end
-
-    # Deprecated: SXL version validation is now handled by SiteOptions
-    def check_sxl_version
-      # Validation is now handled by SiteOptions
-    end
-
-    # Deprecated: Core version validation is now handled by SiteOptions  
-    def check_core_versions
-      # Validation is now handled by SiteOptions
     end
 
     def site_type_name

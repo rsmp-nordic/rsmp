@@ -55,120 +55,7 @@ module RSMP
       end
 
       def schema
-        {
-          "type" => "object",
-          "properties" => {
-            "port" => {
-              "type" => "integer",
-              "minimum" => 1,
-              "maximum" => 65535
-            },
-            "ips" => {
-              "oneOf" => [
-                { "type" => "string", "enum" => ["all"] },
-                {
-                  "type" => "array",
-                  "items" => {
-                    "type" => "string",
-                    "format" => "ipv4"
-                  }
-                }
-              ]
-            },
-            "site_id" => {
-              "type" => "string",
-              "pattern" => "^[A-Za-z0-9+=-]+$"
-            },
-            "guest" => {
-              "type" => "object",
-              "properties" => {
-                "sxl" => {
-                  "type" => "string"
-                },
-                "core_version" => {
-                  "type" => "string"
-                },
-                "intervals" => {
-                  "type" => "object",
-                  "properties" => {
-                    "timer" => {
-                      "type" => "number",
-                      "minimum" => 0
-                    },
-                    "watchdog" => {
-                      "type" => "number",
-                      "minimum" => 0
-                    }
-                  },
-                  "additionalProperties" => false
-                },
-                "timeouts" => {
-                  "type" => "object",
-                  "properties" => {
-                    "watchdog" => {
-                      "type" => "number",
-                      "minimum" => 0
-                    },
-                    "acknowledgement" => {
-                      "type" => "number",
-                      "minimum" => 0
-                    }
-                  },
-                  "additionalProperties" => false
-                }
-              },
-              "required" => ["sxl"],
-              "additionalProperties" => true
-            },
-            "sites" => {
-              "type" => "object",
-              "patternProperties" => {
-                ".*" => {
-                  "type" => "object",
-                  "properties" => {
-                    "sxl" => {
-                      "type" => "string"
-                    },
-                    "core_version" => {
-                      "type" => "string"
-                    },
-                    "intervals" => {
-                      "type" => "object",
-                      "properties" => {
-                        "timer" => {
-                          "type" => "number",
-                          "minimum" => 0
-                        },
-                        "watchdog" => {
-                          "type" => "number",
-                          "minimum" => 0
-                        }
-                      },
-                      "additionalProperties" => false
-                    },
-                    "timeouts" => {
-                      "type" => "object",
-                      "properties" => {
-                        "watchdog" => {
-                          "type" => "number",
-                          "minimum" => 0
-                        },
-                        "acknowledgement" => {
-                          "type" => "number",
-                          "minimum" => 0
-                        }
-                      },
-                      "additionalProperties" => false
-                    }
-                  },
-                  "additionalProperties" => true
-                }
-              }
-            }
-          },
-          "required" => ["port", "guest"],
-          "additionalProperties" => true
-        }
+        @schema ||= load_schema_file('supervisor_options.json')
       end
 
       def custom_validations
@@ -221,6 +108,17 @@ module RSMP
         end
 
         errors
+      end
+
+      private
+
+      def load_schema_file(filename)
+        schema_path = File.expand_path("schemas/#{filename}", __dir__)
+        if File.exist?(schema_path)
+          JSON.parse(File.read(schema_path))
+        else
+          nil
+        end
       end
     end
   end
