@@ -11,10 +11,10 @@ module RSMP
     # allow the next status update to be a repeat value
     def allow_repeat_updates(subscribe_list)
       subscribe_list.each do |item|
-        sCI = item['sCI']
+        sci = item['sCI']
         n = item['n']
-        @allow_repeat_updates[sCI] ||= Set.new # Set is like an array, but with no duplicates
-        @allow_repeat_updates[sCI] << n
+        @allow_repeat_updates[sci] ||= Set.new # Set is like an array, but with no duplicates
+        @allow_repeat_updates[sci] << n
       end
     end
 
@@ -22,35 +22,35 @@ module RSMP
     # The check is not performed for item with an update interval.
     def check_repeat_values(message, subscription_list)
       message.attribute('sS').each do |item|
-        sCI = item['sCI']
+        sci = item['sCI']
         n = item['n']
         s = item['s']
         q = item['q']
-        uRt = subscription_list.dig(c_id, sCI, n, 'uRt')
-        next if uRt.to_i.positive?
+        urt = subscription_list.dig(c_id, sci, n, 'uRt')
+        next if urt.to_i.positive?
 
-        sOc = subscription_list.dig(c_id, sCI, n, 'sOc')
-        next if sOc == false
-        next if @allow_repeat_updates[sCI]&.include?(n)
+        soc = subscription_list.dig(c_id, sci, n, 'sOc')
+        next if soc == false
+        next if @allow_repeat_updates[sci]&.include?(n)
 
         new_values = { 's' => s, 'q' => q }
-        old_values = @statuses.dig(sCI, n)
-        raise RSMP::RepeatedStatusError, "no change for #{sCI} '#{n}'" if new_values == old_values
+        old_values = @statuses.dig(sci, n)
+        raise RSMP::RepeatedStatusError, "no change for #{sci} '#{n}'" if new_values == old_values
       end
     end
 
     # Store the latest status update values
     def store_status(message)
       message.attribute('sS').each do |item|
-        sCI = item['sCI']
+        sci = item['sCI']
         n = item['n']
         s = item['s']
         q = item['q']
-        @statuses[sCI] ||= {}
-        @statuses[sCI][n] = { 's' => s, 'q' => q }
+        @statuses[sci] ||= {}
+        @statuses[sci][n] = { 's' => s, 'q' => q }
 
         # once a value is received, don't allow the value to be a repeat
-        @allow_repeat_updates[sCI]&.delete(n)
+        @allow_repeat_updates[sci]&.delete(n)
       end
     end
 

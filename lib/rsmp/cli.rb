@@ -88,13 +88,7 @@ module RSMP
         rescue Psych::SyntaxError => e
           puts "Cannot read config file #{e}"
           break
-        rescue RSMP::Schema::UnknownSchemaTypeError => e
-          puts "Cannot start site: #{e}"
-          break
-        rescue RSMP::Schema::UnknownSchemaVersionError => e
-          puts "Cannot start site: #{e}"
-          break
-        rescue RSMP::ConfigurationError => e
+        rescue RSMP::Schema::UnknownSchemaTypeError, RSMP::Schema::UnknownSchemaVersionError, RSMP::ConfigurationError => e
           puts "Cannot start site: #{e}"
           break
         rescue RSMP::Restart
@@ -158,11 +152,7 @@ module RSMP
         supervisor.wait
       rescue Psych::SyntaxError => e
         puts "Cannot read config file #{e}"
-      rescue RSMP::Schema::UnknownSchemaTypeError => e
-        puts "Cannot start supervisor: #{e}"
-      rescue RSMP::Schema::UnknownSchemaVersionError => e
-        puts "Cannot start supervisor: #{e}"
-      rescue RSMP::ConfigurationError => e
+      rescue RSMP::Schema::UnknownSchemaTypeError, RSMP::Schema::UnknownSchemaVersionError, RSMP::ConfigurationError => e
         puts "Cannot start supervisor: #{e}"
       end
     end

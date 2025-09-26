@@ -213,14 +213,14 @@ module RSMP
       # update our subcription list
       @status_subscriptions[component_id] ||= {}
       subscribe_list.each do |item|
-        sCI = item['sCI']
+        sci = item['sCI']
         n = item['n']
-        uRt = item['uRt']
-        sOc = item['sOc']
-        @status_subscriptions[component_id][sCI] ||= {}
-        @status_subscriptions[component_id][sCI][n] ||= {}
-        @status_subscriptions[component_id][sCI][n]['uRt'] = uRt
-        @status_subscriptions[component_id][sCI][n]['sOc'] = sOc
+        urt = item['uRt']
+        soc = item['sOc']
+        @status_subscriptions[component_id][sci] ||= {}
+        @status_subscriptions[component_id][sci][n] ||= {}
+        @status_subscriptions[component_id][sci][n]['uRt'] = urt
+        @status_subscriptions[component_id][sci][n]['sOc'] = soc
       end
 
       find_component component_id
@@ -246,12 +246,12 @@ module RSMP
 
       # update our subcription list
       status_list.each do |item|
-        sCI = item['sCI']
+        sci = item['sCI']
         n = item['n']
-        next unless @status_subscriptions.dig(component_id, sCI, n)
+        next unless @status_subscriptions.dig(component_id, sci, n)
 
-        @status_subscriptions[component_id][sCI].delete n
-        @status_subscriptions[component_id].delete(sCI) if @status_subscriptions[component_id][sCI].empty?
+        @status_subscriptions[component_id][sci].delete n
+        @status_subscriptions[component_id].delete(sci) if @status_subscriptions[component_id][sci].empty?
         @status_subscriptions.delete(component_id) if @status_subscriptions[component_id].empty?
       end
 

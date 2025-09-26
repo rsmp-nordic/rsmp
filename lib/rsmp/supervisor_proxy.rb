@@ -317,11 +317,11 @@ module RSMP
     end
 
     def process_status_request(message, options = {})
-      sS = []
+      ss = []
       begin
         component_id = message.attributes['cId']
         component = @site.find_component component_id
-        sS = message.attributes['sS'].map do |arg|
+        ss = message.attributes['sS'].map do |arg|
           value, quality = component.get_status arg['sCI'], arg['n'], { sxl_version: sxl_version }
           { 's' => rsmpify_value(value, quality), 'q' => quality.to_s }.merge arg
         end
@@ -331,7 +331,7 @@ module RSMP
             message: message, level: :warning
         # If the component is unknown, we must set q=undefined and s=nil for all items,
         # while still acknowledge the message.
-        sS = message.attributes['sS'].map do |arg|
+        ss = message.attributes['sS'].map do |arg|
           arg.dup.merge('q' => 'undefined', 's' => nil)
         end
       end
@@ -339,7 +339,7 @@ module RSMP
       response = StatusResponse.new({
                                       'cId' => component_id,
                                       'sTs' => clock.to_s,
-                                      'sS' => sS,
+                                      'sS' => ss,
                                       'mId' => options[:m_id]
                                     })
 
@@ -366,12 +366,12 @@ module RSMP
       subs = @status_subscriptions[component_id]
 
       message.attributes['sS'].each do |arg|
-        sCI = arg['sCI']
+        sci = arg['sCI']
         subcription = { interval: arg['uRt'].to_i, last_sent_at: now }
-        subs[sCI] ||= {}
-        subs[sCI][arg['n']] = subcription
-        update_list[component_id][sCI] ||= []
-        update_list[component_id][sCI] << arg['n']
+        subs[sci] ||= {}
+        subs[sci][arg['n']] = subcription
+        update_list[component_id][sci] ||= []
+        update_list[component_id][sci] << arg['n']
       end
       acknowledge message
       send_status_updates update_list # send status after subscribing is accepted

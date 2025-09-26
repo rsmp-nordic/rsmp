@@ -207,9 +207,7 @@ module RSMP
             s.colorize(:light_black)
           when /^f$/
             s.colorize(:yellow)
-          when /^g$/
-            s.colorize(:red)
-          else
+          else # includes /^g$/ and any other values
             s.colorize(:red)
           end
         end.join ' '
@@ -651,9 +649,7 @@ module RSMP
         case status_name
         when 'signalgroupstatus'
           TrafficControllerSite.make_status format_signal_group_status
-        when 'cyclecounter'
-          TrafficControllerSite.make_status @cycle_counter.to_s
-        when 'basecyclecounter'
+        when 'cyclecounter', 'basecyclecounter'
           TrafficControllerSite.make_status @cycle_counter.to_s
         when 'stage'
           TrafficControllerSite.make_status 0.to_s
@@ -678,9 +674,7 @@ module RSMP
 
       def handle_s0004(_status_code, status_name = nil, _options = {})
         case status_name
-        when 'outputstatus'
-          TrafficControllerSite.make_status 0
-        when 'extendedoutputstatus'
+        when 'outputstatus', 'extendedoutputstatus'
           TrafficControllerSite.make_status 0
         end
       end
@@ -1062,23 +1056,7 @@ module RSMP
         case status_name
         when 'start'
           TrafficControllerSite.make_status clock.to_s
-        when 'P'
-          TrafficControllerSite.make_status 0
-        when 'PS'
-          TrafficControllerSite.make_status 0
-        when 'L'
-          TrafficControllerSite.make_status 0
-        when 'LS'
-          TrafficControllerSite.make_status 0
-        when 'B'
-          TrafficControllerSite.make_status 0
-        when 'SP'
-          TrafficControllerSite.make_status 0
-        when 'MC'
-          TrafficControllerSite.make_status 0
-        when 'C'
-          TrafficControllerSite.make_status 0
-        when 'F'
+        when 'P', 'PS', 'L', 'LS', 'B', 'SP', 'MC', 'C', 'F'
           TrafficControllerSite.make_status 0
         end
       end

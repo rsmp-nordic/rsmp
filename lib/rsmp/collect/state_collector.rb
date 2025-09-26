@@ -132,19 +132,19 @@ module RSMP
       @matchers.each do |matcher|
         want = matcher.want
         if want['cCI']
-          cCI = want['cCI']
-          h[cCI] ||= {}
-          cO = h['cO']
-          n = h['n']
-          v = h['v']
-          h[cCI][cO] ||= {}
-          h[cCI][cO][n] = v
+          cci = want['cCI']
+          h[cci] ||= {}
+          co = want['cO']
+          n = want['n']
+          v = want['v']
+          h[cci][co] ||= {}
+          h[cci][co][n] = v
         elsif want['sCI']
-          sCI = want['sCI']
-          h[sCI] ||= {}
+          sci = want['sCI']
+          h[sci] ||= {}
           n = want['n']
           s = want['s']
-          h[sCI][n] = if matcher.got && matcher.got['s']
+          h[sci][n] = if matcher.got && matcher.got['s']
                         { { s => matcher.got['s'] } => matcher.done? }
                       else
                         { s => nil }
@@ -166,19 +166,19 @@ module RSMP
       @matchers.each do |matcher|
         item = matcher.want
         if item['cCI']
-          cCI = item['cCI']
-          h[cCI] ||= {}
-          cO = item['cO']
-          h[cCI][cO] ||= {}
+          cci = item['cCI']
+          h[cci] ||= {}
+          co = item['cO']
+          h[cci][co] ||= {}
           n = item['n']
           v = item['v']
-          h[cCI][cO][n] = v || :any
+          h[cci][co][n] = v || :any
         elsif item['sCI']
-          sCI = item['sCI']
-          h[sCI] ||= {}
+          sci = item['sCI']
+          h[sci] ||= {}
           n = item['n']
           s = item['s']
-          h[sCI][n] = s || :any
+          h[sci][n] = s || :any
         end
       end
       h
@@ -191,19 +191,19 @@ module RSMP
         want = matcher.want
         got = matcher.got
         if want['cCI']
-          cCI = want['cCI']
-          h[cCI] ||= {}
-          cO = want['cO']
-          h[cCI][cO] ||= {}
+          cci = want['cCI']
+          h[cci] ||= {}
+          co = want['cO']
+          h[cci][co] ||= {}
           n = want['n']
           v = got ? got['v'] : nil
-          h[cCI][cO][n] = v
+          h[cci][co][n] = v
         elsif want['sCI']
-          sCI = want['sCI']
-          h[sCI] ||= {}
+          sci = want['sCI']
+          h[sci] ||= {}
           n = want['n']
           s = got ? got['s'] : nil
-          h[sCI][n] = s
+          h[sci][n] = s
         end
       end
       h
