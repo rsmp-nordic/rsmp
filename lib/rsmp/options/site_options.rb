@@ -5,6 +5,17 @@ module RSMP
     # Configuration options specific to RSMP Site instances
     class SiteOptions < BaseOptions
       
+      def initialize(config = {})
+        # Handle the special case where main component should be replaced, not merged
+        normalized_config = normalize_config_input(config)
+        if normalized_config.dig('components', 'main')
+          # Store the main component to replace defaults
+          @custom_main_component = normalized_config['components']['main']
+        end
+        
+        super(config)
+      end
+      
       # Convenience accessors for commonly used configuration values
       def site_id
         get('site_id')
@@ -53,7 +64,7 @@ module RSMP
       protected
 
       def defaults
-        {
+        default_config = {
           'site_id' => 'RN+SI0001',
           'supervisors' => [
             { 'ip' => '127.0.0.1', 'port' => 12111 }
@@ -71,14 +82,29 @@ module RSMP
           },
           'send_after_connect' => true,
           'components' => {
-            'main' => {
-              'C1' => {}
-            }
+            'main' => @custom_main_component || { 'C1' => {} }
           }
         }
       end
 
       private
+
+      def normalize_config_input(config)
+        case config
+        when Hash
+          config
+        when String
+          # Assume it's a file path
+          if File.exist?(config)
+            require 'yaml'
+            YAML.load_file(config)
+          else
+            raise ConfigurationError, "Configuration file not found: #{config}"
+          end
+        else
+          raise ConfigurationError, "Invalid configuration type: #{config.class}"
+        end
+      end
 
       def default_sxl_version
         return RSMP::Schema.latest_version(:tlc) if defined?(RSMP::Schema)
