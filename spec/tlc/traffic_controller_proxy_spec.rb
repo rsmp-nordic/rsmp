@@ -49,7 +49,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   
   describe '#handshake_complete' do
     before do
-      # Set up a real main component instead of mocking
+      # Set up a main component
       proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true))
       allow(proxy).to receive(:start_watchdog)  # Mock watchdog start
       allow(proxy).to receive(:log)
@@ -72,7 +72,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     
     context 'when proxy is ready' do
       before do
-        # Set up a real main component instead of mocking
+        # Set up a main component
         proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true))
         allow(proxy).to receive(:validate_ready)
         allow(proxy).to receive(:subscribe_to_status).and_return({ sent: RSMP::StatusSubscribe.new({}) })
@@ -136,7 +136,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     end
     
     before do
-      # Set up a real main component instead of mocking
+      # Set up a main component
       main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
       proxy.instance_variable_set(:@main, main_component)
       allow(proxy).to receive(:acknowledge)
@@ -183,7 +183,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   
   describe '#timeplan_attributes' do
     it 'returns S0014 attributes from main component' do
-      # Set up a real main component with status data
+      # Set up a main component with status data
       main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
       statuses = { 'S0014' => { 'status' => { 's' => '2', 'q' => 'recent' } } }
       main_component.instance_variable_set(:@statuses, statuses)
@@ -198,7 +198,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     end
     
     it 'returns empty hash when no S0014 data' do
-      # Set up a real main component with no S0014 data
+      # Set up a main component with no S0014 data
       main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
       main_component.instance_variable_set(:@statuses, {})
       proxy.instance_variable_set(:@main, main_component)
@@ -230,7 +230,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     
     context 'with valid inputs' do
       before do
-        # Set up a real main component instead of mocking
+        # Set up a main component
         main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
         proxy.instance_variable_set(:@main, main_component)
         allow(proxy).to receive(:validate_ready)
@@ -313,7 +313,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     
     context 'with valid conditions' do
       before do
-        # Set up a real main component instead of mocking
+        # Set up a main component
         main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
         proxy.instance_variable_set(:@main, main_component)
         allow(proxy).to receive(:validate_ready)
