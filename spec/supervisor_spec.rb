@@ -163,4 +163,130 @@ RSpec.describe RSMP::Supervisor do
       end
     end
   end
+
+  describe '#proxy creation' do
+    context 'when proxy_type is auto' do
+      it 'creates TrafficControllerProxy for configured TLC sites' do
+        # Test the supervisor's build_proxy method directly
+        supervisor = RSMP::Supervisor.new(
+          supervisor_settings: {
+            'port' => 13113,
+            'proxy_type' => 'auto',
+            'sites' => {
+              'TLC001' => { 'sxl' => 'tlc', 'type' => 'tlc' }
+            },
+            'guest' => { 'sxl' => 'tlc', 'type' => 'tlc' }
+          },
+          log_settings: log_settings
+        )
+        
+        settings = {
+          supervisor: supervisor,
+          ip: '127.0.0.1',
+          port: 12345,
+          socket: double('socket'),
+          stream: double('stream'),
+          protocol: double('protocol'),
+          logger: double('logger'),
+          archive: double('archive')
+        }
+        
+        # Test the supervisor's build_proxy method
+        proxy = supervisor.build_proxy('TLC001', settings)
+        
+        expect(proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
+      end
+
+      it 'creates generic SiteProxy for non-TLC sites' do
+        supervisor = RSMP::Supervisor.new(
+          supervisor_settings: {
+            'port' => 13114,
+            'proxy_type' => 'auto',
+            'sites' => {
+              'SITE001' => { 'sxl' => 'core', 'type' => 'generic' }
+            },
+            'guest' => { 'sxl' => 'core', 'type' => 'generic' }
+          },
+          log_settings: log_settings
+        )
+        
+        settings = {
+          supervisor: supervisor,
+          ip: '127.0.0.1',
+          port: 12345,
+          socket: double('socket'),
+          stream: double('stream'),
+          protocol: double('protocol'),
+          logger: double('logger'),
+          archive: double('archive')
+        }
+        
+        proxy = supervisor.build_proxy('SITE001', settings)
+        
+        expect(proxy).to be_an(RSMP::SiteProxy)
+        expect(proxy).not_to be_an(RSMP::TLC::TrafficControllerProxy)
+      end
+    end
+
+    context 'when proxy_type is generic (default)' do
+      it 'always creates generic SiteProxy regardless of site configuration' do
+        supervisor = RSMP::Supervisor.new(
+          supervisor_settings: {
+            'port' => 13115,
+            'proxy_type' => 'generic',
+            'sites' => {
+              'TLC001' => { 'sxl' => 'tlc', 'type' => 'tlc' }
+            }
+          },
+          log_settings: log_settings
+        )
+        
+        settings = {
+          supervisor: supervisor,
+          ip: '127.0.0.1',
+          port: 12345,
+          socket: double('socket'),
+          stream: double('stream'),
+          protocol: double('protocol'),
+          logger: double('logger'),
+          archive: double('archive')
+        }
+        
+        proxy = supervisor.build_proxy('TLC001', settings)
+        
+        expect(proxy).to be_an(RSMP::SiteProxy)
+        expect(proxy).not_to be_an(RSMP::TLC::TrafficControllerProxy)
+      end
+    end
+
+    context 'when proxy_type is tlc' do
+      it 'always creates TrafficControllerProxy regardless of site configuration' do
+        supervisor = RSMP::Supervisor.new(
+          supervisor_settings: {
+            'port' => 13116,
+            'proxy_type' => 'tlc',
+            'sites' => {
+              'SITE001' => { 'sxl' => 'core', 'type' => 'generic' }
+            }
+          },
+          log_settings: log_settings
+        )
+        
+        settings = {
+          supervisor: supervisor,
+          ip: '127.0.0.1',
+          port: 12345,
+          socket: double('socket'),
+          stream: double('stream'),
+          protocol: double('protocol'),
+          logger: double('logger'),
+          archive: double('archive')
+        }
+        
+        proxy = supervisor.build_proxy('SITE001', settings)
+        
+        expect(proxy).to be_an(RSMP::TLC::TrafficControllerProxy)
+      end
+    end
+  end
 end

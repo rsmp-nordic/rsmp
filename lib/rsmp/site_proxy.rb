@@ -385,5 +385,25 @@ module RSMP
     def infer_component_type component_id
       ComponentProxy
     end
+
+    # Unsubscribe from all subscriptions
+    # This method provides a centralized way to clean up all subscriptions
+    def unsubscribe_all
+      # Create a copy of the subscriptions to avoid modifying while iterating
+      subscriptions_copy = @status_subscriptions.dup
+      
+      subscriptions_copy.each do |component_id, component_subscriptions|
+        component_subscriptions.each do |sCI, sCI_subscriptions|
+          sCI_subscriptions.each do |n, _subscription_data|
+            status_list = [{ 'sCI' => sCI, 'n' => n }]
+            begin
+              unsubscribe_to_status component_id, status_list
+            rescue => e
+              log "Failed to unsubscribe from #{component_id} #{sCI}/#{n}: #{e.message}", level: :warn
+            end
+          end
+        end
+      end
+    end
   end
 end
