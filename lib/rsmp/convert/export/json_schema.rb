@@ -8,16 +8,16 @@ module RSMP
   module Convert
     module Export
       module JSONSchema
-        @@json_options = {
+        JSON_OPTIONS = {
           array_nl: "\n",
           object_nl: "\n",
           indent: '  ',
           space_before: ' ',
           space: ' '
-        }
+        }.freeze
 
         def self.output_json(item)
-          JSON.generate(item, @@json_options)
+          JSON.generate(item, JSON_OPTIONS)
         end
 
         def self.build_value(item)

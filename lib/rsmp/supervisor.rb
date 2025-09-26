@@ -4,7 +4,7 @@
 
 module RSMP
   class Supervisor < Node
-    attr_reader :core_version, :site_id, :supervisor_settings, :proxies, :logger, :ready_condition
+    attr_reader :core_version, :supervisor_settings, :proxies, :logger, :ready_condition
 
     attr_accessor :site_id_condition
 

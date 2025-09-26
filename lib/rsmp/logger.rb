@@ -94,7 +94,7 @@ module RSMP
       @muted = {}
     end
 
-    def output?(item, force = false)
+    def output?(item, force: false)
       return false if item[:ip] && item[:port] && @muted["#{item[:ip]}:#{item[:port]}"]
       return false if @settings['active'] == false && force != true
       return false if @settings['info'] == false && item[:level] == :info
@@ -153,7 +153,7 @@ module RSMP
     end
 
     def log(item, force: false)
-      return unless output?(item, force)
+      return unless output?(item, force: force)
 
       output item[:level], build_output(item)
     end

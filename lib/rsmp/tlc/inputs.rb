@@ -80,10 +80,6 @@ module RSMP
         @value[1..]
       end
 
-      def value_string
-        @value[1..]
-      end
-
       def forced_string
         @forced[1..]
       end

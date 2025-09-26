@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'Easy RSMP site and supervisor communication.'
   spec.homepage      = 'https://github.com/rsmp-nordic/rsmp'
   spec.licenses      = ['MIT']
-  spec.required_ruby_version = '>= 3.2.0'
+  spec.required_ruby_version = '>= 3.4.0'
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://github.com/rsmp-nordic/rsmp'

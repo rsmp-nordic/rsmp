@@ -7,7 +7,11 @@ module RSMP
 
     attr_reader :items
 
-    @@index = 0
+    @index = 0
+
+    class << self
+      attr_accessor :index
+    end
 
     def initialize(max = 100)
       @items = []
@@ -32,11 +36,11 @@ module RSMP
     end
 
     def self.increase_index
-      @@index += 1
+      self.index += 1
     end
 
     def self.current_index
-      @@index
+      index
     end
 
     def by_level(levels)
@@ -57,20 +61,38 @@ module RSMP
 
     private
 
-    def find(options, &block)
+    def find(options, &)
       # search backwards from newest to older, stopping once messages
       # are older that options[:earliest]
       out = []
       @items.reverse_each do |item|
-        break if options[:earliest] && item[:timestamp] < options[:earliest]
-        next if options[:level] && item[:level] != options[:level]
-        next if options[:type] && (item[:message].nil? || (item[:message].type != options[:type]))
-        next if options[:with_message] && !(item[:direction] && item[:message])
-        next if block_given? && block.call != true
+        break if too_old?(item, options[:earliest])
+        next unless matches_filters?(item, options, &)
 
         out.unshift item
       end
       out
+    end
+
+    def too_old?(item, earliest)
+      earliest && item[:timestamp] < earliest
+    end
+
+    def matches_filters?(item, options, &block)
+      return false if options[:level] && item[:level] != options[:level]
+      return false if options[:type] && !matches_type?(item, options[:type])
+      return false if options[:with_message] && !message?(item)
+      return false if block_given? && block.call != true
+
+      true
+    end
+
+    def matches_type?(item, type)
+      item[:message] && item[:message].type == type
+    end
+
+    def message?(item)
+      item[:direction] && item[:message]
     end
   end
 end

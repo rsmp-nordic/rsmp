@@ -91,12 +91,12 @@ module RSMP
     end
 
     def differ_from_message?(message)
-      return true if RSMP::Clock.to_s(@timestamp) != message.attribute('aTs')
-      return true if message.attribute('ack') && @acknowledged != (message.attribute('ack').downcase == 'acknowledged')
-      return true if message.attribute('sS') && @suspended != (message.attribute('sS').downcase == 'suspended')
-      return true if message.attribute('aS') && @active != (message.attribute('aS').downcase == 'active')
-      return true if message.attribute('cat') && @category != message.attribute('cat')
-      return true if message.attribute('pri') && @priority != message.attribute('pri').to_i
+      return true if timestamp_differs?(message)
+      return true if acknowledgment_differs?(message)
+      return true if suspension_differs?(message)
+      return true if activity_differs?(message)
+      return true if category_differs?(message)
+      return true if priority_differs?(message)
 
       # return true @rvs = message.attribute('rvs')
       false
@@ -128,6 +128,42 @@ module RSMP
       @category = message.attribute('cat')
       @priority = message.attribute('pri').to_i
       @rvs = message.attribute('rvs')
+    end
+
+    private
+
+    def timestamp_differs?(message)
+      RSMP::Clock.to_s(@timestamp) != message.attribute('aTs')
+    end
+
+    def acknowledgment_differs?(message)
+      return false unless message.attribute('ack')
+
+      @acknowledged != (message.attribute('ack').downcase == 'acknowledged')
+    end
+
+    def suspension_differs?(message)
+      return false unless message.attribute('sS')
+
+      @suspended != (message.attribute('sS').downcase == 'suspended')
+    end
+
+    def activity_differs?(message)
+      return false unless message.attribute('aS')
+
+      @active != (message.attribute('aS').downcase == 'active')
+    end
+
+    def category_differs?(message)
+      return false unless message.attribute('cat')
+
+      @category != message.attribute('cat')
+    end
+
+    def priority_differs?(message)
+      return false unless message.attribute('pri')
+
+      @priority != message.attribute('pri').to_i
     end
   end
 end

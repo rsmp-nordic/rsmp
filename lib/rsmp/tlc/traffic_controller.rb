@@ -902,7 +902,7 @@ module RSMP
       def handle_s0028(_status_code, status_name = nil, _options = {})
         case status_name
         when 'status'
-          times = @plans.map { |_nr, plan| "#{'%02d' % plan.nr}-#{'%02d' % plan.cycle_time}" }.join(',')
+          times = @plans.map { |_nr, plan| "#{format('%02d', plan.nr)}-#{format('%02d', plan.cycle_time)}" }.join(',')
           TrafficControllerSite.make_status times
         end
       rescue StandardError => e
