@@ -389,16 +389,24 @@ module RSMP
     # Unsubscribe from all subscriptions
     # This method provides a centralized way to clean up all subscriptions
     def unsubscribe_all
+      # Create a copy of the subscriptions to avoid modifying while iterating
+      subscriptions_to_remove = []
+      
       @status_subscriptions.each do |component_id, component_subscriptions|
         component_subscriptions.each do |sCI, sCI_subscriptions|
           sCI_subscriptions.each do |n, _subscription_data|
-            status_list = [{ 'sCI' => sCI, 'n' => n }]
-            begin
-              unsubscribe_to_status component_id, status_list
-            rescue => e
-              log "Failed to unsubscribe from #{component_id} #{sCI}/#{n}: #{e.message}", level: :warn
-            end
+            subscriptions_to_remove << { component_id: component_id, sCI: sCI, n: n }
           end
+        end
+      end
+      
+      # Now unsubscribe from all collected subscriptions
+      subscriptions_to_remove.each do |subscription|
+        status_list = [{ 'sCI' => subscription[:sCI], 'n' => subscription[:n] }]
+        begin
+          unsubscribe_to_status subscription[:component_id], status_list
+        rescue => e
+          log "Failed to unsubscribe from #{subscription[:component_id]} #{subscription[:sCI]}/#{subscription[:n]}: #{e.message}", level: :warn
         end
       end
     end

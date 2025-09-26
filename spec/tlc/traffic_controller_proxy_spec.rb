@@ -48,10 +48,9 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   end
   
   describe '#handshake_complete' do
-    let(:main_component) { double('main_component', c_id: 'TLC001') }
-    
     before do
-      allow(proxy).to receive(:main).and_return(main_component)
+      # Set up a real main component instead of mocking
+      proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true))
       allow(proxy).to receive(:start_watchdog)  # Mock watchdog start
       allow(proxy).to receive(:log)
       # Mock the parent handshake_complete to avoid async issues
@@ -65,8 +64,6 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   end
   
   describe '#subscribe_to_timeplan' do
-    let(:main_component) { double('main_component', c_id: 'TLC001') }
-    
     context 'when proxy is not ready' do
       it 'raises NotReady error' do
         expect { proxy.subscribe_to_timeplan }.to raise_error(RSMP::NotReady)
@@ -75,9 +72,10 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     
     context 'when proxy is ready' do
       before do
+        # Set up a real main component instead of mocking
+        proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true))
         allow(proxy).to receive(:validate_ready)
-        allow(proxy).to receive(:main).and_return(main_component)
-        allow(proxy).to receive(:subscribe_to_status).and_return({ sent: double('message') })
+        allow(proxy).to receive(:subscribe_to_status).and_return({ sent: RSMP::StatusSubscribe.new({}) })
       end
       
       it 'subscribes to S0014 status updates with update on change' do
@@ -108,7 +106,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
             proxy.instance_variable_get(:@status_subscriptions)[component_id][sCI] ||= {}
             proxy.instance_variable_get(:@status_subscriptions)[component_id][sCI][n] = { 'uRt' => nil, 'sOc' => item['sOc'] }
           end
-          { sent: double('message') }
+          { sent: RSMP::StatusSubscribe.new({}) }
         end
         
         proxy.subscribe_to_timeplan
@@ -123,20 +121,24 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   end
   
   describe '#process_status_update' do
-    let(:main_component) { double('main_component', c_id: 'TLC001') }
     let(:message) do
-      double('message').tap do |msg|
-        allow(msg).to receive(:attribute).with('cId').and_return('TLC001')
-        allow(msg).to receive(:attribute).with('sS').and_return([
+      RSMP::StatusUpdate.new({
+        'cId' => 'TLC001',
+        'sS' => [
           { 'sCI' => 'S0014', 'n' => 'status', 's' => '3' },
           { 'sCI' => 'S0014', 'n' => 'source', 's' => 'forced' }
-        ])
-        allow(msg).to receive(:type).and_return('StatusUpdate')
-      end
+        ],
+        'mId' => '123',
+        'ntsOId' => '',
+        'xNId' => '',
+        'cTS' => '2023-01-01T00:00:00.000Z'
+      })
     end
     
     before do
-      allow(proxy).to receive(:main).and_return(main_component)
+      # Set up a real main component instead of mocking
+      main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
+      proxy.instance_variable_set(:@main, main_component)
       allow(proxy).to receive(:acknowledge)
       allow(proxy).to receive(:log)
       # Don't mock the parent process_status_update method - let it call through
@@ -160,9 +162,19 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     end
     
     it 'ignores updates from other components' do
-      allow(message).to receive(:attribute).with('cId').and_return('OTHER001')
+      other_message = RSMP::StatusUpdate.new({
+        'cId' => 'OTHER001',
+        'sS' => [
+          { 'sCI' => 'S0014', 'n' => 'status', 's' => '3' },
+          { 'sCI' => 'S0014', 'n' => 'source', 's' => 'forced' }
+        ],
+        'mId' => '123',
+        'ntsOId' => '',
+        'xNId' => '',
+        'cTS' => '2023-01-01T00:00:00.000Z'
+      })
       
-      proxy.process_status_update(message)
+      proxy.process_status_update(other_message)
       
       expect(proxy.timeplan).to be_nil
       expect(proxy.current_plan).to be_nil
@@ -170,26 +182,27 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   end
   
   describe '#timeplan_attributes' do
-    let(:main_component) { double('main_component') }
-    
-    before do
-      allow(proxy).to receive(:main).and_return(main_component)
-    end
-    
     it 'returns S0014 attributes from main component' do
+      # Set up a real main component with status data
+      main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
       statuses = { 'S0014' => { 'status' => { 's' => '2', 'q' => 'recent' } } }
-      allow(main_component).to receive(:instance_variable_get).with(:@statuses).and_return(statuses)
+      main_component.instance_variable_set(:@statuses, statuses)
+      proxy.instance_variable_set(:@main, main_component)
       
       expect(proxy.timeplan_attributes).to eq({ 'status' => { 's' => '2', 'q' => 'recent' } })
     end
     
     it 'returns empty hash when no main component' do
-      allow(proxy).to receive(:main).and_return(nil)
+      proxy.instance_variable_set(:@main, nil)
       expect(proxy.timeplan_attributes).to eq({})
     end
     
     it 'returns empty hash when no S0014 data' do
-      allow(main_component).to receive(:instance_variable_get).with(:@statuses).and_return({})
+      # Set up a real main component with no S0014 data
+      main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
+      main_component.instance_variable_set(:@statuses, {})
+      proxy.instance_variable_set(:@main, main_component)
+      
       expect(proxy.timeplan_attributes).to eq({})
     end
   end
@@ -216,12 +229,12 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     end
     
     context 'with valid inputs' do
-      let(:main_component) { double('main_component', c_id: 'TLC001') }
-      
       before do
+        # Set up a real main component instead of mocking
+        main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
+        proxy.instance_variable_set(:@main, main_component)
         allow(proxy).to receive(:validate_ready)
-        allow(proxy).to receive(:main).and_return(main_component)
-        allow(proxy).to receive(:send_command).and_return({ sent: double('message') })
+        allow(proxy).to receive(:send_command).and_return({ sent: RSMP::CommandRequest.new({}) })
       end
       
       it 'calls send_command with correct parameters and merged timeouts' do
@@ -299,11 +312,11 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     end
     
     context 'with valid conditions' do
-      let(:main_component) { double('main_component', c_id: 'TLC001') }
-      
       before do
+        # Set up a real main component instead of mocking
+        main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
+        proxy.instance_variable_set(:@main, main_component)
         allow(proxy).to receive(:validate_ready)
-        allow(proxy).to receive(:main).and_return(main_component)
       end
       
       it 'calls request_status with correct parameters and merged timeouts' do
@@ -312,7 +325,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
           { "sCI" => "S0014", "n" => "source" }
         ]
         
-        expect(proxy).to receive(:request_status).with('TLC001', expected_status_list, timeouts).and_return({ sent: double('message') })
+        expect(proxy).to receive(:request_status).with('TLC001', expected_status_list, timeouts).and_return({ sent: RSMP::StatusRequest.new({}) })
         proxy.fetch_signal_plan
       end
       
