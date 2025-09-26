@@ -1,0 +1,44 @@
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.2
+  Exclude:
+    - 'vendor/**/*'
+    - 'bin/**/*'
+    - '.bundle/**/*'
+
+# Allow longer line lengths for readability in some contexts
+Layout/LineLength:
+  Max: 120
+
+# Allow some methods to be longer for complex domain logic
+Metrics/MethodLength:
+  Max: 20
+
+# Allow some classes to be longer for main classes
+Metrics/ClassLength:
+  Max: 150
+
+# Allow some blocks to be longer for complex configurations and tests
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - 'features/**/*'
+    - '*.gemspec'
+
+# Disable some cops that might be too restrictive for this domain
+Style/Documentation:
+  Enabled: false
+
+# Disable frozen string literal for now to minimize changes
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+# Allow double negation for boolean coercion - common Ruby pattern
+Style/DoubleNegation:
+  Enabled: false
+
+# Allow mix-in usage at top level in test files
+Style/MixinUsage:
+  Exclude:
+    - 'spec/**/*'
+    - 'features/**/*'

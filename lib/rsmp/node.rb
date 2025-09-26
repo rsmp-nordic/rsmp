@@ -8,7 +8,7 @@ module RSMP
 
     attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock, :collector
 
-    def initialize options={}
+    def initialize(options = {})
       initialize_logging options
       initialize_task
       @deferred = []
@@ -24,55 +24,56 @@ module RSMP
 
     # stop proxies, then call super
     def stop_subtasks
-      @proxies.each { |proxy| proxy.stop }
+      @proxies.each(&:stop)
       @proxies.clear
       super
     end
 
-    def ignore_errors classes, &block
-      was, @ignore_errors = @ignore_errors, [classes].flatten
+    def ignore_errors(classes)
+      was = @ignore_errors
+      @ignore_errors = [classes].flatten
       yield
     ensure
       @ignore_errors = was
     end
 
-    def distribute_error e, options={}
+    def distribute_error(e, options = {})
       return if @ignore_errors.find { |klass| e.is_a? klass }
+
       if options[:level] == :internal
-        log ["#{e.to_s} in task: #{Async::Task.current.to_s}",e.backtrace].flatten.join("\n"), level: :error
+        log ["#{e} in task: #{Async::Task.current}", e.backtrace].flatten.join("\n"), level: :error
       end
       @error_queue.enqueue e
     end
 
-    def defer key, item=nil
+    def defer(key, item = nil)
       @deferred << [key, item]
     end
 
     def process_deferred
-      cloned = @deferred.clone    # clone in case do_deferred restarts the current task
+      cloned = @deferred.clone # clone in case do_deferred restarts the current task
       @deferred.clear
       cloned.each do |pair|
         do_deferred pair.first, pair.last
       end
     end
 
-    def do_deferred key,item=nil
-    end
+    def do_deferred(key, item = nil); end
 
     def clear_deferred
       @deferred.clear
     end
 
-    def check_required_settings settings, required
-      raise ArgumentError.new "Settings is empty" unless settings
+    def check_required_settings(settings, required)
+      raise ArgumentError, 'Settings is empty' unless settings
+
       required.each do |setting|
-        raise ArgumentError.new "Missing setting: #{setting}" unless settings.include? setting.to_s
+        raise ArgumentError, "Missing setting: #{setting}" unless settings.include? setting.to_s
       end
     end
 
     def author
       site_id
     end
-
   end
 end

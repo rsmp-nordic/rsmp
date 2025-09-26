@@ -13,7 +13,7 @@ module RSMP
     # run() will be called inside the task to perform actual long-running work
     def start
       return if @task
-      
+
       # Use current task context if available, otherwise create new reactor
       if Async::Task.current?
         Async::Task.current.async do |task|
@@ -37,12 +37,12 @@ module RSMP
 
     # initiate restart by raising a Restart exception
     def restart
-      raise Restart.new "restart initiated by #{self.class.name}:#{object_id}"
+      raise Restart, "restart initiated by #{self.class.name}:#{object_id}"
     end
 
     # get the status of our task, or nil of no task
     def task_status
-      @task.status if @task
+      @task&.status
     end
 
     # perform any long-running work
@@ -55,7 +55,7 @@ module RSMP
 
     # wait for our task to complete
     def wait
-      @task.wait if @task
+      @task&.wait
     end
 
     # stop our task
@@ -64,8 +64,7 @@ module RSMP
       stop_task if @task
     end
 
-    def stop_subtasks
-    end
+    def stop_subtasks; end
 
     # stop our task and any subtask
     def stop_task
@@ -75,22 +74,21 @@ module RSMP
 
     # wait for an async condition to signal, then yield to block
     # if block returns true we're done. otherwise, wait again
-    def wait_for_condition condition, timeout:, task:Async::Task.current, &block
-      unless task
-        raise RuntimeError.new("Can't wait without a task")
-      end
+    def wait_for_condition(condition, timeout:, task: Async::Task.current, &block)
+      raise "Can't wait without a task" unless task
+
       task.with_timeout(timeout) do
         while task.running?
           value = condition.wait
           return value unless block
+
           result = yield value
           return result if result
         end
-        raise RuntimeError.new("Can't wait for condition because task #{task.object_id} #{task.annotation} is not running")
+        raise "Can't wait for condition because task #{task.object_id} #{task.annotation} is not running"
       end
     rescue Async::TimeoutError
-      raise RSMP::TimeoutError.new
+      raise RSMP::TimeoutError
     end
-
   end
 end

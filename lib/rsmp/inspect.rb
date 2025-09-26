@@ -12,15 +12,14 @@
 
 module RSMP
   module Inspect
-
     def inspector *short_items
       instance_variables.map do |var_name|
         var = instance_variable_get(var_name)
         class_name = var.class.name
 
         short = short_items.include?(var_name) ||
-                   class_name.start_with?('Async') ||
-                   class_name.start_with?('RSMP')
+                class_name.start_with?('Async') ||
+                class_name.start_with?('RSMP')
 
         if short
           if var.is_a? Array
@@ -28,7 +27,7 @@ module RSMP
           elsif var.is_a? Hash
             "#{var_name}: #<#{class_name}:#{class_name.object_id}, #{var.size} items>"
           else
-            "#{var_name}: #{var.to_s}"
+            "#{var_name}: #{var}"
           end
         else
           "#{var_name}: #{var.inspect}"
@@ -39,8 +38,7 @@ module RSMP
     # override this if you want additional variable to be shown in the short format,
     # or ottherwise change the inspect format
     def inspect
-      "#<#{self.class.name}:#{self.object_id}, #{inspector}>"
+      "#<#{self.class.name}:#{object_id}, #{inspector}>"
     end
-
   end
 end
