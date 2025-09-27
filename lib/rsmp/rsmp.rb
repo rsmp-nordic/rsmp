@@ -6,7 +6,6 @@
 require 'time'
 
 module RSMP
-
   class Clock
     attr_reader :adjustment
 
@@ -14,7 +13,7 @@ module RSMP
       @adjustment = 0
     end
 
-    def set target
+    def set(target)
       @adjustment = target - Time.now
     end
 
@@ -34,11 +33,11 @@ module RSMP
       Time.now.utc
     end
 
-    def self.to_s time=nil
-      (time || now).strftime("%FT%T.%3NZ")
+    def self.to_s(time = nil)
+      (time || now).strftime('%FT%T.%3NZ')
     end
 
-    def self.parse str
+    def self.parse(str)
       Time.parse(str)
     end
   end

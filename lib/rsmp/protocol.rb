@@ -16,7 +16,7 @@ module RSMP
     end
 
     def peek_line
-      @peeked = read unless @peeked
+      @peeked ||= read
       @peeked
     end
 
@@ -24,11 +24,13 @@ module RSMP
       @stream.write(data + RSMP::Proxy::WRAPPING_DELIMITER)
       @stream.flush unless @stream.closed?
     end
-  
+
     protected
+
     def read
       line = @stream.gets(RSMP::Proxy::WRAPPING_DELIMITER)
       return nil unless line
+
       line.chomp(RSMP::Proxy::WRAPPING_DELIMITER)
     end
   end

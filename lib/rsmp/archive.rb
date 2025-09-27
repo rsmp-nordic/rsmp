@@ -7,21 +7,25 @@ module RSMP
 
     attr_reader :items
 
-    @@index = 0
+    @index = 0
 
-    def initialize  max=100
+    class << self
+      attr_accessor :index
+    end
+
+    def initialize(max = 100)
       @items = []
       @max = max
     end
 
     def inspect
-      "#<#{self.class.name}:#{self.object_id}, #{inspector(:@items)}>"
+      "#<#{self.class.name}:#{object_id}, #{inspector(:@items)}>"
     end
 
-    def self.prepare_item item
+    def self.prepare_item(item)
       raise ArgumentError unless item.is_a? Hash
 
-      cleaned = item.select { |k,v| [:author,:level,:ip,:port,:site_id,:component,:text,:message,:exception].include? k }
+      cleaned = item.slice(:author, :level, :ip, :port, :site_id, :component, :text, :message, :exception)
       cleaned[:timestamp] = Clock.now
       if item[:message]
         cleaned[:direction] = item[:message].direction
@@ -32,14 +36,14 @@ module RSMP
     end
 
     def self.increase_index
-      @@index += 1
+      self.index += 1
     end
 
     def self.current_index
-      @@index
+      index
     end
 
-    def by_level levels
+    def by_level(levels)
       items.select { |item| levels.include? item[:level] }
     end
 
@@ -47,30 +51,48 @@ module RSMP
       items.map { |item| item[:str] }
     end
 
-    def add item
+    def add(item)
       item[:index] = RSMP::Archive.increase_index
       @items << item
-      if @items.size > @max
-        @items.shift
-      end
+      return unless @items.size > @max
+
+      @items.shift
     end
 
     private
 
-    def find options, &block
+    def find(options, &)
       # search backwards from newest to older, stopping once messages
       # are older that options[:earliest]
       out = []
       @items.reverse_each do |item|
-        break if options[:earliest] && item[:timestamp] < options[:earliest]
-        next if options[:level] && item[:level] != options[:level]
-        next if options[:type] && (item[:message] == nil || (item[:message].type != options[:type]))
-        next if options[:with_message] && !(item[:direction] && item[:message])
-        next if block_given? && block.call != true
+        break if too_old?(item, options[:earliest])
+        next unless matches_filters?(item, options, &)
+
         out.unshift item
       end
       out
     end
-  end
 
+    def too_old?(item, earliest)
+      earliest && item[:timestamp] < earliest
+    end
+
+    def matches_filters?(item, options, &block)
+      return false if options[:level] && item[:level] != options[:level]
+      return false if options[:type] && !matches_type?(item, options[:type])
+      return false if options[:with_message] && !message?(item)
+      return false if block_given? && block.call != true
+
+      true
+    end
+
+    def matches_type?(item, type)
+      item[:message] && item[:message].type == type
+    end
+
+    def message?(item)
+      item[:direction] && item[:message]
+    end
+  end
 end
