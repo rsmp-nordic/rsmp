@@ -195,23 +195,39 @@ module RSMP
       def output_states
         return unless @live_output
 
-        str = @signal_groups.map do |group|
+        str = format_colored_signal_states
+        modes = format_mode_indicators
+        plan = "P#{@plan}"
+
+        write_state_output(modes, plan, str)
+      end
+
+      private
+
+      def format_colored_signal_states
+        @signal_groups.map do |group|
           state = group.state
           s = "#{group.c_id}:#{state}"
-          case state
-          when /^[1-9]$/
-            s.colorize(:green)
-          when /^[NOP]$/
-            s.colorize(:yellow)
-          when /^[ae]$/
-            s.colorize(:light_black)
-          when /^f$/
-            s.colorize(:yellow)
-          else # includes /^g$/ and any other values
-            s.colorize(:red)
-          end
+          colorize_signal_state(s, state)
         end.join ' '
+      end
 
+      def colorize_signal_state(display_string, state)
+        case state
+        when /^[1-9]$/
+          display_string.colorize(:green)
+        when /^[NOP]$/
+          display_string.colorize(:yellow)
+        when /^[ae]$/
+          display_string.colorize(:light_black)
+        when /^f$/
+          display_string.colorize(:yellow)
+        else # includes /^g$/ and any other values
+          display_string.colorize(:red)
+        end
+      end
+
+      def format_mode_indicators
         modes = '.' * 9
         modes[0] = 'N' if @function_position == 'NormalControl'
         modes[1] = 'Y' if @function_position == 'YellowFlash'
@@ -223,17 +239,20 @@ module RSMP
         modes[7] = 'R' if @all_red
         modes[8] = 'I' if @isolated_control
         modes[9] = 'P' if @police_key != 0
+        modes
+      end
 
-        plan = "P#{@plan}"
-
+      def write_state_output(modes, plan, signal_states)
         # create folders if needed
         FileUtils.mkdir_p File.dirname(@live_output)
 
         # append a line with the current state to the file
         File.open @live_output, 'w' do |file|
-          file.puts "#{modes}  #{plan.rjust(2)}  #{@cycle_counter.to_s.rjust(3)}  #{str}\r"
+          file.puts "#{modes}  #{plan.rjust(2)}  #{@cycle_counter.to_s.rjust(3)}  #{signal_states}\r"
         end
       end
+
+      public
 
       def format_signal_group_status
         @signal_groups.map(&:state).join

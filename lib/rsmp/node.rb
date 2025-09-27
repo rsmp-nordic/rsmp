@@ -37,14 +37,14 @@ module RSMP
       @ignore_errors = was
     end
 
-    def distribute_error(e, options = {})
-      return if @ignore_errors.find { |klass| e.is_a? klass }
+    def distribute_error(error, options = {})
+      return if @ignore_errors.find { |klass| error.is_a? klass }
 
       if options[:level] == :internal
-        log ["#{e} in task: #{Async::Task.current}", e.backtrace].flatten.join("\n"),
+        log ["#{error} in task: #{Async::Task.current}", error.backtrace].flatten.join("\n"),
             level: :error
       end
-      @error_queue.enqueue e
+      @error_queue.enqueue error
     end
 
     def defer(key, item = nil)

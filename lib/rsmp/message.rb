@@ -113,8 +113,8 @@ module RSMP
       @attributes[key]
     end
 
-    def self.bin_to_chars(s)
-      out = s.gsub(/[^[:print:]]/i, '.')
+    def self.bin_to_chars(str)
+      out = str.gsub(/[^[:print:]]/i, '.')
       max = 120
       if out.size <= max
         out

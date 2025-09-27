@@ -331,7 +331,7 @@ module RSMP
       super(str, options.merge(ip: @ip, port: @port, site_id: @site_id))
     end
 
-    def get_schemas
+    def schemas
       schemas = { core: RSMP::Schema.latest_core_version } # use latest core
       schemas[:core] = core_version if core_version
       schemas[sxl] = RSMP::Schema.sanitize_version(sxl_version.to_s) if sxl && sxl_version
@@ -344,7 +344,7 @@ module RSMP
 
       message.direction = :out
       message.generate_json
-      message.validate get_schemas unless validate == false
+      message.validate schemas unless validate == false
       @protocol.write_lines message.json
       expect_acknowledgement message
       distribute message
@@ -398,7 +398,7 @@ module RSMP
     def process_packet(json)
       attributes = Message.parse_attributes json
       message = Message.build attributes, json
-      message.validate(get_schemas) if should_validate_ingoing_message?(message)
+      message.validate(schemas) if should_validate_ingoing_message?(message)
       verify_sequence message
       with_deferred_distribution do
         distribute message

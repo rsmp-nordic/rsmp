@@ -388,10 +388,10 @@ module RSMP
       subs = @status_subscriptions[component]
       if subs
         message.attributes['sS'].each do |arg|
-          sCI = arg['sCI']
-          if subs[sCI]
-            subs[sCI].delete arg['n']
-            subs.delete(sCI) if subs[sCI].empty?
+          sci = arg['sCI']
+          if subs[sci]
+            subs[sci].delete arg['n']
+            subs.delete(sci) if subs[sci].empty?
           end
         end
         @status_subscriptions.delete(component) if subs.empty?
@@ -413,11 +413,11 @@ module RSMP
       @last_status_sent ||= {}
       @last_status_sent[component_id] ||= {}
       message.attribute('sS').each do |item|
-        sCI = item['sCI']
+        sci = item['sCI']
         n = item['n']
         s = item['s']
-        @last_status_sent[component_id][sCI] ||= {}
-        @last_status_sent[component_id][sCI][n] = s
+        @last_status_sent[component_id][sci] ||= {}
+        @last_status_sent[component_id][sci][n] = s
       end
     end
 
@@ -460,7 +460,7 @@ module RSMP
       now = clock.to_s
       update_list.each_pair do |component_id, by_code|
         component = @site.find_component component_id
-        sS = []
+        ss = []
         by_code.each_pair do |code, names|
           names.map do |status_name, value|
             if value
@@ -468,7 +468,7 @@ module RSMP
             else
               value, quality = component.get_status code, status_name
             end
-            sS << { 'sCI' => code,
+            ss << { 'sCI' => code,
                     'n' => status_name,
                     's' => rsmpify_value(value, quality),
                     'q' => quality }
@@ -477,7 +477,7 @@ module RSMP
         update = StatusUpdate.new({
                                     'cId' => component_id,
                                     'sTs' => now,
-                                    'sS' => sS
+                                    'sS' => ss
                                   })
         set_nts_message_attributes update
         send_message update
