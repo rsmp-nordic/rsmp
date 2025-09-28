@@ -26,7 +26,7 @@ module RSMP
         end
       end
 
-      def set_forcing(input, force = true, forced_value = true)
+      def set_forcing(input, force: true, forced_value: true)
         check_input input
         report_change(input) do
           @forced[input] = to_digit force
@@ -37,34 +37,34 @@ module RSMP
 
       def force(input, forced_value = true)
         report_change(input) do
-          set_forcing input, true, forced_value
+          set_forcing input, force: true, forced_value: forced_value
         end
       end
 
       def release(input)
         report_change(input) do
-          set_forcing input, false, false
+          set_forcing input, force: false, forced_value: false
         end
       end
 
       def value(input)
         check_input input
-        from_digit @value[input]
+        from_digit? @value[input]
       end
 
       def forced?(input)
         check_input input
-        from_digit @forced[input]
+        from_digit? @forced[input]
       end
 
       def forced_value(input)
         check_input input
-        from_digit @forced_value[input]
+        from_digit? @forced_value[input]
       end
 
       def actual(input)
         check_input input
-        from_digit @actual[input]
+        from_digit? @actual[input]
       end
 
       def report(input)
@@ -98,7 +98,7 @@ module RSMP
         raise ArgumentError, "Input index #{input} must be in the range 1-#{@size}" if input < 1 || input > @size
       end
 
-      def from_digit(input)
+      def from_digit?(input)
         input == '1'
       end
 
@@ -107,7 +107,7 @@ module RSMP
       end
 
       def update_actual(input)
-        @actual[input] = if from_digit @forced[input]
+        @actual[input] = if from_digit? @forced[input]
                            @forced_value[input]
                          else
                            @value[input]
@@ -119,7 +119,7 @@ module RSMP
         yield
         return unless @actual[input] != before
 
-        from_digit @actual[input]
+        from_digit? @actual[input]
       end
     end
   end

@@ -140,7 +140,7 @@ module RSMP
         end
       end
 
-      def self.from_rsmp_bool(str)
+      def self.from_rsmp_bool?(str)
         str == 'True'
       end
 

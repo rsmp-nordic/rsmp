@@ -291,7 +291,7 @@ module RSMP
 
       def handle_m0002(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
-        if TrafficControllerSite.from_rsmp_bool(arg['status'])
+        if TrafficControllerSite.from_rsmp_bool?(arg['status'])
           switch_plan arg['timeplan'], source: 'forced'
         else
           switch_plan 0, source: 'startup' # TODO: use clock/calender
@@ -538,7 +538,7 @@ module RSMP
         else
           log "Releasing input #{input}", level: :info
         end
-        change = @inputs.set_forcing input, force, forced_value
+        change = @inputs.set_forcing input, force: force, forced_value: forced_value
 
         input_logic input, change unless change.nil?
       end
