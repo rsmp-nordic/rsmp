@@ -306,13 +306,13 @@ module RSMP
       send_message response
     end
 
-    def rsmpify_value(v, q)
-      if v.is_a?(Array) || v.is_a?(Set)
-        v
-      elsif %w[undefined unknown].include?(q.to_s)
+    def rsmpify_value(value, quality)
+      if value.is_a?(Array) || value.is_a?(Set)
+        value
+      elsif %w[undefined unknown].include?(quality.to_s)
         nil
       else
-        v.to_s
+        value.to_s
       end
     end
 
@@ -377,8 +377,8 @@ module RSMP
       send_status_updates update_list # send status after subscribing is accepted
     end
 
-    def get_status_subscribe_interval(component_id, sci, n)
-      @status_subscriptions.dig component_id, sci, n
+    def get_status_subscribe_interval(component_id, sci, name)
+      @status_subscriptions.dig component_id, sci, name
     end
 
     def process_status_unsubcribe(message)

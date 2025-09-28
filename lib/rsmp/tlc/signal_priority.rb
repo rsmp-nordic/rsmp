@@ -9,7 +9,7 @@ module RSMP
         @level = level
         @eta = eta
         @vehicle_type = vehicle_type
-        set_state 'received'
+        self.state = 'received'
       end
 
       def prune?
@@ -19,10 +19,10 @@ module RSMP
       def cancel
         return unless @state == 'activated'
 
-        set_state 'completed'
+        self.state = 'completed'
       end
 
-      def set_state(state)
+      def state=(state)
         @state = state
         @updated = node.clock.now
         @node.signal_priority_changed self, @state
@@ -34,12 +34,12 @@ module RSMP
         when 'received'
           if @age >= 0.5
             @node.log "Priority request #{@id} activated.", level: :info
-            set_state 'activated'
+            self.state = 'activated'
           end
         when 'activated'
           if @age >= 1
             @node.log "Priority request #{@id} became stale.", level: :info
-            set_state 'stale'
+            self.state = 'stale'
           end
         end
       end

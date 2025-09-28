@@ -494,7 +494,8 @@ module RSMP
       if candidates.any?
         @core_version = candidates.max_by { |v| Gem::Version.new(v) } # pick latest version
       else
-        reason = "RSMP versions [#{message.versions.join(', ')}] requested, but only [#{versions.join(', ')}] supported."
+        reason = "RSMP versions [#{message.versions.join(', ')}] requested, " \
+                 "but only [#{versions.join(', ')}] supported."
         dont_acknowledge message, 'Version message rejected', reason, force: true
         raise HandshakeError, reason
       end

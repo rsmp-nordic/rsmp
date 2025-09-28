@@ -132,27 +132,39 @@ module RSMP
       @matchers.each do |matcher|
         want = matcher.want
         if want['cCI']
-          cci = want['cCI']
-          h[cci] ||= {}
-          co = want['cO']
-          n = want['n']
-          v = want['v']
-          h[cci][co] ||= {}
-          h[cci][co][n] = v
+          process_command_matcher(h, matcher, want)
         elsif want['sCI']
-          sci = want['sCI']
-          h[sci] ||= {}
-          n = want['n']
-          s = want['s']
-          h[sci][n] = if matcher.got && matcher.got['s']
-                        { { s => matcher.got['s'] } => matcher.done? }
-                      else
-                        { s => nil }
-                      end
+          process_status_matcher(h, matcher, want)
         end
       end
       h
     end
+
+    private
+
+    def process_command_matcher(hash, _matcher, want)
+      cci = want['cCI']
+      hash[cci] ||= {}
+      co = want['cO']
+      n = want['n']
+      v = want['v']
+      hash[cci][co] ||= {}
+      hash[cci][co][n] = v
+    end
+
+    def process_status_matcher(hash, matcher, want)
+      sci = want['sCI']
+      hash[sci] ||= {}
+      n = want['n']
+      s = want['s']
+      hash[sci][n] = if matcher.got && matcher.got['s']
+                       { { s => matcher.got['s'] } => matcher.done? }
+                     else
+                       { s => nil }
+                     end
+    end
+
+    public
 
     # return a string that describe how many many messages have been collected
     def describe_progress
@@ -166,22 +178,30 @@ module RSMP
       @matchers.each do |matcher|
         item = matcher.want
         if item['cCI']
-          cci = item['cCI']
-          h[cci] ||= {}
-          co = item['cO']
-          h[cci][co] ||= {}
-          n = item['n']
-          v = item['v']
-          h[cci][co][n] = v || :any
+          add_command_want_to_hash(h, item)
         elsif item['sCI']
-          sci = item['sCI']
-          h[sci] ||= {}
-          n = item['n']
-          s = item['s']
-          h[sci][n] = s || :any
+          add_status_want_to_hash(h, item)
         end
       end
       h
+    end
+
+    def add_command_want_to_hash(hash, item)
+      cci = item['cCI']
+      hash[cci] ||= {}
+      co = item['cO']
+      hash[cci][co] ||= {}
+      n = item['n']
+      v = item['v']
+      hash[cci][co][n] = v || :any
+    end
+
+    def add_status_want_to_hash(hash, item)
+      sci = item['sCI']
+      hash[sci] ||= {}
+      n = item['n']
+      s = item['s']
+      hash[sci][n] = s || :any
     end
 
     # return a hash that describe the end result
