@@ -497,7 +497,7 @@ module RSMP
         raise RSMP::MessageRejected, 'Cycle time must be greater or equal to zero' if cycle_time.negative?
 
         log "Set plan #{nr} cycle time to #{cycle_time}", level: :info
-        plan.set_cycle_time cycle_time
+        plan.cycle_time = cycle_time
       end
 
       def string_to_bool(bool_str)

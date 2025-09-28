@@ -28,7 +28,7 @@ module RSMP
         @dynamic_bands[band.to_i]
       end
 
-      def set_cycle_time(cycle_time)
+      def cycle_time=(cycle_time)
         raise ArgumentError if cycle_time.negative?
 
         @cycle_time = cycle_time

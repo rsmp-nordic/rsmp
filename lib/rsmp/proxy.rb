@@ -210,8 +210,8 @@ module RSMP
       log str, level: :statistics
     end
 
-    def receive_error(e, options = {})
-      @node.receive_error e, options
+    def receive_error(error, options = {})
+      @node.receive_error error, options
     end
 
     def start_watchdog

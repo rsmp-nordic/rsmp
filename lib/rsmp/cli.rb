@@ -50,11 +50,14 @@ module RSMP
     end
 
     def apply_site_options(settings, log_settings)
+      apply_basic_site_options(settings)
+      parse_supervisors(settings) if options[:supervisors]
+      apply_log_options(log_settings)
+    end
+
+    def apply_basic_site_options(settings)
       settings['site_id'] = options[:id] if options[:id]
       settings['core_version'] = options[:core] if options[:core]
-      parse_supervisors(settings) if options[:supervisors]
-      log_settings['path'] = options[:log] if options[:log]
-      log_settings['json'] = options[:json] if options[:json]
     end
 
     def parse_supervisors(settings)
@@ -132,15 +135,25 @@ module RSMP
     end
 
     def apply_supervisor_options(settings, log_settings)
+      apply_basic_supervisor_options(settings)
+      apply_core_version_option(settings)
+      apply_log_options(log_settings)
+    end
+
+    def apply_basic_supervisor_options(settings)
       settings['site_id'] = options[:id] if options[:id]
       settings['ip'] = options[:ip] if options[:ip]
       settings['port'] = options[:port] if options[:port]
+    end
 
-      if options[:core]
-        settings['guest'] = {}
-        settings['guest']['core_version'] = options[:core]
-      end
+    def apply_core_version_option(settings)
+      return unless options[:core]
 
+      settings['guest'] = {}
+      settings['guest']['core_version'] = options[:core]
+    end
+
+    def apply_log_options(log_settings)
       log_settings['path'] = options[:log] if options[:log]
       log_settings['json'] = options[:json] if options[:json]
     end

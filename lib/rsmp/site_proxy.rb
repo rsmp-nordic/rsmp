@@ -55,9 +55,9 @@ module RSMP
 
     def process_message(message)
       case message
-      when CommandRequest
-      when StatusRequest
-      when StatusSubscribe
+      when CommandRequest, StatusRequest, StatusSubscribe
+        # These message types are handled by the parent class
+        super
       when StatusUnsubscribe
         will_not_handle message
       when AggregatedStatus
@@ -128,16 +128,16 @@ module RSMP
       end
     end
 
-    def validate_aggregated_status(message, se)
-      return if se.is_a?(Array) && se.size == 8
+    def validate_aggregated_status(message, status_elements)
+      return if status_elements.is_a?(Array) && status_elements.size == 8
 
       dont_acknowledge message, 'Received', reaons
       raise InvalidMessage
     end
 
     def process_aggregated_status(message)
-      se = message.attribute('se')
-      validate_aggregated_status(message, se)
+      status_elements = message.attribute('se')
+      validate_aggregated_status(message, status_elements)
       c_id = message.attributes['cId']
       component = find_component c_id
       unless component
@@ -146,7 +146,7 @@ module RSMP
         return
       end
 
-      component.aggregated_status_bools = se
+      component.aggregated_status_bools = status_elements
       log "Received #{message.type} status for component #{c_id} [#{component.aggregated_status.join(', ')}]",
           message: message
       acknowledge message
@@ -364,9 +364,9 @@ module RSMP
       end
     end
 
-    def receive_error(e, options = {})
-      @supervisor&.receive_error e, options
-      distribute_error e, options
+    def receive_error(error, options = {})
+      @supervisor&.receive_error error, options
+      distribute_error error, options
     end
 
     def build_component(id:, type:, settings: {})

@@ -43,15 +43,13 @@ module RSMP
             puts "Warning: Pattern not support for lists: #{item.inspect}" if item['pattern']
           else
             case item['type']
-            when 'string', 'base64'
-              out['type'] = 'string'
             when 'boolean'
               out['$ref'] = '../../../core/3.1.1/definitions.json#/boolean'
             when 'timestamp'
               out['$ref'] = '../../../core/3.1.1/definitions.json#/timestamp'
             when 'integer', 'ordinal', 'unit', 'scale', 'long'
               out['$ref'] = '../../../core/3.1.1/definitions.json#/integer'
-            else
+            else # includes 'string', 'base64' and any other types
               out['type'] = 'string'
             end
 
