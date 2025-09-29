@@ -25,7 +25,7 @@ module RSMP
       run_site(site_class, settings, log_settings)
     rescue Interrupt
       # ctrl-c
-    rescue Exception => e
+    rescue StandardError => e
       puts "Uncaught error: #{e}"
       puts caller.join("\n")
     end
@@ -176,21 +176,31 @@ module RSMP
     method_option :in, type: :string, aliases: '-i', banner: 'Path to YAML input file'
     method_option :out, type: :string, aliases: '-o', banner: 'Path to JSON Schema output file'
     def convert
+      validate_convert_options
+      validate_input_file_exists
+      perform_conversion
+    end
+
+    def validate_convert_options
       unless options[:in]
         puts 'Error: Input option missing'
         exit
       end
 
-      unless options[:out]
-        puts 'Error: Output option missing'
-        exit
-      end
+      return if options[:out]
 
-      unless File.exist? options[:in]
-        puts "Error: Input path file #{options[:in]} not found"
-        exit
-      end
+      puts 'Error: Output option missing'
+      exit
+    end
 
+    def validate_input_file_exists
+      return if File.exist? options[:in]
+
+      puts "Error: Input path file #{options[:in]} not found"
+      exit
+    end
+
+    def perform_conversion
       sxl = RSMP::Convert::Import::YAML.read options[:in]
       RSMP::Convert::Export::JSONSchema.write sxl, options[:out]
     end
@@ -200,5 +210,6 @@ module RSMP
     def self.exit_on_failure?
       true
     end
+    private_class_method :exit_on_failure?
   end
 end

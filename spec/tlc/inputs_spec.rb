@@ -3,10 +3,10 @@ RSpec.describe RSMP::TLC::Inputs do
 
   it 'defaults to all inactive, released' do
     (1..4).each do |i|
-      expect(inputs.value(i)).to eq(false)
+      expect(inputs.value?(i)).to eq(false)
       expect(inputs.forced?(i)).to eq(false)
-      expect(inputs.forced_value(i)).to eq(false)
-      expect(inputs.actual(i)).to eq(false)
+      expect(inputs.forced_value?(i)).to eq(false)
+      expect(inputs.actual?(i)).to eq(false)
     end
   end
 
@@ -24,13 +24,13 @@ RSpec.describe RSMP::TLC::Inputs do
   end
 
   it 'raises if input index is invalid' do
-    expect { inputs.value(0) }.to raise_error(ArgumentError)
+    expect { inputs.value?(0) }.to raise_error(ArgumentError)
     expect { inputs.set(0) }.to raise_error(ArgumentError)
 
     expect { inputs.force(0) }.to raise_error(ArgumentError)
     expect { inputs.forced?(0) }.to raise_error(ArgumentError)
 
-    expect { inputs.value(5) }.to raise_error(ArgumentError)
+    expect { inputs.value?(5) }.to raise_error(ArgumentError)
     expect { inputs.set(5) }.to raise_error(ArgumentError)
     expect { inputs.force(5) }.to raise_error(ArgumentError)
     expect { inputs.forced?(5) }.to raise_error(ArgumentError)
@@ -38,24 +38,24 @@ RSpec.describe RSMP::TLC::Inputs do
 
   it 'can set value' do
     inputs.set(1, true)
-    expect(inputs.value(1)).to eq(true)
+    expect(inputs.value?(1)).to eq(true)
     expect(inputs.value_string).to eq('1000')
     inputs.set(1, false)
-    expect(inputs.value(1)).to eq(false)
+    expect(inputs.value?(1)).to eq(false)
     expect(inputs.value_string).to eq('0000')
 
     inputs.set(4, true)
-    expect(inputs.value(4)).to eq(true)
+    expect(inputs.value?(4)).to eq(true)
     expect(inputs.value_string).to eq('0001')
     inputs.set(4, false)
-    expect(inputs.value(4)).to eq(false)
+    expect(inputs.value?(4)).to eq(false)
     expect(inputs.value_string).to eq('0000')
   end
 
   it 'forces' do
-    expect(inputs.value(1)).to eq(false)
+    expect(inputs.value?(1)).to eq(false)
     inputs.force(1, true)
-    expect(inputs.value(1)).to eq(false)
+    expect(inputs.value?(1)).to eq(false)
   end
 
   it 'can force' do

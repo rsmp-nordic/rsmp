@@ -47,7 +47,7 @@ module RSMP
         end
       end
 
-      def value(input)
+      def value?(input)
         check_input input
         from_digit? @value[input]
       end
@@ -57,22 +57,22 @@ module RSMP
         from_digit? @forced[input]
       end
 
-      def forced_value(input)
+      def forced_value?(input)
         check_input input
         from_digit? @forced_value[input]
       end
 
-      def actual(input)
+      def actual?(input)
         check_input input
         from_digit? @actual[input]
       end
 
       def report(input)
         {
-          value: value(input),
+          value: value?(input),
           forced: forced?(input),
-          forced_value: forced_value(input),
-          actual: actual(input)
+          forced_value: forced_value?(input),
+          actual: actual?(input)
         }
       end
 

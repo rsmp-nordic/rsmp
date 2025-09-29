@@ -132,11 +132,8 @@ RSpec.describe RSMP::Supervisor do
             expect(watchdog_ack['type']).to eq('MessageAck')
             expect(watchdog_ack['oMId']).to eq('439e5748-0662-4ab2-a0d7-80fc680f04f5')
             # puts "[DEBUG] #{Time.now} - Supervisor side completed successfully"
-          rescue EOFError => e
-            # puts "[DEBUG] #{Time.now} - EOFError in supervisor: #{e}"
-            puts e.backtrace
           rescue StandardError => e
-            # puts "[DEBUG] #{Time.now} - StandardError in supervisor: #{e}"
+            # puts "[DEBUG] #{Time.now} - Error in supervisor: #{e}"
             puts e.backtrace
           end
           # #puts "[DEBUG] #{Time.now} - signaling supervisor is ready"

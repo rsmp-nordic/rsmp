@@ -96,9 +96,11 @@ module RSMP
       return unless collecting?
 
       @matchers.each do |matcher| # look through matchers
+        break unless collecting?
+
         get_items(message).each do |item| # look through items in message
           matched = matcher.perform_match(item, message, @block)
-          return unless collecting?
+          break unless collecting?
 
           next if matched.nil?
 

@@ -127,7 +127,7 @@ module RSMP
         prune_priorities
       end
 
-      def get_priority_list
+      def priority_list
         @signal_priorities.map do |priority|
           {
             'r' => priority.id,
@@ -216,12 +216,10 @@ module RSMP
         case state
         when /^[1-9]$/
           display_string.colorize(:green)
-        when /^[NOP]$/
+        when /^[NOPf]$/
           display_string.colorize(:yellow)
         when /^[ae]$/
           display_string.colorize(:light_black)
-        when /^f$/
-          display_string.colorize(:yellow)
         else # includes /^g$/ and any other values
           display_string.colorize(:red)
         end
@@ -421,12 +419,14 @@ module RSMP
           inputs.each do |input|
             if input < 1
               raise MessageRejected,
-                    "Cannot activate inputs #{set} and deactivate inputs #{clear}: input #{input} is invalid (must be 1 or higher)"
+                    "Cannot activate inputs #{set} and deactivate inputs #{clear}: " \
+                    "input #{input} is invalid (must be 1 or higher)"
             end
-            if input > @inputs.size
-              raise MessageRejected,
-                    "Cannot activate inputs #{set} and deactivate inputs #{clear}: input #{input} is invalid (only #{@inputs.size} inputs present)"
-            end
+            next unless input > @inputs.size
+
+            raise MessageRejected,
+                  "Cannot activate inputs #{set} and deactivate inputs #{clear}: " \
+                  "input #{input} is invalid (only #{@inputs.size} inputs present)"
           end
         end
       end
@@ -932,7 +932,9 @@ module RSMP
       def handle_s0028(_status_code, status_name = nil, _options = {})
         case status_name
         when 'status'
-          times = @plans.map { |_nr, plan| "#{format('%02d', plan.nr)}-#{format('%02d', plan.cycle_time)}" }.join(',')
+          times = @plans.map do |_nr, plan|
+            "#{format('%02d', plan.number)}-#{format('%02d', plan.cycle_time)}"
+          end.join(',')
           TrafficControllerSite.make_status times
         end
       rescue StandardError => e

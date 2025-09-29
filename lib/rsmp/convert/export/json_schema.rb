@@ -22,43 +22,49 @@ module RSMP
 
         def self.build_value(item)
           out = {}
-
           out['description'] = item['description'] if item['description']
 
           if item['list']
-            case item['type']
-            when 'boolean'
-              out['$ref'] = '../../../core/3.1.1/definitions.json#/boolean_list'
-            when 'integer', 'ordinal', 'unit', 'scale', 'long'
-              out['$ref'] = '../../../core/3.1.1/definitions.json#/integer_list'
-            else
-              raise "Error: List of #{item['type']} is not supported: #{item.inspect}"
-            end
-
-            if item['values']
-              value_list = item['values'].keys.join('|')
-              out['pattern'] = /(?-mix:^(#{value_list})(?:,(#{value_list}))*$)/
-            end
-
-            puts "Warning: Pattern not support for lists: #{item.inspect}" if item['pattern']
+            build_list_value(out, item)
           else
-            case item['type']
-            when 'boolean'
-              out['$ref'] = '../../../core/3.1.1/definitions.json#/boolean'
-            when 'timestamp'
-              out['$ref'] = '../../../core/3.1.1/definitions.json#/timestamp'
-            when 'integer', 'ordinal', 'unit', 'scale', 'long'
-              out['$ref'] = '../../../core/3.1.1/definitions.json#/integer'
-            else # includes 'string', 'base64' and any other types
-              out['type'] = 'string'
-            end
-
-            out['enum'] = item['values'].keys.sort if item['values']
-
-            out['pattern'] = item['pattern'] if item['pattern']
+            build_single_value(out, item)
           end
 
           out
+        end
+
+        def self.build_list_value(out, item)
+          case item['type']
+          when 'boolean'
+            out['$ref'] = '../../../core/3.1.1/definitions.json#/boolean_list'
+          when 'integer', 'ordinal', 'unit', 'scale', 'long'
+            out['$ref'] = '../../../core/3.1.1/definitions.json#/integer_list'
+          else
+            raise "Error: List of #{item['type']} is not supported: #{item.inspect}"
+          end
+
+          if item['values']
+            value_list = item['values'].keys.join('|')
+            out['pattern'] = /(?-mix:^(#{value_list})(?:,(#{value_list}))*$)/
+          end
+
+          puts "Warning: Pattern not support for lists: #{item.inspect}" if item['pattern']
+        end
+
+        def self.build_single_value(out, item)
+          case item['type']
+          when 'boolean'
+            out['$ref'] = '../../../core/3.1.1/definitions.json#/boolean'
+          when 'timestamp'
+            out['$ref'] = '../../../core/3.1.1/definitions.json#/timestamp'
+          when 'integer', 'ordinal', 'unit', 'scale', 'long'
+            out['$ref'] = '../../../core/3.1.1/definitions.json#/integer'
+          else # includes 'string', 'base64' and any other types
+            out['type'] = 'string'
+          end
+
+          out['enum'] = item['values'].keys.sort if item['values']
+          out['pattern'] = item['pattern'] if item['pattern']
         end
 
         def self.build_item(item, property_key: 'v')
@@ -157,8 +163,12 @@ module RSMP
               },
               {
                 'if' => { 'required' => ['type'],
-                          'properties' => { 'type' => { 'enum' => %w[StatusRequest StatusResponse StatusSubscribe StatusUnsubscribe
-                                                                     StatusUpdate] } } },
+                          'properties' => {
+                            'type' => {
+                              'enum' => %w[StatusRequest StatusResponse StatusSubscribe
+                                           StatusUnsubscribe StatusUpdate]
+                            }
+                          } },
                 'then' => { '$ref' => 'statuses/statuses.json' }
               },
               {

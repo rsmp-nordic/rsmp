@@ -197,28 +197,28 @@ RSpec.describe RSMP::Message do
     it 'validates mType' do
       message = RSMP::Message.new 'mType' => 'rSMsg', 'type' => 'Version',
                                   'mId' => 'c014bd2d-5671-4a19-b37e-50deef301b82'
-      expect(message.validate_type).to eq(true)
+      expect(message.validate_type?).to eq(true)
 
       message = RSMP::Message.new 'mType' => 'rBad', 'type' => 'Version',
                                   'mId' => 'c014bd2d-5671-4a19-b37e-50deef301b82'
-      expect(message.validate_type).to eq(false)
+      expect(message.validate_type?).to eq(false)
     end
 
     it 'validates message id format' do
       expect(RSMP::Message.new('mType' => 'rSMsg', 'type' => 'Version',
-                               'mId' => 'c014bd2d-5671-4a19-b37e-50deef301b82').validate_id).to eq(true)
+                               'mId' => 'c014bd2d-5671-4a19-b37e-50deef301b82').validate_id?).to eq(true)
       expect(RSMP::Message.new('mType' => 'rSMsg', 'type' => 'Version',
-                               'mId' => '0c014bd2d-5671-4a19-b37e-50deef301b82').validate_id).to eq(true)
+                               'mId' => '0c014bd2d-5671-4a19-b37e-50deef301b82').validate_id?).to eq(true)
       expect(RSMP::Message.new('mType' => 'rSMsg', 'type' => 'Version',
-                               'mId' => '.014bd2d-5671-4a19-b37e').validate_id).to eq(false)
+                               'mId' => '.014bd2d-5671-4a19-b37e').validate_id?).to eq(false)
       expect(RSMP::Message.new('mType' => 'rSMsg', 'type' => 'Version',
-                               'mId' => '014bd2d-5671-4a19-b37e-50deef301b82').validate_id).to eq(false)
+                               'mId' => '014bd2d-5671-4a19-b37e-50deef301b82').validate_id?).to eq(false)
       expect(RSMP::Message.new('mType' => 'rSMsg', 'type' => 'Version',
-                               'mId' => '14bd2d-5671-4a19-b37e-50deef301b82').validate_id).to eq(false)
+                               'mId' => '14bd2d-5671-4a19-b37e-50deef301b82').validate_id?).to eq(false)
       expect(RSMP::Message.new('mType' => 'rSMsg', 'type' => 'Version',
-                               'mId' => 'c014bd2d5671-4a19-b37e-50deef301b82').validate_id).to eq(false)
+                               'mId' => 'c014bd2d5671-4a19-b37e-50deef301b82').validate_id?).to eq(false)
       expect(RSMP::Message.new('mType' => 'rSMsg', 'type' => 'Version',
-                               'mId' => 'c014bd2d5671-4a19-037e-50deef301b82').validate_id).to eq(false)
+                               'mId' => 'c014bd2d5671-4a19-037e-50deef301b82').validate_id?).to eq(false)
     end
   end
 
