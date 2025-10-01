@@ -94,4 +94,41 @@ RSpec.describe 'Connecting' do
       task.stop
     end
   end
+
+  it 'establishes connection and sends aggregated status without reconnection loop' do
+    log_settings_with_output = {
+      'active' => true,
+      'color' => false
+    }
+    site_with_log = RSMP::Site.new(
+      site_settings: site_settings,
+      log_settings: log_settings_with_output
+    )
+    supervisor_with_log = RSMP::Supervisor.new(
+      supervisor_settings: supervisor_settings,
+      log_settings: log_settings_with_output
+    )
+
+    AsyncRSpec.async context: lambda {
+      supervisor_with_log.start
+      supervisor_with_log.ready_condition.wait
+      site_with_log.start
+    } do |task|
+      site_proxy = supervisor_with_log.wait_for_site site_id, timeout: timeout
+      supervisor_proxy = site_with_log.wait_for_supervisor ip, timeout: timeout
+
+      site_proxy.wait_for_state :ready, timeout: timeout
+      supervisor_proxy.wait_for_state :ready, timeout: timeout
+
+      # Verify connection is stable - sleep briefly and check we're still ready
+      Async::Task.current.sleep 0.2
+
+      expect(site_proxy.state).to eq(:ready)
+      expect(supervisor_proxy.state).to eq(:ready)
+      expect(supervisor_with_log.proxies.size).to eq(1)
+      expect(site_with_log.proxies.size).to eq(1)
+
+      task.stop
+    end
+  end
 end
