@@ -1,52 +1,52 @@
 include RSMP
+
 RSpec.describe StatusCollector do
   let(:timeout) { 0.01 }
 
-  def build_status_message status_list
+  def build_status_message(status_list)
     clock = Clock.new
     RSMP::StatusUpdate.new(
-      "cId" => "C1",
-      "sTs" => clock.to_s,
-      "sS" => [status_list].flatten
+      'cId' => 'C1',
+      'sTs' => clock.to_s,
+      'sS' => [status_list].flatten
     )
   end
 
-  let(:want) {
+  let(:want) do
     {
-      s5: {"sCI" => "S0005","n" => "status","s" => "False"},
-      s7: {"sCI" => "S0007","n" => "status","s" => /^True(,True)*$/},
-      s11: {"sCI" => "S0011","n" => "status","s" => /^False(,False)*$/},
+      s5: { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' },
+      s7: { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
+      s11: { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ }
     }
-  }
+  end
 
-  let(:ok) {
+  let(:ok) do
     {
-      s5: {"sCI" => "S0005","n" => "status","s" => "False"},
-      s7: {"sCI" => "S0007","n" => "status","s" => "True"},
-      s11: {"sCI" => "S0011","n" => "status","s" => "False"},
+      s5: { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' },
+      s7: { 'sCI' => 'S0007', 'n' => 'status', 's' => 'True' },
+      s11: { 'sCI' => 'S0011', 'n' => 'status', 's' => 'False' }
     }
-  }
+  end
 
-  let(:reject) {
+  let(:reject) do
     {
-      s5: {"sCI" => "S0005","n" => "status","s" => "True"},
-      s7: {"sCI" => "S0007","n" => "status","s" => "False"},
-      s11: {"sCI" => "S0011","n" => "status","s" => "True"},
+      s5: { 'sCI' => 'S0005', 'n' => 'status', 's' => 'True' },
+      s7: { 'sCI' => 'S0007', 'n' => 'status', 's' => 'False' },
+      s11: { 'sCI' => 'S0011', 'n' => 'status', 's' => 'True' }
     }
-  }
+  end
 
-  describe "#collect" do
-
+  describe '#collect' do
     it 'completes with a single status update' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
-        expect(collector.summary).to eq([false,false,false])
+        expect(collector.summary).to eq([false, false, false])
         expect(collector.done?).to be(false)
 
         collector.start
         collector.receive build_status_message(ok.values)
-        expect(collector.summary).to eq([true,true,true])
+        expect(collector.summary).to eq([true, true, true])
         expect(collector.done?).to be(true)
       end
     end
@@ -55,20 +55,20 @@ RSpec.describe StatusCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
-        expect(collector.summary).to eq([false,false,false])
+        expect(collector.summary).to eq([false, false, false])
         expect(collector.done?).to be(false)
 
         collector.start
         collector.receive build_status_message(ok[:s5])
-        expect(collector.summary).to eq([true,false,false])
+        expect(collector.summary).to eq([true, false, false])
         expect(collector.done?).to be(false)
 
         collector.receive build_status_message(ok[:s7])
-        expect(collector.summary).to eq([true,true,false])
+        expect(collector.summary).to eq([true, true, false])
         expect(collector.done?).to be(false)
 
         collector.receive build_status_message(ok[:s11])
-        expect(collector.summary).to eq([true,true,true])
+        expect(collector.summary).to eq([true, true, true])
         expect(collector.done?).to be(true)
       end
     end
@@ -78,27 +78,27 @@ RSpec.describe StatusCollector do
         proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, timeout: timeout)
         expect(collector.done?).to be(false)
-        expect(collector.summary).to eq([false,false,false])
+        expect(collector.summary).to eq([false, false, false])
 
         collector.start
-        collector.receive build_status_message(ok[:s5])      # set s5
-        expect(collector.summary).to eq([true,false,false])
+        collector.receive build_status_message(ok[:s5]) # set s5
+        expect(collector.summary).to eq([true, false, false])
         expect(collector.done?).to be(false)
 
         collector.receive build_status_message(ok[:s7])
-        expect(collector.summary).to eq([true,true,false])
+        expect(collector.summary).to eq([true, true, false])
         expect(collector.done?).to be(false)
 
-        collector.receive build_status_message(reject[:s5])    # clear s5
-        expect(collector.summary).to eq([false,true,false])
+        collector.receive build_status_message(reject[:s5]) # clear s5
+        expect(collector.summary).to eq([false, true, false])
         expect(collector.done?).to be(false)
 
         collector.receive build_status_message(ok[:s11])
-        expect(collector.summary).to eq([false,true,true])
+        expect(collector.summary).to eq([false, true, true])
         expect(collector.done?).to be(false)
 
-        collector.receive build_status_message(ok[:s5])      # set s5 againt
-        expect(collector.summary).to eq([true,true,true])
+        collector.receive build_status_message(ok[:s5]) # set s5 againt
+        expect(collector.summary).to eq([true, true, true])
         expect(collector.done?).to be(true)
       end
     end
@@ -123,7 +123,7 @@ RSpec.describe StatusCollector do
         expect(proxy.receivers.size).to eq(0)
 
         # start collection
-        collect_task = task.async do
+        task.async do
           collector.collect
         end
 
@@ -166,7 +166,7 @@ RSpec.describe StatusCollector do
           expect(items.size).to eq(3)
           expect(collector.messages.size).to eq(1)
         end
-        collector.receive build_status_message([ok[:s5],ok[:s7],ok[:s11]])  # one message with 3 items
+        collector.receive build_status_message([ok[:s5], ok[:s7], ok[:s11]])  # one message with 3 items
         collect_task.wait
       end
     end
@@ -174,12 +174,13 @@ RSpec.describe StatusCollector do
     it 'can keep or reject items' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
-        want = {"sCI" => "S0001","n" => "status"}
+        want = { 'sCI' => 'S0001', 'n' => 'status' }
         collector = StatusCollector.new(proxy, [want], task: task, timeout: timeout)
         collect_task = task.async do
           items = []
-          result = collector.collect do |message, item|
+          result = collector.collect do |_message, item|
             next unless item
+
             items << item
             item['s'] == '3'
           end
@@ -187,9 +188,9 @@ RSpec.describe StatusCollector do
           expect(items.size).to eq(3)
           expect(collector.messages.size).to eq(1)
         end
-        collector.receive build_status_message([want.merge('s'=>'1')])
-        collector.receive build_status_message([want.merge('s'=>'2')])
-        collector.receive build_status_message([want.merge('s'=>'3')])
+        collector.receive build_status_message([want.merge('s' => '1')])
+        collector.receive build_status_message([want.merge('s' => '2')])
+        collector.receive build_status_message([want.merge('s' => '3')])
         collect_task.wait
       end
     end
@@ -199,13 +200,13 @@ RSpec.describe StatusCollector do
         proxy = RSMP::SiteProxyStub.new task
         collector = StatusCollector.new(proxy, want.values, task: task)
         collect_task = task.async do
-          result = collector.collect do |message, item|
+          result = collector.collect do |_message, _item|
             collector.cancel
           end
           expect(result).to eq(:cancelled)
           expect(collector.messages.size).to eq(0)
         end
-        collector.receive build_status_message([ok[:s5],ok[:s7],ok[:s11]])  # one message with 3 items
+        collector.receive build_status_message([ok[:s5], ok[:s7], ok[:s11]])  # one message with 3 items
         collect_task.wait
       end
     end

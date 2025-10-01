@@ -4,90 +4,108 @@ module RSMP
       attr_reader :plan, :state
 
       # plan is a string, with each character representing a signal phase at a particular second in the cycle
-      def initialize node:, id:
-        super node: node, id: id, grouped: false
+      def initialize(node:, id:)
+        super(node: node, id: id, grouped: false)
       end
 
       def timer
         @state = compute_state
       end
 
+      DEFAULT_STATE = 'a'.freeze
+      FLASH_STATE = 'c'.freeze
+      VALID_SIGNAL_STATES = /[a-hA-G0-9N-P]/
+
       def compute_state
-        return 'a' if node.main.dark?
-        return 'c' if node.main.yellow_flash?
+        return DEFAULT_STATE if dark?
+        return FLASH_STATE if yellow_flash?
+        return startup_state if startup_sequence_active?
 
-        cycle_counter = node.main.cycle_counter
-
-        if node.main.startup_sequence_active
-          return node.main.startup_state || 'a'
-        end
-
-        default = 'a'   # phase a means disabled/dark
-        plan = node.main.current_plan
-        return default unless plan
-        return default unless plan.states
-
-        states = plan.states[c_id]
-        return default unless states
-
-        counter = [cycle_counter, states.length-1].min
-        state = states[counter]
-        return default unless state =~ /[a-hA-G0-9N-P]/  # valid signal group states
-        state
+        determined_state || DEFAULT_STATE
       end
 
-      def handle_command command_code, arg, options={}
+      private
+
+      def dark?
+        node.main.dark?
+      end
+
+      def yellow_flash?
+        node.main.yellow_flash?
+      end
+
+      def startup_sequence_active?
+        node.main.startup_sequence_active
+      end
+
+      def startup_state
+        node.main.startup_state || DEFAULT_STATE
+      end
+
+      def determined_state
+        states = active_plan_states
+        return unless states
+
+        state = states[state_index(states)]
+        valid_signal_state?(state) ? state : nil
+      end
+
+      def active_plan_states
+        plan = node.main.current_plan
+        return unless plan&.states
+
+        plan.states[c_id]
+      end
+
+      def state_index(states)
+        [node.main.cycle_counter, states.length - 1].min
+      end
+
+      def valid_signal_state?(state)
+        state =~ VALID_SIGNAL_STATES
+      end
+
+      def handle_command(command_code, arg, options = {})
         case command_code
         when 'M0010', 'M0011'
-          return send("handle_#{command_code.downcase}", arg, options)
+          send("handle_#{command_code.downcase}", arg, options)
         else
-          raise UnknownCommand.new "Unknown command #{command_code}"
+          raise UnknownCommand, "Unknown command #{command_code}"
         end
       end
 
       # Start of signal group. Orders a signal group to green
-      def handle_m0010 arg, options={}
+      def handle_m0010(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
-        if TrafficControllerSite.from_rsmp_bool arg['status']
-          log "Start signal group #{c_id}, go to green", level: :info
-        end
+        return unless TrafficControllerSite.from_rsmp_bool? arg['status']
+
+        log "Start signal group #{c_id}, go to green", level: :info
       end
 
       # Stop of signal group. Orders a signal group to red
-      def handle_m0011 arg, options={}
+      def handle_m0011(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
-        if TrafficControllerSite.from_rsmp_bool arg['status']
-          log "Stop signal group #{c_id}, go to red", level: :info
-        end
+        return unless TrafficControllerSite.from_rsmp_bool? arg['status']
+
+        log "Stop signal group #{c_id}, go to red", level: :info
       end
 
-      def get_status code, name=nil, options={}
+      def get_status(code, name = nil, _options = {})
         case code
         when 'S0025'
-          return send("handle_#{code.downcase}", code, name)
+          send("handle_#{code.downcase}", code, name)
         else
-          raise InvalidMessage.new "unknown status code #{code}"
+          raise InvalidMessage, "unknown status code #{code}"
         end
       end
 
-      def handle_s0025 status_code, status_name=nil, options={}
+      def handle_s0025(_status_code, status_name = nil, _options = {})
         now = @node.clock.to_s
         case status_name
-        when 'minToGEstimate'
+        when 'minToGEstimate', 'maxToGEstimate', 'likelyToGEstimate',
+             'minToREstimate', 'maxToREstimate', 'likelyToREstimate'
           TrafficControllerSite.make_status now
-        when 'maxToGEstimate'
-          TrafficControllerSite.make_status now
-        when 'likelyToGEstimate'
-          TrafficControllerSite.make_status now
-        when 'ToGConfidence'
-          TrafficControllerSite.make_status 0
-        when 'minToREstimate'
-          TrafficControllerSite.make_status now
-        when 'maxToREstimate'
-          TrafficControllerSite.make_status now
-        when 'likelyToREstimate'
-          TrafficControllerSite.make_status now
-        when 'ToRConfidence'
+        when 'ToGConfidence', 'ToRConfidence'
           TrafficControllerSite.make_status 0
         end
       end

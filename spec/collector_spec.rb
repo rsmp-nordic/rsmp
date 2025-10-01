@@ -23,7 +23,7 @@ RSpec.describe RSMP::Collector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          filter = RSMP::Filter.new type: "Watchdog"
+          filter = RSMP::Filter.new type: 'Watchdog'
           collector = RSMP::Collector.new proxy, filter: filter, num: 1, timeout: timeout
           result = collector.collect
 
@@ -41,7 +41,7 @@ RSpec.describe RSMP::Collector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          filter = RSMP::Filter.new type: "Watchdog"
+          filter = RSMP::Filter.new type: 'Watchdog'
           collector = RSMP::Collector.new proxy, filter: filter, num: 2, timeout: timeout
           result = collector.collect
 
@@ -61,7 +61,7 @@ RSpec.describe RSMP::Collector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          filter = RSMP::Filter.new type: "MessageAck"
+          filter = RSMP::Filter.new type: 'MessageAck'
           collector = RSMP::Collector.new proxy, filter: filter, num: 1, timeout: timeout
           result = collector.collect
 
@@ -79,7 +79,7 @@ RSpec.describe RSMP::Collector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          filter = RSMP::Filter.new type: "MessageNotAck"
+          filter = RSMP::Filter.new type: 'MessageNotAck'
           collector = RSMP::Collector.new proxy, filter: filter, num: 1, timeout: timeout
           result = collector.collect
 
@@ -96,7 +96,7 @@ RSpec.describe RSMP::Collector do
     it 'times out if nothing is received' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
-        filter = RSMP::Filter.new type: "Watchdog"
+        filter = RSMP::Filter.new type: 'Watchdog'
         collector = RSMP::Collector.new proxy, filter: filter, num: 1, timeout: timeout
         result = collector.collect
 
@@ -151,21 +151,20 @@ RSpec.describe RSMP::Collector do
         proxy = RSMP::SiteProxyStub.new task
         message = RSMP::StatusRequest.new
         collect_task = task.async do
-          filter = RSMP::Filter.new type: "StatusUpdate" 
+          filter = RSMP::Filter.new type: 'StatusUpdate'
           collector = RSMP::Collector.new(
             proxy,
             filter: filter,
             num: 1,
             timeout: timeout,
-            m_id: message.m_id  # id of original request. NotAck with matching mOId should cancel collection
-
+            m_id: message.m_id # id of original request. NotAck with matching mOId should cancel collection
           )
           result = collector.collect
 
           expect(result).to eq(:cancelled)
           expect(collector.messages).to be_an(Array)
           expect(collector.messages.size).to eq(0)
-          expect(collector.error).to be_a(RSMP::MessageRejected )
+          expect(collector.error).to be_a(RSMP::MessageRejected)
         end
         proxy.distribute RSMP::MessageNotAck.new 'oMId' => message.m_id
         collect_task.wait
@@ -195,11 +194,11 @@ RSpec.describe RSMP::Collector do
     end
 
     it 'can cancel collection' do
-       AsyncRSpec.async do |task|
+      AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
-          result = collector.collect do |message|
+          result = collector.collect do |_message|
             collector.cancel
           end
           expect(result).to eq(:cancelled)
@@ -211,7 +210,7 @@ RSpec.describe RSMP::Collector do
     end
 
     it 'can cancel on schema error' do
-       AsyncRSpec.async do |task|
+      AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
           collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
@@ -230,7 +229,7 @@ RSpec.describe RSMP::Collector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::Collector.new proxy, num: 1, timeout: timeout, cancel: {disconnect: true}
+          collector = RSMP::Collector.new proxy, num: 1, timeout: timeout, cancel: { disconnect: true }
           result = collector.collect
 
           expect(result).to eq(:cancelled)
@@ -263,8 +262,8 @@ RSpec.describe RSMP::Collector do
     end
   end
 
-  describe "#collect!" do
-    it "raises exception if not successful" do
+  describe '#collect!' do
+    it 'raises exception if not successful' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
@@ -275,7 +274,7 @@ RSpec.describe RSMP::Collector do
       end
     end
 
-    it "returns messages if successful" do
+    it 'returns messages if successful' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
@@ -297,13 +296,12 @@ RSpec.describe RSMP::Collector do
         collect_task = task.async do
           collector = RSMP::Collector.new(
             proxy,
-            type: "StatusUpdate",
+            type: 'StatusUpdate',
             num: 1,
             timeout: timeout,
             m_id: message.m_id # id of original request. NotAck with matching mOId should cancel collection
           )
           expect { collector.collect! }.to raise_error(RSMP::MessageRejected)
-
         end
         proxy.distribute RSMP::MessageNotAck.new 'oMId' => message.m_id
         collect_task.wait
@@ -311,8 +309,8 @@ RSpec.describe RSMP::Collector do
     end
   end
 
-  describe "#start" do
-    it "sets status and returns immediately" do
+  describe '#start' do
+    it 'sets status and returns immediately' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
@@ -322,8 +320,8 @@ RSpec.describe RSMP::Collector do
     end
   end
 
-  describe "#wait" do
-    it "returns :ok if already complete" do
+  describe '#wait' do
+    it 'returns :ok if already complete' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
@@ -335,7 +333,7 @@ RSpec.describe RSMP::Collector do
       end
     end
 
-    it "returns :ok after completion" do
+    it 'returns :ok after completion' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
@@ -350,7 +348,7 @@ RSpec.describe RSMP::Collector do
       end
     end
 
-    it "returns :timeout" do
+    it 'returns :timeout' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
@@ -360,8 +358,8 @@ RSpec.describe RSMP::Collector do
     end
   end
 
-  describe "#wait!" do
-    it "returns messages if already complete" do
+  describe '#wait!' do
+    it 'returns messages if already complete' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
@@ -375,7 +373,7 @@ RSpec.describe RSMP::Collector do
       end
     end
 
-    it "returns messages after completion" do
+    it 'returns messages after completion' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout
@@ -391,7 +389,7 @@ RSpec.describe RSMP::Collector do
       end
     end
 
-    it "raises TimeoutError" do
+    it 'raises TimeoutError' do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collector = RSMP::Collector.new proxy, num: 1, timeout: timeout

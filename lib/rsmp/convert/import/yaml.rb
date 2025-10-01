@@ -8,34 +8,35 @@ module RSMP
   module Convert
     module Import
       module YAML
-
-        def self.read path
+        def self.read(path)
           convert ::YAML.load_file(path)
         end
 
-        def self.parse str
+        def self.parse(str)
           convert ::YAML.load(str)
         end
 
-        def self.convert yaml
-          sxl = {
-            meta: {},
-            alarms: {},
-            statuses: {},
-            commands: {}
+        def self.convert(yaml)
+          {
+            meta: yaml['meta'],
+            alarms: collect_items(yaml, 'alarms'),
+            statuses: collect_items(yaml, 'statuses'),
+            commands: collect_items(yaml, 'commands')
           }
+        end
 
-          sxl[:meta] = yaml['meta']
-
-          yaml['objects'].each_pair do |type,object|
-            object["alarms"].each { |id,item| sxl[:alarms][id] = item } if object["alarms"]
-            object["statuses"].each { |id,item| sxl[:statuses][id] = item } if object["statuses"]
-            object["commands"].each { |id,item| sxl[:commands][id] = item } if object["commands"]
+        def self.collect_items(yaml, key)
+          items = {}
+          yaml.fetch('objects', {}).each_value do |object|
+            append_items(items, object, key)
           end
-          sxl
+          items
+        end
+
+        def self.append_items(items, object, key)
+          object[key]&.each_pair { |id, item| items[id] = item }
         end
       end
-
     end
   end
 end
