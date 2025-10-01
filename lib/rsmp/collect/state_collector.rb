@@ -95,7 +95,19 @@ module RSMP
       return false if super == false
       return unless collecting?
 
-      process_all_matchers(message)
+      @matchers.each do |matcher| # look through matchers
+        return unless collecting? # rubocop:disable Lint/NonLocalExitFromIterator
+
+        get_items(message).each do |item| # look through items in message
+          result = matcher.perform_match(item, message, @block)
+          return unless collecting? # rubocop:disable Lint/NonLocalExitFromIterator
+
+          next if result.nil?
+
+          log_match_result(message, matcher, item, result)
+          result ? matcher.keep(message, item) : matcher.forget
+        end
+      end
     end
 
     # don't collect anything. Matcher will collect them instead
@@ -125,30 +137,6 @@ module RSMP
     end
 
     private
-
-    def process_all_matchers(message)
-      @matchers.each do |matcher|
-        return unless collecting? # rubocop:disable Lint/NonLocalExitFromIterator
-
-        process_matcher(matcher, message)
-      end
-    end
-
-    def process_matcher(matcher, message)
-      get_items(message).each do |item|
-        result = matcher.perform_match(item, message, @block)
-        return unless collecting? # rubocop:disable Lint/NonLocalExitFromIterator
-
-        handle_match_result(matcher, message, item, result)
-      end
-    end
-
-    def handle_match_result(matcher, message, item, result)
-      return if result.nil?
-
-      log_match_result(message, matcher, item, result)
-      result ? matcher.keep(message, item) : matcher.forget
-    end
 
     def log_match_result(message, matcher, item, result)
       type = result ? 'match' : 'mismatch'
