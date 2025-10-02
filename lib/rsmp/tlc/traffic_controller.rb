@@ -6,7 +6,7 @@ module RSMP
     # not have dedicated components.
     class TrafficController < Component
       include System
-      include InputsModule
+      include InputCommands
 
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
                   :functional_position,
@@ -895,7 +895,6 @@ module RSMP
           TrafficControllerSite.make_status Digest::MD5.hexdigest(json)
         end
       end
-
     end
   end
 end

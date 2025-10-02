@@ -4,7 +4,7 @@ module RSMP
   module TLC
     # Input programming, control, and status for traffic controllers
     # Handles input commands and queries
-    module InputsModule
+    module InputCommands
       # M0006 - Set input
       def handle_m0006(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
