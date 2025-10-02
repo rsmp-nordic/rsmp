@@ -22,41 +22,30 @@ module RSMP
 
     def self.build(attributes, json)
       validate_message_type attributes
-      message = case attributes['type']
-                when 'MessageAck'
-                  MessageAck.new attributes
-                when 'MessageNotAck'
-                  MessageNotAck.new attributes
-                when 'Version'
-                  Version.new attributes
-                when 'AggregatedStatus'
-                  AggregatedStatus.new attributes
-                when 'AggregatedStatusRequest'
-                  AggregatedStatusRequest.new attributes
-                when 'Watchdog'
-                  Watchdog.new attributes
-                when 'Alarm'
-                  build_alarm attributes
-                when 'CommandRequest'
-                  CommandRequest.new attributes
-                when 'CommandResponse'
-                  CommandResponse.new attributes
-                when 'StatusRequest'
-                  StatusRequest.new attributes
-                when 'StatusResponse'
-                  StatusResponse.new attributes
-                when 'StatusSubscribe'
-                  StatusSubscribe.new attributes
-                when 'StatusUnsubscribe'
-                  StatusUnsubscribe.new attributes
-                when 'StatusUpdate'
-                  StatusUpdate.new attributes
-                else
-                  Unknown.new attributes
-                end
+      message = create_message_instance(attributes)
       message.json = json
       message.direction = :in
       message
+    end
+
+    def self.create_message_instance(attributes)
+      case attributes['type']
+      when 'MessageAck' then MessageAck.new(attributes)
+      when 'MessageNotAck' then MessageNotAck.new(attributes)
+      when 'Version' then Version.new(attributes)
+      when 'AggregatedStatus' then AggregatedStatus.new(attributes)
+      when 'AggregatedStatusRequest' then AggregatedStatusRequest.new(attributes)
+      when 'Watchdog' then Watchdog.new(attributes)
+      when 'Alarm' then build_alarm(attributes)
+      when 'CommandRequest' then CommandRequest.new(attributes)
+      when 'CommandResponse' then CommandResponse.new(attributes)
+      when 'StatusRequest' then StatusRequest.new(attributes)
+      when 'StatusResponse' then StatusResponse.new(attributes)
+      when 'StatusSubscribe' then StatusSubscribe.new(attributes)
+      when 'StatusUnsubscribe' then StatusUnsubscribe.new(attributes)
+      when 'StatusUpdate' then StatusUpdate.new(attributes)
+      else Unknown.new(attributes)
+      end
     end
 
     def self.build_alarm(attributes)
@@ -126,21 +115,26 @@ module RSMP
     end
 
     def self.validate_message_type(attributes)
+      validate_attributes_structure(attributes)
+      validate_mtype_field(attributes)
+      validate_type_field(attributes)
+    end
+
+    def self.validate_attributes_structure(attributes)
       raise MalformedMessage, "JSON must be a Hash, got #{attributes.class} " unless attributes.is_a?(Hash)
-      raise MalformedMessage, "'mType' is missing" unless attributes['mType']
+    end
 
-      unless attributes['mType'].is_a? String
-        raise MalformedMessage,
-              "'mType' must be a String, got #{attributes['mType'].class}"
-      end
-      unless attributes['mType'] == 'rSMsg'
-        raise MalformedMessage,
-              "'mType' must be 'rSMsg', got '#{attributes['mType']}'"
-      end
-      raise MalformedMessage, "'type' is missing" unless attributes['type']
-      return if attributes['type'].is_a? String
+    def self.validate_mtype_field(attributes)
+      mtype = attributes['mType']
+      raise MalformedMessage, "'mType' is missing" unless mtype
+      raise MalformedMessage, "'mType' must be a String, got #{mtype.class}" unless mtype.is_a?(String)
+      raise MalformedMessage, "'mType' must be 'rSMsg', got '#{mtype}'" unless mtype == 'rSMsg'
+    end
 
-      raise MalformedMessage, "'type' must be a String, got #{attributes['type'].class}"
+    def self.validate_type_field(attributes)
+      type = attributes['type']
+      raise MalformedMessage, "'type' is missing" unless type
+      raise MalformedMessage, "'type' must be a String, got #{type.class}" unless type.is_a?(String)
     end
 
     def initialize(attributes = {})
