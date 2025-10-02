@@ -54,16 +54,13 @@ module RSMP
     end
 
     def process_message(message)
+      return super if handled_by_parent?(message)
+
       case message
-      when CommandRequest, StatusRequest, StatusSubscribe
-        # These message types are handled by the parent class
-        super
-      when StatusUnsubscribe
+      when StatusUnsubscribe, AggregatedStatusRequest
         will_not_handle message
       when AggregatedStatus
         process_aggregated_status message
-      when AggregatedStatusRequest
-        will_not_handle message
       when AlarmIssue, AlarmSuspended, AlarmResumed, AlarmAcknowledged
         process_alarm message
       when CommandResponse
@@ -79,6 +76,10 @@ module RSMP
       str = "Rejected #{message.type} message,"
       dont_acknowledge message, str, e.to_s
       distribute_error e.exception("#{str}#{e.message} #{message.json}")
+    end
+
+    def handled_by_parent?(message)
+      message.is_a?(CommandRequest) || message.is_a?(StatusRequest) || message.is_a?(StatusSubscribe)
     end
 
     def process_command_response(message)
