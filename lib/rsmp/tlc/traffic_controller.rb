@@ -4,13 +4,13 @@ module RSMP
     # It handles all command and status for the main component,
     # and keeps track of signal plans, detector logics, inputs, etc. which do
     # not have dedicated components.
-  class TrafficController < Component
-    include TLC::Modules::System
-    include TLC::Modules::Inputs
-    
-    attr_reader :pos, :cycle_time, :plan, :cycle_counter,
-                :functional_position,
-                :startup_sequence_active, :startup_sequence, :startup_sequence_pos
+    class TrafficController < Component
+      include TLC::Modules::System
+      include TLC::Modules::Inputs
+
+      attr_reader :pos, :cycle_time, :plan, :cycle_counter,
+                  :functional_position,
+                  :startup_sequence_active, :startup_sequence, :startup_sequence_pos
 
       def initialize(node:, id:, signal_plans:, startup_sequence:, ntsoid: nil, xnid: nil, live_output: nil, inputs: {})
         super(node: node, id: id, ntsoid: ntsoid, xnid: xnid, grouped: true)
