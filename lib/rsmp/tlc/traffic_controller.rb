@@ -6,9 +6,13 @@ module RSMP
     # not have dedicated components.
     class TrafficController < Component
       include TLC::Modules::System
-      include TLC::Modules::Inputs
       include TLC::Modules::Modes
+      include TLC::Modules::Plans
       include TLC::Modules::SignalGroups
+      include TLC::Modules::Inputs
+      include TLC::Modules::Outputs
+      include TLC::Modules::DetectorLogics
+      include TLC::Modules::TrafficData
 
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
                   :functional_position,

@@ -99,79 +99,39 @@ module RSMP
           @inputs[input_index] = bool_to_digit arg['value']
         end
 
-        # S0091 - User login status
-        def handle_s0091(_status_code, status_name = nil, options = {})
-          if Proxy.version_meets_requirement? options[:sxl_version], '>=1.1'
-            case status_name
-            when 'user'
-              TrafficControllerSite.make_status 0
-            end
+        # M0019 - Force input
+        def handle_m0019(arg, _options = {})
+          @node.verify_security_code 2, arg['securityCode']
+          input = arg['input'].to_i
+          force = string_to_bool arg['status']
+          forced_value = string_to_bool arg['inputValue']
+          raise MessageRejected, "Input must be in the range 1-#{@inputs.size}" unless input.between?(1, @inputs.size)
+
+          if force
+            log "Forcing input #{input} to #{forced_value}", level: :info
           else
-            case status_name
-            when 'user'
-              TrafficControllerSite.make_status 'nobody'
-            when 'status'
-              TrafficControllerSite.make_status 'logout'
-            end
+            log "Releasing input #{input}", level: :info
           end
+          change = @inputs.set_forcing input, force: force, forced_value: forced_value
+
+          input_logic input, change unless change.nil?
         end
 
-        # S0092 - User login sensitivity
-        def handle_s0092(_status_code, status_name = nil, options = {})
-          if Proxy.version_meets_requirement? options[:sxl_version], '>=1.1'
-            case status_name
-            when 'user'
-              TrafficControllerSite.make_status 0
-            end
-          else
-            case status_name
-            when 'user'
-              TrafficControllerSite.make_status 'nobody'
-            when 'status'
-              TrafficControllerSite.make_status 'logout'
-            end
-          end
-        end
-
-        # S0205 - Start of signal group green
-        def handle_s0205(_status_code, status_name = nil, _options = {})
+        # S0003 - Input status
+        def handle_s0003(_status_code, status_name = nil, _options = {})
           case status_name
-          when 'start'
-            TrafficControllerSite.make_status clock.to_s
-          when 'vehicles'
-            TrafficControllerSite.make_status 0
+          when 'inputstatus'
+            TrafficControllerSite.make_status @inputs.actual_string
+          when 'extendedinputstatus'
+            TrafficControllerSite.make_status 0.to_s
           end
         end
 
-        # S0206 - Expected end of signal group green
-        def handle_s0206(_status_code, status_name = nil, _options = {})
+        # S0029 - Forced input status
+        def handle_s0029(_status_code, status_name = nil, _options = {})
           case status_name
-          when 'start'
-            TrafficControllerSite.make_status clock.to_s
-          when 'speed'
-            TrafficControllerSite.make_status 0
-          end
-        end
-
-        # S0207 - Predicted time to green
-        def handle_s0207(_status_code, status_name = nil, _options = {})
-          case status_name
-          when 'start'
-            TrafficControllerSite.make_status clock.to_s
-          when 'occupancy'
-            values = [-1, 0, 50, 100]
-            output = @detector_logics.each_with_index.map { |_dl, i| values[i % values.size] }.join(',')
-            TrafficControllerSite.make_status output
-          end
-        end
-
-        # S0208 - Predicted time to red
-        def handle_s0208(_status_code, status_name = nil, _options = {})
-          case status_name
-          when 'start'
-            TrafficControllerSite.make_status clock.to_s
-          when 'P', 'PS', 'L', 'LS', 'B', 'SP', 'MC', 'C', 'F'
-            TrafficControllerSite.make_status 0
+          when 'status'
+            TrafficControllerSite.make_status @inputs.forced_string
           end
         end
       end
