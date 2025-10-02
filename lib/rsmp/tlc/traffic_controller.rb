@@ -5,6 +5,8 @@ module RSMP
     # and keeps track of signal plans, detector logics, inputs, etc. which do
     # not have dedicated components.
     class TrafficController < Component
+      include SystemCommands
+
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
                   :functional_position,
                   :startup_sequence_active, :startup_sequence, :startup_sequence_pos
@@ -306,33 +308,6 @@ module RSMP
         @traffic_situation_source = 'forced'
       end
 
-      def handle_m0004(arg, _options = {})
-        @node.verify_security_code 2, arg['securityCode']
-        # don't restart immeediately, since we need to first send command response
-        # instead, defer an action, which will be handled by the TLC site
-        log 'Sheduling restart of TLC', level: :info
-        @node.defer :restart
-      end
-
-      def handle_m0005(arg, _options = {})
-        @node.verify_security_code 2, arg['securityCode']
-        route = arg['emergencyroute'].to_i
-        enable = (arg['status'] == 'True')
-        @last_emergency_route = route
-
-        if enable
-          if @emergency_routes.add? route
-            log "Enabling emergency route #{route}", level: :info
-          else
-            log "Emergency route #{route} already enabled", level: :info
-          end
-        elsif @emergency_routes.delete? route
-          log "Disabling emergency route #{route}", level: :info
-        else
-          log "Emergency route #{route} already disabled", level: :info
-        end
-      end
-
       def input_logic(input, change)
         return unless @input_programming && !change.nil?
 
@@ -599,26 +574,6 @@ module RSMP
           log "Dynamic bands timeout set to #{timeout}min", level: :info
         end
         @dynamic_bands_timeout = timeout
-      end
-
-      def handle_m0103(arg, _options = {})
-        level = { 'Level1' => 1, 'Level2' => 2 }[arg['status']]
-        @node.change_security_code level, arg['oldSecurityCode'], arg['newSecurityCode']
-      end
-
-      def handle_m0104(arg, _options = {})
-        @node.verify_security_code 1, arg['securityCode']
-        time = Time.new(
-          arg['year'],
-          arg['month'],
-          arg['day'],
-          arg['hour'],
-          arg['minute'],
-          arg['second'],
-          'UTC'
-        )
-        clock.set time
-        log "Clock set to #{time}, (adjustment is #{clock.adjustment}s)", level: :info
       end
 
       def set_input(input_index, _value)
