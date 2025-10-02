@@ -5,6 +5,8 @@ AllCops:
     - 'vendor/**/*'
     - 'bin/**/*'
     - '.bundle/**/*'
+    - 'ignore/**/*'
+    - 'config/private/**/*'
 
 # Allow longer line lengths for tests with long JSON strings
 Layout/LineLength:

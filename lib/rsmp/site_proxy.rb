@@ -18,7 +18,7 @@ module RSMP
     # handle communication
     # when we're created, the socket is already open
     def run
-      set_state :connected
+      self.state = :connected
       start_reader
       wait_for_reader # run until disconnected
     rescue RSMP::ConnectionError => e
@@ -120,7 +120,7 @@ module RSMP
                                                     'cId' => component,
                                                     'mId' => m_id
                                                   })
-      set_nts_message_attributes message
+      apply_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
         AggregatedStatusCollector.new(
           self,
@@ -186,7 +186,7 @@ module RSMP
                                           'sS' => request_list,
                                           'mId' => m_id
                                         })
-      set_nts_message_attributes message
+      apply_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
         StatusCollector.new(
           self,
@@ -231,7 +231,7 @@ module RSMP
                                             'sS' => subscribe_list,
                                             'mId' => m_id
                                           })
-      set_nts_message_attributes message
+      apply_nts_message_attributes message
 
       send_and_optionally_collect message, options do |collect_options|
         StatusCollector.new(
@@ -260,7 +260,7 @@ module RSMP
                                               'cId' => component_id,
                                               'sS' => status_list
                                             })
-      set_nts_message_attributes message
+      apply_nts_message_attributes message
       send_message message, validate: options[:validate]
       message
     end
@@ -290,7 +290,7 @@ module RSMP
                                            'arg' => command_list,
                                            'mId' => m_id
                                          })
-      set_nts_message_attributes message
+      apply_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
         CommandResponseCollector.new(
           self,
@@ -300,7 +300,7 @@ module RSMP
       end
     end
 
-    def set_watchdog_interval(interval)
+    def watchdog_interval=(interval)
       @settings['intervals']['watchdog'] = interval
     end
 

@@ -8,7 +8,7 @@ RSpec.describe RSMP::Proxy do
         subtask = task.async do |_subtask|
           proxy.wait_for_state :connected, timeout: 0.001
         end
-        proxy.set_state :connected
+        proxy.state = :connected
         subtask.result
       end
     end
@@ -19,7 +19,7 @@ RSpec.describe RSMP::Proxy do
           state = proxy.wait_for_state %i[ok ready], timeout: 0.001
           expect(state).to eq(:ready)
         end
-        proxy.set_state :ready
+        proxy.state = :ready
         subtask.result
       end
     end
@@ -34,7 +34,7 @@ RSpec.describe RSMP::Proxy do
 
     it 'returns immediately if state is already correct' do
       AsyncRSpec.async do |_task|
-        proxy.set_state :disconnected
+        proxy.state = :disconnected
         proxy.wait_for_state :disconnected, timeout: 0.001
       end
     end

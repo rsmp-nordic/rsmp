@@ -48,7 +48,7 @@ module RSMP
     # connect to the supervisor and initiate handshake supervisor
     def connect
       log "Connecting to supervisor at #{@ip}:#{@port}", level: :info
-      set_state :connecting
+      self.state = :connecting
       connect_tcp
       @logger.unmute @ip, @port
       log "Connected to supervisor at #{@ip}:#{@port}", level: :info
@@ -76,7 +76,7 @@ module RSMP
 
       @stream = IO::Stream::Buffered.new(@socket)
       @protocol = RSMP::Protocol.new(@stream) # rsmp messages are json terminated with a form-feed
-      set_state :connected
+      self.state = :connected
     rescue Errno::ECONNREFUSED => e # rescue to avoid log output
       log 'Connection refused', level: :warning
       raise e
@@ -86,7 +86,7 @@ module RSMP
       sanitized_sxl_version = RSMP::Schema.sanitize_version(sxl_version)
       log "Connection to supervisor established, using core #{@core_version}, #{sxl} #{sanitized_sxl_version}",
           level: :info
-      set_state :ready
+      self.state = :ready
       start_watchdog
       if @site_settings['send_after_connect']
         send_all_aggregated_status
@@ -183,7 +183,7 @@ module RSMP
                                        'mId' => m_id
                                      })
 
-      set_nts_message_attributes message
+      apply_nts_message_attributes message
       send_and_optionally_collect message, options do |collect_options|
         Collector.new self, collect_options.merge(task: @task, type: 'MessageAck')
       end
@@ -303,7 +303,7 @@ module RSMP
                                        'cTS' => clock.to_s,
                                        'rvs' => rvs
                                      })
-      set_nts_message_attributes response
+      apply_nts_message_attributes response
       acknowledge message
       send_message response
     end
@@ -345,7 +345,7 @@ module RSMP
                                       'mId' => options[:m_id]
                                     })
 
-      set_nts_message_attributes response
+      apply_nts_message_attributes response
       acknowledge message
       send_message response
     end
@@ -481,7 +481,7 @@ module RSMP
                                     'sTs' => now,
                                     'sS' => ss
                                   })
-        set_nts_message_attributes update
+        apply_nts_message_attributes update
         send_message update
         store_last_sent_status update
         component.status_updates_sent

@@ -44,7 +44,7 @@ module RSMP
       close_stream
       close_socket
       stop_reader
-      set_state :disconnected
+      self.state = :disconnected
       distribute_error DisconnectError.new('Connection was closed')
 
       # stop timer
@@ -90,7 +90,7 @@ module RSMP
     end
 
     # change our state
-    def set_state(state)
+    def state=(state)
       return if state == @state
 
       @state = state
@@ -645,7 +645,7 @@ module RSMP
     end
 
     def handshake_complete
-      set_state :ready
+      self.state = :ready
     end
 
     def version_acknowledged; end
@@ -673,7 +673,7 @@ module RSMP
       end
     end
 
-    def set_nts_message_attributes(message)
+    def apply_nts_message_attributes(message)
       message.attributes['ntsOId'] = main && main.ntsoid ? main.ntsoid : ''
       message.attributes['xNId'] = main && main.xnid ? main.xnid : ''
     end
