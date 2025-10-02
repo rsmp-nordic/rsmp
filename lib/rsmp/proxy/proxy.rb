@@ -12,7 +12,6 @@ module RSMP
     include Distributor
     include Inspect
     include Task
-    include Modules::ConnectionManagement
     include Modules::StateManagement
     include Modules::Watchdog
     include Modules::Acknowledgements
@@ -36,6 +35,108 @@ module RSMP
 
     def now
       node.now
+    end
+
+    # Connection lifecycle methods
+
+    def disconnect; end
+
+    # wait for the reader task to complete,
+    # which is not expected to happen before the connection is closed
+    def wait_for_reader
+      @reader&.wait
+    end
+
+    # close connection, but keep our main task running so we can reconnect
+    def close
+      log 'Closing connection', level: :warning
+      close_stream
+      close_socket
+      stop_reader
+      self.state = :disconnected
+      distribute_error DisconnectError.new('Connection was closed')
+
+      # stop timer
+      # as we're running inside the timer, code after stop_timer() will not be called,
+      # unless it's in the ensure block
+      stop_timer
+    end
+
+    def stop_subtasks
+      stop_timer
+      stop_reader
+      clear
+      super
+    end
+
+    def stop_timer
+      @timer&.stop
+    ensure
+      @timer = nil
+    end
+
+    def stop_reader
+      @reader&.stop
+    ensure
+      @reader = nil
+    end
+
+    def close_stream
+      @stream&.close
+    ensure
+      @stream = nil
+    end
+
+    def close_socket
+      @socket&.close
+    ensure
+      @socket = nil
+    end
+
+    def stop_task
+      close
+      super
+    end
+
+    # State management methods
+
+    def ready?
+      @state == :ready
+    end
+
+    def connected?
+      @state == :connected || @state == :ready
+    end
+
+    def disconnected?
+      @state == :disconnected
+    end
+
+    # change our state
+    def state=(state)
+      return if state == @state
+
+      @state = state
+      state_changed
+    end
+
+    # the state changed
+    # override to to things like notifications
+    def state_changed
+      @state_condition.signal @state
+    end
+
+    def clear
+      @awaiting_acknowledgement = {}
+      @latest_watchdog_received = nil
+      @watchdog_started = false
+      @version_determined = false
+      @ingoing_acknowledged = {}
+      @outgoing_acknowledged = {}
+      @latest_watchdog_send_at = nil
+
+      @acknowledgements = {}
+      @acknowledgement_condition = Async::Notification.new
     end
 
     # revive after a reconnect
