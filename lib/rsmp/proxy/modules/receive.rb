@@ -5,7 +5,7 @@ module RSMP
     module Modules
       # Message processing functionality
       # Handles receiving and processing incoming messages
-      module MessageProcessing
+      module Receive
         def should_validate_ingoing_message?(message)
           return true unless @site_settings
 

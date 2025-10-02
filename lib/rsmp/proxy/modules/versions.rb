@@ -5,7 +5,7 @@ module RSMP
     module Modules
       # Version negotiation and handling
       # Manages RSMP version handshake between sites and supervisors
-      module VersionHandling
+      module Versions
         def core_versions
           version = @site_settings['core_version']
           if version == 'latest'

@@ -5,7 +5,7 @@ module RSMP
     module Modules
       # State management helpers
       # Utility methods for waiting on state changes
-      module StateManagement
+      module State
         def wait_for_state(state, timeout:)
           states = [state].flatten
           return if states.include?(@state)

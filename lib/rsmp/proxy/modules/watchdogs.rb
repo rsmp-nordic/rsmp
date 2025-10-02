@@ -5,7 +5,7 @@ module RSMP
     module Modules
       # Watchdog functionality for monitoring connection health
       # Handles sending and receiving watchdog messages
-      module Watchdog
+      module Watchdogs
         def start_watchdog
           log "Starting watchdog with interval #{@site_settings['intervals']['watchdog']} seconds", level: :debug
           @watchdog_started = true

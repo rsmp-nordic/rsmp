@@ -5,7 +5,7 @@ module RSMP
     module Modules
       # Message sending functionality
       # Handles sending messages, validation, and buffering
-      module MessageSending
+      module Send
         def send_message(message, reason = nil, validate: true, force: false)
           raise NotReady if !force && !connected?
           raise IOError unless @protocol

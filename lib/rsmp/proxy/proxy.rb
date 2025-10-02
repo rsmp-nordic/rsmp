@@ -12,12 +12,12 @@ module RSMP
     include Distributor
     include Inspect
     include Task
-    include Modules::StateManagement
-    include Modules::Watchdog
+    include Modules::State
+    include Modules::Watchdogs
     include Modules::Acknowledgements
-    include Modules::MessageSending
-    include Modules::MessageProcessing
-    include Modules::VersionHandling
+    include Modules::Send
+    include Modules::Receive
+    include Modules::Versions
     include Modules::Tasks
 
     attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port, :node, :core_version
@@ -193,7 +193,7 @@ module RSMP
     # Requirement must be a string like '1.1', '>=1.0.3' or '<2.1.4',
     # or list of strings, like ['<=1.4','<1.5']
     def self.version_meets_requirement?(version, requirement)
-      Modules::VersionHandling.version_meets_requirement?(version, requirement)
+      Modules::Versions.version_meets_requirement?(version, requirement)
     end
   end
 end
