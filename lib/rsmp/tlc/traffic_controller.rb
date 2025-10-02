@@ -5,7 +5,7 @@ module RSMP
     # and keeps track of signal plans, detector logics, inputs, etc. which do
     # not have dedicated components.
     class TrafficController < Component
-      include SystemCommands
+      include System
 
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
                   :functional_position,

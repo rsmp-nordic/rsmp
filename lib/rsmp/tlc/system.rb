@@ -2,9 +2,9 @@
 
 module RSMP
   module TLC
-    # System-level commands and operations for traffic controllers
+    # System-level commands and status for traffic controllers
     # Handles restart, emergency routes, security, and clock settings
-    module SystemCommands
+    module System
       # M0004 - Restart traffic light controller
       def handle_m0004(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
