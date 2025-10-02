@@ -341,7 +341,7 @@ module RSMP
       @original = message
     end
 
-    def validate_id
+    def validate_id?
       true
     end
   end

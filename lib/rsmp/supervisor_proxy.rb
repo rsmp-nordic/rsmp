@@ -25,16 +25,16 @@ module RSMP
         start_reader
         start_handshake
         wait_for_reader # run until disconnected
-        break if reconnect_delay == false
+        break unless reconnect_delay?
       rescue Restart
         @logger.mute @ip, @port
         raise
       rescue RSMP::ConnectionError => e
         log e, level: :error
-        break if reconnect_delay == false
+        break unless reconnect_delay?
       rescue StandardError => e
         distribute_error e, level: :internal
-        break if reconnect_delay == false
+        break unless reconnect_delay?
       ensure
         close
         stop_subtasks
@@ -145,7 +145,7 @@ module RSMP
       end
     end
 
-    def reconnect_delay
+    def reconnect_delay?
       return false if @site_settings['intervals']['reconnect'] == :no
 
       interval = @site_settings['intervals']['reconnect']
