@@ -22,21 +22,32 @@ module RSMP
     # The check is not performed for item with an update interval.
     def check_repeat_values(message, subscription_list)
       message.attribute('sS').each do |item|
-        sci = item['sCI']
-        n = item['n']
-        s = item['s']
-        q = item['q']
-        urt = subscription_list.dig(c_id, sci, n, 'uRt')
-        next if urt.to_i.positive?
-
-        soc = subscription_list.dig(c_id, sci, n, 'sOc')
-        next if soc == false
-        next if @allow_repeat_updates[sci]&.include?(n)
-
-        new_values = { 's' => s, 'q' => q }
-        old_values = @statuses.dig(sci, n)
-        raise RSMP::RepeatedStatusError, "no change for #{sci} '#{n}'" if new_values == old_values
+        check_status_item_for_repeats(item, subscription_list)
       end
+    end
+
+    def check_status_item_for_repeats(item, subscription_list)
+      status_code = item['sCI']
+      status_name = item['n']
+      return if update_rate_set?(subscription_list, status_code, status_name)
+      return unless should_check_repeats?(subscription_list, status_code, status_name)
+
+      new_values = { 's' => item['s'], 'q' => item['q'] }
+      old_values = @statuses.dig(status_code, status_name)
+      raise RSMP::RepeatedStatusError, "no change for #{status_code} '#{status_name}'" if new_values == old_values
+    end
+
+    def update_rate_set?(subscription_list, status_code, status_name)
+      urt = subscription_list.dig(c_id, status_code, status_name, 'uRt')
+      urt.to_i.positive?
+    end
+
+    def should_check_repeats?(subscription_list, status_code, status_name)
+      soc = subscription_list.dig(c_id, status_code, status_name, 'sOc')
+      return false if soc == false
+      return false if @allow_repeat_updates[status_code]&.include?(status_name)
+
+      true
     end
 
     # Store the latest status update values

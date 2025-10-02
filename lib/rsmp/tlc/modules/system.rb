@@ -65,18 +65,24 @@ module RSMP
           now = clock.now
           case status_name
           when 'year'
-            TrafficControllerSite.make_status now.year.to_s.rjust(4, '0')
+            TrafficControllerSite.make_status format_datetime_component(now.year, 4)
           when 'month'
-            TrafficControllerSite.make_status now.month.to_s.rjust(2, '0')
+            TrafficControllerSite.make_status format_datetime_component(now.month, 2)
           when 'day'
-            TrafficControllerSite.make_status now.day.to_s.rjust(2, '0')
+            TrafficControllerSite.make_status format_datetime_component(now.day, 2)
           when 'hour'
-            TrafficControllerSite.make_status now.hour.to_s.rjust(2, '0')
+            TrafficControllerSite.make_status format_datetime_component(now.hour, 2)
           when 'minute'
-            TrafficControllerSite.make_status now.min.to_s.rjust(2, '0')
+            TrafficControllerSite.make_status format_datetime_component(now.min, 2)
           when 'second'
-            TrafficControllerSite.make_status now.sec.to_s.rjust(2, '0')
+            TrafficControllerSite.make_status format_datetime_component(now.sec, 2)
           end
+        end
+
+        private
+
+        def format_datetime_component(value, width)
+          value.to_s.rjust(width, '0')
         end
 
         # S0097 - Configuration checksum

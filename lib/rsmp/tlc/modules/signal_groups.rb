@@ -10,35 +10,51 @@ module RSMP
         def handle_m0022(arg, _options = {})
           id = arg['requestId']
           type = arg['type']
-          priority = @signal_priorities.find { |priority| priority.id == id }
+          priority = find_signal_priority(id)
+
           case type
           when 'new'
-            raise MessageRejected, "Priority Request #{id} already exists" if priority
-
-            # ref = arg.slice('signalGroupId','inputId','connectionId','approachId','laneInId','laneOutId')
-            signal_group = node.find_component arg['signalGroupId'] if arg['signalGroupId']
-
-            level = arg['level']
-            eta = arg['eta']
-            vehicle_type = arg['vehicleType']
-            @signal_priorities << SignalPriority.new(node: self, id: id, level: level, eta: eta,
-                                                     vehicle_type: vehicle_type)
-            log "Priority request #{id} for signal group #{signal_group.c_id} received.", level: :info
-
+            create_priority_request(id, priority, arg)
           when 'update'
-            raise MessageRejected, "Cannot update priority request #{id}, not found" unless priority
-
-            log "Updating Priority Request #{id}", level: :info
-
+            update_priority_request(id, priority)
           when 'cancel'
-            raise MessageRejected, "Cannot cancel priority request #{id}, not found" unless priority
-
-            priority.cancel
-            log "Priority request with id #{id} cancelled.", level: :info
-
+            cancel_priority_request(id, priority)
           else
             raise MessageRejected, "Unknown type #{type}"
           end
+        end
+
+        private
+
+        def find_signal_priority(id)
+          @signal_priorities.find { |priority| priority.id == id }
+        end
+
+        def create_priority_request(id, existing_priority, arg)
+          raise MessageRejected, "Priority Request #{id} already exists" if existing_priority
+
+          signal_group = node.find_component arg['signalGroupId'] if arg['signalGroupId']
+          @signal_priorities << SignalPriority.new(
+            node: self,
+            id: id,
+            level: arg['level'],
+            eta: arg['eta'],
+            vehicle_type: arg['vehicleType']
+          )
+          log "Priority request #{id} for signal group #{signal_group.c_id} received.", level: :info
+        end
+
+        def update_priority_request(id, priority)
+          raise MessageRejected, "Cannot update priority request #{id}, not found" unless priority
+
+          log "Updating Priority Request #{id}", level: :info
+        end
+
+        def cancel_priority_request(id, priority)
+          raise MessageRejected, "Cannot cancel priority request #{id}, not found" unless priority
+
+          priority.cancel
+          log "Priority request with id #{id} cancelled.", level: :info
         end
 
         # S0001 - Signal group status

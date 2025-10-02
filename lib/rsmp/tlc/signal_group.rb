@@ -15,19 +15,27 @@ module RSMP
       def compute_state
         return 'a' if node.main.dark?
         return 'c' if node.main.yellow_flash?
+        return startup_state if node.main.startup_sequence_active
 
-        cycle_counter = node.main.cycle_counter
+        compute_plan_state
+      end
 
-        return node.main.startup_state || 'a' if node.main.startup_sequence_active
+      def startup_state
+        node.main.startup_state || 'a'
+      end
 
+      def compute_plan_state
         default = 'a' # phase a means disabled/dark
         plan = node.main.current_plan
-        return default unless plan
-        return default unless plan.states
+        return default unless plan&.states
 
         states = plan.states[c_id]
         return default unless states
 
+        state_at_cycle_position(states, node.main.cycle_counter, default)
+      end
+
+      def state_at_cycle_position(states, cycle_counter, default)
         counter = [cycle_counter, states.length - 1].min
         state = states[counter]
         return default unless state =~ /[a-hA-G0-9N-P]/ # valid signal group states
