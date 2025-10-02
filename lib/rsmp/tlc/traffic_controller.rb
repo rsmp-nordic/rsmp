@@ -6,6 +6,7 @@ module RSMP
     # not have dedicated components.
     class TrafficController < Component
       include System
+      include InputsModule
 
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
                   :functional_position,
@@ -333,93 +334,10 @@ module RSMP
         end
       end
 
-      def handle_m0006(arg, _options = {})
-        @node.verify_security_code 2, arg['securityCode']
-        input = arg['input'].to_i
-        status = string_to_bool arg['status']
-        raise MessageRejected, "Input must be in the range 1-#{@inputs.size}" unless input.between?(1, @inputs.size)
-
-        if status
-          log "Activating input #{input}", level: :info
-        else
-          log "Deactivating input #{input}", level: :info
-        end
-        change = @inputs.set input, status
-        input_logic input, change unless change.nil?
-      end
-
       def handle_m0007(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
         set_fixed_time_control arg['status'], source: 'forced'
       end
-
-      def handle_m0012(arg, _options = {})
-        @node.verify_security_code 2, arg['securityCode']
-      end
-
-      def handle_m0013(arg, _options = {})
-        @node.verify_security_code 2, arg['securityCode']
-        set, clear = parse_input_status(arg['status'])
-        validate_input_ranges(set, clear)
-        apply_input_changes(set, clear)
-      end
-
-      private
-
-      def parse_input_status(status_string)
-        set = []
-        clear = []
-        status_string.split(';').each do |part|
-          offset, set_bits, clear_bits = part.split(',').map(&:to_i)
-          extract_input_bits(set_bits, offset, set)
-          extract_input_bits(clear_bits, offset, clear)
-        end
-
-        set = set.uniq.sort
-        clear = clear.uniq.sort
-        # if input is both activated and deactivated, there is no need to activate first
-        set -= (set & clear)
-
-        [set, clear]
-      end
-
-      def extract_input_bits(bits, offset, target_array)
-        bits.to_s(2).reverse.each_char.with_index do |bit, i|
-          target_array << (i + offset) if bit == '1'
-        end
-      end
-
-      def validate_input_ranges(set, clear)
-        [set, clear].each do |inputs|
-          inputs.each do |input|
-            if input < 1
-              raise MessageRejected,
-                    "Cannot activate inputs #{set} and deactivate inputs #{clear}: " \
-                    "input #{input} is invalid (must be 1 or higher)"
-            end
-            next unless input > @inputs.size
-
-            raise MessageRejected,
-                  "Cannot activate inputs #{set} and deactivate inputs #{clear}: " \
-                  "input #{input} is invalid (only #{@inputs.size} inputs present)"
-          end
-        end
-      end
-
-      def apply_input_changes(set, clear)
-        log "Activating inputs #{set} and deactivating inputs #{clear}", level: :info
-
-        set.each do |input|
-          change = @inputs.set input, true
-          input_logic input, change unless change.nil?
-        end
-        clear.each do |input|
-          change = @inputs.set input, false
-          input_logic input, change unless change.nil?
-        end
-      end
-
-      public
 
       def find_plan(plan_nr)
         plan = @plans[plan_nr.to_i]
@@ -574,12 +492,6 @@ module RSMP
           log "Dynamic bands timeout set to #{timeout}min", level: :info
         end
         @dynamic_bands_timeout = timeout
-      end
-
-      def set_input(input_index, _value)
-        return unless input_index >= 0 && input_index < @num_inputs
-
-        @inputs[input_index] = bool_to_digit arg['value']
       end
 
       def set_fixed_time_control(status, source:)
@@ -935,38 +847,6 @@ module RSMP
         end
       end
 
-      def handle_s0091(_status_code, status_name = nil, options = {})
-        if Proxy.version_meets_requirement? options[:sxl_version], '>=1.1'
-          case status_name
-          when 'user'
-            TrafficControllerSite.make_status 0
-          end
-        else
-          case status_name
-          when 'user'
-            TrafficControllerSite.make_status 'nobody'
-          when 'status'
-            TrafficControllerSite.make_status 'logout'
-          end
-        end
-      end
-
-      def handle_s0092(_status_code, status_name = nil, options = {})
-        if Proxy.version_meets_requirement? options[:sxl_version], '>=1.1'
-          case status_name
-          when 'user'
-            TrafficControllerSite.make_status 0
-          end
-        else
-          case status_name
-          when 'user'
-            TrafficControllerSite.make_status 'nobody'
-          when 'status'
-            TrafficControllerSite.make_status 'logout'
-          end
-        end
-      end
-
       def handle_s0095(_status_code, status_name = nil, _options = {})
         case status_name
         when 'status'
@@ -1016,43 +896,6 @@ module RSMP
         end
       end
 
-      def handle_s0205(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'start'
-          TrafficControllerSite.make_status clock.to_s
-        when 'vehicles'
-          TrafficControllerSite.make_status 0
-        end
-      end
-
-      def handle_s0206(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'start'
-          TrafficControllerSite.make_status clock.to_s
-        when 'speed'
-          TrafficControllerSite.make_status 0
-        end
-      end
-
-      def handle_s0207(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'start'
-          TrafficControllerSite.make_status clock.to_s
-        when 'occupancy'
-          values = [-1, 0, 50, 100]
-          output = @detector_logics.each_with_index.map { |_dl, i| values[i % values.size] }.join(',')
-          TrafficControllerSite.make_status output
-        end
-      end
-
-      def handle_s0208(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'start'
-          TrafficControllerSite.make_status clock.to_s
-        when 'P', 'PS', 'L', 'LS', 'B', 'SP', 'MC', 'C', 'F'
-          TrafficControllerSite.make_status 0
-        end
-      end
     end
   end
 end
