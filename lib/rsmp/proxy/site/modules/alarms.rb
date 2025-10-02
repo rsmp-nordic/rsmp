@@ -4,7 +4,7 @@ module RSMP
   class SiteProxy < Proxy
     module Modules
       # Handles alarm messages
-      module AlarmHandling
+      module Alarms
         def process_alarm(message)
           component = find_component message.attribute('cId')
           status = %w[ack aS sS].map { |key| message.attribute(key) }.join(',')

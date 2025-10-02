@@ -4,7 +4,7 @@ module RSMP
   class SiteProxy < Proxy
     module Modules
       # Handles status requests, responses, subscriptions and updates
-      module StatusHandling
+      module Status
         def request_status(component, status_list, options = {})
           validate_ready 'request status'
           m_id = options[:m_id] || RSMP::Message.make_m_id

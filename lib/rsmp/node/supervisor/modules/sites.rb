@@ -4,7 +4,7 @@ module RSMP
   class Supervisor < Node
     module Modules
       # Manages connected sites and site discovery
-      module SiteManagement
+      module Sites
         def site_connected?(site_id)
           !find_site(site_id).nil?
         end

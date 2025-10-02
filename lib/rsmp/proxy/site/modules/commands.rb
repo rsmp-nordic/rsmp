@@ -4,7 +4,7 @@ module RSMP
   class SiteProxy < Proxy
     module Modules
       # Handles command requests and responses
-      module CommandHandling
+      module Commands
         def send_command(component, command_list, options = {})
           validate_ready 'send command'
           m_id = options[:m_id] || RSMP::Message.make_m_id

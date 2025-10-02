@@ -7,7 +7,7 @@ module RSMP
     include Modules::Status
     include Modules::Commands
     include Modules::Alarms
-    include Modules::AggregatedStatusHandling
+    include Modules::AggregatedStatus
 
     attr_reader :supervisor_id, :site
 

@@ -4,7 +4,7 @@ module RSMP
   class SiteProxy < Proxy
     module Modules
       # Handles aggregated status requests and responses
-      module AggregatedStatusHandling
+      module AggregatedStatus
         def request_aggregated_status(component, options = {})
           validate_ready 'request aggregated status'
           m_id = options[:m_id] || RSMP::Message.make_m_id

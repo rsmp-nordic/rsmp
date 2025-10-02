@@ -5,8 +5,8 @@
 module RSMP
   class Supervisor < Node
     include Modules::Configuration
-    include Modules::ConnectionHandling
-    include Modules::SiteManagement
+    include Modules::Connection
+    include Modules::Sites
 
     attr_reader :core_version, :supervisor_settings, :proxies, :logger, :ready_condition
 

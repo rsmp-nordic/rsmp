@@ -4,7 +4,7 @@ module RSMP
   class Supervisor < Node
     module Modules
       # Handles incoming connections from sites
-      module ConnectionHandling
+      module Connection
         def handle_connection(socket)
           remote_port = socket.remote_address.ip_port
           remote_hostname = socket.remote_address.ip_address

@@ -3,10 +3,10 @@
 module RSMP
   class SiteProxy < Proxy
     include Components
-    include Modules::StatusHandling
-    include Modules::AggregatedStatusHandling
-    include Modules::AlarmHandling
-    include Modules::CommandHandling
+    include Modules::Status
+    include Modules::AggregatedStatus
+    include Modules::Alarms
+    include Modules::Commands
 
     attr_reader :supervisor, :site_id
 

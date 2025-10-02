@@ -4,7 +4,7 @@ module RSMP
   class SupervisorProxy < Proxy
     module Modules
       # Handles aggregated status messages
-      module AggregatedStatusHandling
+      module AggregatedStatus
         def send_all_aggregated_status
           @site.components.each_pair do |_c_id, component|
             send_aggregated_status component if component.grouped
