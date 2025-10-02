@@ -7,6 +7,7 @@ module RSMP
     class TrafficController < Component
       include TLC::Modules::System
       include TLC::Modules::Inputs
+      include TLC::Modules::Modes
 
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
                   :functional_position,
@@ -272,43 +273,6 @@ module RSMP
         end
       end
 
-      def handle_m0001(arg, _options = {})
-        @node.verify_security_code 2, arg['securityCode']
-
-        # timeout is specified in minutes, but we take 1 to mean 1s
-        # this is not according to the curent rsmp spec, but is done
-        # to speed up testing
-        timeout = arg['timeout'].to_i
-        if timeout == 1
-          timeout = 1
-        else
-          timeout *= 60
-        end
-
-        switch_functional_position arg['status'],
-                                   timeout: timeout,
-                                   source: 'forced'
-      end
-
-      def handle_m0002(arg, _options = {})
-        @node.verify_security_code 2, arg['securityCode']
-        if TrafficControllerSite.from_rsmp_bool?(arg['status'])
-          switch_plan arg['timeplan'], source: 'forced'
-        else
-          switch_plan 0, source: 'startup' # TODO: use clock/calender
-        end
-      end
-
-      def handle_m0003(arg, _options = {})
-        @node.verify_security_code 2, arg['securityCode']
-        switch_traffic_situation arg['traficsituation'], source: 'forced'
-      end
-
-      def switch_traffic_situation(situation)
-        @traffic_situation = situation.to_i
-        @traffic_situation_source = 'forced'
-      end
-
       def input_logic(input, change)
         return unless @input_programming && !change.nil?
 
@@ -332,11 +296,6 @@ module RSMP
               level: :info
           component.deactivate_alarm alarm_code
         end
-      end
-
-      def handle_m0007(arg, _options = {})
-        @node.verify_security_code 2, arg['securityCode']
-        set_fixed_time_control arg['status'], source: 'forced'
       end
 
       def find_plan(plan_nr)
@@ -548,88 +507,6 @@ module RSMP
         end
       end
 
-      def handle_s0001(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'signalgroupstatus'
-          TrafficControllerSite.make_status format_signal_group_status
-        when 'cyclecounter', 'basecyclecounter'
-          TrafficControllerSite.make_status @cycle_counter.to_s
-        when 'stage'
-          TrafficControllerSite.make_status 0.to_s
-        end
-      end
-
-      def handle_s0002(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'detectorlogicstatus'
-          TrafficControllerSite.make_status @detector_logics.map { |dl| bool_to_digit(dl.value) }.join
-        end
-      end
-
-      def handle_s0003(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'inputstatus'
-          TrafficControllerSite.make_status @inputs.actual_string
-        when 'extendedinputstatus'
-          TrafficControllerSite.make_status 0.to_s
-        end
-      end
-
-      def handle_s0004(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'outputstatus', 'extendedoutputstatus'
-          TrafficControllerSite.make_status 0
-        end
-      end
-
-      def handle_s0005(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status @is_starting
-        when 'statusByIntersection' # from sxl 1.2.0
-          TrafficControllerSite.make_status([
-                                              {
-                                                'intersection' => '1',
-                                                'startup' => TrafficControllerSite.to_rmsp_bool(@is_starting)
-                                              }
-                                            ])
-        end
-      end
-
-      def handle_s0006(_status_code, status_name = nil, options = {})
-        if Proxy.version_meets_requirement? options[:sxl_version],
-                                            '>=1.2.0'
-          log 'S0006 is depreciated, use S0035 instead.',
-              level: :warning
-        end
-        status = @emergency_routes.any?
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status status
-        when 'emergencystage'
-          TrafficControllerSite.make_status status ? @last_emergency_route : 0
-        end
-      end
-
-      def handle_s0035(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'emergencyroutes'
-          list = @emergency_routes.sort.map { |route| { 'id' => route.to_s } }
-          TrafficControllerSite.make_status list
-        end
-      end
-
-      def handle_s0007(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'intersection'
-          TrafficControllerSite.make_status @intersection
-        when 'status'
-          TrafficControllerSite.make_status @function_position != 'Dark'
-        when 'source'
-          TrafficControllerSite.make_status @function_position_source
-        end
-      end
-
       def handle_s0008(_status_code, status_name = nil, _options = {})
         case status_name
         when 'intersection'
@@ -691,159 +568,6 @@ module RSMP
           TrafficControllerSite.make_status @intersection
         when 'status'
           TrafficControllerSite.make_status @police_key
-        end
-      end
-
-      def handle_s0014(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status @plan
-        when 'source'
-          TrafficControllerSite.make_status @plan_source
-        end
-      end
-
-      def handle_s0015(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status @traffic_situation
-        when 'source'
-          TrafficControllerSite.make_status @traffic_situation_source
-        end
-      end
-
-      def handle_s0016(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'number'
-          TrafficControllerSite.make_status @detector_logics.size
-        end
-      end
-
-      def handle_s0017(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'number'
-          TrafficControllerSite.make_status @signal_groups.size
-        end
-      end
-
-      def handle_s0018(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'number'
-          TrafficControllerSite.make_status @plans.size
-        end
-      end
-
-      def handle_s0019(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'number'
-          TrafficControllerSite.make_status @num_traffic_situations
-        end
-      end
-
-      def handle_s0020(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'intersection'
-          TrafficControllerSite.make_status @intersection
-        when 'controlmode'
-          TrafficControllerSite.make_status @control_mode
-        end
-      end
-
-      def handle_s0021(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'detectorlogics'
-          TrafficControllerSite.make_status @detector_logics.map { |logic| bool_to_digit(logic.forced) }.join
-        end
-      end
-
-      def handle_s0022(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status @plans.keys.join(',')
-        end
-      end
-
-      def handle_s0023(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          dynamic_bands = @plans.map { |_nr, plan| plan.dynamic_bands_string }
-          str = dynamic_bands.compact.join(',')
-          TrafficControllerSite.make_status str
-        end
-      end
-
-      def handle_s0024(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status '1-0'
-        end
-      end
-
-      def handle_s0026(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status '0-00'
-        end
-      end
-
-      def handle_s0027(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          status = @day_time_table.map do |i, item|
-            "#{i}-#{item[:plan]}-#{item[:hour]}-#{item[:min]}"
-          end.join(',')
-          TrafficControllerSite.make_status status
-        end
-      end
-
-      def handle_s0028(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          times = @plans.map do |_nr, plan|
-            "#{format('%02d', plan.number)}-#{format('%02d', plan.cycle_time)}"
-          end.join(',')
-          TrafficControllerSite.make_status times
-        end
-      rescue StandardError => e
-        puts e
-      end
-
-      def handle_s0029(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status @inputs.forced_string
-        end
-      end
-
-      def handle_s0030(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status ''
-        end
-      end
-
-      def handle_s0031(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status ''
-        end
-      end
-
-      def handle_s0032(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'intersection'
-          TrafficControllerSite.make_status @intersection
-        when 'status'
-          TrafficControllerSite.make_status 'local'
-        when 'source'
-          TrafficControllerSite.make_status @intersection_source
-        end
-      end
-
-      def handle_s0033(_status_code, status_name = nil, _options = {})
-        case status_name
-        when 'status'
-          TrafficControllerSite.make_status get_priority_list
         end
       end
 
