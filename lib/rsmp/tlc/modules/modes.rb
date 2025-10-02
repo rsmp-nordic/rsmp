@@ -31,6 +31,26 @@ module RSMP
           set_fixed_time_control arg['status'], source: 'forced'
         end
 
+        # M0005 - Enable/disable emergency route
+        def handle_m0005(arg, _options = {})
+          @node.verify_security_code 2, arg['securityCode']
+          route = arg['emergencyroute'].to_i
+          enable = (arg['status'] == 'True')
+          @last_emergency_route = route
+
+          if enable
+            if @emergency_routes.add? route
+              log "Enabling emergency route #{route}", level: :info
+            else
+              log "Emergency route #{route} already enabled", level: :info
+            end
+          elsif @emergency_routes.delete? route
+            log "Disabling emergency route #{route}", level: :info
+          else
+            log "Emergency route #{route} already disabled", level: :info
+          end
+        end
+
         # S0007 - Intersection status
         def handle_s0007(_status_code, status_name = nil, _options = {})
           case status_name
@@ -132,6 +152,31 @@ module RSMP
             TrafficControllerSite.make_status 'local'
           when 'source'
             TrafficControllerSite.make_status @intersection_source
+          end
+        end
+
+        # S0006 - Emergency route status (deprecated, use S0035)
+        def handle_s0006(_status_code, status_name = nil, options = {})
+          if Proxy.version_meets_requirement? options[:sxl_version],
+                                              '>=1.2.0'
+            log 'S0006 is depreciated, use S0035 instead.',
+                level: :warning
+          end
+          status = @emergency_routes.any?
+          case status_name
+          when 'status'
+            TrafficControllerSite.make_status status
+          when 'emergencystage'
+            TrafficControllerSite.make_status status ? @last_emergency_route : 0
+          end
+        end
+
+        # S0035 - Emergency routes (replaces S0006)
+        def handle_s0035(_status_code, status_name = nil, _options = {})
+          case status_name
+          when 'emergencyroutes'
+            list = @emergency_routes.sort.map { |route| { 'id' => route.to_s } }
+            TrafficControllerSite.make_status list
           end
         end
       end
