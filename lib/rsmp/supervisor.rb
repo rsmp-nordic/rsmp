@@ -72,7 +72,8 @@ module RSMP
         rescue StandardError => e
           distribute_error e, level: :internal
         end
-      rescue Async::Stop # will happen at shutdown
+      rescue Async::Stop
+        # Expected during shutdown - no action needed
       rescue StandardError => e
         distribute_error e, level: :internal
       end
