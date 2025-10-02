@@ -3,6 +3,10 @@
 module RSMP
   class SiteProxy < Proxy
     include Components
+    include Modules::StatusHandling
+    include Modules::AggregatedStatusHandling
+    include Modules::AlarmHandling
+    include Modules::CommandHandling
 
     attr_reader :supervisor, :site_id
 
@@ -82,11 +86,6 @@ module RSMP
       message.is_a?(CommandRequest) || message.is_a?(StatusRequest) || message.is_a?(StatusSubscribe)
     end
 
-    def process_command_response(message)
-      log "Received #{message.type}", message: message, level: :log
-      acknowledge message
-    end
-
     def version_accepted(message)
       log "Received Version message for site #{@site_id}", message: message, level: :log
       start_timer
@@ -113,191 +112,10 @@ module RSMP
       raise NotReady, "Can't #{action} because connection is not ready. (Currently #{@state})" unless ready?
     end
 
-    def request_aggregated_status(component, options = {})
-      validate_ready 'request aggregated status'
-      m_id = options[:m_id] || RSMP::Message.make_m_id
-      message = RSMP::AggregatedStatusRequest.new({
-                                                    'cId' => component,
-                                                    'mId' => m_id
-                                                  })
-      apply_nts_message_attributes message
-      send_and_optionally_collect message, options do |collect_options|
-        AggregatedStatusCollector.new(
-          self,
-          collect_options.merge(task: @task, m_id: m_id, num: 1)
-        )
-      end
-    end
-
-    def validate_aggregated_status(message, status_elements)
-      return if status_elements.is_a?(Array) && status_elements.size == 8
-
-      dont_acknowledge message, 'Received', reaons
-      raise InvalidMessage
-    end
-
-    def process_aggregated_status(message)
-      status_elements = message.attribute('se')
-      validate_aggregated_status(message, status_elements)
-      c_id = message.attributes['cId']
-      component = find_component c_id
-      unless component
-        reason = "component #{c_id} not found"
-        dont_acknowledge message, "Ignoring #{message.type}:", reason
-        return
-      end
-
-      component.aggregated_status_bools = status_elements
-      log "Received #{message.type} status for component #{c_id} [#{component.aggregated_status.join(', ')}]",
-          message: message
-      acknowledge message
-    end
-
-    def aggregated_status_changed(component, _options = {})
-      @supervisor.aggregated_status_changed self, component
-    end
-
-    def process_alarm(message)
-      component = find_component message.attribute('cId')
-      status = %w[ack aS sS].map { |key| message.attribute(key) }.join(',')
-      component.handle_alarm message
-      alarm_code = message.attribute('aCId')
-      asp = message.attribute('aSp')
-      log "Received #{message.type}, #{alarm_code} #{asp} [#{status}]", message: message, level: :log
-      acknowledge message
-    end
-
     def version_acknowledged; end
 
     def site_ids_changed
       @supervisor.site_ids_changed
-    end
-
-    def request_status(component, status_list, options = {})
-      validate_ready 'request status'
-      m_id = options[:m_id] || RSMP::Message.make_m_id
-
-      # additional items can be used when verifying the response,
-      # but must be removed from the request
-      request_list = status_list.map { |item| item.slice('sCI', 'n') }
-
-      message = RSMP::StatusRequest.new({
-                                          'cId' => component,
-                                          'sS' => request_list,
-                                          'mId' => m_id
-                                        })
-      apply_nts_message_attributes message
-      send_and_optionally_collect message, options do |collect_options|
-        StatusCollector.new(
-          self,
-          status_list,
-          collect_options.merge(task: @task, m_id: m_id)
-        )
-      end
-    end
-
-    def process_status_response(message)
-      component = find_component message.attribute('cId')
-      component.store_status message
-      log "Received #{message.type}", message: message, level: :log
-      acknowledge message
-    end
-
-    def subscribe_to_status(component_id, status_list, options = {})
-      validate_ready 'subscribe to status'
-      m_id = options[:m_id] || RSMP::Message.make_m_id
-
-      # additional items can be used when verifying the response,
-      # but must be removed from the subscribe message
-      subscribe_list = status_list.map { |item| item.slice('sCI', 'n', 'uRt', 'sOc') }
-
-      # update our subcription list
-      @status_subscriptions[component_id] ||= {}
-      subscribe_list.each do |item|
-        sci = item['sCI']
-        n = item['n']
-        urt = item['uRt']
-        soc = item['sOc']
-        @status_subscriptions[component_id][sci] ||= {}
-        @status_subscriptions[component_id][sci][n] ||= {}
-        @status_subscriptions[component_id][sci][n]['uRt'] = urt
-        @status_subscriptions[component_id][sci][n]['sOc'] = soc
-      end
-
-      find_component component_id
-
-      message = RSMP::StatusSubscribe.new({
-                                            'cId' => component_id,
-                                            'sS' => subscribe_list,
-                                            'mId' => m_id
-                                          })
-      apply_nts_message_attributes message
-
-      send_and_optionally_collect message, options do |collect_options|
-        StatusCollector.new(
-          self,
-          status_list,
-          collect_options.merge(task: @task, m_id: m_id)
-        )
-      end
-    end
-
-    def unsubscribe_to_status(component_id, status_list, options = {})
-      validate_ready 'unsubscribe to status'
-
-      # update our subcription list
-      status_list.each do |item|
-        sci = item['sCI']
-        n = item['n']
-        next unless @status_subscriptions.dig(component_id, sci, n)
-
-        @status_subscriptions[component_id][sci].delete n
-        @status_subscriptions[component_id].delete(sci) if @status_subscriptions[component_id][sci].empty?
-        @status_subscriptions.delete(component_id) if @status_subscriptions[component_id].empty?
-      end
-
-      message = RSMP::StatusUnsubscribe.new({
-                                              'cId' => component_id,
-                                              'sS' => status_list
-                                            })
-      apply_nts_message_attributes message
-      send_message message, validate: options[:validate]
-      message
-    end
-
-    def process_status_update(message)
-      component = find_component message.attribute('cId')
-      component.check_repeat_values message, @status_subscriptions
-      component.store_status message
-      log "Received #{message.type}", message: message, level: :log
-      acknowledge message
-    end
-
-    def send_alarm_acknowledgement(component, alarm_code, options = {})
-      message = RSMP::AlarmAcknowledged.new({
-                                              'cId' => component,
-                                              'aCId' => alarm_code
-                                            })
-      send_message message, validate: options[:validate]
-      message
-    end
-
-    def send_command(component, command_list, options = {})
-      validate_ready 'send command'
-      m_id = options[:m_id] || RSMP::Message.make_m_id
-      message = RSMP::CommandRequest.new({
-                                           'cId' => component,
-                                           'arg' => command_list,
-                                           'mId' => m_id
-                                         })
-      apply_nts_message_attributes message
-      send_and_optionally_collect message, options do |collect_options|
-        CommandResponseCollector.new(
-          self,
-          command_list,
-          collect_options.merge(task: @task, m_id: m_id)
-        )
-      end
     end
 
     def watchdog_interval=(interval)
