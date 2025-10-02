@@ -2,9 +2,10 @@
 
 module RSMP
   module TLC
-    # System-level commands and status for traffic controllers
-    # Handles restart, emergency routes, security, and clock settings
-    module System
+    module Modules
+      # System-level commands and status for traffic controllers
+      # Handles restart, emergency routes, security, and clock settings
+      module System
       # M0004 - Restart traffic light controller
       def handle_m0004(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
@@ -54,6 +55,7 @@ module RSMP
         )
         clock.set time
         log "Clock set to #{time}, (adjustment is #{clock.adjustment}s)", level: :info
+      end
       end
     end
   end

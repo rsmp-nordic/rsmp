@@ -2,7 +2,7 @@ module RSMP
   module TLC
     # class that maintains the state of TLC inputs
     # indexing is 1-based since that's how the RSMP messages are specified
-    class Inputs
+    class InputStates
       attr_reader :size
 
       def initialize(size)

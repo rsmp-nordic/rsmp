@@ -1,5 +1,5 @@
-RSpec.describe RSMP::TLC::Inputs do
-  let(:inputs) { RSMP::TLC::Inputs.new 4 }
+RSpec.describe RSMP::TLC::InputStates do
+  let(:inputs) { RSMP::TLC::InputStates.new 4 }
 
   it 'defaults to all inactive, released' do
     (1..4).each do |i|
