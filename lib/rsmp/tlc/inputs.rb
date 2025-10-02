@@ -35,7 +35,7 @@ module RSMP
         end
       end
 
-      def force(input, forced_value = true)
+      def force(input, forced_value: true)
         report_change(input) do
           set_forcing input, force: true, forced_value: forced_value
         end

@@ -54,7 +54,7 @@ RSpec.describe RSMP::TLC::Inputs do
 
   it 'forces' do
     expect(inputs.value?(1)).to eq(false)
-    inputs.force(1, true)
+    inputs.force(1, forced_value: true)
     expect(inputs.value?(1)).to eq(false)
   end
 
@@ -64,10 +64,10 @@ RSpec.describe RSMP::TLC::Inputs do
       inputs.set(i, false)
       expect(inputs.report(i)).to eq({ value: false, forced: false, forced_value: false, actual: false })
 
-      inputs.force(i, true)
+      inputs.force(i, forced_value: true)
       expect(inputs.report(i)).to eq({ value: false, forced: true, forced_value: true, actual: true })
 
-      inputs.force(i, false)
+      inputs.force(i, forced_value: false)
       expect(inputs.report(i)).to eq({ value: false, forced: true, forced_value: false, actual: false })
 
       inputs.release(i)
@@ -77,10 +77,10 @@ RSpec.describe RSMP::TLC::Inputs do
       inputs.set(i, true)
       expect(inputs.report(i)).to eq({ value: true, forced: false, forced_value: false, actual: true })
 
-      inputs.force(i, true)
+      inputs.force(i, forced_value: true)
       expect(inputs.report(i)).to eq({ value: true, forced: true, forced_value: true, actual: true })
 
-      inputs.force(i, false)
+      inputs.force(i, forced_value: false)
       expect(inputs.report(i)).to eq({ value: true, forced: true, forced_value: false, actual: false })
 
       inputs.release(i)
@@ -99,10 +99,10 @@ RSpec.describe RSMP::TLC::Inputs do
 
   it 'reports change when forcing' do
     (1..4).each do |_i|
-      expect(inputs.force(1, true)).to eq(true)
-      expect(inputs.force(1, true)).to eq(nil)
-      expect(inputs.force(1, false)).to eq(false)
-      expect(inputs.force(1, false)).to eq(nil)
+      expect(inputs.force(1, forced_value: true)).to eq(true)
+      expect(inputs.force(1, forced_value: true)).to eq(nil)
+      expect(inputs.force(1, forced_value: false)).to eq(false)
+      expect(inputs.force(1, forced_value: false)).to eq(nil)
     end
   end
 
