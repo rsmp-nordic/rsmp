@@ -192,11 +192,13 @@ module RSMP
   end
 
   class Malformed < Message
+    # rubocop:disable Lint/MissingSuper
     def initialize(attributes = {})
       # don't call super, just copy (potentially invalid) attributes
       @attributes = {}
       @invalid_attributes = attributes
     end
+    # rubocop:enable Lint/MissingSuper
   end
 
   class Version < Message

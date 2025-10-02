@@ -349,7 +349,7 @@ module RSMP
       expect_acknowledgement message
       distribute message
       log_send message, reason
-    rescue EOFError, IOError
+    rescue IOError # Also catches EOFError (subclass of IOError)
       buffer_message message
     rescue SchemaError, RSMP::Schema::Error => e
       schemas_string = e.schemas.map { |schema| "#{schema.first}: #{schema.last}" }.join(', ')
