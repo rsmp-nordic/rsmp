@@ -249,7 +249,9 @@ module RSMP
     end
 
     # reorganize rmsp command request arg attribute:
-    # [{"cCI":"M0002","cO":"setPlan","n":"status","v":"True"},{"cCI":"M0002","cO":"setPlan","n":"securityCode","v":"5678"},{"cCI":"M0002","cO":"setPlan","n":"timeplan","v":"3"}]
+    # [{"cCI":"M0002","cO":"setPlan","n":"status","v":"True"},
+    #  {"cCI":"M0002","cO":"setPlan","n":"securityCode","v":"5678"},
+    #  {"cCI":"M0002","cO":"setPlan","n":"timeplan","v":"3"}]
     # into the simpler, but equivalent:
     # {"M0002"=>{"status"=>"True", "securityCode"=>"5678", "timeplan"=>"3"}}
     def simplify_command_requests(arg)

@@ -301,7 +301,7 @@ module RSMP
         switch_traffic_situation arg['traficsituation'], source: 'forced'
       end
 
-      def switch_traffic_situation(situation, source: nil)
+      def switch_traffic_situation(situation)
         @traffic_situation = situation.to_i
         @traffic_situation_source = 'forced'
       end
