@@ -59,19 +59,11 @@ module RSMP
           Message.build attributes, json
         end
 
-        def accept_connection(socket, info)
-          log "Site connected from #{format_ip_and_port(info)}",
-              ip: info[:ip],
-              port: info[:port],
-              level: :info,
-              timestamp: Clock.now
-
-          authorize_ip info[:ip]
-
+        def build_proxy_settings(socket, info)
           stream = IO::Stream::Buffered.new(socket)
           protocol = RSMP::Protocol.new stream
 
-          settings = {
+          {
             supervisor: self,
             ip: info[:ip],
             port: info[:port],
@@ -84,27 +76,44 @@ module RSMP
             logger: @logger,
             archive: @archive
           }
+        end
 
+        def retrieve_site_id(protocol)
           version_message = peek_version_message protocol
-          id = version_message.attribute('siteId').first['sId']
+          version_message.attribute('siteId').first['sId']
+        end
 
-          proxy = find_site id
+        def setup_proxy(proxy, settings, id)
           if proxy
             raise ConnectionError, "Site #{id} alredy connected from port #{proxy.port}" if proxy.connected?
 
             proxy.revive settings
-
           else
             check_max_sites
-            proxy = build_proxy settings.merge(site_id: id) # keep the id learned by peeking above
+            proxy = build_proxy settings.merge(site_id: id)
             @proxies.push proxy
           end
+          proxy
+        end
+
+        def accept_connection(socket, info)
+          log "Site connected from #{format_ip_and_port(info)}",
+              ip: info[:ip],
+              port: info[:port],
+              level: :info,
+              timestamp: Clock.now
+
+          authorize_ip info[:ip]
+
+          settings = build_proxy_settings(socket, info)
+          id = retrieve_site_id(settings[:protocol])
+          proxy = setup_proxy(find_site(id), settings, id)
 
           proxy.setup_site_settings
-          proxy.check_core_version version_message
+          proxy.check_core_version peek_version_message(settings[:protocol])
           log "Validating using core version #{proxy.core_version}", level: :debug
 
-          proxy.start # will run until the site disconnects
+          proxy.start
           proxy.wait
         ensure
           site_ids_changed
