@@ -15,22 +15,29 @@ module RSMP
           end
         end
 
+        def fetch_status_values(component, args)
+          args.map do |arg|
+            value, quality = component.get_status arg['sCI'], arg['n'], { sxl_version: sxl_version }
+            { 's' => rsmpify_value(value, quality), 'q' => quality.to_s }.merge arg
+          end
+        end
+
+        def build_undefined_statuses(args)
+          args.map { |arg| arg.dup.merge('q' => 'undefined', 's' => nil) }
+        end
+
         def process_status_request(message, options = {})
-          ss = []
+          component_id = message.attributes['cId']
+          args = message.attributes['sS']
+          
           begin
-            component_id = message.attributes['cId']
             component = @site.find_component component_id
-            ss = message.attributes['sS'].map do |arg|
-              value, quality = component.get_status arg['sCI'], arg['n'], { sxl_version: sxl_version }
-              { 's' => rsmpify_value(value, quality), 'q' => quality.to_s }.merge arg
-            end
+            ss = fetch_status_values(component, args)
             log "Received #{message.type}", message: message, level: :log
           rescue UnknownComponent
             log "Received #{message.type} with unknown component id '#{component_id}' and cannot infer type",
                 message: message, level: :warning
-            ss = message.attributes['sS'].map do |arg|
-              arg.dup.merge('q' => 'undefined', 's' => nil)
-            end
+            ss = build_undefined_statuses(args)
           end
 
           response = StatusResponse.new({
