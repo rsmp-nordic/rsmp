@@ -18,8 +18,7 @@ module RSMP
       include TLC::Modules::Helpers
 
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
-                  :functional_position,
-                  :startup_sequence_active, :startup_sequence, :startup_sequence_pos
+                  :functional_position, :startup_sequence
 
       def initialize(node:, id:, ntsoid: nil, xnid: nil, **options)
         super(node: node, id: id, ntsoid: ntsoid, xnid: xnid, grouped: true)
@@ -28,7 +27,7 @@ module RSMP
         @plans = options[:signal_plans]
         @num_traffic_situations = 1
         setup_inputs(options[:inputs])
-        @startup_sequence = options[:startup_sequence]
+        @startup_sequence = StartupSequence.new(options[:startup_sequence])
         @live_output = options[:live_output]
         reset
       end
@@ -45,9 +44,6 @@ module RSMP
         @traffic_situation = 0
         @traffic_situation_source = 'startup'
         @day_time_table = {}
-        @startup_sequence_active = false
-        @startup_sequence_initiated_at = nil
-        @startup_sequence_pos = 0
         @time_int = nil
         @inputs.reset
         @signal_priorities = []
@@ -59,7 +55,7 @@ module RSMP
         return unless move_cycle_counter
 
         check_functional_position_timeout
-        move_startup_sequence if @startup_sequence_active
+        @startup_sequence.advance if @startup_sequence.active?
 
         @signal_groups.each(&:timer)
         @signal_priorities.each(&:timer)
