@@ -106,31 +106,39 @@ module RSMP
           end
         end
 
+        def check_on_change_update(subscription, component, code, name)
+          return [nil, false] unless subscription[:interval].zero?
+
+          current = nil
+          if component
+            current, quality = *(component.get_status code, name)
+            current = rsmpify_value(current, quality)
+          end
+          last_sent = fetch_last_sent_status component.id, code, name
+          [current, current != last_sent]
+        end
+
+        def check_interval_update(subscription, now)
+          return true if subscription[:last_sent_at].nil?
+
+          (now - subscription[:last_sent_at]) >= subscription[:interval]
+        end
+
         def status_update_timer(now)
           update_list = {}
 
-          @status_subscriptions.each_pair do |component, by_code|
-            component_object = @site.find_component component
+          @status_subscriptions.each_pair do |component_id, by_code|
+            component = @site.find_component component_id
             by_code.each_pair do |code, by_name|
               by_name.each_pair do |name, subscription|
-                current = nil
-                should_send = false
-                if subscription[:interval].zero?
-                  if component_object
-                    current, quality = *(component_object.get_status code, name)
-                    current = rsmpify_value(current, quality)
-                  end
-                  last_sent = fetch_last_sent_status component, code, name
-                  should_send = true if current != last_sent
-                elsif subscription[:last_sent_at].nil? || (now - subscription[:last_sent_at]) >= subscription[:interval]
-                  should_send = true
-                end
+                current, should_send = check_on_change_update(subscription, component, code, name)
+                should_send ||= check_interval_update(subscription, now)
                 next unless should_send
 
                 subscription[:last_sent_at] = now
-                update_list[component] ||= {}
-                update_list[component][code] ||= {}
-                update_list[component][code][name] = current
+                update_list[component_id] ||= {}
+                update_list[component_id][code] ||= {}
+                update_list[component_id][code][name] = current
               end
             end
           end
