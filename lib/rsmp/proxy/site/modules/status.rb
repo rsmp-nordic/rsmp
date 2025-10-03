@@ -75,18 +75,19 @@ module RSMP
           end
         end
 
+        def remove_subscription_item(component_id, code, name)
+          return unless @status_subscriptions.dig(component_id, code, name)
+
+          @status_subscriptions[component_id][code].delete name
+          @status_subscriptions[component_id].delete(code) if @status_subscriptions[component_id][code].empty?
+          @status_subscriptions.delete(component_id) if @status_subscriptions[component_id].empty?
+        end
+
         def unsubscribe_to_status(component_id, status_list, options = {})
           validate_ready 'unsubscribe to status'
 
-          # update our subcription list
           status_list.each do |item|
-            sci = item['sCI']
-            n = item['n']
-            next unless @status_subscriptions.dig(component_id, sci, n)
-
-            @status_subscriptions[component_id][sci].delete n
-            @status_subscriptions[component_id].delete(sci) if @status_subscriptions[component_id][sci].empty?
-            @status_subscriptions.delete(component_id) if @status_subscriptions[component_id].empty?
+            remove_subscription_item(component_id, item['sCI'], item['n'])
           end
 
           message = RSMP::StatusUnsubscribe.new({
