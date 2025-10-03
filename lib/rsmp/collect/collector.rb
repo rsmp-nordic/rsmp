@@ -4,6 +4,9 @@ module RSMP
   # Wakes up the once the desired number of messages has been collected.
   class Collector
     include Receiver
+    include Status
+    include Reporting
+    include Logging
 
     attr_reader :condition, :messages, :status, :error, :task, :m_id
 
@@ -55,41 +58,6 @@ module RSMP
     # Inspect formatter that shows the message we have collected
     def inspect
       "#<#{self.class.name}:#{object_id}, #{inspector(:@messages)}>"
-    end
-
-    # Is collection active?
-    def collecting?
-      @status == :collecting
-    end
-
-    # Is collection complete?
-    def ok?
-      @status == :ok
-    end
-
-    # Has collection timed out?
-    def timeout?
-      @status == :timeout
-    end
-
-    # Is collection ready to start?
-    def ready?
-      @status == :ready
-    end
-
-    # Has collection been cancelled?
-    def cancelled?
-      @status == :cancelled
-    end
-
-    # Want ingoing messages?
-    def ingoing?
-      @ingoing == true
-    end
-
-    # Want outgoing messages?
-    def outgoing?
-      @outgoing == true
     end
 
     # if an errors caused collection to abort, then raise it
@@ -280,59 +248,6 @@ module RSMP
     # Return true if there's a match, false if not
     def acceptable?(message)
       @filter.nil? || @filter.accept?(message)
-    end
-
-    # return a string describing the types of messages we're collecting
-    def describe_types
-      [@filter&.type].flatten.join('/')
-    end
-
-    # return a string that describes whe number of messages, and type of message we're collecting
-    def describe_num_and_type
-      if @num && @num > 1
-        "#{@num} #{describe_types}s"
-      else
-        describe_types
-      end
-    end
-
-    # return a string that describes the attributes that we're looking for
-    def describe_matcher
-      h = { component: @filter&.component }.compact
-      if h.empty?
-        describe_num_and_type
-      else
-        "#{describe_num_and_type} #{h}"
-      end
-    end
-
-    # Build a string describing how how progress reached before timeout
-    def describe_progress
-      str = "#{@title.capitalize} #{identifier} "
-      str << "in response to #{@m_id} " if @m_id
-      str << "timed out after #{@timeout}s, "
-      str << "reaching #{@messages.size}/#{@num}"
-      str
-    end
-
-    # log when we start collecting
-    def log_start
-      @distributor.log "#{identifier}: Waiting for #{describe_matcher}".strip, level: :collect
-    end
-
-    # log current progress
-    def log_incomplete
-      @distributor.log "#{identifier}: #{describe_progress}", level: :collect
-    end
-
-    # log when we end collecting
-    def log_complete
-      @distributor.log "#{identifier}: Done", level: :collect
-    end
-
-    # get a short id in hex format, identifying ourself
-    def identifier
-      "Collect #{object_id.to_s(16)}"
     end
   end
 end
