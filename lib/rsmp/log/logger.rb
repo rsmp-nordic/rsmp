@@ -158,25 +158,30 @@ module RSMP
       @stream.flush
     end
 
+    def default_colors
+      {
+        'info' => 'white',
+        'log' => 'light_blue',
+        'statistics' => 'light_black',
+        'warning' => 'light_yellow',
+        'error' => 'red',
+        'debug' => 'light_black',
+        'collect' => 'light_black'
+      }
+    end
+
+    def colorize_with_map(level, str, colors)
+      color = colors[level.to_s]
+      color ? str.colorize(color.to_sym) : str
+    end
+
     def colorize(level, str)
-      if @settings['color'] == false || @settings['color'].nil?
-        str
-      elsif @settings['color'] == true || @settings['color'].is_a?(Hash)
-        colors = {
-          'info' => 'white',
-          'log' => 'light_blue',
-          'statistics' => 'light_black',
-          'warning' => 'light_yellow',
-          'error' => 'red',
-          'debug' => 'light_black',
-          'collect' => 'light_black'
-        }
+      return str if @settings['color'] == false || @settings['color'].nil?
+
+      if @settings['color'] == true || @settings['color'].is_a?(Hash)
+        colors = default_colors
         colors.merge! @settings['color'] if @settings['color'].is_a?(Hash)
-        if colors[level.to_s]
-          str.colorize colors[level.to_s].to_sym
-        else
-          str
-        end
+        colorize_with_map(level, str, colors)
       elsif %i[nack warning error].include?(level)
         str.colorize(@settings['color']).bold
       else
