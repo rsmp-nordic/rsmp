@@ -52,6 +52,16 @@ module RSMP
           send_message response
         end
 
+        def add_status_subscription(component_id, subs, update_list, arg, now)
+          sci = arg['sCI']
+          name = arg['n']
+          subcription = { interval: arg['uRt'].to_i, last_sent_at: now }
+          subs[sci] ||= {}
+          subs[sci][name] = subcription
+          update_list[component_id][sci] ||= []
+          update_list[component_id][sci] << name
+        end
+
         def process_status_subcribe(message)
           log "Received #{message.type}", message: message, level: :log
 
@@ -63,12 +73,7 @@ module RSMP
           subs = @status_subscriptions[component_id]
 
           message.attributes['sS'].each do |arg|
-            sci = arg['sCI']
-            subcription = { interval: arg['uRt'].to_i, last_sent_at: now }
-            subs[sci] ||= {}
-            subs[sci][arg['n']] = subcription
-            update_list[component_id][sci] ||= []
-            update_list[component_id][sci] << arg['n']
+            add_status_subscription(component_id, subs, update_list, arg, now)
           end
           acknowledge message
           send_status_updates update_list
