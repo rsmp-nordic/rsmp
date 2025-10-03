@@ -13,7 +13,6 @@ module RSMP
       include TLC::Modules::Outputs
       include TLC::Modules::DetectorLogics
       include TLC::Modules::TrafficData
-      include TLC::Modules::State
       include TLC::Modules::StartupSequence
       include TLC::Modules::Display
       include TLC::Modules::Helpers
