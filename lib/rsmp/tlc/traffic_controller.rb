@@ -13,6 +13,11 @@ module RSMP
       include TLC::Modules::Outputs
       include TLC::Modules::DetectorLogics
       include TLC::Modules::TrafficData
+      include TLC::Modules::State
+      include TLC::Modules::StartupSequence
+      include TLC::Modules::Display
+      include TLC::Modules::Helpers
+      include TLC::Modules::Switching
 
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
                   :functional_position,
@@ -79,18 +84,6 @@ module RSMP
         @inputs.reset
         @signal_priorities = []
         @dynamic_bands_timeout = 0
-      end
-
-      def dark?
-        @function_position == 'Dark'
-      end
-
-      def yellow_flash?
-        @function_position == 'YellowFlash'
-      end
-
-      def normal_control?
-        @function_position == 'NormalControl'
       end
 
       def clock
@@ -170,111 +163,6 @@ module RSMP
         @previous_functional_position = nil
       end
 
-      def startup_state
-        return unless @startup_sequence_active
-        return unless @startup_sequence_pos
-
-        @startup_sequence[@startup_sequence_pos]
-      end
-
-      def initiate_startup_sequence
-        log 'Initiating startup sequence', level: :info
-        reset_modes
-        @startup_sequence_active = true
-        @startup_sequence_initiated_at = nil
-        @startup_sequence_pos = nil
-      end
-
-      def end_startup_sequence
-        @startup_sequence_active = false
-        @startup_sequence_initiated_at = nil
-        @startup_sequence_pos = nil
-      end
-
-      def move_startup_sequence
-        if @startup_sequence_initiated_at.nil?
-          @startup_sequence_initiated_at = Time.now.to_i + 1
-          @startup_sequence_pos = 0
-        else
-          @startup_sequence_pos = Time.now.to_i - @startup_sequence_initiated_at
-        end
-        return unless @startup_sequence_pos >= @startup_sequence.size
-
-        end_startup_sequence
-      end
-
-      def output_states
-        return unless @live_output
-
-        str = format_colored_signal_states
-        modes = format_mode_indicators
-        plan = "P#{@plan}"
-
-        write_state_output(modes, plan, str)
-      end
-
-      private
-
-      def format_colored_signal_states
-        @signal_groups.map do |group|
-          state = group.state
-          s = "#{group.c_id}:#{state}"
-          colorize_signal_state(s, state)
-        end.join ' '
-      end
-
-      def colorize_signal_state(display_string, state)
-        case state
-        when /^[1-9]$/
-          display_string.colorize(:green)
-        when /^[NOPf]$/
-          display_string.colorize(:yellow)
-        when /^[ae]$/
-          display_string.colorize(:light_black)
-        else # includes /^g$/ and any other values
-          display_string.colorize(:red)
-        end
-      end
-
-      def mode_indicators
-        {
-          0 => ['N', @function_position == 'NormalControl'],
-          1 => ['Y', @function_position == 'YellowFlash'],
-          2 => ['D', @function_position == 'Dark'],
-          3 => ['B', @booting],
-          4 => ['S', @startup_sequence_active],
-          5 => ['M', @manual_control],
-          6 => ['F', @fixed_time_control],
-          7 => ['R', @all_red],
-          8 => ['I', @isolated_control],
-          9 => ['P', @police_key != 0]
-        }
-      end
-
-      def format_mode_indicators
-        modes = '.' * 10
-        mode_indicators.each do |pos, (char, active)|
-          modes[pos] = char if active
-        end
-        modes
-      end
-
-      def write_state_output(modes, plan, signal_states)
-        # create folders if needed
-        FileUtils.mkdir_p File.dirname(@live_output)
-
-        # append a line with the current state to the file
-        File.open @live_output, 'w' do |file|
-          file.puts "#{modes}  #{plan.rjust(2)}  #{@cycle_counter.to_s.rjust(3)}  #{signal_states}\r"
-        end
-      end
-
-      public
-
-      def format_signal_group_status
-        @signal_groups.map(&:state).join
-      end
-
       def handle_command(command_code, arg, options = {})
         case command_code
         when 'M0001', 'M0002', 'M0003', 'M0004', 'M0005', 'M0006', 'M0007',
@@ -311,78 +199,6 @@ module RSMP
               level: :info
           component.deactivate_alarm alarm_code
         end
-      end
-
-      def find_plan(plan_nr)
-        plan = @plans[plan_nr.to_i]
-        raise InvalidMessage, "unknown signal plan #{plan_nr}, known only [#{@plans.keys.join(', ')}]" unless plan
-
-        plan
-      end
-
-      def string_to_bool(bool_str)
-        case bool_str
-        when 'True'
-          true
-        when 'False'
-          false
-        else
-          raise RSMP::MessageRejected, "Invalid boolean '#{bool}', must be 'True' or 'False'"
-        end
-      end
-
-      def bool_string_to_digit(bool)
-        case bool
-        when 'True'
-          '1'
-        when 'False'
-          '0'
-        else
-          raise RSMP::MessageRejected, "Invalid boolean '#{bool}', must be 'True' or 'False'"
-        end
-      end
-
-      def bool_to_digit(bool)
-        bool ? '1' : '0'
-      end
-
-      def set_fixed_time_control(status, source:)
-        @fixed_time_control = status
-        @fixed_time_control_source = source
-      end
-
-      def switch_plan(plan, source:)
-        plan_nr = plan.to_i
-        if plan_nr.zero?
-          log 'Switching to plan selection by time table', level: :info
-        else
-          find_plan plan_nr
-          log "Switching to plan #{plan_nr}", level: :info
-        end
-        @plan = plan_nr
-        @plan_source = source
-      end
-
-      def switch_functional_position(mode, source:, timeout: nil, reverting: false)
-        unless %w[NormalControl YellowFlash Dark].include? mode
-          raise RSMP::MessageRejected,
-                "Invalid functional position #{mode.inspect}, must be NormalControl, YellowFlash or Dark"
-        end
-
-        if reverting
-          log "Reverting to functional position #{mode} after timeout", level: :info
-        elsif timeout&.positive?
-          log "Switching to functional position #{mode} with timeout #{(timeout / 60).round(1)}min", level: :info
-          @previous_functional_position = @function_position
-          now = clock.now
-          @functional_position_timeout = now + timeout
-        else
-          log "Switching to functional position #{mode}", level: :info
-        end
-        initiate_startup_sequence if (mode == 'NormalControl') && (@function_position != 'NormalControl')
-        @function_position = mode
-        @function_position_source = source
-        mode
       end
 
       def get_status(code, name = nil, options = {})
