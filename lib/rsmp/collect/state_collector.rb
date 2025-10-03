@@ -89,29 +89,35 @@ module RSMP
       @matchers.map(&:done?)
     end
 
-    # Check if a messages matches our criteria.
-    # Match each matcher against each item in the message
+    def log_match_result(message, matched, matcher, item)
+      type = { true => 'match', false => 'mismatch' }[matched]
+      @distributor.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{matcher.want}, item #{item}",
+                       level: :debug
+    end
+
+    def handle_match_result(matched, matcher, message, item)
+      return if matched.nil?
+
+      log_match_result(message, matched, matcher, item)
+      if matched == true
+        matcher.keep message, item
+      elsif matched == false
+        matcher.forget
+      end
+    end
+
     def perform_match(message)
       return false if super == false
       return unless collecting?
 
-      @matchers.each do |matcher| # look through matchers
+      @matchers.each do |matcher|
         break unless collecting?
 
-        get_items(message).each do |item| # look through items in message
+        get_items(message).each do |item|
           matched = matcher.perform_match(item, message, @block)
           break unless collecting?
 
-          next if matched.nil?
-
-          type = { true => 'match', false => 'mismatch' }[matched]
-          @distributor.log "#{@title.capitalize} #{message.m_id_short} collect #{type} #{matcher.want}, item #{item}",
-                           level: :debug
-          if matched == true
-            matcher.keep message, item
-          elsif matched == false
-            matcher.forget
-          end
+          handle_match_result(matched, matcher, message, item)
         end
       end
     end
