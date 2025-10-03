@@ -212,26 +212,33 @@ module RSMP
       hash[sci][n] = s || :any
     end
 
-    # return a hash that describe the end result
+    def add_command_result(hash, want, got)
+      cci = want['cCI']
+      hash[cci] ||= {}
+      co = want['cO']
+      hash[cci][co] ||= {}
+      n = want['n']
+      v = got ? got['v'] : nil
+      hash[cci][co][n] = v
+    end
+
+    def add_status_result(hash, want, got)
+      sci = want['sCI']
+      hash[sci] ||= {}
+      n = want['n']
+      s = got ? got['s'] : nil
+      hash[sci][n] = s
+    end
+
     def matcher_got_hash
       h = {}
       @matchers.each do |matcher|
         want = matcher.want
         got = matcher.got
         if want['cCI']
-          cci = want['cCI']
-          h[cci] ||= {}
-          co = want['cO']
-          h[cci][co] ||= {}
-          n = want['n']
-          v = got ? got['v'] : nil
-          h[cci][co][n] = v
+          add_command_result(h, want, got)
         elsif want['sCI']
-          sci = want['sCI']
-          h[sci] ||= {}
-          n = want['n']
-          s = got ? got['s'] : nil
-          h[sci][n] = s
+          add_status_result(h, want, got)
         end
       end
       h
