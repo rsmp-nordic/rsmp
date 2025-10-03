@@ -12,8 +12,8 @@ module RSMP
 
       if @want['v'].is_a? Regexp
         return false if item['v'] !~ @want['v']
-      else
-        return false if item['v'] != @want['v']
+      elsif item['v'] != @want['v']
+        return false
       end
       true
     end
