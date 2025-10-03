@@ -96,6 +96,14 @@ module RSMP
           proxy
         end
 
+        def validate_and_start_proxy(proxy, protocol)
+          proxy.setup_site_settings
+          proxy.check_core_version peek_version_message(protocol)
+          log "Validating using core version #{proxy.core_version}", level: :debug
+          proxy.start
+          proxy.wait
+        end
+
         def accept_connection(socket, info)
           log "Site connected from #{format_ip_and_port(info)}",
               ip: info[:ip],
@@ -109,12 +117,7 @@ module RSMP
           id = retrieve_site_id(settings[:protocol])
           proxy = setup_proxy(find_site(id), settings, id)
 
-          proxy.setup_site_settings
-          proxy.check_core_version peek_version_message(settings[:protocol])
-          log "Validating using core version #{proxy.core_version}", level: :debug
-
-          proxy.start
-          proxy.wait
+          validate_and_start_proxy(proxy, settings[:protocol])
         ensure
           site_ids_changed
           stop if @supervisor_settings['one_shot']
