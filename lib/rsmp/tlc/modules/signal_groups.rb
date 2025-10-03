@@ -6,6 +6,27 @@ module RSMP
       # Signal groups and signal priority management
       # Handles signal group status and priority requests
       module SignalGroups
+        def add_signal_group(group)
+          @signal_groups << group
+        end
+
+        def signal_priority_changed(priority, state); end
+
+        # remove all stale priority requests
+        def prune_priorities
+          @signal_priorities.delete_if(&:prune?)
+        end
+
+        def priority_list
+          @signal_priorities.map do |priority|
+            {
+              'r' => priority.id,
+              't' => RSMP::Clock.to_s(priority.updated),
+              's' => priority.state
+            }
+          end
+        end
+
         # M0022 - Signal priority request
         def handle_m0022(arg, _options = {})
           id = arg['requestId']

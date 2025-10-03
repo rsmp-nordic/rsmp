@@ -6,6 +6,41 @@ module RSMP
       # Input programming, control, and status for traffic controllers
       # Handles input commands and queries
       module Inputs
+        def setup_inputs(inputs)
+          if inputs
+            num_inputs = inputs['total']
+            @input_programming = inputs['programming']
+          else
+            @input_programming = nil
+          end
+          @inputs = TLC::InputStates.new num_inputs || 8
+        end
+
+        def input_logic(input, change)
+          return unless @input_programming && !change.nil?
+
+          action = @input_programming[input]
+          return unless action
+
+          return unless action['raise_alarm']
+
+          component = if action['component']
+                        node.find_component action['component']
+                      else
+                        node.main
+                      end
+          alarm_code = action['raise_alarm']
+          if change
+            log "Activating input #{input} is programmed to raise alarm #{alarm_code} on #{component.c_id}",
+                level: :info
+            component.activate_alarm alarm_code
+          else
+            log "Deactivating input #{input} is programmed to clear alarm #{alarm_code} on #{component.c_id}",
+                level: :info
+            component.deactivate_alarm alarm_code
+          end
+        end
+
         # M0006 - Set input
         def handle_m0006(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']

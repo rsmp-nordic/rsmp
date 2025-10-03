@@ -6,6 +6,13 @@ module RSMP
       # Time plans, traffic situations, and scheduling management
       # Handles time plan selection, dynamic bands, schedules, and cycle times
       module Plans
+        def current_plan
+          # TODO: plan 0 should means use time table
+          return unless @plans
+
+          @plans[plan] || @plans.values.first
+        end
+
         # M0002 - Set current time plan
         def handle_m0002(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']

@@ -34,36 +34,6 @@ module RSMP
         reset
       end
 
-      def setup_inputs(inputs)
-        if inputs
-          num_inputs = inputs['total']
-          @input_programming = inputs['programming']
-        else
-          @input_programming = nil
-        end
-        @inputs = TLC::InputStates.new num_inputs || 8
-      end
-
-      def reset_modes
-        @function_position = 'NormalControl'
-        @function_position_source = 'startup'
-        @previous_functional_position = nil
-        @functional_position_timeout = nil
-
-        @booting = false
-        @is_starting = false
-        @control_mode = 'control'
-        @manual_control = false
-        @manual_control_source = 'startup'
-        @fixed_time_control = false
-        @fixed_time_control_source = 'startup'
-        @isolated_control = false
-        @isolated_control_source = 'startup'
-        @all_red = false
-        @all_red_source = 'startup'
-        @police_key = 0
-      end
-
       def reset
         reset_modes
         @cycle_counter = 0
@@ -85,25 +55,6 @@ module RSMP
         @dynamic_bands_timeout = 0
       end
 
-      def clock
-        node.clock
-      end
-
-      def current_plan
-        # TODO: plan 0 should means use time table
-        return unless @plans
-
-        @plans[plan] || @plans.values.first
-      end
-
-      def add_signal_group(group)
-        @signal_groups << group
-      end
-
-      def add_detector_logic(logic)
-        @detector_logics << logic
-      end
-
       def timer(_now)
         # TODO: use monotone timer, to avoid jumps in case the user sets the system time
         return unless move_cycle_counter
@@ -117,27 +68,10 @@ module RSMP
         output_states
       end
 
-      def signal_priority_changed(priority, state); end
-
-      # remove all stale priority requests
-      def prune_priorities
-        @signal_priorities.delete_if(&:prune?)
-      end
-
       # this method is called by the supervisor proxy each time status updates have been send
       # we can then prune our priority request list
       def status_updates_sent
         prune_priorities
-      end
-
-      def priority_list
-        @signal_priorities.map do |priority|
-          {
-            'r' => priority.id,
-            't' => RSMP::Clock.to_s(priority.updated),
-            's' => priority.state
-          }
-        end
       end
 
       def move_cycle_counter
@@ -152,16 +86,6 @@ module RSMP
         changed
       end
 
-      def check_functional_position_timeout
-        return unless @functional_position_timeout
-
-        return unless clock.now >= @functional_position_timeout
-
-        switch_functional_position @previous_functional_position, reverting: true, source: 'calendar_clock'
-        @functional_position_timeout = nil
-        @previous_functional_position = nil
-      end
-
       def handle_command(command_code, arg, options = {})
         case command_code
         when 'M0001', 'M0002', 'M0003', 'M0004', 'M0005', 'M0006', 'M0007',
@@ -172,31 +96,6 @@ module RSMP
           send("handle_#{command_code.downcase}", arg, options)
         else
           raise UnknownCommand, "Unknown command #{command_code}"
-        end
-      end
-
-      def input_logic(input, change)
-        return unless @input_programming && !change.nil?
-
-        action = @input_programming[input]
-        return unless action
-
-        return unless action['raise_alarm']
-
-        component = if action['component']
-                      node.find_component action['component']
-                    else
-                      node.main
-                    end
-        alarm_code = action['raise_alarm']
-        if change
-          log "Activating input #{input} is programmed to raise alarm #{alarm_code} on #{component.c_id}",
-              level: :info
-          component.activate_alarm alarm_code
-        else
-          log "Deactivating input #{input} is programmed to clear alarm #{alarm_code} on #{component.c_id}",
-              level: :info
-          component.deactivate_alarm alarm_code
         end
       end
 

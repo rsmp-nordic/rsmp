@@ -6,6 +6,10 @@ module RSMP
       # System-level commands and status for traffic controllers
       # Handles restart, emergency routes, security, clock, version, and configuration
       module System
+        def clock
+          node.clock
+        end
+
         # M0004 - Restart traffic light controller
         def handle_m0004(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']

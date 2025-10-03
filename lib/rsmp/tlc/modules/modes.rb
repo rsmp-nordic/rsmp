@@ -6,6 +6,48 @@ module RSMP
       # Operating modes and functional positions for traffic controllers
       # Handles mode switching (NormalControl/YellowFlash/Dark) and control modes
       module Modes
+        def reset_modes
+          @function_position = 'NormalControl'
+          @function_position_source = 'startup'
+          @previous_functional_position = nil
+          @functional_position_timeout = nil
+
+          @booting = false
+          @is_starting = false
+          @control_mode = 'control'
+          @manual_control = false
+          @manual_control_source = 'startup'
+          @fixed_time_control = false
+          @fixed_time_control_source = 'startup'
+          @isolated_control = false
+          @isolated_control_source = 'startup'
+          @all_red = false
+          @all_red_source = 'startup'
+          @police_key = 0
+        end
+
+        def check_functional_position_timeout
+          return unless @functional_position_timeout
+
+          return unless clock.now >= @functional_position_timeout
+
+          switch_functional_position @previous_functional_position, reverting: true, source: 'calendar_clock'
+          @functional_position_timeout = nil
+          @previous_functional_position = nil
+        end
+
+        def dark?
+          @function_position == 'Dark'
+        end
+
+        def yellow_flash?
+          @function_position == 'YellowFlash'
+        end
+
+        def normal_control?
+          @function_position == 'NormalControl'
+        end
+
         # M0001 - Set functional position
         def handle_m0001(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']

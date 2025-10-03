@@ -6,6 +6,10 @@ module RSMP
       # Detector logic management for traffic controller
       # Handles detector logic status queries and forcing
       module DetectorLogics
+        def add_detector_logic(logic)
+          @detector_logics << logic
+        end
+
         # M0021 - Force detector logic
         def handle_m0021(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']
