@@ -35,17 +35,19 @@ module RSMP
           acknowledge message
         end
 
-        def update_subscription(component_id, subscribe_list)
+        def ensure_subscription_path(component_id, sci, n)
           @status_subscriptions[component_id] ||= {}
+          @status_subscriptions[component_id][sci] ||= {}
+          @status_subscriptions[component_id][sci][n] ||= {}
+        end
+
+        def update_subscription(component_id, subscribe_list)
           subscribe_list.each do |item|
             sci = item['sCI']
             n = item['n']
-            urt = item['uRt']
-            soc = item['sOc']
-            @status_subscriptions[component_id][sci] ||= {}
-            @status_subscriptions[component_id][sci][n] ||= {}
-            @status_subscriptions[component_id][sci][n]['uRt'] = urt
-            @status_subscriptions[component_id][sci][n]['sOc'] = soc
+            sub = ensure_subscription_path(component_id, sci, n)
+            sub['uRt'] = item['uRt']
+            sub['sOc'] = item['sOc']
           end
         end
 
