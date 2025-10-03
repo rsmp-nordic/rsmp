@@ -60,23 +60,24 @@ module RSMP
           end
         end
 
-        # S0096 - Current date and time
+        def datetime_components
+          {
+            'year' => [4, :year],
+            'month' => [2, :month],
+            'day' => [2, :day],
+            'hour' => [2, :hour],
+            'minute' => [2, :min],
+            'second' => [2, :sec]
+          }
+        end
+
         def handle_s0096(_status_code, status_name = nil, _options = {})
+          component = datetime_components[status_name]
+          return nil unless component
+
+          width, method = component
           now = clock.now
-          case status_name
-          when 'year'
-            TrafficControllerSite.make_status format_datetime_component(now.year, 4)
-          when 'month'
-            TrafficControllerSite.make_status format_datetime_component(now.month, 2)
-          when 'day'
-            TrafficControllerSite.make_status format_datetime_component(now.day, 2)
-          when 'hour'
-            TrafficControllerSite.make_status format_datetime_component(now.hour, 2)
-          when 'minute'
-            TrafficControllerSite.make_status format_datetime_component(now.min, 2)
-          when 'second'
-            TrafficControllerSite.make_status format_datetime_component(now.sec, 2)
-          end
+          TrafficControllerSite.make_status format_datetime_component(now.send(method), width)
         end
 
         private
