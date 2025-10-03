@@ -175,13 +175,17 @@ module RSMP
       color ? str.colorize(color.to_sym) : str
     end
 
+    def apply_hash_colors(level, str)
+      colors = default_colors
+      colors.merge! @settings['color'] if @settings['color'].is_a?(Hash)
+      colorize_with_map(level, str, colors)
+    end
+
     def colorize(level, str)
       return str if @settings['color'] == false || @settings['color'].nil?
 
       if @settings['color'] == true || @settings['color'].is_a?(Hash)
-        colors = default_colors
-        colors.merge! @settings['color'] if @settings['color'].is_a?(Hash)
-        colorize_with_map(level, str, colors)
+        apply_hash_colors(level, str)
       elsif %i[nack warning error].include?(level)
         str.colorize(@settings['color']).bold
       else
