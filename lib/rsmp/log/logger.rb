@@ -2,8 +2,8 @@ module RSMP
   class Logger
     attr_accessor :settings
 
-    def initialize(settings = {})
-      defaults = {
+    def default_logger_settings
+      {
         'active' => true,
         'path' => nil,
         'stream' => nil,
@@ -16,7 +16,6 @@ module RSMP
         'alarms' => true,
         'json' => false,
         'tabs' => '-',
-
         'prefix' => false,
         'index' => false,
         'author' => false,
@@ -30,8 +29,10 @@ module RSMP
         'id' => true,
         'text' => true
       }
+    end
 
-      default_lengths = {
+    def default_field_lengths
+      {
         'index' => 7,
         'author' => 13,
         'timestamp' => 24,
@@ -43,8 +44,10 @@ module RSMP
         'level' => 7,
         'id' => 4
       }
+    end
 
-      @ignorable = {
+    def ignorable_messages
+      {
         'versions' => ['Version'],
         'statuses' => %w[StatusRequest StatusSubscribe StatusUnsubscribe StatusResponse StatusUpdate],
         'commands' => %w[CommandRequest CommandResponse],
@@ -52,22 +55,23 @@ module RSMP
         'alarms' => ['Alarm'],
         'aggregated_status' => %w[AggregatedStatus AggregatedStatusRequest]
       }
+    end
 
-      @settings = if settings
-                    defaults.merge settings
-                  else
-                    defaults
-                  end
-
-      # copy default length for items that are set to true
-      @settings = @settings.to_h do |key, value|
-        if value == true && default_lengths[key]
-          [key, default_lengths[key]]
+    def apply_default_lengths(settings)
+      lengths = default_field_lengths
+      settings.to_h do |key, value|
+        if value == true && lengths[key]
+          [key, lengths[key]]
         else
           [key, value]
         end
       end
+    end
 
+    def initialize(settings = {})
+      @ignorable = ignorable_messages
+      @settings = settings ? default_logger_settings.merge(settings) : default_logger_settings
+      @settings = apply_default_lengths(@settings)
       @muted = {}
       setup_output_destination
     end
