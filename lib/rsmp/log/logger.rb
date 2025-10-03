@@ -98,27 +98,55 @@ module RSMP
       @muted = {}
     end
 
-    def output?(item, force: false)
-      return false if item[:ip] && item[:port] && @muted["#{item[:ip]}:#{item[:port]}"]
-      return false if @settings['active'] == false && force != true
+    def muted?(item)
+      item[:ip] && item[:port] && @muted["#{item[:ip]}:#{item[:port]}"]
+    end
+
+    def level_enabled?(item)
       return false if @settings['info'] == false && item[:level] == :info
       return false if @settings['debug'] != true && item[:level] == :debug
       return false if @settings['statistics'] != true && item[:level] == :statistics
       return false if @settings['test'] != true && item[:level] == :test
 
-      if item[:message]
-        type = item[:message].type
-        ack = %w[MessageAck MessageNotAck].include?(type)
-        @ignorable.each_pair do |key, types|
-          ignore = [types].flatten
-          next unless @settings[key] == false
-          return false if ignore.include?(type)
+      true
+    end
 
-          return false if ack && item[:message].original && ignore.include?(item[:message].original.type)
-        end
-        return false if ack && @settings['acknowledgements'] == false &&
-                        %i[not_acknowledged warning error].include?(item[:level]) == false
+    def message_ignored?(item)
+      return false unless item[:message]
+
+      type = item[:message].type
+      ack = %w[MessageAck MessageNotAck].include?(type)
+      return true unless check_ignorable(type, ack, item)
+      return true unless check_acknowledgement(ack, item)
+
+      false
+    end
+
+    def check_ignorable(type, ack, item)
+      @ignorable.each_pair do |key, types|
+        ignore = [types].flatten
+        next unless @settings[key] == false
+        return false if ignore.include?(type)
+
+        return false if ack && item[:message].original && ignore.include?(item[:message].original.type)
       end
+      true
+    end
+
+    def check_acknowledgement(ack, item)
+      return true unless ack
+      return true if @settings['acknowledgements'] != false
+      return true if %i[not_acknowledged warning error].include?(item[:level])
+
+      false
+    end
+
+    def output?(item, force: false)
+      return false if muted?(item)
+      return false if @settings['active'] == false && force != true
+      return false unless level_enabled?(item)
+      return false if message_ignored?(item)
+
       true
     end
 
