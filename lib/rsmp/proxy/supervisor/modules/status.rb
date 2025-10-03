@@ -124,6 +124,15 @@ module RSMP
           (now - subscription[:last_sent_at]) >= subscription[:interval]
         end
 
+        def check_status_subscription(subscription, component, code, name, now)
+          current, should_send = check_on_change_update(subscription, component, code, name)
+          should_send ||= interval_update_due?(subscription, now)
+          return [nil, false] unless should_send
+
+          subscription[:last_sent_at] = now
+          [current, true]
+        end
+
         def status_update_timer(now)
           update_list = {}
 
@@ -131,11 +140,9 @@ module RSMP
             component = @site.find_component component_id
             by_code.each_pair do |code, by_name|
               by_name.each_pair do |name, subscription|
-                current, should_send = check_on_change_update(subscription, component, code, name)
-                should_send ||= interval_update_due?(subscription, now)
+                current, should_send = check_status_subscription(subscription, component, code, name, now)
                 next unless should_send
 
-                subscription[:last_sent_at] = now
                 update_list[component_id] ||= {}
                 update_list[component_id][code] ||= {}
                 update_list[component_id][code][name] = current
