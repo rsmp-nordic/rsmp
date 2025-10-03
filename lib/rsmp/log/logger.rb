@@ -2,7 +2,7 @@ module RSMP
   class Logger
     attr_accessor :settings
 
-    def default_logger_settings
+    def default_output_settings
       {
         'active' => true,
         'path' => nil,
@@ -15,7 +15,12 @@ module RSMP
         'watchdogs' => false,
         'alarms' => true,
         'json' => false,
-        'tabs' => '-',
+        'tabs' => '-'
+      }
+    end
+
+    def default_field_settings
+      {
         'prefix' => false,
         'index' => false,
         'author' => false,
@@ -29,6 +34,10 @@ module RSMP
         'id' => true,
         'text' => true
       }
+    end
+
+    def default_logger_settings
+      default_output_settings.merge(default_field_settings)
     end
 
     def default_field_lengths
