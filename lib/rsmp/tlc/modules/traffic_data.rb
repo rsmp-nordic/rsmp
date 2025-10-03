@@ -3,60 +3,40 @@
 module RSMP
   module TLC
     module Modules
-      # Traffic data collection and user login tracking
-      # Handles traffic counting data and user authentication status
+      # Traffic counting data collection for TLC
+      # Handles aggregate traffic counting status for all detectors
       module TrafficData
-        # S0091 - User login status
-        def handle_s0091(_status_code, status_name = nil, _options = {})
-          case status_name
-          when 'user'
-            TrafficControllerSite.make_status ''
-          when 'status'
-            TrafficControllerSite.make_status TrafficControllerSite.to_rmsp_bool(false)
-          end
-        end
-
-        # S0092 - User login sensitivity
-        def handle_s0092(_status_code, status_name = nil, _options = {})
-          case status_name
-          when 'user'
-            TrafficControllerSite.make_status ''
-          when 'status'
-            TrafficControllerSite.make_status TrafficControllerSite.to_rmsp_bool(false)
-          end
-        end
-
-        # S0205 - Start of signal group green
+        # S0205 - Traffic Counting: Number of vehicles (aggregate)
         def handle_s0205(_status_code, status_name = nil, _options = {})
           case status_name
           when 'start'
             TrafficControllerSite.make_status clock.to_s
-          when 'P', 'PS', 'L', 'LS', 'B', 'SP', 'MC', 'C', 'F'
+          when 'vehicles'
             TrafficControllerSite.make_status 0
           end
         end
 
-        # S0206 - Expected end of signal group green
+        # S0206 - Traffic Counting: Vehicle speed (aggregate)
         def handle_s0206(_status_code, status_name = nil, _options = {})
           case status_name
           when 'start'
             TrafficControllerSite.make_status clock.to_s
-          when 'P', 'PS', 'L', 'LS', 'B', 'SP', 'MC', 'C', 'F'
+          when 'speed'
             TrafficControllerSite.make_status 0
           end
         end
 
-        # S0207 - Predicted time to green
+        # S0207 - Traffic Counting: Occupancy (aggregate)
         def handle_s0207(_status_code, status_name = nil, _options = {})
           case status_name
-          when 'minTime', 'maxTime', 'likelyTime'
+          when 'start'
             TrafficControllerSite.make_status clock.to_s
-          when 'P', 'PS', 'L', 'LS', 'B', 'SP', 'MC', 'C', 'F'
+          when 'occupancy'
             TrafficControllerSite.make_status 0
           end
         end
 
-        # S0208 - Predicted time to red
+        # S0208 - Traffic Counting: Number of vehicles by classification (aggregate)
         def handle_s0208(_status_code, status_name = nil, _options = {})
           case status_name
           when 'start'

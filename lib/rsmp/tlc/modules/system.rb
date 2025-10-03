@@ -60,6 +60,26 @@ module RSMP
           end
         end
 
+        # S0091 - Operator logged in/out OP-panel
+        def handle_s0091(_status_code, status_name = nil, _options = {})
+          case status_name
+          when 'user'
+            TrafficControllerSite.make_status 0
+          when 'username'
+            TrafficControllerSite.make_status ''
+          end
+        end
+
+        # S0092 - Operator logged in/out web-interface
+        def handle_s0092(_status_code, status_name = nil, _options = {})
+          case status_name
+          when 'user'
+            TrafficControllerSite.make_status 0
+          when 'username'
+            TrafficControllerSite.make_status ''
+          end
+        end
+
         def datetime_components
           {
             'year' => [4, :year],
@@ -71,6 +91,7 @@ module RSMP
           }
         end
 
+        # S0096 - Current date and time
         def handle_s0096(_status_code, status_name = nil, _options = {})
           component = datetime_components[status_name]
           return nil unless component

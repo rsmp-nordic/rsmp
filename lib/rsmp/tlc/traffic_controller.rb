@@ -17,7 +17,6 @@ module RSMP
       include TLC::Modules::StartupSequence
       include TLC::Modules::Display
       include TLC::Modules::Helpers
-      include TLC::Modules::Switching
 
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
                   :functional_position,

@@ -19,10 +19,28 @@ module RSMP
         # M0003 - Set traffic situation
         def handle_m0003(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']
-          switch_traffic_situation arg['traficsituation'], source: 'forced'
+          switch_traffic_situation arg['traficsituation']
         end
 
-        # Helper: Switch traffic situation
+        def find_plan(plan_nr)
+          plan = @plans[plan_nr.to_i]
+          raise InvalidMessage, "unknown signal plan #{plan_nr}, known only [#{@plans.keys.join(', ')}]" unless plan
+
+          plan
+        end
+
+        def switch_plan(plan, source:)
+          plan_nr = plan.to_i
+          if plan_nr.zero?
+            log 'Switching to plan selection by time table', level: :info
+          else
+            find_plan plan_nr
+            log "Switching to plan #{plan_nr}", level: :info
+          end
+          @plan = plan_nr
+          @plan_source = source
+        end
+
         def switch_traffic_situation(situation)
           @traffic_situation = situation.to_i
           @traffic_situation_source = 'forced'
