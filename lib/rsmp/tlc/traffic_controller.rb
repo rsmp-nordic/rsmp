@@ -18,13 +18,19 @@ module RSMP
                   :functional_position,
                   :startup_sequence_active, :startup_sequence, :startup_sequence_pos
 
-      def initialize(node:, id:, signal_plans:, startup_sequence:, ntsoid: nil, xnid: nil, live_output: nil, inputs: {})
+      def initialize(node:, id:, ntsoid: nil, xnid: nil, **options)
         super(node: node, id: id, ntsoid: ntsoid, xnid: xnid, grouped: true)
         @signal_groups = []
         @detector_logics = []
-        @plans = signal_plans
+        @plans = options[:signal_plans]
         @num_traffic_situations = 1
+        setup_inputs(options[:inputs])
+        @startup_sequence = options[:startup_sequence]
+        @live_output = options[:live_output]
+        reset
+      end
 
+      def setup_inputs(inputs)
         if inputs
           num_inputs = inputs['total']
           @input_programming = inputs['programming']
@@ -32,10 +38,6 @@ module RSMP
           @input_programming = nil
         end
         @inputs = TLC::InputStates.new num_inputs || 8
-
-        @startup_sequence = startup_sequence
-        @live_output = live_output
-        reset
       end
 
       def reset_modes
