@@ -24,6 +24,46 @@ module RSMP
           expect_version_message(message) unless @version_determined
         end
 
+        def handle_invalid_packet(json, error)
+          str = "Received invalid package, must be valid JSON but got #{json.size} bytes: #{error.message}"
+          distribute_error error.exception(str)
+          log str, level: :warning
+          nil
+        end
+
+        def handle_malformed_message(attributes, error)
+          str = "Received malformed message, #{error.message}"
+          distribute_error error.exception(str)
+          log str, message: Malformed.new(attributes), level: :warning
+          nil
+        end
+
+        def handle_schema_error(message, error)
+          schemas_string = error.schemas.map { |schema| "#{schema.first}: #{schema.last}" }.join(', ')
+          reason = "schema errors (#{schemas_string}): #{error.message}"
+          str = "Received invalid #{message.type}"
+          distribute_error error.exception(str), message: message
+          dont_acknowledge message, str, reason
+          message
+        end
+
+        def handle_invalid_message(message, error)
+          reason = error.message.to_s
+          str = "Received invalid #{message.type},"
+          distribute_error error.exception("#{str} #{message.json}"), message: message
+          dont_acknowledge message, str, reason
+          message
+        end
+
+        def handle_fatal_error(message, error)
+          reason = error.message
+          str = "Rejected #{message.type},"
+          distribute_error error.exception(str), message: message
+          dont_acknowledge message, str, reason
+          close
+          message
+        end
+
         def process_packet(json)
           attributes = Message.parse_attributes json
           message = Message.build attributes, json
@@ -36,36 +76,15 @@ module RSMP
           process_deferred
           message
         rescue InvalidPacket => e
-          str = "Received invalid package, must be valid JSON but got #{json.size} bytes: #{e.message}"
-          distribute_error e.exception(str)
-          log str, level: :warning
-          nil
+          handle_invalid_packet(json, e)
         rescue MalformedMessage => e
-          str = "Received malformed message, #{e.message}"
-          distribute_error e.exception(str)
-          log str, message: Malformed.new(attributes), level: :warning
-          # cannot send NotAcknowledged for a malformed message since we can't read it, just ignore it
-          nil
+          handle_malformed_message(attributes, e)
         rescue SchemaError, RSMP::Schema::Error => e
-          schemas_string = e.schemas.map { |schema| "#{schema.first}: #{schema.last}" }.join(', ')
-          reason = "schema errors (#{schemas_string}): #{e.message}"
-          str = "Received invalid #{message.type}"
-          distribute_error e.exception(str), message: message
-          dont_acknowledge message, str, reason
-          message
+          handle_schema_error(message, e)
         rescue InvalidMessage => e
-          reason = e.message.to_s
-          str = "Received invalid #{message.type},"
-          distribute_error e.exception("#{str} #{message.json}"), message: message
-          dont_acknowledge message, str, reason
-          message
+          handle_invalid_message(message, e)
         rescue FatalError => e
-          reason = e.message
-          str = "Rejected #{message.type},"
-          distribute_error e.exception(str), message: message
-          dont_acknowledge message, str, reason
-          close
-          message
+          handle_fatal_error(message, e)
         ensure
           @node.clear_deferred
         end
