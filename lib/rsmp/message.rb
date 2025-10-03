@@ -28,24 +28,30 @@ module RSMP
       message
     end
 
+    def self.message_types
+      {
+        'MessageAck' => MessageAck,
+        'MessageNotAck' => MessageNotAck,
+        'Version' => Version,
+        'AggregatedStatus' => AggregatedStatus,
+        'AggregatedStatusRequest' => AggregatedStatusRequest,
+        'Watchdog' => Watchdog,
+        'CommandRequest' => CommandRequest,
+        'CommandResponse' => CommandResponse,
+        'StatusRequest' => StatusRequest,
+        'StatusResponse' => StatusResponse,
+        'StatusSubscribe' => StatusSubscribe,
+        'StatusUnsubscribe' => StatusUnsubscribe,
+        'StatusUpdate' => StatusUpdate
+      }
+    end
+
     def self.create_message_instance(attributes)
-      case attributes['type']
-      when 'MessageAck' then MessageAck.new(attributes)
-      when 'MessageNotAck' then MessageNotAck.new(attributes)
-      when 'Version' then Version.new(attributes)
-      when 'AggregatedStatus' then AggregatedStatus.new(attributes)
-      when 'AggregatedStatusRequest' then AggregatedStatusRequest.new(attributes)
-      when 'Watchdog' then Watchdog.new(attributes)
-      when 'Alarm' then build_alarm(attributes)
-      when 'CommandRequest' then CommandRequest.new(attributes)
-      when 'CommandResponse' then CommandResponse.new(attributes)
-      when 'StatusRequest' then StatusRequest.new(attributes)
-      when 'StatusResponse' then StatusResponse.new(attributes)
-      when 'StatusSubscribe' then StatusSubscribe.new(attributes)
-      when 'StatusUnsubscribe' then StatusUnsubscribe.new(attributes)
-      when 'StatusUpdate' then StatusUpdate.new(attributes)
-      else Unknown.new(attributes)
-      end
+      type = attributes['type']
+      return build_alarm(attributes) if type == 'Alarm'
+
+      klass = message_types[type] || Unknown
+      klass.new(attributes)
     end
 
     def self.build_alarm(attributes)
