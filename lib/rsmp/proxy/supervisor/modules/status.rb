@@ -83,19 +83,21 @@ module RSMP
           @status_subscriptions.dig component_id, sci, name
         end
 
+        def remove_status_subscription(subs, arg)
+          sci = arg['sCI']
+          return unless subs[sci]
+
+          subs[sci].delete arg['n']
+          subs.delete(sci) if subs[sci].empty?
+        end
+
         def process_status_unsubcribe(message)
           log "Received #{message.type}", message: message, level: :log
           component = message.attributes['cId']
 
           subs = @status_subscriptions[component]
           if subs
-            message.attributes['sS'].each do |arg|
-              sci = arg['sCI']
-              if subs[sci]
-                subs[sci].delete arg['n']
-                subs.delete(sci) if subs[sci].empty?
-              end
-            end
+            message.attributes['sS'].each { |arg| remove_status_subscription(subs, arg) }
             @status_subscriptions.delete(component) if subs.empty?
           end
           acknowledge message
