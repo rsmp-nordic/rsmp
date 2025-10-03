@@ -234,18 +234,26 @@ module RSMP
         end
       end
 
+      def mode_indicators
+        {
+          0 => ['N', @function_position == 'NormalControl'],
+          1 => ['Y', @function_position == 'YellowFlash'],
+          2 => ['D', @function_position == 'Dark'],
+          3 => ['B', @booting],
+          4 => ['S', @startup_sequence_active],
+          5 => ['M', @manual_control],
+          6 => ['F', @fixed_time_control],
+          7 => ['R', @all_red],
+          8 => ['I', @isolated_control],
+          9 => ['P', @police_key != 0]
+        }
+      end
+
       def format_mode_indicators
-        modes = '.' * 9
-        modes[0] = 'N' if @function_position == 'NormalControl'
-        modes[1] = 'Y' if @function_position == 'YellowFlash'
-        modes[2] = 'D' if @function_position == 'Dark'
-        modes[3] = 'B' if @booting
-        modes[4] = 'S' if @startup_sequence_active
-        modes[5] = 'M' if @manual_control
-        modes[6] = 'F' if @fixed_time_control
-        modes[7] = 'R' if @all_red
-        modes[8] = 'I' if @isolated_control
-        modes[9] = 'P' if @police_key != 0
+        modes = '.' * 10
+        mode_indicators.each do |pos, (char, active)|
+          modes[pos] = char if active
+        end
         modes
       end
 
