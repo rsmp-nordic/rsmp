@@ -116,13 +116,13 @@ module RSMP
 
       type = item[:message].type
       ack = %w[MessageAck MessageNotAck].include?(type)
-      return true unless check_ignorable(type, ack, item)
-      return true unless check_acknowledgement(ack, item)
+      return true unless ignorable?(type, ack, item)
+      return true unless acknowledgement_enabled?(ack, item)
 
       false
     end
 
-    def check_ignorable(type, ack, item)
+    def ignorable?(type, ack, item)
       @ignorable.each_pair do |key, types|
         ignore = [types].flatten
         next unless @settings[key] == false
@@ -133,7 +133,7 @@ module RSMP
       true
     end
 
-    def check_acknowledgement(ack, item)
+    def acknowledgement_enabled?(ack, item)
       return true unless ack
       return true if @settings['acknowledgements'] != false
       return true if %i[not_acknowledged warning error].include?(item[:level])

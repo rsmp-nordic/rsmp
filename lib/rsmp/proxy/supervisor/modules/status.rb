@@ -118,7 +118,7 @@ module RSMP
           [current, current != last_sent]
         end
 
-        def check_interval_update(subscription, now)
+        def interval_update_due?(subscription, now)
           return true if subscription[:last_sent_at].nil?
 
           (now - subscription[:last_sent_at]) >= subscription[:interval]
@@ -132,7 +132,7 @@ module RSMP
             by_code.each_pair do |code, by_name|
               by_name.each_pair do |name, subscription|
                 current, should_send = check_on_change_update(subscription, component, code, name)
-                should_send ||= check_interval_update(subscription, now)
+                should_send ||= interval_update_due?(subscription, now)
                 next unless should_send
 
                 subscription[:last_sent_at] = now
