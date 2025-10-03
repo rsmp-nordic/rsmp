@@ -145,24 +145,29 @@ module RSMP
           send_status_updates update_list
         end
 
+        def build_status_list(component, by_code)
+          ss = []
+          by_code.each_pair do |code, names|
+            names.map do |status_name, value|
+              if value
+                quality = 'recent'
+              else
+                value, quality = component.get_status code, status_name
+              end
+              ss << { 'sCI' => code,
+                      'n' => status_name,
+                      's' => rsmpify_value(value, quality),
+                      'q' => quality }
+            end
+          end
+          ss
+        end
+
         def send_status_updates(update_list)
           now = clock.to_s
           update_list.each_pair do |component_id, by_code|
             component = @site.find_component component_id
-            ss = []
-            by_code.each_pair do |code, names|
-              names.map do |status_name, value|
-                if value
-                  quality = 'recent'
-                else
-                  value, quality = component.get_status code, status_name
-                end
-                ss << { 'sCI' => code,
-                        'n' => status_name,
-                        's' => rsmpify_value(value, quality),
-                        'q' => quality }
-              end
-            end
+            ss = build_status_list(component, by_code)
             update = StatusUpdate.new({
                                         'cId' => component_id,
                                         'sTs' => now,
