@@ -226,8 +226,7 @@ module RSMP
       parts << part
     end
 
-    def build_output(item)
-      parts = []
+    def add_output_parts(parts, item)
       build_part(parts, item, :prefix) { @settings['prefix'] if @settings['prefix'] != false }
       build_part(parts, item, :index)
       build_part(parts, item, :author)
@@ -242,7 +241,11 @@ module RSMP
       build_part(parts, item, :text)
       build_part(parts, item, :json) { item[:message]&.json }
       build_part(parts, item, :exception) { |e| [e.class, e.backtrace].flatten.join("\n") }
+    end
 
+    def build_output(item)
+      parts = []
+      add_output_parts(parts, item)
       parts.join('  ').chomp(@settings['tabs'].to_s).rstrip
     end
   end
