@@ -6,6 +6,13 @@ module RSMP
       # Message sending functionality
       # Handles sending messages, validation, and buffering
       module Send
+        def handle_send_schema_error(message, error)
+          schemas_string = error.schemas.map { |schema| "#{schema.first}: #{schema.last}" }.join(', ')
+          str = "Could not send #{message.type} because schema validation failed (#{schemas_string}): #{error.message}"
+          log str, message: message, level: :error
+          distribute_error error.exception("#{str} #{message.json}")
+        end
+
         def send_message(message, reason = nil, validate: true, force: false)
           raise NotReady if !force && !connected?
           raise IOError unless @protocol
@@ -17,13 +24,10 @@ module RSMP
           expect_acknowledgement message
           distribute message
           log_send message, reason
-        rescue IOError # Also catches EOFError (subclass of IOError)
+        rescue IOError
           buffer_message message
         rescue SchemaError, RSMP::Schema::Error => e
-          schemas_string = e.schemas.map { |schema| "#{schema.first}: #{schema.last}" }.join(', ')
-          str = "Could not send #{message.type} because schema validation failed (#{schemas_string}): #{e.message}"
-          log str, message: message, level: :error
-          distribute_error e.exception("#{str} #{message.json}")
+          handle_send_schema_error(message, e)
         end
 
         def buffer_message(message)
