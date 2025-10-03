@@ -226,21 +226,33 @@ module RSMP
       parts << part
     end
 
-    def add_output_parts(parts, item)
+    def add_metadata_parts(parts, item)
       build_part(parts, item, :prefix) { @settings['prefix'] if @settings['prefix'] != false }
       build_part(parts, item, :index)
       build_part(parts, item, :author)
       build_part(parts, item, :timestamp) { |part| Clock.to_s part }
+    end
+
+    def add_connection_parts(parts, item)
       build_part(parts, item, :ip)
       build_part(parts, item, :port)
       build_part(parts, item, :site_id)
       build_part(parts, item, :component)
+    end
+
+    def add_message_parts(parts, item)
       build_part(parts, item, :direction) { |part| { in: 'In', out: 'Out' }[part] }
       build_part(parts, item, :level, &:capitalize)
       build_part(parts, item, :id) { Logger.shorten_message_id(item[:message].m_id, 4) if item[:message] }
       build_part(parts, item, :text)
       build_part(parts, item, :json) { item[:message]&.json }
       build_part(parts, item, :exception) { |e| [e.class, e.backtrace].flatten.join("\n") }
+    end
+
+    def add_output_parts(parts, item)
+      add_metadata_parts(parts, item)
+      add_connection_parts(parts, item)
+      add_message_parts(parts, item)
     end
 
     def build_output(item)
