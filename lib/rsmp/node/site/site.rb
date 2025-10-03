@@ -26,8 +26,8 @@ module RSMP
       @site_settings['site_id']
     end
 
-    def handle_site_settings(options = {})
-      defaults = {
+    def default_site_settings
+      {
         'site_id' => 'RN+SI0001',
         'supervisors' => [
           { 'ip' => '127.0.0.1', 'port' => 12_111 }
@@ -50,7 +50,10 @@ module RSMP
           }
         }
       }
-      # only one main component can be defined, so replace the default if options define one
+    end
+
+    def handle_site_settings(options = {})
+      defaults = default_site_settings
       defaults['components']['main'] = options[:site_settings]['components']['main'] if options.dig(
         :site_settings, 'components', 'main'
       )
