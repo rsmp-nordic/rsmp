@@ -29,7 +29,7 @@ module RSMP
         def process_status_request(message, options = {})
           component_id = message.attributes['cId']
           args = message.attributes['sS']
-          
+
           begin
             component = @site.find_component component_id
             ss = fetch_status_values(component, args)
