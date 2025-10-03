@@ -48,7 +48,7 @@ module RSMP
             1 => ['Y', @function_position == 'YellowFlash'],
             2 => ['D', @function_position == 'Dark'],
             3 => ['B', @booting],
-            4 => ['S', @startup_sequence_active],
+            4 => ['S', @startup_sequence.active?],
             5 => ['M', @manual_control],
             6 => ['F', @fixed_time_control],
             7 => ['R', @all_red],

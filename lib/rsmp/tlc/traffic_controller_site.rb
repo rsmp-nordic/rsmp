@@ -46,7 +46,7 @@ module RSMP
           dynamic_bands = settings['dynamic_bands'] if settings
 
           @signal_plans[id.to_i] =
-            SignalPlan.new(nr: id.to_i, cycle_time: cycle_time, states: states, dynamic_bands: dynamic_bands)
+            SignalPlan.new(number: id.to_i, cycle_time: cycle_time, states: states, dynamic_bands: dynamic_bands)
         end
       end
 

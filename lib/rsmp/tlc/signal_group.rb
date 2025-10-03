@@ -15,7 +15,7 @@ module RSMP
       def compute_state
         return 'a' if node.main.dark?
         return 'c' if node.main.yellow_flash?
-        return startup_state if node.main.startup_sequence_active
+        return startup_state if node.main.startup_sequence.active?
 
         compute_plan_state
       end
