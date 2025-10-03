@@ -147,36 +147,44 @@ module RSMP
           out["commands/#{key}.json"] = output_json json
         end
 
-        def self.output_root(out, meta)
-          json = {
+        def self.build_root_schema(meta)
+          {
             'name' => meta['name'],
             'description' => meta['description'],
             'version' => meta['version'],
-            'allOf' => [
-              {
-                'if' => { 'required' => ['type'], 'properties' => { 'type' => { 'const' => 'CommandRequest' } } },
-                'then' => { '$ref' => 'commands/command_requests.json' }
-              },
-              {
-                'if' => { 'required' => ['type'], 'properties' => { 'type' => { 'const' => 'CommandResponse' } } },
-                'then' => { '$ref' => 'commands/command_responses.json' }
-              },
-              {
-                'if' => { 'required' => ['type'],
-                          'properties' => {
-                            'type' => {
-                              'enum' => %w[StatusRequest StatusResponse StatusSubscribe
-                                           StatusUnsubscribe StatusUpdate]
-                            }
-                          } },
-                'then' => { '$ref' => 'statuses/statuses.json' }
-              },
-              {
-                'if' => { 'required' => ['type'], 'properties' => { 'type' => { 'const' => 'Alarm' } } },
-                'then' => { '$ref' => 'alarms/alarms.json' }
-              }
-            ]
+            'allOf' => build_root_refs
           }
+        end
+
+        def self.build_root_refs
+          [
+            {
+              'if' => { 'required' => ['type'], 'properties' => { 'type' => { 'const' => 'CommandRequest' } } },
+              'then' => { '$ref' => 'commands/command_requests.json' }
+            },
+            {
+              'if' => { 'required' => ['type'], 'properties' => { 'type' => { 'const' => 'CommandResponse' } } },
+              'then' => { '$ref' => 'commands/command_responses.json' }
+            },
+            {
+              'if' => { 'required' => ['type'],
+                        'properties' => {
+                          'type' => {
+                            'enum' => %w[StatusRequest StatusResponse StatusSubscribe
+                                         StatusUnsubscribe StatusUpdate]
+                          }
+                        } },
+              'then' => { '$ref' => 'statuses/statuses.json' }
+            },
+            {
+              'if' => { 'required' => ['type'], 'properties' => { 'type' => { 'const' => 'Alarm' } } },
+              'then' => { '$ref' => 'alarms/alarms.json' }
+            }
+          ]
+        end
+
+        def self.output_root(out, meta)
+          json = build_root_schema(meta)
           out['sxl.json'] = output_json json
         end
 
