@@ -35,15 +35,7 @@ module RSMP
           acknowledge message
         end
 
-        def subscribe_to_status(component_id, status_list, options = {})
-          validate_ready 'subscribe to status'
-          m_id = options[:m_id] || RSMP::Message.make_m_id
-
-          # additional items can be used when verifying the response,
-          # but must be removed from the subscribe message
-          subscribe_list = status_list.map { |item| item.slice('sCI', 'n', 'uRt', 'sOc') }
-
-          # update our subcription list
+        def update_subscription(component_id, subscribe_list)
           @status_subscriptions[component_id] ||= {}
           subscribe_list.each do |item|
             sci = item['sCI']
@@ -55,7 +47,14 @@ module RSMP
             @status_subscriptions[component_id][sci][n]['uRt'] = urt
             @status_subscriptions[component_id][sci][n]['sOc'] = soc
           end
+        end
 
+        def subscribe_to_status(component_id, status_list, options = {})
+          validate_ready 'subscribe to status'
+          m_id = options[:m_id] || RSMP::Message.make_m_id
+          subscribe_list = status_list.map { |item| item.slice('sCI', 'n', 'uRt', 'sOc') }
+
+          update_subscription(component_id, subscribe_list)
           find_component component_id
 
           message = RSMP::StatusSubscribe.new({
