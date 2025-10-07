@@ -28,7 +28,6 @@ module RSMP
 
         def check_functional_position_timeout
           return unless @functional_position_timeout
-
           return unless clock.now >= @functional_position_timeout
 
           switch_functional_position @previous_functional_position, reverting: true, source: 'calendar_clock'
@@ -246,6 +245,8 @@ module RSMP
           initiate_startup_sequence if (mode == 'NormalControl') && (@function_position != 'NormalControl')
           @function_position = mode
           @function_position_source = source
+          # Update signal group states immediately to reflect new functional position
+          @signal_groups.each(&:timer)
           mode
         end
       end

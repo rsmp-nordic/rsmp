@@ -102,7 +102,7 @@ module RSMP
         def handle_s0033(_status_code, status_name = nil, _options = {})
           case status_name
           when 'status'
-            TrafficControllerSite.make_status get_priority_list
+            TrafficControllerSite.make_status priority_list
           end
         end
       end

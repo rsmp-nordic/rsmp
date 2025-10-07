@@ -14,7 +14,7 @@ module RSMP
       end
 
       def dynamic_bands_string
-        str = @dynamic_bands.map { |band, value| "#{nr}-#{band}-#{value}" }.join(',')
+        str = @dynamic_bands.map { |band, value| "#{@number}-#{band}-#{value}" }.join(',')
         return nil if str == ''
 
         str
