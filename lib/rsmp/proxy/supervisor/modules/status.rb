@@ -128,7 +128,7 @@ module RSMP
             current, quality = *(component.get_status code, name)
             current = rsmpify_value(current, quality)
           end
-          last_sent = fetch_last_sent_status component.id, code, name
+          last_sent = fetch_last_sent_status component.c_id, code, name
           [current, current != last_sent]
         end
 
