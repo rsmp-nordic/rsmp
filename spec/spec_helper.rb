@@ -1,5 +1,5 @@
 require 'bundler/setup'
-require 'rsmp'
+require_relative '../lib/rsmp'
 require_relative 'support/site_proxy_stub'
 require_relative 'support/async_rspec'
 
