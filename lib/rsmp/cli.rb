@@ -1,5 +1,5 @@
 require 'thor'
-require 'rsmp'
+require_relative '../rsmp'
 
 module RSMP
   class CLI < Thor
