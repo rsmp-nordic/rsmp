@@ -4,24 +4,24 @@ module RSMP
     class TrafficControllerSite < Site
       attr_accessor :main, :signal_plans
 
-      def initialize options={}
+      def initialize(options = {})
         # setup options before calling super initializer,
         # since build of components depend on options
         @sxl = 'traffic_light_controller'
         @security_codes = options[:site_settings]['security_codes']
-        @interval = options[:site_settings].dig('intervals','timer') || 1
+        @interval = options[:site_settings].dig('intervals', 'timer') || 1
         @startup_sequence = options[:site_settings]['startup_sequence'] || 'efg'
-        build_plans options[:site_settings].dig('signal_plans')
+        build_plans options[:site_settings]['signal_plans']
 
-        super options
+        super
 
-        unless main
-          raise ConfigurationError.new "TLC must have a main component"
-        end
+        return if main
+
+        raise ConfigurationError, 'TLC must have a main component'
       end
 
       def site_type_name
-        "TLC"
+        'TLC'
       end
 
       def start
@@ -35,35 +35,36 @@ module RSMP
         super
       end
 
-      def build_plans signal_plans
+      def build_plans(signal_plans)
         @signal_plans = {}
         return unless signal_plans
-        signal_plans.each_pair do |id,settings|
+
+        signal_plans.each_pair do |id, settings|
           states = nil
-          bands = nil
           cycle_time = settings['cycle_time']
           states = settings['states'] if settings
           dynamic_bands = settings['dynamic_bands'] if settings
 
-          @signal_plans[id.to_i] = SignalPlan.new(nr: id.to_i, cycle_time: cycle_time, states: states, dynamic_bands: dynamic_bands)
+          @signal_plans[id.to_i] =
+            SignalPlan.new(number: id.to_i, cycle_time: cycle_time, states: states, dynamic_bands: dynamic_bands)
         end
       end
 
-      def get_plan group_id, plan_nr
+      def get_plan(_group_id, _plan_nr)
         'NN1BB1'
       end
 
-      def build_component id:, type:, settings:{}
-        component = case type
+      def build_component(id:, type:, settings: {})
+        case type
         when 'main'
           TrafficController.new node: self,
-            id: id,
-            ntsOId: settings['ntsOId'],
-            xNId: settings['xNId'],
-            startup_sequence: @startup_sequence,
-            signal_plans: @signal_plans,
-            live_output: @site_settings['live_output'],
-            inputs: @site_settings['inputs']
+                                id: id,
+                                ntsoid: settings['ntsOId'],
+                                xnid: settings['xNId'],
+                                startup_sequence: @startup_sequence,
+                                signal_plans: @signal_plans,
+                                live_output: @site_settings['live_output'],
+                                inputs: @site_settings['inputs']
         when 'signal_group'
           group = SignalGroup.new node: self, id: id
           main.add_signal_group group
@@ -76,62 +77,62 @@ module RSMP
       end
 
       def start_tlc_timer
-        task_name = "tlc timer"
+        task_name = 'tlc timer'
         log "Starting #{task_name} with interval #{@interval} seconds", level: :debug
 
         @timer = @task.async do |task|
-        task.annotate task_name
+          task.annotate task_name
           run_tlc_timer task
         end
       end
 
-      def run_tlc_timer task
+      def run_tlc_timer(task)
         next_time = Time.now.to_f
         loop do
-          begin
-            timer(@clock.now)
-          rescue StandardError => e
-            distribute_error e, level: :internal
-          ensure
-            # adjust sleep duration to avoid drift. so wake up always happens on the
-            # same fractional second.
-            # note that Time.now is not monotonic. If the clock is changed,
-            # either manaully or via NTP, the sleep interval might jump.
-            # an alternative is to use ::Process.clock_gettime(::Process::CLOCK_MONOTONIC),
-            # to get the current time. this ensures a constant interval, but
-            # if the clock is changed, the wake up would then happen on a different
-            # fractional second
-            next_time += @interval
-            duration = next_time - Time.now.to_f
-            task.sleep duration
-          end
+          timer(@clock.now)
+        rescue StandardError => e
+          distribute_error e, level: :internal
+        ensure
+          # adjust sleep duration to avoid drift. so wake up always happens on the
+          # same fractional second.
+          # note that Time.now is not monotonic. If the clock is changed,
+          # either manaully or via NTP, the sleep interval might jump.
+          # an alternative is to use ::Process.clock_gettime(::Process::CLOCK_MONOTONIC),
+          # to get the current time. this ensures a constant interval, but
+          # if the clock is changed, the wake up would then happen on a different
+          # fractional second
+          next_time += @interval
+          duration = next_time - Time.now.to_f
+          task.sleep duration
         end
       end
 
       def stop_tlc_timer
         return unless @timer
+
         @timer.stop
         @timer = nil
       end
 
-      def timer now
+      def timer(now)
         return unless main
+
         main.timer now
       end
 
-      def verify_security_code level, code
-        raise ArgumentError.new("Level must be 1-2, got #{level}") unless (1..2).include?(level)
-        if @security_codes[level] != code
-          raise MessageRejected.new("Wrong security code for level #{level}")
-        end
+      def verify_security_code(level, code)
+        raise ArgumentError, "Level must be 1-2, got #{level}" unless (1..2).include?(level)
+        return unless @security_codes[level] != code
+
+        raise MessageRejected, "Wrong security code for level #{level}"
       end
 
-      def change_security_code level, old_code, new_code
+      def change_security_code(level, old_code, new_code)
         verify_security_code level, old_code
         @security_codes[level] = new_code
       end
 
-      def self.to_rmsp_bool bool
+      def self.to_rmsp_bool(bool)
         if bool
           'True'
         else
@@ -139,23 +140,23 @@ module RSMP
         end
       end
 
-      def self.from_rsmp_bool str
+      def self.from_rsmp_bool?(str)
         str == 'True'
       end
 
-      def self.make_status value, q='recent'
+      def self.make_status(value, quality = 'recent')
         case value
         when true, false
-          return to_rmsp_bool(value), q
+          [to_rmsp_bool(value), quality]
         else
-          return value, q
+          [value, quality]
         end
       end
 
-      def do_deferred key, item=nil
+      def do_deferred(key, _item = nil)
         case key
         when :restart
-          log "Restarting TLC", level: :info
+          log 'Restarting TLC', level: :info
           restart
         end
       end

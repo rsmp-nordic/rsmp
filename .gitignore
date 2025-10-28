@@ -1,10 +1,9 @@
-ignore
-log
-.DS_Store
-.rspec_status
-
+/.DS_Store
+/.rspec_status
+/ignore/
+/log/
 /.bundle/
-/.yardoc
+/.yardoc/
 /_yardoc/
 /coverage/
 /doc/
