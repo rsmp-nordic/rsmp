@@ -1,0 +1,70 @@
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.4
+  Exclude:
+    - 'vendor/**/*'
+    - 'bin/**/*'
+    - '.bundle/**/*'
+    - 'ignore/**/*'
+    - 'config/private/**/*'
+
+# Allow longer line lengths for tests with long JSON strings
+Layout/LineLength:
+  Max: 120
+  Exclude:
+    - 'spec/**/*'
+
+# Allow some reasonable flexibility for domain-specific code
+Metrics/MethodLength:
+  Max: 25
+
+Metrics/ClassLength:
+  Max: 200
+
+Metrics/ModuleLength:
+  Max: 200
+
+Metrics/AbcSize:
+  Max: 20
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
+
+Metrics/ParameterLists:
+  Max: 5
+
+# Allow some blocks to be longer for complex configurations and tests
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - 'features/**/*'
+    - '*.gemspec'
+
+# Keep some reasonable exceptions
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+# Allow double negation for boolean coercion - common Ruby pattern
+Style/DoubleNegation:
+  Enabled: false
+
+# Allow mix-in usage at top level in test files
+Style/MixinUsage:
+  Exclude:
+    - 'spec/**/*'
+    - 'features/**/*'
+
+# Allow constant definition in blocks for test helpers
+Lint/ConstantDefinitionInBlock:
+  Exclude:
+    - 'spec/**/*'
+
+# Keep critical domain-specific logic intact
+Style/ReturnNilInPredicateMethodDefinition:
+  Enabled: false

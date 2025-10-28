@@ -1,16 +1,29 @@
 module RSMP
-  # Match a specific command responses
+  # Class for matching a command
   class CommandMatcher < Matcher
-    # Match a return value item against a matcher
-    def match? item
+    def match_code?(item)
       return nil if @want['cCI'] && @want['cCI'] != item['cCI']
       return nil if @want['n'] && @want['n'] != item['n']
+
+      true
+    end
+
+    def match_value?(item)
+      return true unless @want['v']
+
       if @want['v'].is_a? Regexp
-        return false if @want['v'] && item['v'] !~ @want['v']
-      else
-        return false if @want['v'] && item['v'] != @want['v']
+        return false if item['v'] !~ @want['v']
+      elsif item['v'] != @want['v']
+        return false
       end
       true
+    end
+
+    def match?(item)
+      code_match = match_code?(item)
+      return code_match if code_match.nil?
+
+      match_value?(item)
     end
   end
 end

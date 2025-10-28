@@ -1,13 +1,12 @@
-# Distributes messages to receivers
-
 module RSMP
+  # Class which distributes messages to receivers
   module Distributor
     attr_reader :receivers
 
     include Inspect
 
     def inspect
-      "#<#{self.class.name}:#{self.object_id}, #{inspector(:@receivers)}>"
+      "#<#{self.class.name}:#{object_id}, #{inspector(:@receivers)}>"
     end
 
     def initialize_distributor
@@ -16,12 +15,13 @@ module RSMP
       @deferred_messages = []
     end
 
-    def clear_deferred_distribution &block
+    def clear_deferred_distribution
       @deferred_messages = []
     end
 
-    def with_deferred_distribution &block
-      was, @defer_distribution = @defer_distribution, true
+    def with_deferred_distribution
+      was = @defer_distribution
+      @defer_distribution = true
       yield
       distribute_queued
     ensure
@@ -35,18 +35,21 @@ module RSMP
       @deferred_messages = []
     end
 
-    def add_receiver receiver
+    def add_receiver(receiver)
       raise ArgumentError unless receiver
+
       @receivers << receiver unless @receivers.include? receiver
     end
 
-    def remove_receiver receiver
+    def remove_receiver(receiver)
       raise ArgumentError unless receiver
+
       @receivers.delete receiver
     end
 
-    def distribute message
+    def distribute(message)
       raise ArgumentError unless message
+
       if @defer_distribution
         @deferred_messages << message
       else
@@ -54,11 +57,11 @@ module RSMP
       end
     end
 
-    def distribute_immediately message
+    def distribute_immediately(message)
       @receivers.each { |receiver| receiver.receive message }
     end
 
-    def distribute_error error, options={}
+    def distribute_error(error, options = {})
       @receivers.each { |receiver| receiver.receive_error error, options }
     end
   end
