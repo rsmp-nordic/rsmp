@@ -1,12 +1,14 @@
 RSpec.describe RSMP::Task do
-  class TaskTest
-    include RSMP::Task
+  before do
+    stub_const('TaskTest', Class.new do
+      include RSMP::Task
 
-    def run
-      loop do
-        @task.sleep 1
+      def run
+        loop do
+          task.sleep 1
+        end
       end
-    end
+    end)
   end
 
   let(:obj) { TaskTest.new }
@@ -28,8 +30,9 @@ RSpec.describe RSMP::Task do
 
     it 'calls run' do
       Async(transient: true) do |_task|
-        expect(obj).to receive(:run)
+        allow(obj).to receive(:run).and_call_original
         obj.start
+        expect(obj).to have_received(:run)
       end
     end
 

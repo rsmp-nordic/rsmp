@@ -1,29 +1,34 @@
 require 'timecop'
 
 RSpec.describe RSMP::AlarmState do
-  let(:now) { Time.new(2022, 9, 30, 14, 55, 17).utc }
-  let(:later) { Time.new(2022, 1, 23, 23, 17, 59).utc }
-  let(:now_str) { RSMP::Clock.to_s(now) }
-  let(:later_str) { RSMP::Clock.to_s(later) }
+  let(:times) do
+    now = Time.new(2022, 9, 30, 14, 55, 17).utc
+    later = Time.new(2022, 1, 23, 23, 17, 59).utc
+    {
+      now: now,
+      later: later,
+      now_str: RSMP::Clock.to_s(now),
+      later_str: RSMP::Clock.to_s(later)
+    }
+  end
+
   let(:node) { RSMP::Node.new }
-  let(:component_id) { 'C1' }
-  let(:component) { RSMP::Component.new node: node, id: component_id }
-  let(:code_id) { 'A0301' }
-  let(:state) { RSMP::AlarmState.new component: component, code: code_id, timestamp: now }
+  let(:component) { RSMP::Component.new node: node, id: 'C1' }
+  let(:state) { described_class.new component: component, code: 'A0301', timestamp: times[:now] }
 
   def create_state(**options)
-    options[:timestamp] ||= now
-    RSMP::AlarmState.new component: component, code: code_id, **options
+    options[:timestamp] ||= times[:now]
+    RSMP::AlarmState.new component: component, code: 'A0301', **options
   end
 
   describe '#initialize' do
     it 'sets defaults' do
-      expect(state.component_id).to eq(component_id)
-      expect(state.code).to eq(code_id)
+      expect(state.component_id).to eq('C1')
+      expect(state.code).to eq('A0301')
       expect(state.suspended).to be(false)
       expect(state.acknowledged).to be(false)
       expect(state.active).to be(false)
-      expect(state.timestamp).to eq(now)
+      expect(state.timestamp).to eq(times[:now])
       expect(state.category).to eq('D')
       expect(state.priority).to eq(2)
       expect(state.rvs).to eq([])
@@ -33,9 +38,9 @@ RSpec.describe RSMP::AlarmState do
   describe '#self.create_from_message' do
     it 'sets attributes' do
       message = RSMP::AlarmIssue.new(
-        'cId' => component_id,
-        'aCId' => code_id,
-        'aTs' => now_str,
+        'cId' => 'C1',
+        'aCId' => 'A0301',
+        'aTs' => times[:now_str],
         'ack' => 'notAcknowledged',
         'sS' => 'notSuspended',
         'aS' => 'inActive',
@@ -43,13 +48,13 @@ RSpec.describe RSMP::AlarmState do
         'pri' => '1',
         'rvs' => []
       )
-      state = RSMP::AlarmState.create_from_message component, message
-      expect(state.component_id).to eq(component_id)
-      expect(state.code).to eq(code_id)
+      state = described_class.create_from_message component, message
+      expect(state.component_id).to eq('C1')
+      expect(state.code).to eq('A0301')
       expect(state.suspended).to be(false)
       expect(state.acknowledged).to be(false)
       expect(state.active).to be(false)
-      expect(state.timestamp).to eq(now)
+      expect(state.timestamp).to eq(times[:now])
       expect(state.category).to eq('B')
       expect(state.priority).to eq(1)
       expect(state.rvs).to eq([])
@@ -58,9 +63,9 @@ RSpec.describe RSMP::AlarmState do
 
   describe '#update_timestamp' do
     it 'updates timestamp' do
-      Timecop.freeze(later) do
+      Timecop.freeze(times[:later]) do
         state.update_timestamp
-        expect(state.timestamp).to eq(later)
+        expect(state.timestamp).to eq(times[:later])
       end
     end
   end
@@ -70,9 +75,9 @@ RSpec.describe RSMP::AlarmState do
       state = create_state acknowledged: false, suspended: false, active: true,
                            category: 'B', priority: 1
       expect(state.to_hash).to eq({
-                                    'cId' => component_id,
-                                    'aCId' => code_id,
-                                    'aTs' => now_str,
+                                    'cId' => 'C1',
+                                    'aCId' => 'A0301',
+                                    'aTs' => times[:now_str],
                                     'sS' => 'notSuspended',
                                     'ack' => 'notAcknowledged',
                                     'aS' => 'Active',
@@ -83,9 +88,9 @@ RSpec.describe RSMP::AlarmState do
 
       state = create_state acknowledged: true, suspended: true, active: false
       expect(state.to_hash).to eq({
-                                    'cId' => component_id,
-                                    'aCId' => code_id,
-                                    'aTs' => now_str,
+                                    'cId' => 'C1',
+                                    'aCId' => 'A0301',
+                                    'aTs' => times[:now_str],
                                     'ack' => 'Acknowledged',
                                     'sS' => 'Suspended',
                                     'aS' => 'inActive',
@@ -113,10 +118,10 @@ RSpec.describe RSMP::AlarmState do
 
     it 'updates timestamp' do
       state = create_state acknowledged: false
-      expect(state.timestamp).to eq(now)
-      Timecop.freeze(later) do
+      expect(state.timestamp).to eq(times[:now])
+      Timecop.freeze(times[:later]) do
         state.acknowledge
-        expect(state.timestamp).to eq(later)
+        expect(state.timestamp).to eq(times[:later])
       end
     end
   end
@@ -138,10 +143,10 @@ RSpec.describe RSMP::AlarmState do
 
     it 'updates timestamp' do
       state = create_state suspended: false
-      expect(state.timestamp).to eq(now)
-      Timecop.freeze(later) do
+      expect(state.timestamp).to eq(times[:now])
+      Timecop.freeze(times[:later]) do
         state.suspend
-        expect(state.timestamp).to eq(later)
+        expect(state.timestamp).to eq(times[:later])
       end
     end
   end
@@ -163,10 +168,10 @@ RSpec.describe RSMP::AlarmState do
 
     it 'updates timestamp' do
       state = create_state suspended: true
-      expect(state.timestamp).to eq(now)
-      Timecop.freeze(later) do
+      expect(state.timestamp).to eq(times[:now])
+      Timecop.freeze(times[:later]) do
         state.resume
-        expect(state.timestamp).to eq(later)
+        expect(state.timestamp).to eq(times[:later])
       end
     end
   end
@@ -188,10 +193,10 @@ RSpec.describe RSMP::AlarmState do
 
     it 'updates timestamp' do
       state = create_state suspended: true
-      expect(state.timestamp).to eq(now)
-      Timecop.freeze(later) do
+      expect(state.timestamp).to eq(times[:now])
+      Timecop.freeze(times[:later]) do
         state.activate
-        expect(state.timestamp).to eq(later)
+        expect(state.timestamp).to eq(times[:later])
       end
     end
   end

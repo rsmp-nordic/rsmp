@@ -6,12 +6,12 @@ module RSMP
       module State
         def wait_for_state(state, timeout:)
           states = [state].flatten
-          return if states.include?(@state)
+          return true if states.include?(@state)
 
           wait_for_condition(@state_condition, timeout: timeout) do
             states.include?(@state)
           end
-          @state
+          true
         rescue RSMP::TimeoutError
           raise RSMP::TimeoutError, "Did not reach state #{state} within #{timeout}s"
         end

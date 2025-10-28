@@ -1,39 +1,35 @@
 RSpec.describe 'Connecting' do
-  let(:timeout) { 1 }
-  let(:ip) { 'localhost' }
-  let(:port) { 13_111 }
-  let(:site_id) { 'RN+SI0001' }
-  let(:site_settings) do
+  let(:config) do
     {
-      'site_id' => site_id,
-      'supervisors' => [
-        { 'ip' => ip, 'port' => port }
-      ]
+      timeout: 1,
+      ip: 'localhost',
+      port: 13_111,
+      site_id: 'RN+SI0001',
+      site_settings: {
+        'site_id' => 'RN+SI0001',
+        'supervisors' => [
+          { 'ip' => 'localhost', 'port' => 13_111 }
+        ]
+      },
+      supervisor_settings: {
+        'port' => 13_111,
+        'guest' => { 'sxl' => 'tlc' }
+      },
+      log_settings: { 'active' => false }
     }
   end
-  let(:supervisor_settings) do
-    {
-      'port' => 13_111,	# use special port to avoid sites connection during test
-      'guest' => {
-        'sxl' => 'tlc'
-      }
-    }
-  end
-  let(:log_settings) do
-    {
-      'active' => false
-    }
-  end
+
   let(:site) do
     RSMP::Site.new(
-      site_settings: site_settings,
-      log_settings: log_settings
+      site_settings: config[:site_settings],
+      log_settings: config[:log_settings]
     )
   end
+
   let(:supervisor) do
     RSMP::Supervisor.new(
-      supervisor_settings: supervisor_settings,
-      log_settings: log_settings
+      supervisor_settings: config[:supervisor_settings],
+      log_settings: config[:log_settings]
     )
   end
 
@@ -47,8 +43,8 @@ RSpec.describe 'Connecting' do
       supervisor.ready_condition.wait
       site.start
     } do |task|
-      site_proxy = supervisor.wait_for_site site_id, timeout: timeout
-      supervisor_proxy = site.wait_for_supervisor ip, timeout: timeout
+      site_proxy = supervisor.wait_for_site config[:site_id], timeout: config[:timeout]
+      supervisor_proxy = site.wait_for_supervisor config[:ip], timeout: config[:timeout]
 
       expect(site_proxy).to be_a(RSMP::SiteProxy)
       expect(supervisor_proxy).to be_a(RSMP::SupervisorProxy)
@@ -56,8 +52,8 @@ RSpec.describe 'Connecting' do
       expect(supervisor.proxies.size).to eq(1)
       expect(site.proxies.size).to eq(1)
 
-      site_proxy.wait_for_state :ready, timeout: timeout
-      supervisor_proxy.wait_for_state :ready, timeout: timeout
+      site_proxy.wait_for_state :ready, timeout: config[:timeout]
+      supervisor_proxy.wait_for_state :ready, timeout: config[:timeout]
 
       expect(site_proxy.state).to eq(:ready)
       expect(supervisor_proxy.state).to eq(:ready)
@@ -76,8 +72,8 @@ RSpec.describe 'Connecting' do
       supervisor.start
       supervisor.ready_condition.wait
     } do |task|
-      site_proxy = supervisor.wait_for_site site_id, timeout: timeout
-      supervisor_proxy = site.wait_for_supervisor ip, timeout: timeout
+      site_proxy = supervisor.wait_for_site config[:site_id], timeout: config[:timeout]
+      supervisor_proxy = site.wait_for_supervisor config[:ip], timeout: config[:timeout]
 
       expect(supervisor.proxies.size).to eq(1)
       expect(site.proxies.size).to eq(1)
@@ -85,8 +81,8 @@ RSpec.describe 'Connecting' do
       expect(site_proxy).to be_a(RSMP::SiteProxy)
       expect(supervisor_proxy).to be_a(RSMP::SupervisorProxy)
 
-      site_proxy.wait_for_state :ready, timeout: timeout
-      supervisor_proxy.wait_for_state :ready, timeout: timeout
+      site_proxy.wait_for_state :ready, timeout: config[:timeout]
+      supervisor_proxy.wait_for_state :ready, timeout: config[:timeout]
 
       expect(site_proxy.state).to eq(:ready)
       expect(supervisor_proxy.state).to eq(:ready)
