@@ -22,14 +22,16 @@ RSpec.describe RSMP::Site do
 
   describe '#initialize' do
     it 'accepts no options' do
-      expect { RSMP::Site.new({}) }.not_to raise_error
+      expect { described_class.new({}) }.not_to raise_error
     end
 
     it 'accepts options' do
-      RSMP::Site.new(
-        site_settings: site_settings,
-        log_settings: log_settings
-      )
+      expect do
+        described_class.new(
+          site_settings: site_settings,
+          log_settings: log_settings
+        )
+      end.not_to raise_error
     end
   end
 
@@ -47,7 +49,7 @@ RSpec.describe RSMP::Site do
         '16ec49e4-6ac1-4da6-827c-2a6562b91731'
       )
 
-      site = RSMP::Site.new(
+      site = described_class.new(
         site_settings: site_settings,
         log_settings: log_settings
       )

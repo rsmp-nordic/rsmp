@@ -68,3 +68,13 @@ Lint/ConstantDefinitionInBlock:
 # Keep critical domain-specific logic intact
 Style/ReturnNilInPredicateMethodDefinition:
   Enabled: false
+
+
+plugins:
+  - rubocop-rspec
+
+RSpec/MultipleExpectations:
+  Max: 20
+
+RSpec/ExampleLength:
+  Max: 50

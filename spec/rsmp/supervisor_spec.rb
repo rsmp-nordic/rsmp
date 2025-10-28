@@ -23,20 +23,22 @@ RSpec.describe RSMP::Supervisor do
 
   describe '#initialize' do
     it 'accepts no options' do
-      expect { RSMP::Supervisor.new({}) }.not_to raise_error
+      expect { described_class.new({}) }.not_to raise_error
     end
 
     it 'accepts options' do
-      RSMP::Supervisor.new(
-        supervisor_settings: supervisor_settings,
-        log_settings: log_settings
-      )
+      expect do
+        described_class.new(
+          supervisor_settings: supervisor_settings,
+          log_settings: log_settings
+        )
+      end.not_to raise_error
     end
   end
 
   describe 'connection handshake' do
     let(:supervisor) do
-      RSMP::Supervisor.new(
+      described_class.new(
         supervisor_settings: supervisor_settings,
         log_settings: log_settings
       )
@@ -141,19 +143,7 @@ RSpec.describe RSMP::Supervisor do
 
         # verify log content
         got = supervisor.archive.by_level(%i[log info]).map { |item| item[:text] }
-        expect(got).to match_array([
-                                     'Starting supervisor on port 13111',
-                                     'Site connected from ********',
-                                     'Received Version message for site RN+SI0001',
-                                     'Sent MessageAck for Version 8db0',
-                                     'Sent Version',
-                                     'Received MessageAck for Version 1b20',
-                                     'Received Watchdog',
-                                     'Sent MessageAck for Watchdog 439e',
-                                     'Sent Watchdog',
-                                     'Received MessageAck for Watchdog 1e36',
-                                     "Connection to site RN+SI0001 established, using core #{core_versions.last}, tlc #{sxl_version}"
-                                   ])
+        expect(got).to contain_exactly('Starting supervisor on port 13111', 'Site connected from ********', 'Received Version message for site RN+SI0001', 'Sent MessageAck for Version 8db0', 'Sent Version', 'Received MessageAck for Version 1b20', 'Received Watchdog', 'Sent MessageAck for Watchdog 439e', 'Sent Watchdog', 'Received MessageAck for Watchdog 1e36', "Connection to site RN+SI0001 established, using core #{core_versions.last}, tlc #{sxl_version}")
       end
     end
 

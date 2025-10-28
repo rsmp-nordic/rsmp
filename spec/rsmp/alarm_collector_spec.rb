@@ -44,7 +44,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, num: 2, timeout: timeout
+          collector = described_class.new proxy, num: 2, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -63,7 +63,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, num: 1, timeout: timeout
+          collector = described_class.new proxy, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:timeout)
@@ -76,7 +76,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'cId' => 'DL1' }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'cId' => 'DL1' }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -94,7 +94,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'aCId' => 'A0302' }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'aCId' => 'A0302' }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -112,7 +112,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'aSp' => 'Issue' }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'aSp' => 'Issue' }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -130,7 +130,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'aSp' => /[Ii]ssue/ }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'aSp' => /[Ii]ssue/ }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -148,7 +148,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'ack' => 'Acknowledged' }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'ack' => 'Acknowledged' }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -166,7 +166,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'aS' => 'Active' }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'aS' => 'Active' }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -184,7 +184,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'sS' => 'notSuspended' }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'sS' => 'notSuspended' }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -202,7 +202,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'cat' => 'D' }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'cat' => 'D' }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -220,7 +220,7 @@ RSpec.describe RSMP::AlarmCollector do
       AsyncRSpec.async do |task|
         proxy = RSMP::SiteProxyStub.new task
         collect_task = task.async do
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'pri' => '1' }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'pri' => '1' }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)
@@ -241,7 +241,7 @@ RSpec.describe RSMP::AlarmCollector do
           rvs = [
             { 'n' => 'color', 'v' => 'green' }
           ]
-          collector = RSMP::AlarmCollector.new proxy, matcher: { 'rvs' => rvs }, num: 1, timeout: timeout
+          collector = described_class.new proxy, matcher: { 'rvs' => rvs }, num: 1, timeout: timeout
           result = collector.collect
 
           expect(result).to eq(:ok)

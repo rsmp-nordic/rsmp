@@ -1,10 +1,12 @@
 RSpec.describe RSMP::Receiver do
-  class TestReceiver
-    include RSMP::Receiver
+  before do
+    stub_const('TestReceiver', Class.new do
+      include RSMP::Receiver
 
-    def initialize(distributor, filter: nil)
-      initialize_receiver distributor, filter: filter
-    end
+      def initialize(distributor, filter: nil)
+        initialize_receiver distributor, filter: filter
+      end
+    end)
   end
 
   describe '#accept_message?' do
@@ -51,7 +53,7 @@ RSpec.describe RSMP::Receiver do
 
       message = RSMP::Watchdog.new
       proxy.distribute message
-      expect(receiver).to_not have_received(:handle_message)
+      expect(receiver).not_to have_received(:handle_message)
 
       message = RSMP::StatusUpdate.new
       proxy.distribute message

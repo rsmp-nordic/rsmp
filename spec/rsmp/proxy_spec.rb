@@ -1,6 +1,6 @@
 RSpec.describe RSMP::Proxy do
   let(:options) { {} }
-  let(:proxy) { RSMP::Proxy.new options }
+  let(:proxy) { described_class.new options }
 
   describe '#wait_for_state' do
     it 'wakes up' do
@@ -9,7 +9,7 @@ RSpec.describe RSMP::Proxy do
           proxy.wait_for_state :connected, timeout: 0.001
         end
         proxy.state = :connected
-        subtask.result
+        expect(subtask.wait).to be true
       end
     end
 
@@ -35,7 +35,9 @@ RSpec.describe RSMP::Proxy do
     it 'returns immediately if state is already correct' do
       AsyncRSpec.async do |_task|
         proxy.state = :disconnected
-        proxy.wait_for_state :disconnected, timeout: 0.001
+        proxy.instance_variable_set(:@state_condition, Async::Notification.new)
+        result = proxy.wait_for_state :disconnected, timeout: 0.001
+        expect(result).to be true
       end
     end
   end
@@ -45,7 +47,8 @@ RSpec.describe RSMP::Proxy do
       AsyncRSpec.async do |task|
         condition = Async::Notification.new
         subtask = task.async do |_subtask|
-          proxy.wait_for_condition condition, timeout: 0.001
+          result = proxy.wait_for_condition condition, timeout: 0.001
+          expect(result).to be_truthy
         end
         condition.signal
         subtask.result
@@ -97,40 +100,40 @@ RSpec.describe RSMP::Proxy do
     # so we don't do a lot of testing, just enough, to verify that our wrapping is as expected
 
     it 'is equal to' do
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.9', '1.0.10')).to be(false)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.10', '1.0.10')).to be(true)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.11', '1.0.10')).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.9', '1.0.10')).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.10', '1.0.10')).to be(true)
+      expect(described_class.version_meets_requirement?('1.0.11', '1.0.10')).to be(false)
     end
 
     it 'is greater than' do
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.9', '>1.0.10')).to be(false)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.10', '>1.0.10')).to be(false)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.11', '>1.0.10')).to be(true)
+      expect(described_class.version_meets_requirement?('1.0.9', '>1.0.10')).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.10', '>1.0.10')).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.11', '>1.0.10')).to be(true)
     end
 
     it 'is greater than or equal to' do
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.9', '>=1.0.10')).to be(false)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.10', '>=1.0.10')).to be(true)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.11', '>=1.0.10')).to be(true)
+      expect(described_class.version_meets_requirement?('1.0.9', '>=1.0.10')).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.10', '>=1.0.10')).to be(true)
+      expect(described_class.version_meets_requirement?('1.0.11', '>=1.0.10')).to be(true)
     end
 
     it 'is less than' do
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.9', '<1.0.10')).to be(true)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.10', '<1.0.10')).to be(false)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.11', '<1.0.10')).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.9', '<1.0.10')).to be(true)
+      expect(described_class.version_meets_requirement?('1.0.10', '<1.0.10')).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.11', '<1.0.10')).to be(false)
     end
 
     it 'is less than or equal to' do
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.9', '<=1.0.10')).to be(true)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.10', '<=1.0.10')).to be(true)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.11', '<=1.0.10')).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.9', '<=1.0.10')).to be(true)
+      expect(described_class.version_meets_requirement?('1.0.10', '<=1.0.10')).to be(true)
+      expect(described_class.version_meets_requirement?('1.0.11', '<=1.0.10')).to be(false)
     end
 
     it 'takes a list of conditions' do
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.9', ['>=1.0.10', '<1.0.12'])).to be(false)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.10', ['>=1.0.10', '<1.0.12'])).to be(true)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.11', ['>=1.0.10', '<1.0.12'])).to be(true)
-      expect(RSMP::Proxy.version_meets_requirement?('1.0.12', ['>=1.0.10', '<1.0.12'])).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.9', ['>=1.0.10', '<1.0.12'])).to be(false)
+      expect(described_class.version_meets_requirement?('1.0.10', ['>=1.0.10', '<1.0.12'])).to be(true)
+      expect(described_class.version_meets_requirement?('1.0.11', ['>=1.0.10', '<1.0.12'])).to be(true)
+      expect(described_class.version_meets_requirement?('1.0.12', ['>=1.0.10', '<1.0.12'])).to be(false)
     end
   end
 end

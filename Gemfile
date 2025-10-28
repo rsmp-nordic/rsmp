@@ -12,5 +12,6 @@ group :development do
   gem 'rspec', '~> 3.13'
   gem 'rspec-expectations', '~> 3.13'
   gem 'rubocop', '~> 1.65'
+  gem 'rubocop-rspec', require: false
   gem 'timecop', '~> 0.9'
 end
