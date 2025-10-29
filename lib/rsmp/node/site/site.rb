@@ -5,6 +5,10 @@ module RSMP
 
     attr_reader :core_version, :site_settings, :logger, :proxies
 
+    def self.options_class
+      RSMP::Site::Options
+    end
+
     def initialize(options = {})
       super
       initialize_components
@@ -23,39 +27,11 @@ module RSMP
       @site_settings['site_id']
     end
 
-    def default_site_settings
-      {
-        'site_id' => 'RN+SI0001',
-        'supervisors' => [
-          { 'ip' => '127.0.0.1', 'port' => 12_111 }
-        ],
-        'sxl' => 'tlc',
-        'sxl_version' => RSMP::Schema.latest_version(:tlc),
-        'intervals' => {
-          'timer' => 0.1,
-          'watchdog' => 1,
-          'reconnect' => 0.1
-        },
-        'timeouts' => {
-          'watchdog' => 2,
-          'acknowledgement' => 2
-        },
-        'send_after_connect' => true,
-        'components' => {
-          'main' => {
-            'C1' => {}
-          }
-        }
-      }
-    end
-
     def handle_site_settings(options = {})
-      defaults = default_site_settings
-      defaults['components']['main'] = options[:site_settings]['components']['main'] if options.dig(
-        :site_settings, 'components', 'main'
-      )
-
-      @site_settings = defaults.deep_merge options[:site_settings]
+      options_class = self.class.options_class
+      settings = options[:site_settings] || {}
+      @site_options = options_class.new(settings)
+      @site_settings = @site_options.to_h
 
       check_sxl_version
       check_core_versions

@@ -4,25 +4,9 @@ module RSMP
       # Handles supervisor configuration and site settings
       module Configuration
         def handle_supervisor_settings(supervisor_settings)
-          defaults = {
-            'port' => 12_111,
-            'ips' => 'all',
-            'guest' => {
-              'sxl' => 'tlc',
-              'intervals' => {
-                'timer' => 1,
-                'watchdog' => 1
-              },
-              'timeouts' => {
-                'watchdog' => 2,
-                'acknowledgement' => 2
-              }
-            }
-          }
-
-          # merge options into defaults
-          @supervisor_settings = defaults.deep_merge(supervisor_settings)
-          @core_version = @supervisor_settings['guest']['core_version']
+          options = RSMP::Supervisor::Options.new(supervisor_settings || {})
+          @supervisor_settings = options.to_h
+          @core_version = @supervisor_settings.dig('guest', 'core_version')
           check_site_sxl_types
         end
 

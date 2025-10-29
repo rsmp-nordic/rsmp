@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "site.json",
+  "type": "object",
+  "properties": {
+    "site_id": { "type": "string" },
+    "type": { "type": "string" },
+    "supervisors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ip": { "type": "string" },
+          "port": { "type": ["integer", "string"] }
+        },
+        "required": ["ip", "port"],
+        "additionalProperties": true
+      }
+    },
+    "sxl": { "type": "string" },
+    "sxl_version": { "type": "string" },
+    "core_version": { "type": "string" },
+    "intervals": {
+      "type": "object",
+      "properties": {
+        "timer": { "type": "number" },
+        "watchdog": { "type": "number" },
+        "reconnect": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "timeouts": {
+      "type": "object",
+      "properties": {
+        "watchdog": { "type": "number" },
+        "acknowledgement": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "send_after_connect": { "type": "boolean" },
+    "components": { "type": "object" },
+    "security_codes": { "type": "object" },
+    "startup_sequence": { "type": "string" },
+    "signal_plans": { "type": "object" },
+    "inputs": { "type": "object" },
+    "live_output": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

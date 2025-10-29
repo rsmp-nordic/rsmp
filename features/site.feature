@@ -6,7 +6,7 @@ Feature: Run site
   Scenario: Run with no options
     When I run `rsmp site` interactively
 		And I send the signal "SIGINT" to the command started last
-    Then the output should contain "Starting site RN+SI0001"
+    Then the output should contain "Starting TLC RN+SI0001"
     Then the output should contain "Connecting to supervisor at 127.0.0.1:12111"
 
   Scenario: Help option
@@ -17,7 +17,7 @@ Feature: Run site
   Scenario: Site id option
     When I run `rsmp site -i RN+SI0639` interactively
 		And I send the signal "SIGINT" to the command started last
-    Then the output should contain "Starting site RN+SI0639"
+    Then the output should contain "Starting TLC RN+SI0639"
 
   Scenario: Supervisors option
     When I run `rsmp site -s 127.0.0.8:12118` interactively
@@ -33,7 +33,18 @@ Feature: Run site
 
 		When I run `rsmp site -c features/fixtures/site.yaml` interactively
 		And I send the signal "SIGINT" to the command started last
-    Then the output should contain "Starting site RN+SI0932"
+    Then the output should contain "Starting TLC RN+SI0932"
+
+  Scenario: Invalid config option
+    Given a directory named "features/fixtures"
+    And a file named "features/fixtures/site_invalid.yaml" with:
+    """
+    supervisors: invalid
+    """
+		When I run `rsmp site -c features/fixtures/site_invalid.yaml`
+    Then the output should contain "Invalid configuration"
+    Then the output should contain "/supervisors"
+    Then the output should contain "expected array, got string"
 
   Scenario: Bad config option
 		When I run `rsmp site -c bad/path/site.yaml` interactively

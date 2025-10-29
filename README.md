@@ -31,6 +31,9 @@ Be default, a site will try to connect to a single supervisor on localhost 127.0
 
 You can pass options to control ip adresseses, ports, logging and other behaviour:
 
+Configuration files can be loaded from YAML using the CLI or the options classes. These are validated
+against JSON schemas and will raise errors with details on what is wrong.
+
 ```ruby
 require 'rsmp'
 settings = {
@@ -44,8 +47,6 @@ settings = {
 }
 RSMP::Site.new(site_settings:settings)
 ```
-
-See lib/rsmp/site.rb and lib/rsmp/supervisor.rb for a list of settings and their default values.
 
 ### Concurrency
 The [async](https://github.com/socketry/async) and [async-io](https://github.com/socketry/async-io) gems are used to handle concurrency. Everything happens in a single thread, but fibers are used to switch between tasks whenever an IO operation blocks.
@@ -162,7 +163,7 @@ Use the ```tlc``` site type to run an emulation of a traffic light controller. T
 ### CLI help and options.
 Use ```--help <command>``` to get a list of available options.
 
-Use ```--config <path>``` to point to a .yaml config file, controlling things like IP adresses, ports, and log output. Examples of config files can be found the folder ```config/```.
+Use ```--config <path>``` or ```--options <path>``` to point to a .yaml config file, controlling things like IP adresses, ports, and log output. Examples of config files can be found the folder ```config/```.
 
 ## Tests
 ### RSpec

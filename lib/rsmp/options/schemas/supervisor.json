@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "port": { "type": ["integer", "string"] },
+    "ip": { "type": "string" },
+    "ips": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ]
+    },
+    "site_id": { "type": "string" },
+    "max_sites": { "type": "integer" },
+    "guest": {
+      "type": "object",
+      "properties": {
+        "sxl": { "type": "string" },
+        "sxl_version": { "type": "string" },
+        "core_version": { "type": "string" },
+        "intervals": {
+          "type": "object",
+          "properties": {
+            "timer": { "type": "number" },
+            "watchdog": { "type": "number" }
+          },
+          "additionalProperties": true
+        },
+        "timeouts": {
+          "type": "object",
+          "properties": {
+            "watchdog": { "type": "number" },
+            "acknowledgement": { "type": "number" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "sites": { "type": "object" }
+  },
+  "additionalProperties": true
+}
