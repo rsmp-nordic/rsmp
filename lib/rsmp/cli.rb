@@ -10,7 +10,7 @@ module RSMP
     end
 
     desc 'site', 'Run RSMP site'
-    method_option :config, type: :string, aliases: '-c', banner: 'Path to .yaml config file'
+    method_option :config, type: :string, aliases: ['-c', '--options'], banner: 'Path to .yaml config file'
     method_option :id, type: :string, aliases: '-i', banner: 'RSMP site id'
     method_option :supervisors, type: :string, aliases: '-s',
                                 banner: 'ip:port,... list of supervisor to connect to'
@@ -32,7 +32,7 @@ module RSMP
     end
 
     desc 'supervisor', 'Run RSMP supervisor'
-    method_option :config, type: :string, aliases: '-c', banner: 'Path to .yaml config file'
+    method_option :config, type: :string, aliases: ['-c', '--options'], banner: 'Path to .yaml config file'
     method_option :id, type: :string, aliases: '-i', banner: 'RSMP site id'
     method_option :ip, type: :string, banner: 'IP address to listen on'
     method_option :port, type: :string, aliases: '-p', banner: 'Port to listen on'
@@ -63,11 +63,12 @@ module RSMP
 
         return [settings, log_settings] unless options[:config]
 
-        if File.exist? options[:config]
-          settings = YAML.load_file options[:config]
-          log_settings = settings.delete('log') || log_settings
-        else
-          puts "Error: Config #{options[:config]} not found"
+        begin
+          options_object = RSMP::Site::Options.load_file(options[:config])
+          settings = options_object.to_h
+          log_settings = log_settings.deep_merge(options_object.log_settings)
+        rescue RSMP::ConfigurationError => e
+          puts "Error: #{e}"
           exit
         end
 
@@ -135,11 +136,12 @@ module RSMP
 
       return [settings, log_settings] unless options[:config]
 
-      if File.exist? options[:config]
-        settings = YAML.load_file options[:config]
-        log_settings = settings.delete('log') || log_settings
-      else
-        puts "Error: Config #{options[:config]} not found"
+      begin
+        options_object = RSMP::Supervisor::Options.load_file(options[:config])
+        settings = options_object.to_h
+        log_settings = log_settings.deep_merge(options_object.log_settings)
+      rescue RSMP::ConfigurationError => e
+        puts "Error: #{e}"
         exit
       end
 

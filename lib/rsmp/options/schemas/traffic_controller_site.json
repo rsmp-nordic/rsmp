@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "traffic_controller_site.json",
+  "allOf": [
+    { "$ref": "site.json" },
+    {
+      "type": "object",
+      "properties": {
+        "security_codes": { "type": "object" },
+        "startup_sequence": { "type": "string" },
+        "signal_plans": { "type": "object" },
+        "inputs": { "type": "object" },
+        "live_output": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    }
+  ]
+}

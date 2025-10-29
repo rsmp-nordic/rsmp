@@ -4,6 +4,10 @@ module RSMP
     class TrafficControllerSite < Site
       attr_accessor :main, :signal_plans
 
+      def self.options_class
+        RSMP::TLC::TrafficControllerSite::Options
+      end
+
       def initialize(options = {})
         # setup options before calling super initializer,
         # since build of components depend on options
