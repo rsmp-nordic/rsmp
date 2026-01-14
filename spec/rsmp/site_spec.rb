@@ -98,9 +98,6 @@ RSpec.describe RSMP::Site do
 
           # read watchdog ack
           JSON.parse protocol.read_line
-        rescue EOFError => e
-          puts e
-          puts e.backtrace
         end
       } do |_task|
         site.start

@@ -191,16 +191,12 @@ RSpec.describe RSMP::Supervisor do
             stream = IO::Stream::Buffered.new(socket)
             protocol = RSMP::Protocol.new(stream)
             supervisor_accept_logic(protocol)
-          rescue StandardError => e
-            puts e.backtrace
           end
 
           ready.signal
         rescue Async::Stop # will happen at cleanup
           # Task stopped during cleanup — exit the async block
           break
-        rescue StandardError => e
-          puts e.backtrace
         end
       } do
         # Acts as a site by connecting to supervisor
@@ -216,8 +212,7 @@ RSpec.describe RSMP::Supervisor do
         site_interaction_logic(site_protocol)
 
         site_socket.close
-      rescue StandardError => e
-        puts e.backtrace
+      rescue StandardError
       ensure
         # Clean up the accept task
         expect(accept_task).not_to be_nil
