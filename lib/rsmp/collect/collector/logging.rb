@@ -1,5 +1,6 @@
 module RSMP
   class Collector
+    # Logging helpers for Collector instances.
     module Logging
       def log_start
         @distributor.log "#{identifier}: Waiting for #{describe_matcher}".strip, level: :collect

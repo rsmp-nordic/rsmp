@@ -3,6 +3,7 @@
 #
 
 module RSMP
+  # Logging integration providing `archive` and `logger` helpers.
   module Logging
     attr_reader :archive, :logger
 

@@ -2,6 +2,7 @@ require 'rsmp_schema'
 
 # rsmp messages
 module RSMP
+  # Base RSMP message class used to represent parsed and built messages.
   class Message
     include Inspect
 
@@ -191,6 +192,7 @@ module RSMP
     end
   end
 
+  # Represents a malformed message with invalid attributes.
   class Malformed < Message
     # rubocop:disable Lint/MissingSuper
     def initialize(attributes = {})
@@ -201,6 +203,7 @@ module RSMP
     # rubocop:enable Lint/MissingSuper
   end
 
+  # Version message, lists supported versions and SXL information.
   class Version < Message
     def initialize(attributes = {})
       super({
@@ -213,9 +216,11 @@ module RSMP
     end
   end
 
+  # Unknown message type wrapper.
   class Unknown < Message
   end
 
+  # AggregatedStatus message type.
   class AggregatedStatus < Message
     def initialize(attributes = {})
       super({
@@ -224,6 +229,7 @@ module RSMP
     end
   end
 
+  # AggregatedStatusRequest message type.
   class AggregatedStatusRequest < Message
     def initialize(attributes = {})
       super({
@@ -232,6 +238,7 @@ module RSMP
     end
   end
 
+  # Alarm base message type.
   class Alarm < Message
     def initialize(attributes = {})
       super({
@@ -253,6 +260,7 @@ module RSMP
     end
   end
 
+  # Alarm issue specialization.
   class AlarmIssue < Alarm
     def initialize(attributes = {})
       super({
@@ -261,6 +269,7 @@ module RSMP
     end
   end
 
+  # Alarm request specialization.
   class AlarmRequest < Alarm
     def initialize(attributes = {})
       super({
@@ -269,6 +278,7 @@ module RSMP
     end
   end
 
+  # Alarm acknowledge message.
   class AlarmAcknowledge < Alarm
     def initialize(attributes = {})
       super({
@@ -277,6 +287,7 @@ module RSMP
     end
   end
 
+  # Alarm acknowledged (acknowledged state) message.
   class AlarmAcknowledged < Alarm
     def initialize(attributes = {})
       super({
@@ -286,6 +297,7 @@ module RSMP
     end
   end
 
+  # Alarm suspend message.
   class AlarmSuspend < Alarm
     def initialize(attributes = {})
       super({
@@ -294,6 +306,7 @@ module RSMP
     end
   end
 
+  # Alarm suspended (suspended state) message.
   class AlarmSuspended < Alarm
     def initialize(attributes = {})
       super({
@@ -303,6 +316,7 @@ module RSMP
     end
   end
 
+  # Alarm resume message.
   class AlarmResume < Alarm
     def initialize(attributes = {})
       super({
@@ -311,6 +325,7 @@ module RSMP
     end
   end
 
+  # Alarm resumed (not suspended) message.
   class AlarmResumed < Alarm
     def initialize(attributes = {})
       super({
@@ -320,6 +335,7 @@ module RSMP
     end
   end
 
+  # Watchdog message type.
   class Watchdog < Message
     def initialize(attributes = {})
       super({
@@ -328,6 +344,7 @@ module RSMP
     end
   end
 
+  # Base class for acking messages (MessageAck / MessageNotAck).
   class MessageAcking < Message
     attr_reader :original
 
@@ -348,6 +365,7 @@ module RSMP
     end
   end
 
+  # Acknowledgement for a received message.
   class MessageAck < MessageAcking
     def initialize(attributes = {})
       super({
@@ -360,6 +378,7 @@ module RSMP
     end
   end
 
+  # Negative acknowledgement for a received message.
   class MessageNotAck < MessageAcking
     def initialize(attributes = {})
       super({
@@ -370,6 +389,7 @@ module RSMP
     end
   end
 
+  # Command request message type.
   class CommandRequest < Message
     def initialize(attributes = {})
       super({
@@ -378,6 +398,7 @@ module RSMP
     end
   end
 
+  # Command response message type.
   class CommandResponse < Message
     def initialize(attributes = {})
       super({
@@ -386,6 +407,7 @@ module RSMP
     end
   end
 
+  # Status request message type.
   class StatusRequest < Message
     def initialize(attributes = {})
       super({
@@ -394,6 +416,7 @@ module RSMP
     end
   end
 
+  # Status response message type.
   class StatusResponse < Message
     def initialize(attributes = {})
       super({
@@ -402,6 +425,7 @@ module RSMP
     end
   end
 
+  # Status subscribe message type.
   class StatusSubscribe < Message
     def initialize(attributes = {})
       super({
@@ -410,6 +434,7 @@ module RSMP
     end
   end
 
+  # Status unsubscribe message type.
   class StatusUnsubscribe < Message
     def initialize(attributes = {})
       super({
@@ -418,6 +443,7 @@ module RSMP
     end
   end
 
+  # Status update message type.
   class StatusUpdate < Message
     def initialize(attributes = {})
       super({

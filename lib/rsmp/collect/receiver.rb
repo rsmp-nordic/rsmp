@@ -1,8 +1,6 @@
-# Receives items from a Distributor, as long as it's
-# installed as a receiver.
-# Optionally filter mesage using a Filter.
-
 module RSMP
+  # Receives items from a Distributor when included as a receiver.
+  # Optionally filter messages using a Filter.
   module Receiver
     include Inspect
 

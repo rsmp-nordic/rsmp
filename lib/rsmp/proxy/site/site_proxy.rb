@@ -1,6 +1,5 @@
-# Handles a supervisor connection to a remote client
-
 module RSMP
+  # Handles a supervisor-side proxy for a connected site.
   class SiteProxy < Proxy
     include Components
     include Modules::Status

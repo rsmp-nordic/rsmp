@@ -1,9 +1,10 @@
 module RSMP
+  # Match a specific status
   class StatusMatcher < Matcher
-    def match_code?(item)
-      return false if @want['sCI'] && @want['sCI'] != item['sCI']
-      return false if @want['cO'] && @want['cO'] != item['cO']
-      return false if @want['n'] && @want['n'] != item['n']
+    def match_code(item)
+      return nil if @want['sCI'] && @want['sCI'] != item['sCI']
+      return nil if @want['cO'] && @want['cO'] != item['cO']
+      return nil if @want['n'] && @want['n'] != item['n']
 
       true
     end
@@ -19,8 +20,8 @@ module RSMP
       true
     end
 
-    def match?(item)
-      return nil unless match_code?(item)
+    def match(item)
+      return nil unless match_code(item)
 
       match_value?(item)
     end

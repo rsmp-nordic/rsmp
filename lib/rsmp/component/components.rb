@@ -1,6 +1,5 @@
-# Things shared between sites and site proxies
-
 module RSMP
+  # Things shared between sites and site proxies
   module Components
     attr_reader :components, :main
 

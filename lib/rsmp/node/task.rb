@@ -2,6 +2,7 @@ module RSMP
   class Restart < StandardError
   end
 
+  # Task helpers for starting and managing an Async task lifecycle.
   module Task
     attr_reader :task
 

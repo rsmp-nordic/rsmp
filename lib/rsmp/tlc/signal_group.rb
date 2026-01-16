@@ -1,5 +1,6 @@
 module RSMP
   module TLC
+    # Signal group representation for the TLC.
     class SignalGroup < Component
       attr_reader :plan, :state
 

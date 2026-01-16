@@ -1,8 +1,5 @@
-# RSMP supervisor (server)
-# The supervisor waits for sites to connect.
-# Connections to sites are handles via site proxies.
-
 module RSMP
+  # RSMP supervisor (server) that accepts site connections.
   class Supervisor < Node
     include Modules::Configuration
     include Modules::Connection

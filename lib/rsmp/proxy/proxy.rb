@@ -1,10 +1,8 @@
-# A connection to a remote site or supervisor.
-# Uses the Task module to handle asyncronous work, but adds
-# the concept of a connection that can be connected or disconnected.
-
 require 'rubygems'
 
 module RSMP
+  # Represents a connection to a remote site or supervisor.
+  # Provides common connection lifecycle and message handling.
   class Proxy
     WRAPPING_DELIMITER = "\f".freeze
 

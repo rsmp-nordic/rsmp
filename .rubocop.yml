@@ -1,3 +1,7 @@
+plugins:
+  - rubocop-rspec
+  - rubocop-rake
+
 AllCops:
   NewCops: enable
   TargetRubyVersion: 3.4
@@ -43,15 +47,8 @@ Metrics/BlockLength:
     - 'features/**/*'
     - '*.gemspec'
 
-# Keep some reasonable exceptions
-Style/Documentation:
-  Enabled: false
-
+# From Ruby 3.4, frozen string literals are the default anyways
 Style/FrozenStringLiteralComment:
-  Enabled: false
-
-# Allow double negation for boolean coercion - common Ruby pattern
-Style/DoubleNegation:
   Enabled: false
 
 # Allow mix-in usage at top level in test files
@@ -64,14 +61,6 @@ Style/MixinUsage:
 Lint/ConstantDefinitionInBlock:
   Exclude:
     - 'spec/**/*'
-
-# Keep critical domain-specific logic intact
-Style/ReturnNilInPredicateMethodDefinition:
-  Enabled: false
-
-
-plugins:
-  - rubocop-rspec
 
 RSpec/MultipleExpectations:
   Max: 20

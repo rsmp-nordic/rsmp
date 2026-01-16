@@ -7,6 +7,8 @@ require 'fileutils'
 module RSMP
   module Convert
     module Export
+      # Converts SXL (YAML) structures into JSON Schema files.
+      # Converts SXL (YAML) structures into JSON Schema files.
       module JSONSchema
         JSON_OPTIONS = {
           array_nl: "\n",
