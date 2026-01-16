@@ -7,6 +7,7 @@ require 'fileutils'
 module RSMP
   module Convert
     module Import
+      # Importer for SXL in YAML format.
       module YAML
         def self.read(path)
           convert ::YAML.load_file(path)

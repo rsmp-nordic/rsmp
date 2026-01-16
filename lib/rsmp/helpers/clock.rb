@@ -1,11 +1,9 @@
-# Get the current time in UTC, with optional adjustment
-# Convertion to string uses the RSMP format 2015-06-08T12:01:39.654Z
-# Note that using to_s on a my_clock.to_s will not produce an RSMP formatted timestamp,
-# you need to use Clock.to_s my_clock
-
 require 'time'
 
 module RSMP
+  # Get the current time in UTC, with optional adjustment.
+  # Conversion to string uses the RSMP format 2015-06-08T12:01:39.654Z
+  # Use `Clock.to_s` to format times in RSMP format.
   class Clock
     attr_reader :adjustment
 

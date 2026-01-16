@@ -1,5 +1,6 @@
 module RSMP
   module TLC
+    # Representation of a priority request for a TLC signal.
     class SignalPriority
       attr_reader :state, :node, :id, :level, :eta, :vehicle_type, :age, :updated
 

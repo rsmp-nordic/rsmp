@@ -1,8 +1,5 @@
-# RSMP site
-# The site initializes the connection to the supervisor.
-# Connections to supervisors are handles via supervisor proxies.
-
 module RSMP
+  # RSMP site implementation that manages proxies and components.
   class Site < Node
     include Components
 

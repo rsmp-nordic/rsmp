@@ -1,4 +1,5 @@
 module RSMP
+  # Simple protocol wrapper for reading/writing RSMP framed messages.
   class Protocol
     def initialize(stream)
       @stream = stream

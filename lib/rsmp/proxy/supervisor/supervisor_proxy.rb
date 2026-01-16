@@ -1,8 +1,7 @@
-# Handles a site connection to a remote supervisor
-
 require 'digest'
 
 module RSMP
+  # Proxy used by sites to connect to a remote supervisor.
   class SupervisorProxy < Proxy
     include Modules::Status
     include Modules::Commands

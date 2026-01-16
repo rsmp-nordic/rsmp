@@ -2,6 +2,7 @@ require 'thor'
 require_relative '../rsmp'
 
 module RSMP
+  # CLI commands for running RSMP site and supervisor.
   class CLI < Thor
     desc 'version', 'Show version'
     def version

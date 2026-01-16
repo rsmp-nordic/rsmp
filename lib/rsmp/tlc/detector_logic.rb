@@ -1,5 +1,6 @@
 module RSMP
   module TLC
+    # Detector logic component for the TLC.
     class DetectorLogic < Component
       attr_reader :forced, :value
 

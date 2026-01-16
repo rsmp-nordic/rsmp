@@ -1,4 +1,5 @@
 module RSMP
+  # Formats and outputs log messages according to configured settings.
   class Logger
     include Filtering
     include Colorization

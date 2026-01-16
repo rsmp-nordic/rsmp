@@ -3,7 +3,6 @@ module RSMP
   # The alarm state is for a particular alarm code,
   # a component typically have an alarm state for each
   # alarm code that is defined for the component type.
-
   class AlarmState
     attr_reader :component_id, :code, :acknowledged, :suspended, :active, :timestamp, :category, :priority, :rvs
 
@@ -24,9 +23,9 @@ module RSMP
       @component = component
       @component_id = component.c_id
       @code = code
-      @suspended = !!options[:suspended]
-      @acknowledged = !!options[:acknowledged]
-      @active = !!options[:active]
+      @suspended = options[:suspended] == true
+      @acknowledged = options[:acknowledged] == true
+      @active = options[:active] == true
       @timestamp = options[:timestamp]
       @category = options[:category] || 'D'
       @priority = options[:priority] || 2

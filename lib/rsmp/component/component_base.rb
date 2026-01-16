@@ -1,6 +1,5 @@
 module RSMP
   # RSMP component base class.
-
   class ComponentBase
     include Inspect
 

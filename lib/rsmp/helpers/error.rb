@@ -8,6 +8,7 @@ module RSMP
   class MalformedMessage < Error
   end
 
+  # Raised when schema validation fails.
   class SchemaError < Error
     attr_accessor :schemas
   end

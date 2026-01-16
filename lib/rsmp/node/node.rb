@@ -1,6 +1,5 @@
-# Base class for sites and supervisors
-
 module RSMP
+  # Base class for sites and supervisors.
   class Node
     include Logging
     include Inspect

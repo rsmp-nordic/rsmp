@@ -1,7 +1,7 @@
 module RSMP
   # Class for matching a command
   class CommandMatcher < Matcher
-    def match_code?(item)
+    def match_code(item)
       return nil if @want['cCI'] && @want['cCI'] != item['cCI']
       return nil if @want['n'] && @want['n'] != item['n']
 
@@ -19,8 +19,8 @@ module RSMP
       true
     end
 
-    def match?(item)
-      code_match = match_code?(item)
+    def match(item)
+      code_match = match_code(item)
       return code_match if code_match.nil?
 
       match_value?(item)

@@ -1,3 +1,4 @@
+# Extensions to Hash providing a `deep_merge` helper.
 class Hash
   def deep_merge(other_hash)
     return self unless other_hash

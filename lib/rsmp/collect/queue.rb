@@ -1,7 +1,7 @@
-# Receives items from a Distributor and keeps them in a queue.
-# The client can wait for mesages and will get them one by one.
-
+# Top-level RSMP namespace.
 module RSMP
+  # Receives items from a Distributor and keeps them in a queue.
+  # The client can wait for messages and will get them one by one.
   class Queue
     include Receiver
 
