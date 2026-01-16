@@ -1,3 +1,12 @@
+# Silence this warning:
+# ruby/4.0.1/lib/ruby/4.0.0/resolv.rb:207: warning: IO::Buffer is experimental and both the Ruby and C interface may change in the future!
+# See https://github.com/socketry/io-event/issues/82begin
+Warning[:experimental] = begin
+  false
+rescue StandardError
+  nil
+end
+
 require 'bundler/setup'
 require_relative '../lib/rsmp'
 require_relative 'support/site_proxy_stub'
