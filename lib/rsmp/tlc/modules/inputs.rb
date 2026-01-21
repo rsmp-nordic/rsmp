@@ -175,13 +175,20 @@ module RSMP
           return programming if programming.is_a?(Array)
           return programming unless programming.is_a?(Hash)
 
-          normalized = programming.each_with_object({}) do |(key, value), memo|
+          normalized = normalize_programming_keys(programming)
+          return normalized unless normalized.keys.all?(Integer)
+
+          programming_hash_to_array(normalized)
+        end
+
+        def normalize_programming_keys(programming)
+          programming.each_with_object({}) do |(key, value), memo|
             int_key = key.is_a?(String) && key.match?(/^\d+$/) ? key.to_i : key
             memo[int_key] = value
           end
+        end
 
-          return normalized unless normalized.keys.all?(Integer)
-
+        def programming_hash_to_array(normalized)
           max_key = normalized.keys.max
           program_array = Array.new(max_key + 1)
           normalized.each do |index, value|
