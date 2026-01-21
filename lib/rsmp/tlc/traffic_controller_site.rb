@@ -12,7 +12,7 @@ module RSMP
         # setup options before calling super initializer,
         # since build of components depend on options
         @sxl = 'traffic_light_controller'
-        @security_codes = options[:site_settings]['security_codes']
+        @security_codes = normalize_security_codes(options.dig(:site_settings, 'security_codes'))
         @interval = options[:site_settings].dig('intervals', 'timer') || 1
         @startup_sequence = options[:site_settings]['startup_sequence'] || 'efg'
         build_plans options[:site_settings]['signal_plans']
@@ -129,6 +129,15 @@ module RSMP
         return unless @security_codes[level] != code
 
         raise MessageRejected, "Wrong security code for level #{level}"
+      end
+
+      def normalize_security_codes(codes)
+        return {} unless codes.is_a?(Hash)
+
+        codes.each_with_object({}) do |(key, value), memo|
+          int_key = key.is_a?(String) && key.match?(/^\d+$/) ? key.to_i : key
+          memo[int_key] = value
+        end
       end
 
       def change_security_code(level, old_code, new_code)
