@@ -7,7 +7,7 @@ module RSMP
         def setup_inputs(inputs)
           if inputs
             num_inputs = inputs['total']
-            @input_programming = inputs['programming']
+            @input_programming = normalize_input_programming(inputs['programming'])
           else
             @input_programming = nil
           end
@@ -166,6 +166,28 @@ module RSMP
           when 'status'
             TrafficControllerSite.make_status @inputs.forced_string
           end
+        end
+
+        private
+
+        def normalize_input_programming(programming)
+          return nil if programming.nil?
+          return programming if programming.is_a?(Array)
+          return programming unless programming.is_a?(Hash)
+
+          normalized = programming.each_with_object({}) do |(key, value), memo|
+            int_key = key.is_a?(String) && key.match?(/^\d+$/) ? key.to_i : key
+            memo[int_key] = value
+          end
+
+          return normalized unless normalized.keys.all?(Integer)
+
+          max_key = normalized.keys.max
+          program_array = Array.new(max_key + 1)
+          normalized.each do |index, value|
+            program_array[index] = value
+          end
+          program_array
         end
       end
     end
