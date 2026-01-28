@@ -10,6 +10,7 @@
         { "type": "array", "items": { "type": "string" } }
       ]
     },
+    "proxy_type": { "type": "string" },
     "site_id": { "type": "string" },
     "max_sites": { "type": "integer" },
     "guest": {
