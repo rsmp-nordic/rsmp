@@ -60,7 +60,7 @@ module RSMP
 
     def build_proxy(settings)
       proxy_type = settings[:proxy_type] || @supervisor_settings['proxy_type']
-      return TrafficControllerProxy.new(settings) if proxy_type == 'tlc'
+      return RSMP::TLC::TrafficControllerProxy.new(settings) if proxy_type == 'tlc'
 
       SiteProxy.new settings
     end

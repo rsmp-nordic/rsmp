@@ -87,7 +87,7 @@ module RSMP
 
         def setup_proxy(proxy, settings, id)
           if proxy
-            raise ConnectionError, "Site #{id} alredy connected from port #{proxy.port}" if proxy.connected?
+            raise ConnectionError, "Site #{id} already connected from port #{proxy.port}" if proxy.connected?
 
             proxy.revive settings
           else

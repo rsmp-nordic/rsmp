@@ -128,7 +128,7 @@ module RSMP
 
       # Override close to clean up subscriptions.
       def close
-        unsubscribe_all
+        unsubscribe_all if respond_to?(:unsubscribe_all, true)
         super
       end
 
