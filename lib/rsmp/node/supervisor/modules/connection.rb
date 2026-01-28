@@ -60,6 +60,8 @@ module RSMP
         def build_proxy_settings(socket, info)
           stream = IO::Stream::Buffered.new(socket)
           protocol = RSMP::Protocol.new stream
+          site_id = retrieve_site_id(protocol)
+          site_settings = site_id_to_site_setting site_id
 
           {
             supervisor: self,
@@ -72,7 +74,9 @@ module RSMP
             protocol: protocol,
             info: info,
             logger: @logger,
-            archive: @archive
+            archive: @archive,
+            site_id: site_id,
+            proxy_type: infer_proxy_type(site_settings)
           }
         end
 
@@ -83,12 +87,12 @@ module RSMP
 
         def setup_proxy(proxy, settings, id)
           if proxy
-            raise ConnectionError, "Site #{id} alredy connected from port #{proxy.port}" if proxy.connected?
+            raise ConnectionError, "Site #{id} already connected from port #{proxy.port}" if proxy.connected?
 
             proxy.revive settings
           else
             check_max_sites
-            proxy = build_proxy settings.merge(site_id: id)
+            proxy = build_proxy settings
             @proxies.push proxy
           end
           proxy
@@ -100,6 +104,9 @@ module RSMP
           log "Validating using core version #{proxy.core_version}", level: :debug
           proxy.start
           proxy.wait
+        ensure
+          proxy_type = proxy ? proxy.class.name.split('::').last : 'SiteProxy'
+          log "Created #{proxy_type} for site #{proxy&.site_id}", level: :debug
         end
 
         def accept_connection(socket, info)
@@ -112,13 +119,21 @@ module RSMP
           authorize_ip info[:ip]
 
           settings = build_proxy_settings(socket, info)
-          id = retrieve_site_id(settings[:protocol])
+          id = settings[:site_id]
           proxy = setup_proxy(find_site(id), settings, id)
 
           validate_and_start_proxy(proxy, settings[:protocol])
         ensure
           site_ids_changed
           stop if @supervisor_settings['one_shot']
+        end
+
+        def infer_proxy_type(site_settings)
+          proxy_type_setting = @supervisor_settings['proxy_type']
+          return proxy_type_setting unless proxy_type_setting == 'auto'
+          return 'tlc' if site_settings && site_settings['type'] == 'tlc'
+
+          'generic'
         end
 
         def reject_connection(_socket, info)
