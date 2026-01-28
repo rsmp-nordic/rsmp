@@ -10,7 +10,8 @@
         "startup_sequence": { "type": "string" },
         "signal_plans": { "type": "object" },
         "inputs": { "type": "object" },
-        "live_output": { "type": ["string", "null"] }
+        "live_output": { "type": ["string", "null"] },
+        "type": { "type": "string" }
       },
       "additionalProperties": true
     }
