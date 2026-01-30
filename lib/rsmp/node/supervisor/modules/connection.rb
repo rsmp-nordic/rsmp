@@ -131,9 +131,11 @@ module RSMP
         def infer_proxy_type(site_settings)
           proxy_type_setting = @supervisor_settings['proxy_type']
           return proxy_type_setting unless proxy_type_setting == 'auto'
-          return 'tlc' if site_settings && site_settings['type'] == 'tlc'
 
-          'generic'
+          settings = @supervisor_settings['guest'] ||   {}
+          settings = settings.merge(site_settings) if site_settings
+
+          settings['sxl'] || 'generic'
         end
 
         def reject_connection(_socket, info)
