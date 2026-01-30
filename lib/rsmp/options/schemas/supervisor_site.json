@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "supervisor_site.json",
+  "type": "object",
+  "properties": {
+    "sxl": { "type": "string" },
+    "sxl_version": { "type": "string" },
+    "type": { "type": "string" },
+    "components": { "type": "object" },
+    "supervisors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ip": { "type": "string" },
+          "port": { "type": ["integer", "string"] }
+        },
+        "required": ["ip", "port"],
+        "additionalProperties": true
+      }
+    },
+    "intervals": {
+      "type": "object",
+      "properties": {
+        "timer": { "type": "number" },
+        "watchdog": { "type": "number" },
+        "reconnect": { "type": "number" },
+        "after_connect": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "timeouts": {
+      "type": "object",
+      "properties": {
+        "connect": { "type": "number" },
+        "watchdog": { "type": "number" },
+        "acknowledgement": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "send_after_connect": { "type": "boolean" },
+    "skip_validation": { "type": "array", "items": { "type": "string" } },
+    "security_codes": { "type": "object" }
+  },
+  "required": ["sxl"],
+  "additionalProperties": true
+}

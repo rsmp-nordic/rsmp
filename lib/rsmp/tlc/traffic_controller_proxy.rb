@@ -8,6 +8,15 @@ module RSMP
     class TrafficControllerProxy < SiteProxy
       attr_reader :timeplan_source, :timeplan, :timeouts
 
+      # Backwards-compatible accessors expected by tests and callers
+      def current_plan
+        @timeplan
+      end
+
+      def plan_source
+        @timeplan_source
+      end
+
       def initialize(options)
         super
         @timeplan_source = nil
@@ -61,7 +70,7 @@ module RSMP
 
       # Get all timeplan attributes stored in the main ComponentProxy.
       def timeplan_attributes
-        main&.statuses&.dig('S0014') ||   {}
+        main&.statuses&.dig('S0014') || {}
       end
 
       # Set the timeplan (signal plan) on the remote TLC

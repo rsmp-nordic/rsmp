@@ -76,7 +76,7 @@ module RSMP
             logger: @logger,
             archive: @archive,
             site_id: site_id,
-            proxy_type: infer_proxy_type(site_settings)
+            site_settings: site_settings
           }
         end
 
@@ -128,15 +128,7 @@ module RSMP
           stop if @supervisor_settings['one_shot']
         end
 
-        def infer_proxy_type(site_settings)
-          proxy_type_setting = @supervisor_settings['proxy_type']
-          return proxy_type_setting unless proxy_type_setting == 'auto'
-
-          settings = @supervisor_settings['guest'] ||   {}
-          settings = settings.merge(site_settings) if site_settings
-
-          settings['sxl'] || 'generic'
-        end
+        # Proxy type is now derived from `site_settings['sxl']` in Supervisor#build_proxy.
 
         def reject_connection(_socket, info)
           log 'Site rejected', ip: info[:ip], level: :info
