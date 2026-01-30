@@ -6,13 +6,11 @@ module RSMP
   module TLC
     # Proxy for handling communication with a remote traffic light controller.
     class TrafficControllerProxy < SiteProxy
-      # Attribute readers for current status values.
-      attr_reader :current_plan, :plan_source, :timeplan, :timeouts
+      attr_reader :timeplan_source, :timeplan, :timeouts
 
       def initialize(options)
         super
-        @current_plan = nil
-        @plan_source = nil
+        @timeplan_source = nil
         @timeplan = nil
         @timeouts = node.supervisor_settings.dig('guest', 'timeouts') || {}
       end
@@ -22,8 +20,6 @@ module RSMP
         auto_subscribe_to_statuses
       end
 
-      # Subscribe to S0014 timeplan status updates.
-      # This will cause the remote site to send status updates when the timeplan changes.
       def subscribe_to_timeplan(options: {})
         validate_ready 'subscribe to timeplan'
 
@@ -48,8 +44,6 @@ module RSMP
       def process_status_update(message)
         super
 
-        return unless message.attribute('cId') == main&.c_id
-
         status_values = message.attribute('sS')
         return unless status_values
 
@@ -59,27 +53,23 @@ module RSMP
           case item['n']
           when 'status'
             @timeplan = item['s'].to_i
-            @current_plan = @timeplan
           when 'source'
-            @plan_source = item['s']
+            @timeplan_source = item['s']
           end
         end
       end
 
       # Get all timeplan attributes stored in the main ComponentProxy.
       def timeplan_attributes
-        return {} unless main
-
-        main.statuses&.dig('S0014') || {}
+        main&.statuses&.dig('S0014') ||   {}
       end
 
-      # Set the timeplan (signal plan) on the remote TLC.
-      # @param plan_nr [Integer] The signal plan number to set.
-      # @param security_code [String] Security code for authentication.
-      # @param options [Hash] Additional options for the command.
-      # @return [Hash] Result containing sent message and optional collector.
-      def set_timeplan(plan_nr, security_code:, options: {})
+      # Set the timeplan (signal plan) on the remote TLC
+      def set_timeplan(plan_nr, options: {})
         validate_ready 'set timeplan'
+        raise 'TLC main component not found' unless main
+
+        security_code = security_code_for(2)
 
         command_list = [{
           'cCI' => 'M0002',
@@ -98,16 +88,10 @@ module RSMP
           'v' => plan_nr.to_s
         }]
 
-        merged_options = @timeouts.merge(options)
-
-        raise 'TLC main component not found' unless main
-
-        send_command main.c_id, command_list, merged_options
+        send_command main.c_id, command_list, @timeouts.merge(options)
       end
 
       # Fetch the current signal plan from the remote TLC.
-      # @param options [Hash] Additional options for the status request.
-      # @return [Hash] Result containing sent message and optional collector.
       def fetch_signal_plan(options: {})
         validate_ready 'fetch signal plan'
 
@@ -119,17 +103,7 @@ module RSMP
           'n' => 'source'
         }]
 
-        merged_options = @timeouts.merge(options)
-
-        raise 'TLC main component not found' unless main
-
-        request_status main.c_id, status_list, merged_options
-      end
-
-      # Override close to clean up subscriptions.
-      def close
-        unsubscribe_all if respond_to?(:unsubscribe_all, true)
-        super
+        request_status main.c_id, status_list, @timeouts.merge(options)
       end
 
       private
@@ -137,8 +111,14 @@ module RSMP
       # Automatically subscribe to key TLC statuses to keep proxy in sync.
       def auto_subscribe_to_statuses
         subscribe_to_timeplan
-      rescue StandardError => e
-        log "Failed to auto-subscribe to timeplan status: #{e.message}", level: :warning
+      end
+
+      def security_code_for(level)
+        codes = @site_settings&.dig('security_codes') || {}
+        code = codes[level] || codes[level.to_s]
+        raise ArgumentError, "Security code for level #{level} is not configured" unless code
+
+        code
       end
     end
   end

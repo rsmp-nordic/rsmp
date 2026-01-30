@@ -6,7 +6,7 @@ module RSMP
         {
           'port' => 12_111,
           'ips' => 'all',
-          'proxy_type' => 'generic',
+          'proxy_type' => 'auto',
           'guest' => {
             'sxl' => 'tlc',
             'intervals' => {

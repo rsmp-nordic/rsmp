@@ -92,7 +92,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     end
 
     it 'validates proxy is ready before set_timeplan' do
-      expect { proxy.set_timeplan(3, security_code: '1234') }.to raise_error(RSMP::NotReady)
+      expect { proxy.set_timeplan(3) }.to raise_error(RSMP::NotReady)
     end
 
     it 'validates proxy is ready before fetch_signal_plan' do
@@ -107,7 +107,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       proxy.instance_variable_set(:@main, nil)
       proxy.instance_variable_set(:@state, :ready)
 
-      expect { proxy.set_timeplan(3, security_code: '1234') }.to raise_error('TLC main component not found')
+      expect { proxy.set_timeplan(3) }.to raise_error('TLC main component not found')
     end
   end
 end
