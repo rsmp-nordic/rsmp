@@ -2,7 +2,6 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   let(:supervisor_settings) do
     {
       'port' => 13_113,
-      'proxy_type' => 'auto',
       'guest' => {
         'sxl' => 'tlc',
         'type' => 'tlc',
@@ -32,7 +31,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     )
   end
 
-  describe '#initialize' do
+  describe 'initialize' do
     it 'initializes with nil status values' do
       expect(proxy.current_plan).to be_nil
       expect(proxy.plan_source).to be_nil

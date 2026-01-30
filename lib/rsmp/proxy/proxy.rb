@@ -22,6 +22,7 @@ module RSMP
 
     def initialize(options)
       @node = options[:node]
+      options[:logger] = @node&.logger unless options[:logger] # default to node logger
       initialize_logging options
       initialize_distributor
       initialize_task
