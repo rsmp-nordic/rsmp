@@ -41,8 +41,10 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       expect(proxy.traffic_situation).to be_nil
     end
 
-    it 'retrieves timeouts from supervisor settings' do
-      expect(proxy.timeouts).to eq(supervisor_settings['default']['timeouts'])
+    it 'retrieves timeouts from supervisor settings, merged with defaults' do
+      expected = RSMP::Supervisor::Options.new({}).to_h.dig('default', 'timeouts')
+                                                   .merge(supervisor_settings['default']['timeouts'])
+      expect(proxy.timeouts).to eq(expected)
     end
 
     it 'is a subclass of SiteProxy' do
