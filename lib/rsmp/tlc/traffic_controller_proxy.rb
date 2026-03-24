@@ -119,7 +119,7 @@ module RSMP
 
       # Automatically subscribe to key TLC statuses to keep proxy in sync.
       def auto_subscribe_to_statuses
-        subscribe_to_timeplan
+        subscribe_to_timeplan if main
       end
 
       def security_code_for(level)

@@ -26,12 +26,14 @@ module RSMP
         end
 
         def site_id_to_site_setting(site_id)
-          return {} unless @supervisor_settings['sites']
+          base = @supervisor_settings['default'] || {}
 
-          @supervisor_settings['sites'].each_pair do |id, settings|
-            return settings if id == 'default' || id == site_id
-          end
-          raise HandshakeError, "site id #{site_id} unknown"
+          return base unless @supervisor_settings['sites']
+
+          site_specific = @supervisor_settings['sites'][site_id] || @supervisor_settings['sites']['default']
+          return base unless site_specific
+
+          base.deep_merge(site_specific)
         end
 
         def ip_to_site_settings(ip)

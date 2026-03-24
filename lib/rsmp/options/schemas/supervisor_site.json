@@ -42,6 +42,5 @@
     "skip_validation": { "type": "array", "items": { "type": "string" } },
     "security_codes": { "type": "object" }
   },
-  "required": ["sxl"],
   "additionalProperties": true
 }
