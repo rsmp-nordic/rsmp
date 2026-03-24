@@ -6,7 +6,8 @@ module RSMP
   module TLC
     # Proxy for handling communication with a remote traffic light controller.
     class TrafficControllerProxy < SiteProxy
-      attr_reader :timeplan_source, :timeplan, :timeouts
+      attr_reader :timeplan_source, :timeplan, :timeouts,
+                  :functional_position, :yellow_flash, :traffic_situation
 
       # Backwards-compatible accessors expected by tests and callers
       def current_plan
@@ -21,6 +22,9 @@ module RSMP
         super
         @timeplan_source = nil
         @timeplan = nil
+        @functional_position = nil
+        @yellow_flash = nil
+        @traffic_situation = nil
         @timeouts = node.supervisor_settings.dig('default', 'timeouts') || {}
       end
 
@@ -49,7 +53,7 @@ module RSMP
         subscribe_to_status main.c_id, status_list, merged_options
       end
 
-      # Override status update processing to automatically store timeplan values.
+      # Override status update processing to automatically store cached status values.
       def process_status_update(message)
         super
 
@@ -57,13 +61,20 @@ module RSMP
         return unless status_values
 
         status_values.each do |item|
-          next unless item['sCI'] == 'S0014'
-
-          case item['n']
-          when 'status'
-            @timeplan = item['s'].to_i
-          when 'source'
-            @timeplan_source = item['s']
+          case item['sCI']
+          when 'S0007'
+            @functional_position = item['s'] if item['n'] == 'status'
+          when 'S0011'
+            @yellow_flash = item['s'] if item['n'] == 'status'
+          when 'S0014'
+            case item['n']
+            when 'status'
+              @timeplan = item['s'].to_i
+            when 'source'
+              @timeplan_source = item['s']
+            end
+          when 'S0015'
+            @traffic_situation = item['s'] if item['n'] == 'status'
           end
         end
       end
@@ -198,17 +209,17 @@ module RSMP
 
         command_list = [{
           'cCI' => 'M0005',
-          'cO' => 'setEmergencyRoute',
+          'cO' => 'setEmergency',
           'n' => 'status',
           'v' => active_str
         }, {
           'cCI' => 'M0005',
-          'cO' => 'setEmergencyRoute',
+          'cO' => 'setEmergency',
           'n' => 'securityCode',
           'v' => security_code.to_s
         }, {
           'cCI' => 'M0005',
-          'cO' => 'setEmergencyRoute',
+          'cO' => 'setEmergency',
           'n' => 'emergencyroute',
           'v' => route.to_s
         }]
@@ -368,17 +379,17 @@ module RSMP
 
         command_list = [{
           'cCI' => 'M0014',
-          'cO' => 'setOffset',
+          'cO' => 'setCommands',
           'n' => 'status',
           'v' => status.to_s
         }, {
           'cCI' => 'M0014',
-          'cO' => 'setOffset',
+          'cO' => 'setCommands',
           'n' => 'securityCode',
           'v' => security_code.to_s
         }, {
           'cCI' => 'M0014',
-          'cO' => 'setOffset',
+          'cO' => 'setCommands',
           'n' => 'plan',
           'v' => plan.to_s
         }]
@@ -632,11 +643,6 @@ module RSMP
         command_list = [{
           'cCI' => 'M0104',
           'cO' => 'setDate',
-          'n' => 'status',
-          'v' => 'True'
-        }, {
-          'cCI' => 'M0104',
-          'cO' => 'setDate',
           'n' => 'securityCode',
           'v' => security_code.to_s
         }, {
@@ -720,7 +726,21 @@ module RSMP
 
       # Automatically subscribe to key TLC statuses to keep proxy in sync.
       def auto_subscribe_to_statuses
-        subscribe_to_timeplan if main
+        return unless main
+
+        subscribe_to_timeplan
+        subscribe_to_key_statuses
+      end
+
+      # Subscribe to S0001, S0007, S0011, S0015 for automatic caching.
+      def subscribe_to_key_statuses
+        status_list = [
+          { 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'sOc' => true },
+          { 'sCI' => 'S0007', 'n' => 'status', 'sOc' => true },
+          { 'sCI' => 'S0011', 'n' => 'status', 'sOc' => true },
+          { 'sCI' => 'S0015', 'n' => 'status', 'sOc' => true }
+        ]
+        subscribe_to_status main.c_id, status_list, @timeouts
       end
 
       # Returns true if sOc (send on change) should be used.
