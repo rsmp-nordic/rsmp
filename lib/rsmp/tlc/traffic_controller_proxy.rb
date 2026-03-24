@@ -97,7 +97,8 @@ module RSMP
           'v' => plan_nr.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        confirm_status = [{ 'sCI' => 'S0014', 'n' => 'status', 's' => plan_nr.to_s }]
+        send_command_with_confirm main.c_id, command_list, options, "timeplan #{plan_nr}", confirm_status
       end
 
       # M0001 — Set functional position (NormalControl, YellowFlash, Dark).
@@ -129,7 +130,8 @@ module RSMP
           'v' => '0'
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        confirm_status = functional_position_confirm_status(status)
+        send_command_with_confirm main.c_id, command_list, options, "functional position #{status}", confirm_status
       end
 
       # M0003 — Set traffic situation (activate a specific situation number).
@@ -156,10 +158,9 @@ module RSMP
           'v' => situation.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => situation.to_s }]
+        send_command_with_confirm main.c_id, command_list, options, "traffic situation #{situation}", confirm_status
       end
-
-      # M0003 — Unset (deactivate) the current traffic situation.
       def unset_traffic_situation(options: {})
         validate_ready 'unset traffic situation'
         raise 'TLC main component not found' unless main
@@ -183,7 +184,8 @@ module RSMP
           'v' => '1'
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => '1' }]
+        send_command_with_confirm main.c_id, command_list, options, 'traffic situation unset', confirm_status
       end
 
       # M0005 — Set or clear an emergency route.
@@ -211,7 +213,9 @@ module RSMP
           'v' => route.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        active_status = active ? 'True' : 'False'
+        confirm_status = [{ 'sCI' => 'S0006', 'n' => 'status', 's' => active_status }]
+        send_command_with_confirm main.c_id, command_list, options, "emergency route #{route} #{active ? 'active' : 'inactive'}", confirm_status
       end
 
       # M0006 — Set a single input to a given status.
@@ -238,7 +242,7 @@ module RSMP
           'v' => input.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, "input #{input} set to #{status}", nil
       end
 
       # M0007 — Enable or disable fixed-time control.
@@ -260,7 +264,8 @@ module RSMP
           'v' => security_code.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        confirm_status = [{ 'sCI' => 'S0009', 'n' => 'status', 's' => /^#{Regexp.escape(status.to_s)}(,#{Regexp.escape(status.to_s)})*$/ }]
+        send_command_with_confirm main.c_id, command_list, options, "fixed time #{status}", confirm_status
       end
 
       # M0008 — Force detector logic to a given mode and status.
@@ -287,7 +292,7 @@ module RSMP
           'v' => mode.to_s
         }]
 
-        send_command component_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm component_id, command_list, options, "force detector logic #{component_id}", nil
       end
 
       # M0010 — Order signal start for a signal group component.
@@ -308,7 +313,7 @@ module RSMP
           'v' => security_code.to_s
         }]
 
-        send_command component_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm component_id, command_list, options, "signal start #{component_id}", nil
       end
 
       # M0011 — Order signal stop for a signal group component.
@@ -329,7 +334,7 @@ module RSMP
           'v' => security_code.to_s
         }]
 
-        send_command component_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm component_id, command_list, options, "signal stop #{component_id}", nil
       end
 
       # M0013 — Set all inputs via a bit-pattern string.
@@ -351,7 +356,7 @@ module RSMP
           'v' => security_code.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, "inputs #{status}", nil
       end
 
       # M0014 — Set dynamic bands for a signal plan.
@@ -378,7 +383,7 @@ module RSMP
           'v' => plan.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, "dynamic bands plan #{plan}", nil
       end
 
       # M0015 — Set offset for a signal plan.
@@ -405,7 +410,7 @@ module RSMP
           'v' => plan.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, "offset plan #{plan} to #{offset}", nil
       end
 
       # M0016 — Set week table (mapping week days to traffic situations).
@@ -427,7 +432,7 @@ module RSMP
           'v' => security_code.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, 'week table', nil
       end
 
       # M0017 — Set day table (mapping time periods to signal plans).
@@ -449,7 +454,7 @@ module RSMP
           'v' => security_code.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, 'day table', nil
       end
 
       # M0018 — Set cycle time for a signal plan.
@@ -476,7 +481,7 @@ module RSMP
           'v' => plan.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, "cycle time plan #{plan} to #{cycle_time}", nil
       end
 
       # M0019 — Force an input to a given value.
@@ -508,7 +513,11 @@ module RSMP
           'v' => value.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        confirm_status = [
+          { 'sCI' => 'S0029', 'n' => 'status', 's' => /^.{#{input.to_i - 1}}#{status == 'True' ? '1' : '0'}/ },
+          { 'sCI' => 'S0003', 'n' => 'inputstatus', 's' => /^.{#{input.to_i - 1}}#{value == 'True' ? '1' : '0'}/ }
+        ]
+        send_command_with_confirm main.c_id, command_list, options, "force input #{input}", confirm_status
       end
 
       # M0020 — Force an output to a given value.
@@ -540,7 +549,7 @@ module RSMP
           'v' => value.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, "force output #{output}", nil
       end
 
       # M0021 — Set the trigger level for traffic counting.
@@ -562,7 +571,7 @@ module RSMP
           'v' => security_code.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, "trigger level #{status}", nil
       end
 
       # M0023 — Set timeout for dynamic bands.
@@ -584,7 +593,7 @@ module RSMP
           'v' => security_code.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, "dynamic bands timeout #{status}", nil
       end
 
       # M0103 — Change security code for a given level.
@@ -610,7 +619,7 @@ module RSMP
           'v' => new_code.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, "security code level #{level}", nil
       end
 
       # M0104 — Set the clock on the remote TLC. clock must respond to iso8601.
@@ -662,7 +671,7 @@ module RSMP
           'v' => clock.sec.to_s
         }]
 
-        send_command main.c_id, command_list, @timeouts.merge(options)
+        send_command_with_confirm main.c_id, command_list, options, 'clock', nil
       end
 
       # Fetch the current signal plan from the remote TLC.
@@ -730,6 +739,51 @@ module RSMP
         raise ArgumentError, "Security code for level #{level} is not configured" unless code
 
         code
+      end
+
+      # Send a command and, if confirm: or confirm!: is present in options, wait for
+      # confirming status updates afterwards.
+      #
+      # confirm_description - human-readable label used in log output
+      # confirm_status_list  - status items to wait for (passed to wait_for_status)
+      # component_id         - component to wait on (defaults to main)
+      #
+      # If options[:confirm] is set, timeout errors are silently swallowed.
+      # If options[:confirm!] is set, timeout errors are raised.
+      def send_command_with_confirm(component_id, command_list, options, confirm_description, confirm_status_list)
+        result = send_command component_id, command_list, @timeouts.merge(options.reject { |k, _| %i[confirm confirm!].include?(k) })
+
+        confirm_opts = options[:confirm] || options[:confirm!]
+        return result unless confirm_opts
+        return result if confirm_status_list.nil? || confirm_status_list.empty?
+
+        timeout = confirm_opts.is_a?(Hash) ? confirm_opts[:timeout] : nil
+        wait_kwargs = { timeout: timeout }.compact
+        begin
+          wait_for_status confirm_description, confirm_status_list, **wait_kwargs
+        rescue RSMP::TimeoutError
+          raise if options[:confirm!]
+        end
+
+        result
+      end
+
+      # Returns the status list used to confirm a set_functional_position command.
+      def functional_position_confirm_status(status)
+        case status.to_s
+        when 'YellowFlash'
+          [{ 'sCI' => 'S0011', 'n' => 'status', 's' => /^True(,True)*$/ }]
+        when 'Dark'
+          [{ 'sCI' => 'S0007', 'n' => 'status', 's' => /^False(,False)*$/ }]
+        when 'NormalControl'
+          [
+            { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
+            { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
+            { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
+          ]
+        else
+          []
+        end
       end
     end
   end
