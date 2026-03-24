@@ -21,6 +21,64 @@ module RSMP
           send_message message, validate: options[:validate]
           message
         end
+
+        # Send an AlarmSuspend message and optionally collect the confirming response.
+        # When collect: true, returns [message, response]; when collect: false, returns message.
+        def suspend_alarm(task, c_id:, a_c_id:, collect: false)
+          message = RSMP::AlarmSuspend.new(
+            'mId' => RSMP::Message.make_m_id,
+            'cId' => c_id,
+            'aCId' => a_c_id
+          )
+          if collect
+            collect_task = task.async do
+              RSMP::AlarmCollector.new(self,
+                                       m_id: message.m_id,
+                                       num: 1,
+                                       matcher: {
+                                         'cId' => c_id,
+                                         'aCI' => a_c_id,
+                                         'aSp' => 'Suspend',
+                                         'sS' => /^Suspended/i
+                                       },
+                                       timeout: node.supervisor_settings.dig('default', 'timeouts', 'alarm')).collect!
+            end
+            send_message message
+            [message, collect_task.wait.first]
+          else
+            send_message message
+            message
+          end
+        end
+
+        # Send an AlarmResume message and optionally collect the confirming response.
+        # When collect: true, returns [message, response]; when collect: false, returns message.
+        def resume_alarm(task, c_id:, a_c_id:, collect: false)
+          message = RSMP::AlarmResume.new(
+            'mId' => RSMP::Message.make_m_id,
+            'cId' => c_id,
+            'aCId' => a_c_id
+          )
+          if collect
+            collect_task = task.async do
+              RSMP::AlarmCollector.new(self,
+                                       m_id: message.m_id,
+                                       num: 1,
+                                       matcher: {
+                                         'cId' => c_id,
+                                         'aCI' => a_c_id,
+                                         'aSp' => 'Suspend',
+                                         'sS' => /^notSuspended/i
+                                       },
+                                       timeout: node.supervisor_settings.dig('default', 'timeouts', 'alarm')).collect!
+            end
+            send_message message
+            [message, collect_task.wait.first]
+          else
+            send_message message
+            message
+          end
+        end
       end
     end
   end

@@ -722,6 +722,77 @@ module RSMP
         end
       end
 
+      # Wait for all signal groups to match state (as regex string, e.g. 'c' for yellow flash).
+      def wait_for_groups(state, timeout:)
+        regex = /^#{state}+$/
+        wait_for_status(
+          "all groups to reach state #{state}",
+          [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => regex }],
+          timeout: timeout
+        )
+      end
+
+      # Wait for the TLC to return to normal control mode (functional position NormalControl,
+      # yellow flash off, startup mode off).
+      def wait_for_normal_control(timeout: nil)
+        wait_for_status(
+          'normal control on, yellow flash off, startup mode off',
+          [
+            { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
+            { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
+            { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
+          ],
+          timeout: timeout
+        )
+      end
+
+      # Read cycle times for all plans via S0028.
+      # Returns a hash of plan_nr (Integer) => cycle_time (Integer, seconds).
+      def read_cycle_times(options: {})
+        validate_ready 'read cycle times'
+        timeout = options[:timeout] || @timeouts['status_response']
+        result = request_status main.c_id,
+                                [{ 'sCI' => 'S0028', 'n' => 'status' }],
+                                collect!: { timeout: timeout }
+        result[:collector].messages.first.attributes['sS'].first['s'].split(',').to_h do |item|
+          item.split('-').map(&:to_i)
+        end
+      end
+
+      # Read the current signal plan number via S0014.
+      # Returns the plan number as an Integer.
+      def read_current_plan(options: {})
+        validate_ready 'read current plan'
+        timeout = options[:timeout] || @timeouts['status_response']
+        result = request_status main.c_id,
+                                [{ 'sCI' => 'S0014', 'n' => 'status' }],
+                                collect!: { timeout: timeout }
+        result[:collector].messages.first.attributes['sS'].first['s'].to_i
+      end
+
+      # Read the value of a single dynamic band for a given plan and band index via S0023.
+      # Returns the band value as an Integer, or nil if not found.
+      def read_dynamic_band(plan:, band:, options: {})
+        validate_ready 'read dynamic band'
+        timeout = options[:timeout] || @timeouts['status_response']
+        result = request_status main.c_id,
+                                [{ 'sCI' => 'S0023', 'n' => 'status' }],
+                                collect!: { timeout: timeout }
+        result[:collector].messages.first.attributes['sS'].first['s'].split(',').each do |item|
+          some_plan, some_band, value = item.split('-')
+          return value.to_i if some_plan.to_i == plan.to_i && some_band.to_i == band.to_i
+        end
+        nil
+      end
+
+      # Returns true if sOc (send on change) should be used.
+      # sOc is supported in RSMP core version 3.1.5 and later.
+      def use_soc?
+        return false unless core_version
+
+        RSMP::Proxy.version_meets_requirement?(core_version, '>=3.1.5')
+      end
+
       private
 
       # Automatically subscribe to key TLC statuses to keep proxy in sync.
@@ -741,14 +812,6 @@ module RSMP
           { 'sCI' => 'S0015', 'n' => 'status', 'sOc' => true }
         ]
         subscribe_to_status main.c_id, status_list, @timeouts
-      end
-
-      # Returns true if sOc (send on change) should be used.
-      # sOc is supported in RSMP core version 3.1.5 and later.
-      def use_soc?
-        return false unless core_version
-
-        RSMP::Proxy.version_meets_requirement?(core_version, '>=3.1.5')
       end
 
       # Look up security code for a given level from site settings.

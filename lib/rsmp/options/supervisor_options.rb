@@ -14,7 +14,9 @@ module RSMP
             },
             'timeouts' => {
               'watchdog' => 2,
-              'acknowledgement' => 2
+              'acknowledgement' => 2,
+              'command' => 10,
+              'status_response' => 10
             }
           }
         }
