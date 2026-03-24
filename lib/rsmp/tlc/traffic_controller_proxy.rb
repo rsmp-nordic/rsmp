@@ -115,6 +115,33 @@ module RSMP
         request_status main.c_id, status_list, @timeouts.merge(options)
       end
 
+      # Subscribe to one or more statuses and wait until they match the expected values.
+      # Raises RSMP::TimeoutError if the values don't match within the timeout.
+      #
+      # status_list items: { 'sCI' => ..., 'n' => ..., 's' => <expected value or Regexp> }
+      # component_id defaults to the main TLC component.
+      # timeout defaults to @timeouts['command'].
+      def wait_for_status(description, status_list, update_rate: 0, timeout: nil, component_id: nil)
+        validate_ready 'wait for status'
+        component_id ||= main.c_id
+        timeout ||= @timeouts['command']
+
+        subscribe_list = status_list.map do |item|
+          entry = item.merge('uRt' => update_rate.to_s)
+          entry = entry.merge('sOc' => true) if use_soc?
+          entry
+        end
+
+        log "Wait for #{description}", level: :debug
+
+        begin
+          subscribe_to_status component_id, subscribe_list, collect!: { timeout: timeout }
+        ensure
+          unsubscribe_list = status_list.map { |item| item.slice('sCI', 'n') }
+          unsubscribe_to_status component_id, unsubscribe_list
+        end
+      end
+
       private
 
       # Automatically subscribe to key TLC statuses to keep proxy in sync.
@@ -122,6 +149,16 @@ module RSMP
         subscribe_to_timeplan if main
       end
 
+      # Returns true if sOc (send on change) should be used.
+      # sOc is supported in RSMP core version 3.1.5 and later.
+      def use_soc?
+        return false unless core_version
+
+        RSMP::Proxy.version_meets_requirement?(core_version, '>=3.1.5')
+      end
+
+      # Look up security code for a given level from site settings.
+      # Expects @site_settings['security_codes'] = { 1 => 'code1', 2 => 'code2' }
       def security_code_for(level)
         codes = @site_settings&.dig('security_codes') || {}
         code = codes[level] || codes[level.to_s]

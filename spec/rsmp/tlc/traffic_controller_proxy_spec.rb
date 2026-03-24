@@ -102,11 +102,85 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       expect { proxy.subscribe_to_timeplan }.to raise_error(RSMP::NotReady)
     end
 
+    it 'validates proxy is ready before wait_for_status' do
+      expect do
+        proxy.wait_for_status('test status', [{ 'sCI' => 'S0014', 'n' => 'status', 's' => '1' }])
+      end.to raise_error(RSMP::NotReady)
+    end
+
     it 'raises error when main component is missing for set_timeplan' do
       proxy.instance_variable_set(:@main, nil)
       proxy.instance_variable_set(:@state, :ready)
 
       expect { proxy.set_timeplan(3) }.to raise_error('TLC main component not found')
+    end
+  end
+
+  describe 'security_code_for' do
+    context 'when security codes are configured with integer keys' do
+      before do
+        proxy.instance_variable_set(:@site_settings, { 'security_codes' => { 1 => 'alpha', 2 => 'beta' } })
+      end
+
+      it 'returns the code for level 1' do
+        expect(proxy.send(:security_code_for, 1)).to eq('alpha')
+      end
+
+      it 'returns the code for level 2' do
+        expect(proxy.send(:security_code_for, 2)).to eq('beta')
+      end
+    end
+
+    context 'when security codes are configured with string keys' do
+      before do
+        proxy.instance_variable_set(:@site_settings, { 'security_codes' => { '1' => 'alpha', '2' => 'beta' } })
+      end
+
+      it 'returns the code for level 1 (string key fallback)' do
+        expect(proxy.send(:security_code_for, 1)).to eq('alpha')
+      end
+    end
+
+    context 'when security code is missing' do
+      before do
+        proxy.instance_variable_set(:@site_settings, { 'security_codes' => {} })
+      end
+
+      it 'raises ArgumentError' do
+        expect { proxy.send(:security_code_for, 2) }.to raise_error(ArgumentError, /level 2/)
+      end
+    end
+
+    context 'when site_settings is nil' do
+      before do
+        proxy.instance_variable_set(:@site_settings, nil)
+      end
+
+      it 'raises ArgumentError' do
+        expect { proxy.send(:security_code_for, 1) }.to raise_error(ArgumentError, /level 1/)
+      end
+    end
+  end
+
+  describe 'use_soc?' do
+    it 'returns false when core_version is nil' do
+      proxy.instance_variable_set(:@core_version, nil)
+      expect(proxy.send(:use_soc?)).to be false
+    end
+
+    it 'returns false for core version below 3.1.5' do
+      proxy.instance_variable_set(:@core_version, '3.1.4')
+      expect(proxy.send(:use_soc?)).to be false
+    end
+
+    it 'returns true for core version 3.1.5' do
+      proxy.instance_variable_set(:@core_version, '3.1.5')
+      expect(proxy.send(:use_soc?)).to be true
+    end
+
+    it 'returns true for core version above 3.1.5' do
+      proxy.instance_variable_set(:@core_version, '3.2.0')
+      expect(proxy.send(:use_soc?)).to be true
     end
   end
 end
