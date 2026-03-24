@@ -172,6 +172,7 @@ module RSMP
         confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => situation.to_s }]
         send_command_with_confirm main.c_id, command_list, options, "traffic situation #{situation}", confirm_status
       end
+
       def unset_traffic_situation(options: {})
         validate_ready 'unset traffic situation'
         raise 'TLC main component not found' unless main
@@ -226,7 +227,8 @@ module RSMP
 
         active_status = active ? 'True' : 'False'
         confirm_status = [{ 'sCI' => 'S0006', 'n' => 'status', 's' => active_status }]
-        send_command_with_confirm main.c_id, command_list, options, "emergency route #{route} #{active ? 'active' : 'inactive'}", confirm_status
+        send_command_with_confirm main.c_id, command_list, options,
+                                  "emergency route #{route} #{active ? 'active' : 'inactive'}", confirm_status
       end
 
       # M0006 — Set a single input to a given status.
@@ -275,7 +277,8 @@ module RSMP
           'v' => security_code.to_s
         }]
 
-        confirm_status = [{ 'sCI' => 'S0009', 'n' => 'status', 's' => /^#{Regexp.escape(status.to_s)}(,#{Regexp.escape(status.to_s)})*$/ }]
+        confirm_status = [{ 'sCI' => 'S0009', 'n' => 'status',
+                            's' => /^#{Regexp.escape(status.to_s)}(,#{Regexp.escape(status.to_s)})*$/ }]
         send_command_with_confirm main.c_id, command_list, options, "fixed time #{status}", confirm_status
       end
 
@@ -834,7 +837,9 @@ module RSMP
       # If options[:confirm] is set, timeout errors are silently swallowed.
       # If options[:confirm!] is set, timeout errors are raised.
       def send_command_with_confirm(component_id, command_list, options, confirm_description, confirm_status_list)
-        result = send_command component_id, command_list, @timeouts.merge(options.reject { |k, _| %i[confirm confirm!].include?(k) })
+        result = send_command component_id, command_list, @timeouts.merge(options.reject { |k, _|
+          %i[confirm confirm!].include?(k)
+        })
 
         confirm_opts = options[:confirm] || options[:confirm!]
         return result unless confirm_opts
