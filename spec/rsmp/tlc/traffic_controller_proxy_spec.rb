@@ -36,6 +36,9 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       expect(proxy.current_plan).to be_nil
       expect(proxy.plan_source).to be_nil
       expect(proxy.timeplan).to be_nil
+      expect(proxy.functional_position).to be_nil
+      expect(proxy.yellow_flash).to be_nil
+      expect(proxy.traffic_situation).to be_nil
     end
 
     it 'retrieves timeouts from supervisor settings' do
@@ -48,11 +51,13 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   end
 
   describe 'status value storage' do
-    it 'updates timeplan and plan_source when processing S0014 status updates' do
+    before do
       main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
       proxy.instance_variable_set(:@main, main_component)
       proxy.instance_variable_set(:@state, :connected)
+    end
 
+    it 'updates timeplan and plan_source when processing S0014 status updates' do
       status_update = RSMP::StatusUpdate.new(
         'mId' => 'abc123',
         'cId' => 'TLC001',
@@ -70,17 +75,48 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       expect(proxy.plan_source).to eq('forced')
     end
 
-    it 'returns timeplan attributes from main component' do
-      main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
-      main_component.instance_variable_set(:@statuses, { 'S0014' => { 'status' => { 's' => '2', 'q' => 'recent' } } })
-      proxy.instance_variable_set(:@main, main_component)
+    it 'caches functional_position from S0007 status updates' do
+      status_update = RSMP::StatusUpdate.new(
+        'mId' => 'abc124',
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0007', 'n' => 'status', 's' => 'True', 'q' => 'recent' }]
+      )
+      proxy.process_status_update(status_update)
+      expect(proxy.functional_position).to eq('True')
+    end
 
+    it 'caches yellow_flash from S0011 status updates' do
+      status_update = RSMP::StatusUpdate.new(
+        'mId' => 'abc125',
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0011', 'n' => 'status', 's' => 'True,True', 'q' => 'recent' }]
+      )
+      proxy.process_status_update(status_update)
+      expect(proxy.yellow_flash).to eq('True,True')
+    end
+
+    it 'caches traffic_situation from S0015 status updates' do
+      status_update = RSMP::StatusUpdate.new(
+        'mId' => 'abc126',
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0015', 'n' => 'status', 's' => '3', 'q' => 'recent' }]
+      )
+      proxy.process_status_update(status_update)
+      expect(proxy.traffic_situation).to eq('3')
+    end
+
+    it 'returns timeplan attributes from main component' do
+      proxy.instance_variable_get(:@main).instance_variable_set(
+        :@statuses, { 'S0014' => { 'status' => { 's' => '2', 'q' => 'recent' } } }
+      )
       expect(proxy.timeplan_attributes).to eq({ 'status' => { 's' => '2', 'q' => 'recent' } })
     end
 
     it 'returns empty hash when no main component' do
       proxy.instance_variable_set(:@main, nil)
-
       expect(proxy.timeplan_attributes).to eq({})
     end
   end
