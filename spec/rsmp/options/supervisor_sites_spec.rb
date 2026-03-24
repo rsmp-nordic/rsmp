@@ -2,7 +2,7 @@ RSpec.describe 'Supervisor options: sites map validation' do
   it 'accepts supervisor settings with a sites map where each site conforms to supervisor_site.json' do
     settings = {
       'port' => 12_111,
-      'guest' => { 'sxl' => 'tlc' },
+      'default' => { 'sxl' => 'tlc' },
       'sites' => {
         'TLC001' => {
           'sxl' => 'tlc',

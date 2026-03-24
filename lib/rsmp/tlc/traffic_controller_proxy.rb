@@ -21,7 +21,7 @@ module RSMP
         super
         @timeplan_source = nil
         @timeplan = nil
-        @timeouts = node.supervisor_settings.dig('guest', 'timeouts') || {}
+        @timeouts = node.supervisor_settings.dig('default', 'timeouts') || {}
       end
 
       def handshake_complete

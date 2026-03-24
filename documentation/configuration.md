@@ -54,7 +54,7 @@ log:
 
 ```yaml
 port: 12111
-guest:
+default:
   sxl: tlc
   intervals:
     timer: 0.1
@@ -89,8 +89,8 @@ Top-level supervisor settings
 - `ips`: string or array — `'all'` or a list of allowed IP addresses.
 - `site_id`: string — optional site identifier for the supervisor itself.
 - `max_sites`: integer — limit concurrent connected sites.
-- `guest`: object — default settings applied to sites that don't have a specific `sites` entry. Contains keys:
-  - `sxl`: string — default SXL type for guest sites (e.g. `tlc`).
+- `default`: object — default settings applied to sites that don't have a specific `sites` entry. Contains keys:
+  - `sxl`: string — default SXL type for default sites (e.g. `tlc`).
   - `sxl_version`, `core_version`: strings for version hints.
   - `intervals`: object with `timer`, `watchdog` (numbers, seconds).
   - `timeouts`: object with `watchdog`, `acknowledgement` (numbers, seconds).
@@ -101,7 +101,7 @@ Top-level supervisor settings
 
 Each key under `sites` is a site id (for example `TLC001`) and the value is the supervisor-side configuration for that site. These settings tell the supervisor how to handle incoming connections from that specific site (which SXL/schema to use, per-site timeouts, component layout, etc.). Per-site configuration follows the supervisor-side schema at `lib/rsmp/options/schemas/supervisor_site.json`.
 
-If a connecting site's id is not present under `sites`, the supervisor will fall back to the `guest` settings. The runtime configuration check will raise `RSMP::ConfigurationError` if a site entry is present but missing the required `sxl` key.
+If a connecting site's id is not present under `sites`, the supervisor will fall back to the `default` settings. The runtime configuration check will raise `RSMP::ConfigurationError` if a site entry is present but missing the required `sxl` key.
 
 
 Common per-site keys
