@@ -163,8 +163,8 @@ module RSMP
     def apply_core_version_option(settings)
       return unless options[:core]
 
-      settings['guest'] ||= {}
-      settings['guest']['core_version'] = options[:core]
+      settings['default'] ||= {}
+      settings['default']['core_version'] = options[:core]
     end
 
     def apply_log_options(log_settings)

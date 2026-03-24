@@ -87,22 +87,22 @@ RSpec.describe RSMP::Options do
   end
 
   describe RSMP::Supervisor::Options do
-    it 'applies defaults for guest settings' do
+    it 'applies defaults settings' do
       options = described_class.new({})
 
       expect(options.to_h['port']).to eq(12_111)
-      expect(options.to_h['guest']['sxl']).to eq('tlc')
+      expect(options.to_h['default']['sxl']).to eq('tlc')
     end
 
     it 'rejects invalid config files on load' do
       file = Tempfile.new(['rsmp-supervisor-invalid', '.yaml'])
       file.write({
-        'guest' => 'invalid'
+        'default' => 'invalid'
       }.to_yaml)
       file.close
 
       expect { described_class.load_file(file.path) }
-        .to raise_error(RSMP::ConfigurationError, /guest/)
+        .to raise_error(RSMP::ConfigurationError, /default/)
     ensure
       file.close
       file.unlink

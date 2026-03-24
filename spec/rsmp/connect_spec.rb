@@ -13,7 +13,7 @@ RSpec.describe 'Connecting' do
       },
       supervisor_settings: {
         'port' => 13_111,
-        'guest' => { 'sxl' => 'tlc' }
+        'default' => { 'sxl' => 'tlc' }
       },
       log_settings: { 'active' => false }
     }
