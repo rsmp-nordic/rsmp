@@ -223,4 +223,58 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       expect(proxy.send(:use_soc?)).to be true
     end
   end
+
+  describe 'functional_position_confirm_status' do
+    it 'returns S0011 True pattern for YellowFlash' do
+      result = proxy.send(:functional_position_confirm_status, 'YellowFlash')
+      expect(result).to eq([{ 'sCI' => 'S0011', 'n' => 'status', 's' => /^True(,True)*$/ }])
+    end
+
+    it 'returns S0007 False pattern for Dark' do
+      result = proxy.send(:functional_position_confirm_status, 'Dark')
+      expect(result).to eq([{ 'sCI' => 'S0007', 'n' => 'status', 's' => /^False(,False)*$/ }])
+    end
+
+    it 'returns S0007, S0011, S0005 for NormalControl' do
+      result = proxy.send(:functional_position_confirm_status, 'NormalControl')
+      expect(result).to eq([
+        { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
+        { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
+        { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
+      ])
+    end
+
+    it 'returns empty array for unknown status' do
+      result = proxy.send(:functional_position_confirm_status, 'Unknown')
+      expect(result).to eq([])
+    end
+  end
+
+  describe 'send_command_with_confirm' do
+    before do
+      proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true))
+      proxy.instance_variable_set(:@site_settings, { 'security_codes' => { 2 => '2222' } })
+    end
+
+    it 'strips confirm: and confirm!: from options passed to send_command' do
+      options = { confirm: { timeout: 5 } }
+      stripped = options.reject { |k, _| %i[confirm confirm!].include?(k) }
+      expect(stripped).not_to have_key(:confirm)
+      expect(stripped).not_to have_key(:confirm!)
+    end
+
+    it 'returns without waiting when no confirm option is given' do
+      expect(proxy).not_to receive(:wait_for_status)
+      proxy.instance_variable_set(:@state, :ready)
+      allow(proxy).to receive(:send_command).and_return({ sent: double })
+      proxy.send(:send_command_with_confirm, 'TLC001', [], {}, 'test', [{ 'sCI' => 'S0014', 'n' => 'status', 's' => '1' }])
+    end
+
+    it 'skips wait_for_status when confirm_status_list is nil' do
+      expect(proxy).not_to receive(:wait_for_status)
+      proxy.instance_variable_set(:@state, :ready)
+      allow(proxy).to receive(:send_command).and_return({ sent: double })
+      proxy.send(:send_command_with_confirm, 'TLC001', [], { confirm: { timeout: 1 } }, 'test', nil)
+    end
+  end
 end
