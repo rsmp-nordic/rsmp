@@ -90,22 +90,62 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true))
     end
 
-    it 'validates proxy is ready before set_timeplan' do
-      expect { proxy.set_timeplan(3) }.to raise_error(RSMP::NotReady)
+    {
+      set_timeplan: [3],
+      set_functional_position: ['YellowFlash'],
+      set_traffic_situation: [1],
+      unset_traffic_situation: [],
+      set_fixed_time: ['True'],
+      set_inputs: ['00000000'],
+      set_week_table: ['0-1,0-1,0-1,0-1,0-1,0-6,0-6'],
+      set_day_table: ['0-22:0-0'],
+      set_trigger_level: ['1'],
+      set_dynamic_bands_timeout: ['20'],
+      fetch_signal_plan: [],
+      subscribe_to_timeplan: []
+    }.each do |method, args|
+      it "validates proxy is ready before #{method}" do
+        expect { proxy.send(method, *args) }.to raise_error(RSMP::NotReady)
+      end
     end
 
-    it 'validates proxy is ready before fetch_signal_plan' do
-      expect { proxy.fetch_signal_plan }.to raise_error(RSMP::NotReady)
-    end
-
-    it 'validates proxy is ready before subscribe_to_timeplan' do
-      expect { proxy.subscribe_to_timeplan }.to raise_error(RSMP::NotReady)
+    {
+      set_emergency_route: [{ route: 1, active: true }],
+      set_input: [{ input: 1, status: 'True' }],
+      set_dynamic_bands: [{ plan: 1, status: '1-1' }],
+      set_offset: [{ plan: 1, offset: 0 }],
+      set_cycle_time: [{ plan: 1, cycle_time: 6 }],
+      force_input: [{ input: 1, status: 'True', value: 'True' }],
+      force_output: [{ output: 1, status: 'True', value: 'True' }],
+      set_security_code: [{ level: 2, old_code: '0000', new_code: '1111' }]
+    }.each do |method, kwargs|
+      it "validates proxy is ready before #{method}" do
+        expect { proxy.send(method, **kwargs.first) }.to raise_error(RSMP::NotReady)
+      end
     end
 
     it 'validates proxy is ready before wait_for_status' do
       expect do
         proxy.wait_for_status('test status', [{ 'sCI' => 'S0014', 'n' => 'status', 's' => '1' }])
       end.to raise_error(RSMP::NotReady)
+    end
+
+    it 'validates proxy is ready before force_detector_logic' do
+      expect do
+        proxy.force_detector_logic('DL1', status: 'True', mode: 'True')
+      end.to raise_error(RSMP::NotReady)
+    end
+
+    it 'validates proxy is ready before order_signal_start' do
+      expect { proxy.order_signal_start('SG1') }.to raise_error(RSMP::NotReady)
+    end
+
+    it 'validates proxy is ready before order_signal_stop' do
+      expect { proxy.order_signal_stop('SG1') }.to raise_error(RSMP::NotReady)
+    end
+
+    it 'validates proxy is ready before set_clock' do
+      expect { proxy.set_clock(Time.now) }.to raise_error(RSMP::NotReady)
     end
 
     it 'raises error when main component is missing for set_timeplan' do
