@@ -43,7 +43,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
 
     it 'retrieves timeouts from supervisor settings, merged with defaults' do
       expected = RSMP::Supervisor::Options.new({}).to_h.dig('default', 'timeouts')
-                                                   .merge(supervisor_settings['default']['timeouts'])
+                                          .merge(supervisor_settings['default']['timeouts'])
       expect(proxy.timeouts).to eq(expected)
     end
 
@@ -276,10 +276,10 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     it 'returns S0007, S0011, S0005 for NormalControl' do
       result = proxy.send(:functional_position_confirm_status, 'NormalControl')
       expect(result).to eq([
-        { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
-        { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
-        { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
-      ])
+                             { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
+                             { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
+                             { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
+                           ])
     end
 
     it 'returns empty array for unknown status' do
