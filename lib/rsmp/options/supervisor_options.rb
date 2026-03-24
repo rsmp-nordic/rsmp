@@ -6,7 +6,7 @@ module RSMP
         {
           'port' => 12_111,
           'ips' => 'all',
-          'guest' => {
+          'default' => {
             'sxl' => 'tlc',
             'intervals' => {
               'timer' => 1,

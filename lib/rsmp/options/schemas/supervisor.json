@@ -12,7 +12,7 @@
     },
     "site_id": { "type": "string" },
     "max_sites": { "type": "integer" },
-    "guest": {
+    "default": {
       "type": "object",
       "properties": {
         "sxl": { "type": "string" },

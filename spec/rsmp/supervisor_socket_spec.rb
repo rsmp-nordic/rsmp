@@ -2,7 +2,7 @@ RSpec.describe RSMP::Supervisor do
   let(:supervisor_settings) do
     {
       'port' => 13_111, # use special port to avoid sites connection during test
-      'guest' => {
+      'default' => {
         'sxl' => 'tlc'
       }
     }

@@ -6,13 +6,13 @@ module RSMP
         def handle_supervisor_settings(supervisor_settings)
           options = RSMP::Supervisor::Options.new(supervisor_settings || {})
           @supervisor_settings = options.to_h
-          @core_version = @supervisor_settings.dig('guest', 'core_version')
+          @core_version = @supervisor_settings.dig('default', 'core_version')
           check_site_sxl_types
         end
 
         def check_site_sxl_types
           sites = @supervisor_settings['sites'].clone || {}
-          sites['guest'] = @supervisor_settings['guest']
+          sites['default'] = @supervisor_settings['default']
           sites.each do |site_id, settings|
             raise RSMP::ConfigurationError, "Configuration for site '#{site_id}' is empty" unless settings
 
@@ -29,13 +29,13 @@ module RSMP
           return {} unless @supervisor_settings['sites']
 
           @supervisor_settings['sites'].each_pair do |id, settings|
-            return settings if id == 'guest' || id == site_id
+            return settings if id == 'default' || id == site_id
           end
           raise HandshakeError, "site id #{site_id} unknown"
         end
 
         def ip_to_site_settings(ip)
-          @supervisor_settings['sites'][ip] || @supervisor_settings['sites']['guest']
+          @supervisor_settings['sites'][ip] || @supervisor_settings['sites']['default']
         end
       end
     end

@@ -163,10 +163,10 @@ module RSMP
         return @settings['sites'][@site_id]
       end
 
-      @settings['guest']
-      if @settings['guest']
-        log 'Using site settings for guest', level: :debug
-        return @settings['guest']
+      @settings['default']
+      if @settings['default']
+        log 'Using default site settings', level: :debug
+        return @settings['default']
       end
 
       nil

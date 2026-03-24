@@ -40,7 +40,7 @@ module RSMP
           return if @supervisor_settings['ips'] == 'all'
           return if @supervisor_settings['ips'].include? ip
 
-          raise ConnectionError, 'guest ip not allowed'
+          raise ConnectionError, 'default ip not allowed'
         end
 
         def check_max_sites

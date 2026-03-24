@@ -2,7 +2,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
   let(:supervisor_settings) do
     {
       'port' => 13_113,
-      'guest' => {
+      'default' => {
         'sxl' => 'tlc',
         'type' => 'tlc',
         'timeouts' => {
@@ -39,7 +39,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
     end
 
     it 'retrieves timeouts from supervisor settings' do
-      expect(proxy.timeouts).to eq(supervisor_settings['guest']['timeouts'])
+      expect(proxy.timeouts).to eq(supervisor_settings['default']['timeouts'])
     end
 
     it 'is a subclass of SiteProxy' do

@@ -4,9 +4,9 @@ Feature: Run supervisor
     Given a directory named "features/fixtures"
     And a file named "features/fixtures/supervisor_invalid.yaml" with:
     """
-    guest: invalid
+    default: invalid
     """
     When I run `rsmp supervisor -c features/fixtures/supervisor_invalid.yaml`
     Then the output should contain "Invalid configuration"
-    Then the output should contain "/guest"
+    Then the output should contain "/default"
     Then the output should contain "expected object, got string"
