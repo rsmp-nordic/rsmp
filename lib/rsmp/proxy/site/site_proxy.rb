@@ -158,15 +158,20 @@ module RSMP
     end
 
     def find_site_settings(_site_id)
-      if @settings['sites'] && @settings['sites'][@site_id]
-        log "Using site settings for site id #{@site_id}", level: :debug
-        return @settings['sites'][@site_id]
+      base = @settings['default'] || {}
+
+      if @settings['sites']
+        site_specific = @settings['sites'][@site_id] || @settings['sites']['default']
+        if site_specific
+          label = @settings['sites'][@site_id] ? "site id #{@site_id}" : 'default'
+          log "Using #{label} site settings", level: :debug
+          return base.deep_merge(site_specific)
+        end
       end
 
-      @settings['default']
-      if @settings['default']
+      unless base.empty?
         log 'Using default site settings', level: :debug
-        return @settings['default']
+        return base
       end
 
       nil
