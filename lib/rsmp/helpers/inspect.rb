@@ -11,7 +11,7 @@ module RSMP
   # Array#to_s and Hash#to_s usually show items, but here we show just number
   # of items, when the short form is requested.
   module Inspect
-    def inspector *short_items
+    def inspector(*short_items)
       instance_variables.map do |var_name|
         var = instance_variable_get(var_name)
         class_name = var.class.name

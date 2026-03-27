@@ -30,21 +30,16 @@ module RSMP
 
       def handshake_complete
         super
-        auto_subscribe_to_statuses
       end
 
       def subscribe_to_timeplan(options: {})
         validate_ready 'subscribe to timeplan'
 
-        status_list = [{
-          'sCI' => 'S0014',
-          'n' => 'status',
-          'sOc' => true
-        }, {
-          'sCI' => 'S0014',
-          'n' => 'source',
-          'sOc' => true
-        }]
+        status_list = [
+          { 'sCI' => 'S0014', 'n' => 'status', 'uRt' => '0' },
+          { 'sCI' => 'S0014', 'n' => 'source', 'uRt' => '0' }
+        ]
+        status_list.each { |item| item['sOc'] = true } if use_soc?
 
         merged_options = @timeouts.merge(options)
 
@@ -804,17 +799,6 @@ module RSMP
 
         subscribe_to_timeplan
         subscribe_to_key_statuses
-      end
-
-      # Subscribe to S0001, S0007, S0011, S0015 for automatic caching.
-      def subscribe_to_key_statuses
-        status_list = [
-          { 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'sOc' => true },
-          { 'sCI' => 'S0007', 'n' => 'status', 'sOc' => true },
-          { 'sCI' => 'S0011', 'n' => 'status', 'sOc' => true },
-          { 'sCI' => 'S0015', 'n' => 'status', 'sOc' => true }
-        ]
-        subscribe_to_status main.c_id, status_list, @timeouts
       end
 
       # Look up security code for a given level from site settings.
