@@ -97,6 +97,15 @@ module RSMP
           message
         end
 
+        # unsubscribes to all statuses (with all attributes) defined in the used SXL
+        def unsubscribe_from_all(component_id)
+          catalogue = RSMP::Schema.status_catalogue(@sxl, sxl_version)
+          status_list = catalogue.flat_map do |status_code_id, names|
+            names.map { |name| { 'sCI' => status_code_id.to_s, 'n' => name.to_s } }
+          end
+          unsubscribe_to_status component_id, status_list
+        end
+
         def process_status_update(message)
           component = find_component message.attribute('cId')
           component.check_repeat_values message, @status_subscriptions
