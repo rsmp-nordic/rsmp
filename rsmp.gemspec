@@ -37,5 +37,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'io-stream', '~> 0.10'
   spec.add_dependency 'logger', '~> 1.6'
   spec.add_dependency 'ostruct', '~> 0.6'
-  spec.add_dependency 'rsmp_schema', '~> 0.8'
+  spec.add_dependency 'rsmp_schema', '~> 0.10'
 end
