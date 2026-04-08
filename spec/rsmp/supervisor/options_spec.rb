@@ -1,4 +1,4 @@
-RSpec.describe 'Supervisor options: sites map validation' do
+RSpec.describe RSMP::Supervisor::Options do
   it 'accepts supervisor settings with a sites map where each site conforms to supervisor_site.json' do
     settings = {
       'port' => 12_111,
@@ -12,6 +12,6 @@ RSpec.describe 'Supervisor options: sites map validation' do
       }
     }
 
-    expect { RSMP::Supervisor::Options.new(settings) }.not_to raise_error
+    expect { described_class.new(settings) }.not_to raise_error
   end
 end

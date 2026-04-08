@@ -157,7 +157,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       force_output: [{ output: 1, status: 'True', value: 'True' }],
       set_security_code: [{ level: 2, old_code: '0000', new_code: '1111' }]
     }.each do |method, kwargs|
-      it "validates proxy is ready before #{method}" do
+      it "validates proxy is ready before #{method} with keyword args" do
         expect { proxy.send(method, **kwargs.first) }.to raise_error(RSMP::NotReady)
       end
     end
@@ -296,23 +296,25 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
 
     it 'strips confirm: and confirm!: from options passed to send_command' do
       options = { confirm: { timeout: 5 } }
-      stripped = options.reject { |k, _| %i[confirm confirm!].include?(k) }
+      stripped = options.except(:confirm, :confirm!)
       expect(stripped).not_to have_key(:confirm)
       expect(stripped).not_to have_key(:confirm!)
     end
 
     it 'returns without waiting when no confirm option is given' do
-      expect(proxy).not_to receive(:wait_for_status)
+      allow(proxy).to receive(:wait_for_status)
       proxy.instance_variable_set(:@state, :ready)
       allow(proxy).to receive(:send_command).and_return({ sent: double })
       proxy.send(:send_command_with_confirm, 'TLC001', [], {}, 'test', [{ 'sCI' => 'S0014', 'n' => 'status', 's' => '1' }])
+      expect(proxy).not_to have_received(:wait_for_status)
     end
 
     it 'skips wait_for_status when confirm_status_list is nil' do
-      expect(proxy).not_to receive(:wait_for_status)
+      allow(proxy).to receive(:wait_for_status)
       proxy.instance_variable_set(:@state, :ready)
       allow(proxy).to receive(:send_command).and_return({ sent: double })
       proxy.send(:send_command_with_confirm, 'TLC001', [], { confirm: { timeout: 1 } }, 'test', nil)
+      expect(proxy).not_to have_received(:wait_for_status)
     end
   end
 end
