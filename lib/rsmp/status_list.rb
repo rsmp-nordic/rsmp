@@ -12,6 +12,8 @@ module RSMP
 
     def initialize(input)
       @list = case input
+              when StatusList
+                input.to_a
               when Array
                 input
               when Hash
@@ -19,7 +21,7 @@ module RSMP
                   names.map { |name| { 'sCI' => code.to_s, 'n' => name.to_s } }
                 end
               else
-                raise ArgumentError, "StatusList requires an Array or Hash, got #{input.class}"
+                raise ArgumentError, "StatusList requires an Array, Hash, or StatusList, got #{input.class}"
               end
     end
 

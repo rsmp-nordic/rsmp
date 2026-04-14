@@ -7,16 +7,11 @@ module RSMP
         # Fetch the current signal plan from the remote TLC.
         def fetch_signal_plan(options: {})
           validate_ready 'fetch signal plan'
-
-          status_list = [{
-            'sCI' => 'S0014',
-            'n' => 'status'
-          }, {
-            'sCI' => 'S0014',
-            'n' => 'source'
-          }]
-
-          request_status main.c_id, status_list, @timeouts.merge(options)
+          timeout = options[:timeout] || @timeouts['status_response']
+          result = request_status({ S0014: %i[status source] }, within: timeout)
+          result[:collector].messages.last.attributes['sS'].each_with_object({}) do |item, hash|
+            hash[item['n']] = item['s']
+          end
         end
 
         # Subscribe to one or more statuses and wait until they match the expected values.
@@ -39,7 +34,7 @@ module RSMP
           log "Wait for #{description}", level: :debug
 
           begin
-            subscribe_to_status component_id, subscribe_list, collect!: { timeout: timeout }
+            subscribe_to_status subscribe_list, component: component_id, within: timeout
           ensure
             unsubscribe_list = status_list.map { |item| item.slice('sCI', 'n') }
             unsubscribe_to_status component_id, unsubscribe_list
@@ -75,9 +70,7 @@ module RSMP
         def read_cycle_times(options: {})
           validate_ready 'read cycle times'
           timeout = options[:timeout] || @timeouts['status_response']
-          result = request_status main.c_id,
-                                  [{ 'sCI' => 'S0028', 'n' => 'status' }],
-                                  collect!: { timeout: timeout }
+          result = request_status({ S0028: [:status] }, within: timeout)
           result[:collector].messages.first.attributes['sS'].first['s'].split(',').to_h do |item|
             item.split('-').map(&:to_i)
           end
@@ -88,9 +81,7 @@ module RSMP
         def read_current_plan(options: {})
           validate_ready 'read current plan'
           timeout = options[:timeout] || @timeouts['status_response']
-          result = request_status main.c_id,
-                                  [{ 'sCI' => 'S0014', 'n' => 'status' }],
-                                  collect!: { timeout: timeout }
+          result = request_status({ S0014: [:status] }, within: timeout)
           result[:collector].messages.first.attributes['sS'].first['s'].to_i
         end
 
@@ -99,9 +90,7 @@ module RSMP
         def read_dynamic_band(plan:, band:, options: {})
           validate_ready 'read dynamic band'
           timeout = options[:timeout] || @timeouts['status_response']
-          result = request_status main.c_id,
-                                  [{ 'sCI' => 'S0023', 'n' => 'status' }],
-                                  collect!: { timeout: timeout }
+          result = request_status({ S0023: [:status] }, within: timeout)
           extract_band_value(result, plan, band)
         end
 

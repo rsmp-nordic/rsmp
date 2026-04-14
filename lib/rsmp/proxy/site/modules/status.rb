@@ -3,13 +3,16 @@ module RSMP
     module Modules
       # Handles status requests, responses, subscriptions and updates
       module Status
-        def request_status(component, status_list, options = {})
+        def request_status(status_list, component: nil, within: nil, m_id: nil, validate: true)
           validate_ready 'request status'
-          m_id = options[:m_id] || RSMP::Message.make_m_id
+          component ||= main.c_id
+          m_id ||= RSMP::Message.make_m_id
+
+          list = RSMP::StatusList.new(status_list)
 
           # additional items can be used when verifying the response,
           # but must be removed from the request
-          request_list = status_list.map { |item| item.slice('sCI', 'n') }
+          request_list = list.map { |item| item.slice('sCI', 'n') }
 
           message = RSMP::StatusRequest.new({
                                               'cId' => component,
@@ -17,12 +20,12 @@ module RSMP
                                               'mId' => m_id
                                             })
           apply_nts_message_attributes message
-          send_and_optionally_collect message, options do |collect_options|
-            StatusCollector.new(
-              self,
-              status_list,
-              collect_options.merge(task: @task, m_id: m_id)
-            )
+          if within
+            collector = StatusCollector.new(self, list.to_a, timeout: within, m_id: m_id)
+            send_message_and_collect message, collector, validate: validate
+          else
+            send_message message, validate: validate
+            { sent: message }
           end
         end
 
@@ -49,27 +52,29 @@ module RSMP
           end
         end
 
-        def subscribe_to_status(component_id, status_list, options = {})
+        def subscribe_to_status(status_list, component: nil, within: nil, m_id: nil, validate: true)
           validate_ready 'subscribe to status'
-          m_id = options[:m_id] || RSMP::Message.make_m_id
-          subscribe_list = status_list.map { |item| item.slice('sCI', 'n', 'uRt', 'sOc') }
+          component ||= main.c_id
+          m_id ||= RSMP::Message.make_m_id
 
-          update_subscription(component_id, subscribe_list)
-          find_component component_id
+          list = RSMP::StatusList.new(status_list)
+          subscribe_list = list.map { |item| item.slice('sCI', 'n', 'uRt', 'sOc') }
+
+          update_subscription(component, subscribe_list)
+          find_component component
 
           message = RSMP::StatusSubscribe.new({
-                                                'cId' => component_id,
+                                                'cId' => component,
                                                 'sS' => subscribe_list,
                                                 'mId' => m_id
                                               })
           apply_nts_message_attributes message
-
-          send_and_optionally_collect message, options do |collect_options|
-            StatusCollector.new(
-              self,
-              status_list,
-              collect_options.merge(task: @task, m_id: m_id)
-            )
+          if within
+            collector = StatusCollector.new(self, list.to_a, timeout: within, m_id: m_id)
+            send_message_and_collect message, collector, validate: validate
+          else
+            send_message message, validate: validate
+            { sent: message }
           end
         end
 

@@ -6,7 +6,7 @@ module RSMP
       module System
         # M0103 — Change security code for a given level.
         # Does not use security_code_for since the codes are passed explicitly.
-        def set_security_code(level:, old_code:, new_code:, options: {})
+        def set_security_code(level:, old_code:, new_code:, within: nil)
           validate_ready 'set security code'
           raise 'TLC main component not found' unless main
 
@@ -26,16 +26,14 @@ module RSMP
             'n' => 'newSecurityCode',
             'v' => new_code.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, "security code level #{level}", nil
+          send_command_with_confirm main.c_id, command_list, "security code level #{level}", nil, within: within
         end
 
         # M0104 — Set the clock on the remote TLC. clock must respond to year/month/day/hour/min/sec.
-        def set_clock(clock, options: {})
+        def set_clock(clock, within: nil)
           validate_ready 'set clock'
           raise 'TLC main component not found' unless main
-
-          send_command_with_confirm main.c_id, clock_command_list(clock), options, 'clock', nil
+          send_command_with_confirm main.c_id, clock_command_list(clock), 'clock', nil, within: within
         end
 
         private

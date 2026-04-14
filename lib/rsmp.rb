@@ -12,6 +12,8 @@ require 'json_schemer'
 require 'async/queue'
 require 'rsmp_schema'
 
+require_relative 'rsmp/status_list'
+require_relative 'rsmp/command_list'
 require_relative 'rsmp/helpers/clock'
 require_relative 'rsmp/helpers/deep_merge'
 require_relative 'rsmp/helpers/error'
