@@ -10,8 +10,8 @@ module RSMP
         end
 
         # Send aggregated status for a component
-        def send_aggregated_status(component, options = {})
-          m_id = options[:m_id] || RSMP::Message.make_m_id
+        def send_aggregated_status(component, within: nil, m_id: nil)
+          m_id ||= RSMP::Message.make_m_id
 
           se = if Proxy.version_meets_requirement?(core_version, '<=3.1.2')
                  component.aggregated_status_bools.map { |bool| bool ? 'true' : 'false' }
@@ -29,8 +29,11 @@ module RSMP
                                                })
 
           apply_nts_message_attributes message
-          send_and_optionally_collect message, options do |collect_options|
-            Collector.new self, collect_options.merge(task: @task, type: 'MessageAck')
+          if within
+            collector = Collector.new(self, timeout: within)
+            send_message_and_collect message, collector
+          else
+            send_message message
           end
         end
 

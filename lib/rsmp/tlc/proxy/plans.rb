@@ -5,7 +5,7 @@ module RSMP
       # Covers time plans, week/day tables, bands, offsets, and cycle times.
       module Plans
         # M0014 — Set dynamic bands for a signal plan.
-        def set_dynamic_bands(plan:, status:, options: {})
+        def set_dynamic_bands(plan:, status:, within: nil)
           validate_ready 'set dynamic bands'
           raise 'TLC main component not found' unless main
 
@@ -27,12 +27,11 @@ module RSMP
             'n' => 'plan',
             'v' => plan.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, "dynamic bands plan #{plan}", nil
+          send_command_with_confirm main.c_id, command_list, "dynamic bands plan #{plan}", nil, within: within
         end
 
         # M0023 — Set timeout for dynamic bands.
-        def set_dynamic_bands_timeout(status, options: {})
+        def set_dynamic_bands_timeout(status, within: nil)
           validate_ready 'set dynamic bands timeout'
           raise 'TLC main component not found' unless main
 
@@ -49,12 +48,11 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, "dynamic bands timeout #{status}", nil
+          send_command_with_confirm main.c_id, command_list, "dynamic bands timeout #{status}", nil, within: within
         end
 
         # M0015 — Set offset for a signal plan.
-        def set_offset(plan:, offset:, options: {})
+        def set_offset(plan:, offset:, within: nil)
           validate_ready 'set offset'
           raise 'TLC main component not found' unless main
 
@@ -76,12 +74,11 @@ module RSMP
             'n' => 'plan',
             'v' => plan.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, "offset plan #{plan} to #{offset}", nil
+          send_command_with_confirm main.c_id, command_list, "offset plan #{plan} to #{offset}", nil, within: within
         end
 
         # Set the timeplan (signal plan) on the remote TLC.
-        def set_timeplan(plan_nr, options: {})
+        def set_timeplan(plan_nr, within: nil)
           validate_ready 'set timeplan'
           raise 'TLC main component not found' unless main
 
@@ -103,13 +100,12 @@ module RSMP
             'n' => 'timeplan',
             'v' => plan_nr.to_s
           }]
-
           confirm_status = [{ 'sCI' => 'S0014', 'n' => 'status', 's' => plan_nr.to_s }]
-          send_command_with_confirm main.c_id, command_list, options, "timeplan #{plan_nr}", confirm_status
+          send_command_with_confirm main.c_id, command_list, "timeplan #{plan_nr}", confirm_status, within: within
         end
 
         # M0016 — Set week table (mapping week days to traffic situations).
-        def set_week_table(status, options: {})
+        def set_week_table(status, within: nil)
           validate_ready 'set week table'
           raise 'TLC main component not found' unless main
 
@@ -126,12 +122,11 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, 'week table', nil
+          send_command_with_confirm main.c_id, command_list, 'week table', nil, within: within
         end
 
         # M0017 — Set day table (mapping time periods to signal plans).
-        def set_day_table(status, options: {})
+        def set_day_table(status, within: nil)
           validate_ready 'set day table'
           raise 'TLC main component not found' unless main
 
@@ -148,12 +143,11 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, 'day table', nil
+          send_command_with_confirm main.c_id, command_list, 'day table', nil, within: within
         end
 
         # M0018 — Set cycle time for a signal plan.
-        def set_cycle_time(plan:, cycle_time:, options: {})
+        def set_cycle_time(plan:, cycle_time:, within: nil)
           validate_ready 'set cycle time'
           raise 'TLC main component not found' unless main
 
@@ -175,12 +169,11 @@ module RSMP
             'n' => 'plan',
             'v' => plan.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, "cycle time plan #{plan} to #{cycle_time}", nil
+          send_command_with_confirm main.c_id, command_list, "cycle time plan #{plan} to #{cycle_time}", nil, within: within
         end
 
         # M0010 — Order signal start for a signal group component.
-        def order_signal_start(component_id, options: {})
+        def order_signal_start(component_id, within: nil)
           validate_ready 'order signal start'
 
           security_code = security_code_for(2)
@@ -196,12 +189,11 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-
-          send_command_with_confirm component_id, command_list, options, "signal start #{component_id}", nil
+          send_command_with_confirm component_id, command_list, "signal start #{component_id}", nil, within: within
         end
 
         # M0011 — Order signal stop for a signal group component.
-        def order_signal_stop(component_id, options: {})
+        def order_signal_stop(component_id, within: nil)
           validate_ready 'order signal stop'
 
           security_code = security_code_for(2)
@@ -217,8 +209,7 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-
-          send_command_with_confirm component_id, command_list, options, "signal stop #{component_id}", nil
+          send_command_with_confirm component_id, command_list, "signal stop #{component_id}", nil, within: within
         end
       end
     end

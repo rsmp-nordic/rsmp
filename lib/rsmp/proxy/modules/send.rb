@@ -47,23 +47,16 @@ module RSMP
           end
         end
 
-        def send_and_optionally_collect(message, options)
-          collect_options = options[:collect] || options[:collect!]
-          if collect_options
-            task = @task.async do |task|
-              task.annotate 'send_and_optionally_collect'
-              collector = yield collect_options     # call block to create collector
-              collector.collect
-              collector.ok! if options[:collect!]   # raise any errors if the bang version was specified
-              collector
-            end
+        def send_message_and_collect(message, collector, validate: true)
+          task = @task.async do |t|
+            t.annotate 'send_message_and_collect'
+            collector.collect
+            raise collector.error if collector.error
 
-            send_message message, validate: options[:validate]
-            { sent: message, collector: task.wait }
-          else
-            send_message message, validate: options[:validate]
-            { sent: message }
+            collector
           end
+          send_message message, validate: validate
+          { sent: message, collector: task.wait }
         end
 
         def apply_nts_message_attributes(message)

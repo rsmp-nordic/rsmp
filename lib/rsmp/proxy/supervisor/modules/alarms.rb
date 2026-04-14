@@ -3,9 +3,12 @@ module RSMP
     module Modules
       # Alarm handling
       module Alarms
-        def send_alarm(_component, alarm, options = {})
-          send_and_optionally_collect alarm, options do |collect_options|
-            Collector.new self, collect_options.merge(task: @task, type: 'MessageAck')
+        def send_alarm(_component, alarm, within: nil)
+          if within
+            collector = Collector.new(self, timeout: within)
+            send_message_and_collect alarm, collector
+          else
+            send_message alarm
           end
         end
 

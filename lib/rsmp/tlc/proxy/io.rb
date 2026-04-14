@@ -5,7 +5,7 @@ module RSMP
       # Covers detector logic, input/output forcing and setting.
       module IO
         # M0006 — Set a single input to a given status.
-        def set_input(input:, status:, options: {})
+        def set_input(input:, status:, within: nil)
           validate_ready 'set input'
           raise 'TLC main component not found' unless main
 
@@ -27,12 +27,11 @@ module RSMP
             'n' => 'input',
             'v' => input.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, "input #{input} set to #{status}", nil
+          send_command_with_confirm main.c_id, command_list, "input #{input} set to #{status}", nil, within: within
         end
 
         # M0013 — Set all inputs via a bit-pattern string.
-        def set_inputs(status, options: {})
+        def set_inputs(status, within: nil)
           validate_ready 'set inputs'
           raise 'TLC main component not found' unless main
 
@@ -49,22 +48,21 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, "inputs #{status}", nil
+          send_command_with_confirm main.c_id, command_list, "inputs #{status}", nil, within: within
         end
 
         # M0019 — Force an input to a given value.
-        def force_input(input:, status:, value:, options: {})
+        def force_input(input:, status:, value:, within: nil)
           validate_ready 'force input'
           raise 'TLC main component not found' unless main
 
           command_list = force_input_command_list(input, status, value)
           confirm_status = force_input_confirm_status(input, status, value)
-          send_command_with_confirm main.c_id, command_list, options, "force input #{input}", confirm_status
+          send_command_with_confirm main.c_id, command_list, "force input #{input}", confirm_status, within: within
         end
 
         # M0020 — Force an output to a given value.
-        def force_output(output:, status:, value:, options: {})
+        def force_output(output:, status:, value:, within: nil)
           validate_ready 'force output'
           raise 'TLC main component not found' unless main
 
@@ -91,8 +89,7 @@ module RSMP
             'n' => 'outputValue',
             'v' => value.to_s
           }]
-
-          send_command_with_confirm main.c_id, command_list, options, "force output #{output}", nil
+          send_command_with_confirm main.c_id, command_list, "force output #{output}", nil, within: within
         end
 
         private

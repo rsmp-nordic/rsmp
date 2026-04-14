@@ -192,6 +192,64 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
 
       expect { proxy.set_timeplan(3) }.to raise_error('TLC main component not found')
     end
+
+    context 'with within: parameter' do
+      {
+        set_timeplan: [3],
+        set_functional_position: ['YellowFlash'],
+        set_traffic_situation: [1],
+        unset_traffic_situation: [],
+        set_fixed_time: ['True'],
+        set_inputs: ['00000000'],
+        set_week_table: ['0-1,0-1,0-1,0-1,0-1,0-6,0-6'],
+        set_day_table: ['0-22:0-0'],
+        set_trigger_level: ['1'],
+        set_dynamic_bands_timeout: ['20']
+      }.each do |method, args|
+        it "validates proxy is ready before #{method} with within:" do
+          expect { proxy.send(method, *args, within: 5) }.to raise_error(RSMP::NotReady)
+        end
+      end
+
+      {
+        set_emergency_route: [{ route: 1, active: true }],
+        set_input: [{ input: 1, status: 'True' }],
+        set_dynamic_bands: [{ plan: 1, status: '1-1' }],
+        set_offset: [{ plan: 1, offset: 0 }],
+        set_cycle_time: [{ plan: 1, cycle_time: 6 }],
+        force_input: [{ input: 1, status: 'True', value: 'True' }],
+        force_output: [{ output: 1, status: 'True', value: 'True' }],
+        set_security_code: [{ level: 2, old_code: '0000', new_code: '1111' }]
+      }.each do |method, kwargs|
+        it "validates proxy is ready before #{method} with within: and keyword args" do
+          expect { proxy.send(method, **kwargs.first, within: 5) }.to raise_error(RSMP::NotReady)
+        end
+      end
+
+      it 'validates proxy is ready before force_detector_logic with within:' do
+        expect do
+          proxy.force_detector_logic('DL1', status: 'True', mode: 'True', within: 5)
+        end.to raise_error(RSMP::NotReady)
+      end
+
+      it 'validates proxy is ready before order_signal_start with within:' do
+        expect { proxy.order_signal_start('SG1', within: 5) }.to raise_error(RSMP::NotReady)
+      end
+
+      it 'validates proxy is ready before order_signal_stop with within:' do
+        expect { proxy.order_signal_stop('SG1', within: 5) }.to raise_error(RSMP::NotReady)
+      end
+
+      it 'validates proxy is ready before set_clock with within:' do
+        expect { proxy.set_clock(Time.now, within: 5) }.to raise_error(RSMP::NotReady)
+      end
+    end
+
+    it 'validates proxy is ready before request_status' do
+      expect do
+        proxy.request_status({ S0014: [:status] }, within: 5)
+      end.to raise_error(RSMP::NotReady)
+    end
   end
 
   describe 'security_code_for' do
@@ -294,18 +352,11 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       proxy.instance_variable_set(:@site_settings, { 'security_codes' => { 2 => '2222' } })
     end
 
-    it 'strips confirm: and confirm!: from options passed to send_command' do
-      options = { confirm: { timeout: 5 } }
-      stripped = options.except(:confirm, :confirm!)
-      expect(stripped).not_to have_key(:confirm)
-      expect(stripped).not_to have_key(:confirm!)
-    end
-
-    it 'returns without waiting when no confirm option is given' do
+    it 'returns without waiting when no within: is given' do
       allow(proxy).to receive(:wait_for_status)
       proxy.instance_variable_set(:@state, :ready)
       allow(proxy).to receive(:send_command).and_return({ sent: double })
-      proxy.send(:send_command_with_confirm, 'TLC001', [], {}, 'test', [{ 'sCI' => 'S0014', 'n' => 'status', 's' => '1' }])
+      proxy.send(:send_command_with_confirm, 'TLC001', [], 'test', [{ 'sCI' => 'S0014', 'n' => 'status', 's' => '1' }])
       expect(proxy).not_to have_received(:wait_for_status)
     end
 
@@ -313,7 +364,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       allow(proxy).to receive(:wait_for_status)
       proxy.instance_variable_set(:@state, :ready)
       allow(proxy).to receive(:send_command).and_return({ sent: double })
-      proxy.send(:send_command_with_confirm, 'TLC001', [], { confirm: { timeout: 1 } }, 'test', nil)
+      proxy.send(:send_command_with_confirm, 'TLC001', [], 'test', nil, within: 1)
       expect(proxy).not_to have_received(:wait_for_status)
     end
   end

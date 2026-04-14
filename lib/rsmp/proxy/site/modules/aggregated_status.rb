@@ -3,19 +3,20 @@ module RSMP
     module Modules
       # Handles aggregated status requests and responses
       module AggregatedStatus
-        def request_aggregated_status(component, options = {})
+        def request_aggregated_status(component, within: nil, m_id: nil, validate: true)
           validate_ready 'request aggregated status'
-          m_id = options[:m_id] || RSMP::Message.make_m_id
+          m_id ||= RSMP::Message.make_m_id
           message = RSMP::AggregatedStatusRequest.new({
                                                         'cId' => component,
                                                         'mId' => m_id
                                                       })
           apply_nts_message_attributes message
-          send_and_optionally_collect message, options do |collect_options|
-            AggregatedStatusCollector.new(
-              self,
-              collect_options.merge(task: @task, m_id: m_id, num: 1)
-            )
+          if within
+            collector = AggregatedStatusCollector.new(self, timeout: within, m_id: m_id, num: 1)
+            send_message_and_collect message, collector, validate: validate
+          else
+            send_message message, validate: validate
+            { sent: message }
           end
         end
 

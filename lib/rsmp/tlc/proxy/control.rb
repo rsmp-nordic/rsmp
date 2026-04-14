@@ -5,17 +5,17 @@ module RSMP
       # Covers functional position, emergency routes, I/O modes, signal group orders, and system settings.
       module Control
         # M0001 — Set functional position (NormalControl, YellowFlash, Dark).
-        def set_functional_position(status, timeout_minutes: 0, options: {})
+        def set_functional_position(status, timeout_minutes: 0, within: nil)
           validate_ready 'set functional position'
           raise 'TLC main component not found' unless main
 
           command_list = functional_position_command_list(status, timeout_minutes)
           confirm_status = functional_position_confirm_status(status)
-          send_command_with_confirm main.c_id, command_list, options, "functional position #{status}", confirm_status
+          send_command_with_confirm main.c_id, command_list, "functional position #{status}", confirm_status, within: within
         end
 
         # M0005 — Set or clear an emergency route.
-        def set_emergency_route(route:, active:, options: {})
+        def set_emergency_route(route:, active:, within: nil)
           validate_ready 'set emergency route'
           raise 'TLC main component not found' unless main
 
@@ -40,12 +40,11 @@ module RSMP
           }]
 
           confirm_status = [{ 'sCI' => 'S0006', 'n' => 'status', 's' => active_str }]
-          send_command_with_confirm main.c_id, command_list, options,
-                                    "emergency route #{route} #{active ? 'active' : 'inactive'}", confirm_status
+          send_command_with_confirm main.c_id, command_list, "emergency route #{route} #{active ? 'active' : 'inactive'}", confirm_status, within: within
         end
 
         # M0007 — Enable or disable fixed-time control.
-        def set_fixed_time(status, options: {})
+        def set_fixed_time(status, within: nil)
           validate_ready 'set fixed time'
           raise 'TLC main component not found' unless main
 
@@ -65,11 +64,11 @@ module RSMP
 
           confirm_status = [{ 'sCI' => 'S0009', 'n' => 'status',
                               's' => /^#{Regexp.escape(status.to_s)}(,#{Regexp.escape(status.to_s)})*$/ }]
-          send_command_with_confirm main.c_id, command_list, options, "fixed time #{status}", confirm_status
+          send_command_with_confirm main.c_id, command_list, "fixed time #{status}", confirm_status, within: within
         end
 
         # M0003 — Set traffic situation (activate a specific situation number).
-        def set_traffic_situation(situation, options: {})
+        def set_traffic_situation(situation, within: nil)
           validate_ready 'set traffic situation'
           raise 'TLC main component not found' unless main
 
@@ -93,11 +92,11 @@ module RSMP
           }]
 
           confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => situation.to_s }]
-          send_command_with_confirm main.c_id, command_list, options, "traffic situation #{situation}", confirm_status
+          send_command_with_confirm main.c_id, command_list, "traffic situation #{situation}", confirm_status, within: within
         end
 
         # M0003 — Clear the active traffic situation.
-        def unset_traffic_situation(options: {})
+        def unset_traffic_situation(options: {}, within: nil)
           validate_ready 'unset traffic situation'
           raise 'TLC main component not found' unless main
 
@@ -121,7 +120,7 @@ module RSMP
           }]
 
           confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => '1' }]
-          send_command_with_confirm main.c_id, command_list, options, 'traffic situation unset', confirm_status
+          send_command_with_confirm main.c_id, command_list, 'traffic situation unset', confirm_status, within: within
         end
 
         private

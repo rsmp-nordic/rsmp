@@ -35,7 +35,7 @@ module RSMP
         @timeouts = node.supervisor_settings.dig('default', 'timeouts') || {}
       end
 
-      def subscribe_to_timeplan(options: {})
+      def subscribe_to_timeplan
         validate_ready 'subscribe to timeplan'
 
         status_list = [
@@ -44,11 +44,9 @@ module RSMP
         ]
         status_list.each { |item| item['sOc'] = true } if use_soc?
 
-        merged_options = @timeouts.merge(options)
-
         raise 'TLC main component not found' unless main
 
-        subscribe_to_status main.c_id, status_list, merged_options
+        subscribe_to_status status_list, component: main.c_id
       end
 
       # Override status update processing to automatically store cached status values.
@@ -94,29 +92,23 @@ module RSMP
         code
       end
 
-      # Send a command and, if confirm: or confirm!: is present in options, wait for
-      # confirming status updates afterwards.
+      # Send a command and optionally wait for the CommandResponse and confirming status updates.
       #
       # confirm_description - human-readable label used in log output
-      # confirm_status_list  - status items to wait for (passed to wait_for_status)
-      # component_id         - component to wait on (defaults to main)
-      #
-      # If options[:confirm] is set, timeout errors are silently swallowed.
-      # If options[:confirm!] is set, timeout errors are raised.
-      def send_command_with_confirm(component_id, command_list, options, confirm_description, confirm_status_list)
-        result = send_command component_id, command_list, @timeouts.merge(options.except(:confirm, :confirm!))
+      # confirm_status_list  - status items to wait for (passed to wait_for_status);
+      #                        may be nil if only a CommandResponse confirmation is needed
+      # within:              - timeout in seconds; if set, collects the CommandResponse
+      def send_command_with_confirm(component_id, command_list, confirm_description, confirm_status_list,
+                                    within: nil)
+        result = if within
+                   send_command component_id, command_list, within: within
+                 else
+                   send_command component_id, command_list
+                 end
 
-        confirm_opts = options[:confirm] || options[:confirm!]
-        return result unless confirm_opts
-        return result if confirm_status_list.nil? || confirm_status_list.empty?
+        return result if confirm_status_list.nil? || confirm_status_list.empty? || within.nil?
 
-        timeout = confirm_opts.is_a?(Hash) ? confirm_opts[:timeout] : nil
-        wait_kwargs = { timeout: timeout }.compact
-        begin
-          wait_for_status confirm_description, confirm_status_list, **wait_kwargs
-        rescue RSMP::TimeoutError
-          raise if options[:confirm!]
-        end
+        wait_for_status confirm_description, confirm_status_list, timeout: within
 
         result
       end
