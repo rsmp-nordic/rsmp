@@ -40,12 +40,12 @@ module RSMP
 
           command_list = [{
             'cCI' => 'M0013',
-            'cO' => 'setInputs',
+            'cO' => 'setInput',
             'n' => 'status',
             'v' => status.to_s
           }, {
             'cCI' => 'M0013',
-            'cO' => 'setInputs',
+            'cO' => 'setInput',
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
