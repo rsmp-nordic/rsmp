@@ -42,9 +42,7 @@ module RSMP
             'v' => route.to_s
           }]
 
-          confirm_status = [{ 'sCI' => 'S0006', 'n' => 'status', 's' => active_str }]
           send_command_and_collect(command_list, within: within).ok!
-          wait_for_status("emergency route #{route} #{active ? 'active' : 'inactive'}", confirm_status, timeout: within)
         end
 
         # M0007 — Enable or disable fixed-time control.
