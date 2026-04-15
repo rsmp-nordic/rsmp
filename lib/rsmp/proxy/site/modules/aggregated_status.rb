@@ -13,7 +13,9 @@ module RSMP
           apply_nts_message_attributes message
           if within
             collector = AggregatedStatusCollector.new(self, timeout: within, m_id: m_id, num: 1)
-            send_message_and_collect message, collector, validate: validate
+            result = send_message_and_collect message, collector, validate: validate
+            result[:collector].ok!
+            result
           else
             send_message message, validate: validate
             { sent: message }
