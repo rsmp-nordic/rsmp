@@ -3,13 +3,9 @@ module RSMP
     module Modules
       # Alarm handling
       module Alarms
-        def send_alarm(_component, alarm, within: nil)
-          if within
-            collector = Collector.new(self, timeout: within)
-            send_message_and_collect alarm, collector
-          else
-            send_message alarm
-          end
+        def send_alarm(_component, alarm, within:)
+          collector = Collector.new(self, timeout:)
+          send_message_and_collect alarm, collector
         end
 
         def send_active_alarms

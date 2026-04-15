@@ -92,27 +92,6 @@ module RSMP
         code
       end
 
-      # Send a command and optionally wait for the CommandResponse and confirming status updates.
-      #
-      # confirm_description - human-readable label used in log output
-      # confirm_status_list  - status items to wait for (passed to wait_for_status);
-      #                        may be nil if only a CommandResponse confirmation is needed
-      # within:              - timeout in seconds; if set, collects the CommandResponse
-      def send_command_with_confirm(component_id, command_list, confirm_description, confirm_status_list,
-                                    within: nil)
-        result = if within
-                   send_command component_id, command_list, within: within
-                 else
-                   send_command component_id, command_list
-                 end
-
-        return result if confirm_status_list.nil? || confirm_status_list.empty? || within.nil?
-
-        wait_for_status confirm_description, confirm_status_list, timeout: within
-
-        result
-      end
-
       # Process a single status item and update the corresponding cached value.
       def cache_status_item(item)
         case item['sCI']
