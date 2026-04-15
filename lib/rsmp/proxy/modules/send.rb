@@ -51,12 +51,11 @@ module RSMP
           task = @task.async do |t|
             t.annotate 'send_message_and_collect'
             collector.collect
-            raise collector.error if collector.error
-
             collector
           end
           send_message message, validate: validate
-          { sent: message, collector: task.wait }
+          collector = task.wait
+          { sent: message, collector: collector }
         end
 
         def apply_nts_message_attributes(message)
