@@ -8,7 +8,7 @@ module RSMP
     include Reporting
     include Logging
 
-    attr_reader :condition, :messages, :status, :error, :task, :m_id
+    attr_reader :condition, :messages, :status, :error, :task, :m_id, :initiator
 
     def initialize(distributor, options = {})
       initialize_receiver distributor, filter: options[:filter]
@@ -20,7 +20,8 @@ module RSMP
       }.deep_merge options
       @timeout = options[:timeout]
       @num = options[:num]
-      @m_id = options[:m_id]
+      @initiator = options[:initiator]
+      @m_id = options[:m_id] || @initiator&.attributes&.dig('mId')
       @condition = Async::Notification.new
       make_title options[:title]
 
