@@ -199,7 +199,7 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
 
     it 'validates proxy is ready before request_status' do
       expect do
-        proxy.request_status({ S0014: [:status] }, within: 5)
+        proxy.request_status_and_collect({ S0014: [:status] }, within: 5)
       end.to raise_error(RSMP::NotReady)
     end
   end

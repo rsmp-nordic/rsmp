@@ -3,7 +3,8 @@ module RSMP
     module Modules
       # Handles status requests, responses, subscriptions and updates
       module Status
-        def request_status(status_list, component: nil, within: nil, m_id: nil, validate: true)
+        # Build and send a StatusRequest. Returns { sent: message }.
+        def request_status(status_list, component: nil, m_id: nil, validate: true)
           validate_ready 'request status'
           component ||= main.c_id
           m_id ||= RSMP::Message.make_m_id
@@ -20,15 +21,31 @@ module RSMP
                                               'mId' => m_id
                                             })
           apply_nts_message_attributes message
-          if within
-            collector = StatusCollector.new(self, list.to_a, timeout: within, m_id: m_id)
-            result = send_message_and_collect message, collector, validate: validate
-            result[:collector].ok!
-            result
-          else
-            send_message message, validate: validate
-            { sent: message }
-          end
+          send_message message, validate: validate
+          { sent: message }
+        end
+
+        # Build, send a StatusRequest and collect the StatusResponse. Returns the collector.
+        # Call .ok! on the result to raise on NotAck or timeout.
+        def request_status_and_collect(status_list, within:, component: nil, m_id: nil, validate: true)
+          validate_ready 'request status'
+          component ||= main.c_id
+          m_id ||= RSMP::Message.make_m_id
+
+          list = RSMP::StatusList.new(status_list)
+
+          # additional items can be used when verifying the response,
+          # but must be removed from the request
+          request_list = list.map { |item| item.slice('sCI', 'n') }
+
+          message = RSMP::StatusRequest.new({
+                                              'cId' => component,
+                                              'sS' => request_list,
+                                              'mId' => m_id
+                                            })
+          apply_nts_message_attributes message
+          collector = StatusCollector.new(self, list.to_a, timeout: within, m_id: m_id)
+          send_message_and_collect(message, collector, validate: validate)[:collector]
         end
 
         def process_status_response(message)
