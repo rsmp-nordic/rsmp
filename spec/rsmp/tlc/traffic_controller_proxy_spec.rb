@@ -128,41 +128,47 @@ RSpec.describe RSMP::TLC::TrafficControllerProxy do
       proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true))
     end
 
-    {
-      set_timeplan: [3],
-      set_functional_position: ['YellowFlash'],
-      set_traffic_situation: [1],
-      unset_traffic_situation: [],
-      set_fixed_time: ['True'],
-      set_inputs: ['00000000'],
-      set_week_table: ['0-1,0-1,0-1,0-1,0-1,0-6,0-6'],
-      set_day_table: ['0-22:0-0'],
-      set_trigger_level: ['1'],
-      set_dynamic_bands_timeout: ['20']
-    }.each do |method, args|
-      it "validates proxy is ready before #{method}" do
-        expect { proxy.send(method, *args, within: 1) }.to raise_error(RSMP::NotReady)
+    describe 'with positional arguments' do
+      {
+        set_timeplan: [3],
+        set_functional_position: ['YellowFlash'],
+        set_traffic_situation: [1],
+        unset_traffic_situation: [],
+        set_fixed_time: ['True'],
+        set_inputs: ['00000000'],
+        set_week_table: ['0-1,0-1,0-1,0-1,0-1,0-6,0-6'],
+        set_day_table: ['0-22:0-0'],
+        set_trigger_level: ['1'],
+        set_dynamic_bands_timeout: ['20']
+      }.each do |method, args|
+        it "validates proxy is ready before #{method}" do
+          expect { proxy.send(method, *args, within: 1) }.to raise_error(RSMP::NotReady)
+        end
       end
     end
 
-    %i[fetch_signal_plan subscribe_to_timeplan].each do |method|
-      it "validates proxy is ready before #{method}" do
-        expect { proxy.send(method) }.to raise_error(RSMP::NotReady)
+    describe 'with no arguments' do
+      %i[fetch_signal_plan subscribe_to_timeplan].each do |method|
+        it "validates proxy is ready before #{method}" do
+          expect { proxy.send(method) }.to raise_error(RSMP::NotReady)
+        end
       end
     end
 
-    {
-      set_emergency_route: [{ route: 1, active: true, within: 1 }],
-      set_input: [{ input: 1, status: 'True', within: 1 }],
-      set_dynamic_bands: [{ plan: 1, status: '1-1', within: 1 }],
-      set_offset: [{ plan: 1, offset: 0, within: 1 }],
-      set_cycle_time: [{ plan: 1, cycle_time: 6, within: 1 }],
-      force_input: [{ input: 1, status: 'True', value: 'True', within: 1 }],
-      force_output: [{ output: 1, status: 'True', value: 'True', within: 1 }],
-      set_security_code: [{ level: 2, old_code: '0000', new_code: '1111', within: 1 }]
-    }.each do |method, kwargs|
-      it "validates proxy is ready before #{method}" do
-        expect { proxy.send(method, **kwargs.first) }.to raise_error(RSMP::NotReady)
+    describe 'with keyword arguments' do
+      {
+        set_emergency_route: [{ route: 1, active: true, within: 1 }],
+        set_input: [{ input: 1, status: 'True', within: 1 }],
+        set_dynamic_bands: [{ plan: 1, status: '1-1', within: 1 }],
+        set_offset: [{ plan: 1, offset: 0, within: 1 }],
+        set_cycle_time: [{ plan: 1, cycle_time: 6, within: 1 }],
+        force_input: [{ input: 1, status: 'True', value: 'True', within: 1 }],
+        force_output: [{ output: 1, status: 'True', value: 'True', within: 1 }],
+        set_security_code: [{ level: 2, old_code: '0000', new_code: '1111', within: 1 }]
+      }.each do |method, kwargs|
+        it "validates proxy is ready before #{method}" do
+          expect { proxy.send(method, **kwargs.first) }.to raise_error(RSMP::NotReady)
+        end
       end
     end
 

@@ -100,7 +100,7 @@ module RSMP
         end
 
         # M0003 — Clear the active traffic situation.
-        def unset_traffic_situation(within:, options: {})
+        def unset_traffic_situation(within:)
           validate_ready 'unset traffic situation'
           raise 'TLC main component not found' unless main
 

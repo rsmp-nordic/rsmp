@@ -10,8 +10,8 @@ module RSMP
           timeout = options[:timeout] || @timeouts['status_response']
           collector = request_status_and_collect({ S0014: %i[status source] }, within: timeout)
           collector.ok!
-          collector.messages.last.attributes['sS'].each_with_object({}) do |item, hash|
-            hash[item['n']] = item['s']
+          collector.messages.last.attributes['sS'].to_h do |item|
+            [item['n'], item['s']]
           end
         end
 
