@@ -3,11 +3,6 @@ module RSMP
     module Modules
       # Alarm handling
       module Alarms
-        def send_alarm(_component, alarm, within:)
-          collector = Collector.new(self, timeout:)
-          send_message_and_collect alarm, collector
-        end
-
         def send_active_alarms
           @site.components.each_pair do |_c_id, component|
             component.alarms.each_pair do |_alarm_code, alarm_state|
