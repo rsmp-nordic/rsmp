@@ -124,29 +124,31 @@ module RSMP
           @status_subscriptions.delete(component_id) if @status_subscriptions[component_id].empty?
         end
 
-        def unsubscribe_to_status(component_id, status_list, options = {})
+        def unsubscribe_to_status(status_list, component: nil, validate: nil)
           validate_ready 'unsubscribe to status'
+          component ||= main.c_id
 
           status_list.each do |item|
-            remove_subscription_item(component_id, item['sCI'], item['n'])
+            remove_subscription_item(component, item['sCI'], item['n'])
           end
 
           message = RSMP::StatusUnsubscribe.new({
-                                                  'cId' => component_id,
+                                                  'cId' => component,
                                                   'sS' => status_list
                                                 })
           apply_nts_message_attributes message
-          send_message message, validate: options[:validate]
+          send_message message, validate: validate
           message
         end
 
         # unsubscribes to all statuses (with all attributes) defined in the used SXL
-        def unsubscribe_from_all(component_id)
+        def unsubscribe_from_all(component: nil)
+          component ||= main.c_id
           catalogue = RSMP::Schema.status_catalogue(@sxl, sxl_version)
           status_list = catalogue.flat_map do |status_code_id, names|
             names.map { |name| { 'sCI' => status_code_id.to_s, 'n' => name.to_s } }
           end
-          unsubscribe_to_status component_id, status_list
+          unsubscribe_to_status status_list, component: component
         end
 
         def process_status_update(message)
