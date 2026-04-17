@@ -40,15 +40,15 @@ describe RSMP::Site do
   with 'connection handshake' do
     it 'completes' do
       # mock SecureRandom.uuid() so we get known message ids
-      uuids = [
-        '1b206e56-31be-4739-9164-3a24d47b0aa2',
-        'fd92d6f6-f0c3-4a91-a582-6fff4e5bb63b',
-        '1e363b78-a67a-40f0-a2b1-acb231656594',
-        '51931724-b143-45a3-aa43-171f79ebb337',
-        'd5ccbf4b-e951-4476-bf23-8aa8f6835fb5',
-        '3942bc2b-c0dc-45be-b3bf-b25e3afa300f',
-        '0459805f-73aa-41b1-beed-11852f62756d',
-        '16ec49e4-6ac1-4da6-827c-2a6562b91731'
+      uuids = %w[
+        1b206e56-31be-4739-9164-3a24d47b0aa2
+        fd92d6f6-f0c3-4a91-a582-6fff4e5bb63b
+        1e363b78-a67a-40f0-a2b1-acb231656594
+        51931724-b143-45a3-aa43-171f79ebb337
+        d5ccbf4b-e951-4476-bf23-8aa8f6835fb5
+        3942bc2b-c0dc-45be-b3bf-b25e3afa300f
+        0459805f-73aa-41b1-beed-11852f62756d
+        16ec49e4-6ac1-4da6-827c-2a6562b91731
       ].each
       mock(SecureRandom).replace(:uuid) { uuids.next }
 

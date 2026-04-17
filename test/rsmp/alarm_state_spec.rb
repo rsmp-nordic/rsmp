@@ -74,7 +74,7 @@ describe RSMP::AlarmState do
     it 'returns a hash with rsmp message values' do
       s = create_state acknowledged: false, suspended: false, active: true,
                        category: 'B', priority: 1
-      expect(s.to_hash).to be == ({
+      expect(s.to_hash).to be == {
         'cId' => 'C1',
         'aCId' => 'A0301',
         'aTs' => times[:now_str],
@@ -84,10 +84,10 @@ describe RSMP::AlarmState do
         'cat' => 'B',
         'pri' => '1',
         'rvs' => []
-      })
+      }
 
       s = create_state acknowledged: true, suspended: true, active: false
-      expect(s.to_hash).to be == ({
+      expect(s.to_hash).to be == {
         'cId' => 'C1',
         'aCId' => 'A0301',
         'aTs' => times[:now_str],
@@ -97,7 +97,7 @@ describe RSMP::AlarmState do
         'cat' => 'D',
         'pri' => '2',
         'rvs' => []
-      })
+      }
     end
   end
 
