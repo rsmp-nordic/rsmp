@@ -9,7 +9,7 @@ group :development do
   gem 'bundler', '~> 4.0'
   gem 'cucumber', '~> 9.2'
   gem 'rake', '~> 13.2'
-  gem 'rubocop', '~> 1.65'
+  gem 'rubocop'
   gem 'rubocop-rake', require: false
   gem 'sus'
   gem 'sus-fixtures-async'
