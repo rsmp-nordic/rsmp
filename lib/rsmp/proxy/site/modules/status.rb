@@ -71,7 +71,8 @@ module RSMP
           end
         end
 
-        def subscribe_to_status(status_list, component: nil, within: nil, m_id: nil, validate: true)
+        # Build and send a StatusSubscribe. Returns { sent: message }.
+        def subscribe_to_status(status_list, component: nil, m_id: nil, validate: true)
           validate_ready 'subscribe to status'
           component ||= main.c_id
           m_id ||= RSMP::Message.make_m_id
@@ -88,15 +89,31 @@ module RSMP
                                                 'mId' => m_id
                                               })
           apply_nts_message_attributes message
-          if within
-            collector = StatusCollector.new(self, list.to_a, timeout: within, m_id: m_id)
-            result = send_message_and_collect message, collector, validate: validate
-            result[:collector].ok!
-            result
-          else
-            send_message message, validate: validate
-            { sent: message }
-          end
+          send_message message, validate: validate
+          { sent: message }
+        end
+
+        # Build, send a StatusSubscribe and collect the first matching status update. Returns the collector.
+        # Call .ok! on the result to raise on NotAck or timeout.
+        def subscribe_to_status_and_collect(status_list, within:, component: nil, m_id: nil, validate: true)
+          validate_ready 'subscribe to status'
+          component ||= main.c_id
+          m_id ||= RSMP::Message.make_m_id
+
+          list = RSMP::StatusList.new(status_list)
+          subscribe_list = list.map { |item| item.slice('sCI', 'n', 'uRt', 'sOc') }
+
+          update_subscription(component, subscribe_list)
+          find_component component
+
+          message = RSMP::StatusSubscribe.new({
+                                                'cId' => component,
+                                                'sS' => subscribe_list,
+                                                'mId' => m_id
+                                              })
+          apply_nts_message_attributes message
+          collector = StatusCollector.new(self, list.to_a, timeout: within, m_id: m_id)
+          send_message_and_collect(message, collector, validate: validate)[:collector]
         end
 
         def remove_subscription_item(component_id, code, name)

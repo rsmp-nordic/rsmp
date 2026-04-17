@@ -10,7 +10,7 @@ module RSMP
         end
 
         # Send aggregated status for a component
-        def send_aggregated_status(component, within: nil, m_id: nil)
+        def send_aggregated_status(component, m_id: nil)
           m_id ||= RSMP::Message.make_m_id
 
           se = if Proxy.version_meets_requirement?(core_version, '<=3.1.2')
@@ -29,12 +29,7 @@ module RSMP
                                                })
 
           apply_nts_message_attributes message
-          if within
-            collector = Collector.new(self, timeout: within)
-            send_message_and_collect message, collector
-          else
-            send_message message
-          end
+          send_message message
         end
 
         def process_aggregated_status_request(message)
