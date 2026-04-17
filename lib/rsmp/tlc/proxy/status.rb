@@ -8,8 +8,9 @@ module RSMP
         def fetch_signal_plan(options: {})
           validate_ready 'fetch signal plan'
           timeout = options[:timeout] || @timeouts['status_response']
-          result = request_status({ S0014: %i[status source] }, within: timeout)
-          result[:collector].messages.last.attributes['sS'].each_with_object({}) do |item, hash|
+          collector = request_status_and_collect({ S0014: %i[status source] }, within: timeout)
+          collector.ok!
+          collector.messages.last.attributes['sS'].each_with_object({}) do |item, hash|
             hash[item['n']] = item['s']
           end
         end
@@ -70,8 +71,9 @@ module RSMP
         def read_cycle_times(options: {})
           validate_ready 'read cycle times'
           timeout = options[:timeout] || @timeouts['status_response']
-          result = request_status({ S0028: [:status] }, within: timeout)
-          result[:collector].messages.first.attributes['sS'].first['s'].split(',').to_h do |item|
+          collector = request_status_and_collect({ S0028: [:status] }, within: timeout)
+          collector.ok!
+          collector.messages.first.attributes['sS'].first['s'].split(',').to_h do |item|
             item.split('-').map(&:to_i)
           end
         end
@@ -81,8 +83,9 @@ module RSMP
         def read_current_plan(options: {})
           validate_ready 'read current plan'
           timeout = options[:timeout] || @timeouts['status_response']
-          result = request_status({ S0014: [:status] }, within: timeout)
-          result[:collector].messages.first.attributes['sS'].first['s'].to_i
+          collector = request_status_and_collect({ S0014: [:status] }, within: timeout)
+          collector.ok!
+          collector.messages.first.attributes['sS'].first['s'].to_i
         end
 
         # Read the value of a single dynamic band for a given plan and band index via S0023.
@@ -90,14 +93,15 @@ module RSMP
         def read_dynamic_band(plan:, band:, options: {})
           validate_ready 'read dynamic band'
           timeout = options[:timeout] || @timeouts['status_response']
-          result = request_status({ S0023: [:status] }, within: timeout)
-          extract_band_value(result, plan, band)
+          collector = request_status_and_collect({ S0023: [:status] }, within: timeout)
+          collector.ok!
+          extract_band_value(collector, plan, band)
         end
 
         private
 
-        def extract_band_value(result, plan, band)
-          result[:collector].messages.first.attributes['sS'].first['s'].split(',').each do |item|
+        def extract_band_value(collector, plan, band)
+          collector.messages.first.attributes['sS'].first['s'].split(',').each do |item|
             some_plan, some_band, value = item.split('-')
             return value.to_i if some_plan.to_i == plan.to_i && some_band.to_i == band.to_i
           end
