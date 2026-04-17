@@ -71,7 +71,7 @@ describe RSMP::Message do
     it 'parses valid JSON' do
       expect(subject.parse_attributes('"string"')).to be == 'string'
       expect(subject.parse_attributes('123')).to be == 123
-      expect(subject.parse_attributes('3.14')).to be == 3.14
+      expect(subject.parse_attributes('3.14')).to be_within(Float::EPSILON).of(3.14)
       expect(subject.parse_attributes('[1,2,3]')).to be == [1, 2, 3]
       expect(subject.parse_attributes('{"a":"1","b":"2"}')).to be == ({ 'a' => '1', 'b' => '2' })
     end
@@ -168,11 +168,11 @@ describe RSMP::Message do
 
     it 'validates mType' do
       message = subject.new 'mType' => 'rSMsg', 'type' => 'Version',
-                             'mId' => 'c014bd2d-5671-4a19-b37e-50deef301b82'
+                            'mId' => 'c014bd2d-5671-4a19-b37e-50deef301b82'
       expect(message.validate_type?).to be == true
 
       message = subject.new 'mType' => 'rBad', 'type' => 'Version',
-                             'mId' => 'c014bd2d-5671-4a19-b37e-50deef301b82'
+                            'mId' => 'c014bd2d-5671-4a19-b37e-50deef301b82'
       expect(message.validate_type?).to be == false
     end
 
@@ -202,11 +202,16 @@ describe RSMP::Message do
     end
 
     it 'raises MissingAttribute when accessing non-existing attribute' do
-      expect { message.attribute('bad') }.to raise_exception(RSMP::MissingAttribute, message: be == "missing attribute 'bad'")
+      expect do
+        message.attribute('bad')
+      end.to raise_exception(RSMP::MissingAttribute, message: be == "missing attribute 'bad'")
     end
 
     it 'raises MissingAttribute when accessing attribute with wrong case' do
-      expect { message.attribute('sxl') }.to raise_exception(RSMP::MissingAttribute, message: be == "attribute 'SXL' should be named 'sxl'")
+      expect do
+        message.attribute('sxl')
+      end.to raise_exception(RSMP::MissingAttribute,
+                             message: be == "attribute 'SXL' should be named 'sxl'")
     end
 
     it 'returns type' do

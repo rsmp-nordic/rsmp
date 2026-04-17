@@ -1,8 +1,5 @@
-plugins:
-  - rubocop-rspec
-  - rubocop-rake
-
 AllCops:
+  SuggestExtensions: false
   NewCops: enable
   TargetRubyVersion: 3.4
   Exclude:
@@ -16,7 +13,7 @@ AllCops:
 Layout/LineLength:
   Max: 120
   Exclude:
-    - 'spec/**/*'
+    - 'test/**/*'
 
 # Allow some reasonable flexibility for domain-specific code
 Metrics/MethodLength:
@@ -43,9 +40,14 @@ Metrics/ParameterLists:
 # Allow some blocks to be longer for complex configurations and tests
 Metrics/BlockLength:
   Exclude:
-    - 'spec/**/*'
+    - 'test/**/*'
+    - 'test/**/*'
     - 'features/**/*'
     - '*.gemspec'
+
+Style/NumericPredicate:
+  Exclude:
+    - 'test/**/*.rb'
 
 # From Ruby 3.4, frozen string literals are the default anyways
 Style/FrozenStringLiteralComment:
@@ -54,16 +56,10 @@ Style/FrozenStringLiteralComment:
 # Allow mix-in usage at top level in test files
 Style/MixinUsage:
   Exclude:
-    - 'spec/**/*'
+    - 'test/**/*'
     - 'features/**/*'
 
 # Allow constant definition in blocks for test helpers
 Lint/ConstantDefinitionInBlock:
   Exclude:
-    - 'spec/**/*'
-
-RSpec/MultipleExpectations:
-  Max: 20
-
-RSpec/ExampleLength:
-  Max: 50
+    - 'test/**/*'

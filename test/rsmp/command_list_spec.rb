@@ -42,12 +42,13 @@ describe CommandList do
   with '#to_h' do
     it 'returns the compact nested Hash' do
       list = subject.new(:M0001, :setValue, securityCode: '1111', status: 'NormalControl')
-      expect(list.to_h).to be == ({ 'M0001' => { 'setValue' => { 'securityCode' => '1111', 'status' => 'NormalControl' } } })
+      expect(list.to_h).to be == { 'M0001' => { 'setValue' => { 'securityCode' => '1111',
+                                                                'status' => 'NormalControl' } } }
     end
 
     it 'groups multiple codes and commands' do
       list = subject.new(:M0002, :setPlan, plan: '3', securityCode: '1234')
-      expect(list.to_h).to be == ({ 'M0002' => { 'setPlan' => { 'plan' => '3', 'securityCode' => '1234' } } })
+      expect(list.to_h).to be == { 'M0002' => { 'setPlan' => { 'plan' => '3', 'securityCode' => '1234' } } }
     end
   end
 

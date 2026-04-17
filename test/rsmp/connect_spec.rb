@@ -44,7 +44,7 @@ describe 'Connecting' do
       supervisor.start
       supervisor.ready_condition.wait
       site.start
-    }) do |task|
+    }) do |_task|
       site_proxy = supervisor.wait_for_site config[:site_id], timeout: config[:timeout]
       supervisor_proxy = site.wait_for_supervisor config[:ip], timeout: config[:timeout]
 
@@ -71,7 +71,7 @@ describe 'Connecting' do
       site.start
       supervisor.start
       supervisor.ready_condition.wait
-    }) do |task|
+    }) do |_task|
       site_proxy = supervisor.wait_for_site config[:site_id], timeout: config[:timeout]
       supervisor_proxy = site.wait_for_supervisor config[:ip], timeout: config[:timeout]
 

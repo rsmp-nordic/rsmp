@@ -29,7 +29,10 @@ describe RSMP::Task do
 
     it 'calls run' do
       called = false
-      mock(obj).replace(:run) { called = true; loop { Async::Task.current.sleep(1) } }
+      mock(obj).replace(:run) do
+        called = true
+        loop { Async::Task.current.sleep(1) }
+      end
       obj.start
       Async::Task.current.sleep(0) # yield to let task start
       expect(called).to be == true

@@ -213,7 +213,9 @@ describe RSMP::TLC::TrafficControllerProxy do
       proxy.instance_variable_set(:@main, nil)
       proxy.instance_variable_set(:@state, :ready)
 
-      expect { proxy.set_timeplan(3, within: 1) }.to raise_exception(RuntimeError, message: be == 'TLC main component not found')
+      expect do
+        proxy.set_timeplan(3, within: 1)
+      end.to raise_exception(RuntimeError, message: be == 'TLC main component not found')
     end
 
     it 'validates proxy is ready before request_status' do
@@ -284,21 +286,21 @@ describe RSMP::TLC::TrafficControllerProxy do
   with 'functional_position_confirm_status' do
     it 'returns S0011 True pattern for YellowFlash' do
       result = proxy.send(:functional_position_confirm_status, 'YellowFlash')
-      expect(result).to be == ([{ 'sCI' => 'S0011', 'n' => 'status', 's' => /^True(,True)*$/ }])
+      expect(result).to be == [{ 'sCI' => 'S0011', 'n' => 'status', 's' => /^True(,True)*$/ }]
     end
 
     it 'returns S0007 False pattern for Dark' do
       result = proxy.send(:functional_position_confirm_status, 'Dark')
-      expect(result).to be == ([{ 'sCI' => 'S0007', 'n' => 'status', 's' => /^False(,False)*$/ }])
+      expect(result).to be == [{ 'sCI' => 'S0007', 'n' => 'status', 's' => /^False(,False)*$/ }]
     end
 
     it 'returns S0007, S0011, S0005 for NormalControl' do
       result = proxy.send(:functional_position_confirm_status, 'NormalControl')
-      expect(result).to be == ([
+      expect(result).to be == [
         { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
         { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
         { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
-      ])
+      ]
     end
 
     it 'returns empty array for unknown status' do
