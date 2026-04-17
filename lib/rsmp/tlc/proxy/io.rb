@@ -106,10 +106,14 @@ module RSMP
         end
 
         def force_input_confirm_status(input, status, value)
-          [
-            { 'sCI' => 'S0029', 'n' => 'status', 's' => /^.{#{input.to_i - 1}}#{status == 'True' ? '1' : '0'}/ },
-            { 'sCI' => 'S0003', 'n' => 'inputstatus', 's' => /^.{#{input.to_i - 1}}#{value == 'True' ? '1' : '0'}/ }
+          result = [
+            { 'sCI' => 'S0029', 'n' => 'status', 's' => /^.{#{input.to_i - 1}}#{status == 'True' ? '1' : '0'}/ }
           ]
+          if status == 'True'
+            result << { 'sCI' => 'S0003', 'n' => 'inputstatus',
+                        's' => /^.{#{input.to_i - 1}}#{value == 'True' ? '1' : '0'}/ }
+          end
+          result
         end
       end
     end

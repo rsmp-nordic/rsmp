@@ -135,12 +135,12 @@ module RSMP
 
           command_list = [{
             'cCI' => 'M0017',
-            'cO' => 'setDayTable',
+            'cO' => 'setTimeTable',
             'n' => 'status',
             'v' => status.to_s
           }, {
             'cCI' => 'M0017',
-            'cO' => 'setDayTable',
+            'cO' => 'setTimeTable',
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
