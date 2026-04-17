@@ -9,10 +9,9 @@ group :development do
   gem 'bundler', '~> 4.0'
   gem 'cucumber', '~> 9.2'
   gem 'rake', '~> 13.2'
-  gem 'rspec', '~> 3.13'
-  gem 'rspec-expectations', '~> 3.13'
   gem 'rubocop', '~> 1.65'
   gem 'rubocop-rake', require: false
-  gem 'rubocop-rspec', require: false
+  gem 'sus'
+  gem 'sus-fixtures-async'
   gem 'timecop', '~> 0.9'
 end

@@ -1,0 +1,309 @@
+describe RSMP::TLC::TrafficControllerProxy do
+  let(:supervisor_settings) do
+    {
+      'port' => 13_113,
+      'default' => {
+        'sxl' => 'tlc',
+        'type' => 'tlc',
+        'timeouts' => {
+          'watchdog' => 0.2,
+          'acknowledgement' => 0.2,
+          'command_timeout' => 5.0
+        }
+      },
+      'sites' => {
+        'TLC001' => { 'sxl' => 'tlc', 'type' => 'tlc' }
+      }
+    }
+  end
+
+  let(:proxy) do
+    supervisor = RSMP::Supervisor.new(
+      supervisor_settings: supervisor_settings,
+      log_settings: { 'active' => false }
+    )
+
+    subject.new(
+      supervisor: supervisor,
+      ip: '127.0.0.1',
+      port: 12_345,
+      site_id: 'TLC001'
+    )
+  end
+
+  with 'initialize' do
+    it 'initializes with nil status values' do
+      expect(proxy.current_plan).to be_nil
+      expect(proxy.plan_source).to be_nil
+      expect(proxy.timeplan).to be_nil
+      expect(proxy.functional_position).to be_nil
+      expect(proxy.yellow_flash).to be_nil
+      expect(proxy.traffic_situation).to be_nil
+    end
+
+    it 'retrieves timeouts from supervisor settings, merged with defaults' do
+      expected = RSMP::Supervisor::Options.new({}).to_h.dig('default', 'timeouts')
+                                          .merge(supervisor_settings['default']['timeouts'])
+      expect(proxy.timeouts).to be == expected
+    end
+
+    it 'is a subclass of SiteProxy' do
+      expect(proxy).to be_a(RSMP::SiteProxy)
+    end
+  end
+
+  with 'status value storage' do
+    def setup_proxy
+      main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
+      proxy.instance_variable_set(:@main, main_component)
+      proxy.instance_variable_set(:@state, :connected)
+    end
+
+    it 'updates timeplan and plan_source when processing S0014 status updates' do
+      setup_proxy
+      status_update = RSMP::StatusUpdate.new(
+        'mId' => 'abc123',
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [
+          { 'sCI' => 'S0014', 'n' => 'status', 's' => '3', 'q' => 'recent' },
+          { 'sCI' => 'S0014', 'n' => 'source', 's' => 'forced', 'q' => 'recent' }
+        ]
+      )
+
+      proxy.process_status_update(status_update)
+
+      expect(proxy.timeplan).to be == 3
+      expect(proxy.current_plan).to be == 3
+      expect(proxy.plan_source).to be == 'forced'
+    end
+
+    it 'caches functional_position from S0007 status updates' do
+      setup_proxy
+      status_update = RSMP::StatusUpdate.new(
+        'mId' => 'abc124',
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0007', 'n' => 'status', 's' => 'True', 'q' => 'recent' }]
+      )
+      proxy.process_status_update(status_update)
+      expect(proxy.functional_position).to be == 'True'
+    end
+
+    it 'caches yellow_flash from S0011 status updates' do
+      setup_proxy
+      status_update = RSMP::StatusUpdate.new(
+        'mId' => 'abc125',
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0011', 'n' => 'status', 's' => 'True,True', 'q' => 'recent' }]
+      )
+      proxy.process_status_update(status_update)
+      expect(proxy.yellow_flash).to be == 'True,True'
+    end
+
+    it 'caches traffic_situation from S0015 status updates' do
+      setup_proxy
+      status_update = RSMP::StatusUpdate.new(
+        'mId' => 'abc126',
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0015', 'n' => 'status', 's' => '3', 'q' => 'recent' }]
+      )
+      proxy.process_status_update(status_update)
+      expect(proxy.traffic_situation).to be == '3'
+    end
+
+    it 'returns timeplan attributes from main component' do
+      setup_proxy
+      proxy.instance_variable_get(:@main).instance_variable_set(
+        :@statuses, { 'S0014' => { 'status' => { 's' => '2', 'q' => 'recent' } } }
+      )
+      expect(proxy.timeplan_attributes).to be == ({ 'status' => { 's' => '2', 'q' => 'recent' } })
+    end
+
+    it 'returns empty hash when no main component' do
+      proxy.instance_variable_set(:@main, nil)
+      expect(proxy.timeplan_attributes).to be == {}
+    end
+  end
+
+  with 'method functionality' do
+    def setup_proxy
+      proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true))
+    end
+
+    with 'with positional arguments' do
+      {
+        set_timeplan: [3],
+        set_functional_position: ['YellowFlash'],
+        set_traffic_situation: [1],
+        unset_traffic_situation: [],
+        set_fixed_time: ['True'],
+        set_inputs: ['00000000'],
+        set_week_table: ['0-1,0-1,0-1,0-1,0-1,0-6,0-6'],
+        set_day_table: ['0-22:0-0'],
+        set_trigger_level: ['1'],
+        set_dynamic_bands_timeout: ['20']
+      }.each do |method, args|
+        it "validates proxy is ready before #{method}" do
+          setup_proxy
+          expect { proxy.send(method, *args, within: 1) }.to raise_exception(RSMP::NotReady)
+        end
+      end
+    end
+
+    with 'with no arguments' do
+      %i[fetch_signal_plan subscribe_to_timeplan].each do |method|
+        it "validates proxy is ready before #{method}" do
+          setup_proxy
+          expect { proxy.send(method) }.to raise_exception(RSMP::NotReady)
+        end
+      end
+    end
+
+    with 'with keyword arguments' do
+      {
+        set_emergency_route: [{ route: 1, active: true, within: 1 }],
+        set_input: [{ input: 1, status: 'True', within: 1 }],
+        set_dynamic_bands: [{ plan: 1, status: '1-1', within: 1 }],
+        set_offset: [{ plan: 1, offset: 0, within: 1 }],
+        set_cycle_time: [{ plan: 1, cycle_time: 6, within: 1 }],
+        force_input: [{ input: 1, status: 'True', value: 'True', within: 1 }],
+        force_output: [{ output: 1, status: 'True', value: 'True', within: 1 }],
+        set_security_code: [{ level: 2, old_code: '0000', new_code: '1111', within: 1 }]
+      }.each do |method, kwargs|
+        it "validates proxy is ready before #{method}" do
+          setup_proxy
+          expect { proxy.send(method, **kwargs.first) }.to raise_exception(RSMP::NotReady)
+        end
+      end
+    end
+
+    it 'validates proxy is ready before wait_for_status' do
+      setup_proxy
+      expect do
+        proxy.wait_for_status('test status', [{ 'sCI' => 'S0014', 'n' => 'status', 's' => '1' }])
+      end.to raise_exception(RSMP::NotReady)
+    end
+
+    it 'validates proxy is ready before force_detector_logic' do
+      setup_proxy
+      expect do
+        proxy.force_detector_logic('DL1', status: 'True', mode: 'True', within: 1)
+      end.to raise_exception(RSMP::NotReady)
+    end
+
+    it 'validates proxy is ready before order_signal_start' do
+      setup_proxy
+      expect { proxy.order_signal_start('SG1', within: 1) }.to raise_exception(RSMP::NotReady)
+    end
+
+    it 'validates proxy is ready before order_signal_stop' do
+      setup_proxy
+      expect { proxy.order_signal_stop('SG1', within: 1) }.to raise_exception(RSMP::NotReady)
+    end
+
+    it 'validates proxy is ready before set_clock' do
+      setup_proxy
+      expect { proxy.set_clock(Time.now, within: 1) }.to raise_exception(RSMP::NotReady)
+    end
+
+    it 'raises error when main component is missing for set_timeplan' do
+      proxy.instance_variable_set(:@main, nil)
+      proxy.instance_variable_set(:@state, :ready)
+
+      expect { proxy.set_timeplan(3, within: 1) }.to raise_exception(RuntimeError, message: be == 'TLC main component not found')
+    end
+
+    it 'validates proxy is ready before request_status' do
+      setup_proxy
+      expect do
+        proxy.request_status_and_collect({ S0014: [:status] }, within: 5)
+      end.to raise_exception(RSMP::NotReady)
+    end
+  end
+
+  with 'security_code_for' do
+    with 'when security codes are configured with integer keys' do
+      it 'returns the code for level 1' do
+        proxy.instance_variable_set(:@site_settings, { 'security_codes' => { 1 => 'alpha', 2 => 'beta' } })
+        expect(proxy.send(:security_code_for, 1)).to be == 'alpha'
+      end
+
+      it 'returns the code for level 2' do
+        proxy.instance_variable_set(:@site_settings, { 'security_codes' => { 1 => 'alpha', 2 => 'beta' } })
+        expect(proxy.send(:security_code_for, 2)).to be == 'beta'
+      end
+    end
+
+    with 'when security codes are configured with string keys' do
+      it 'returns the code for level 1 (string key fallback)' do
+        proxy.instance_variable_set(:@site_settings, { 'security_codes' => { '1' => 'alpha', '2' => 'beta' } })
+        expect(proxy.send(:security_code_for, 1)).to be == 'alpha'
+      end
+    end
+
+    with 'when security code is missing' do
+      it 'raises ArgumentError' do
+        proxy.instance_variable_set(:@site_settings, { 'security_codes' => {} })
+        expect { proxy.send(:security_code_for, 2) }.to raise_exception(ArgumentError, message: be =~ /level 2/)
+      end
+    end
+
+    with 'when site_settings is nil' do
+      it 'raises ArgumentError' do
+        proxy.instance_variable_set(:@site_settings, nil)
+        expect { proxy.send(:security_code_for, 1) }.to raise_exception(ArgumentError, message: be =~ /level 1/)
+      end
+    end
+  end
+
+  with 'use_soc?' do
+    it 'returns false when core_version is nil' do
+      proxy.instance_variable_set(:@core_version, nil)
+      expect(proxy.send(:use_soc?)).to be == false
+    end
+
+    it 'returns false for core version below 3.1.5' do
+      proxy.instance_variable_set(:@core_version, '3.1.4')
+      expect(proxy.send(:use_soc?)).to be == false
+    end
+
+    it 'returns true for core version 3.1.5' do
+      proxy.instance_variable_set(:@core_version, '3.1.5')
+      expect(proxy.send(:use_soc?)).to be == true
+    end
+
+    it 'returns true for core version above 3.1.5' do
+      proxy.instance_variable_set(:@core_version, '3.2.0')
+      expect(proxy.send(:use_soc?)).to be == true
+    end
+  end
+
+  with 'functional_position_confirm_status' do
+    it 'returns S0011 True pattern for YellowFlash' do
+      result = proxy.send(:functional_position_confirm_status, 'YellowFlash')
+      expect(result).to be == ([{ 'sCI' => 'S0011', 'n' => 'status', 's' => /^True(,True)*$/ }])
+    end
+
+    it 'returns S0007 False pattern for Dark' do
+      result = proxy.send(:functional_position_confirm_status, 'Dark')
+      expect(result).to be == ([{ 'sCI' => 'S0007', 'n' => 'status', 's' => /^False(,False)*$/ }])
+    end
+
+    it 'returns S0007, S0011, S0005 for NormalControl' do
+      result = proxy.send(:functional_position_confirm_status, 'NormalControl')
+      expect(result).to be == ([
+        { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
+        { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
+        { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
+      ])
+    end
+
+    it 'returns empty array for unknown status' do
+      result = proxy.send(:functional_position_confirm_status, 'Unknown')
+      expect(result).to be == []
+    end
+  end
+end
