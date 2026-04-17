@@ -35,7 +35,7 @@ module RSMP
           log "Wait for #{description}", level: :debug
 
           begin
-            subscribe_to_status subscribe_list, component: component_id, within: timeout
+            subscribe_to_status_and_collect(subscribe_list, component: component_id, within: timeout).ok!
           ensure
             unsubscribe_list = status_list.map { |item| item.slice('sCI', 'n') }
             unsubscribe_to_status component_id, unsubscribe_list
