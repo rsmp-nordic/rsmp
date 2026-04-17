@@ -38,7 +38,7 @@ module RSMP
             subscribe_to_status_and_collect(subscribe_list, component: component_id, within: timeout).ok!
           ensure
             unsubscribe_list = status_list.map { |item| item.slice('sCI', 'n') }
-            unsubscribe_to_status component_id, unsubscribe_list
+            unsubscribe_to_status unsubscribe_list, component: component_id
           end
         end
 

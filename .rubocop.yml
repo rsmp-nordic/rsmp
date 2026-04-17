@@ -41,7 +41,6 @@ Metrics/ParameterLists:
 Metrics/BlockLength:
   Exclude:
     - 'test/**/*'
-    - 'test/**/*'
     - 'features/**/*'
     - '*.gemspec'
 

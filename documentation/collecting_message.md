@@ -145,67 +145,82 @@ result = matcher.collect(options) do |message,item|
 end
 ```
 
-## Subscribing to status updates
-The method `subscribe_to_status` can be used to subscribe to one of more status messages.
-
-### Without collection
-The simple form sends an RSMP status subscription message to the site and then returns immediatly. To collect incoming status messages, you need to manually use e.g. a Collector.
-
-A hash is returned, with `:sent` containing the send subscription messages.
+## Sending commands
+The method `send_command` sends a CommandRequest to the site and returns the sent message. `component:` defaults to `main.c_id`.
 
 ```ruby
-options = {
-	list: [{'sCI'=>'S0001','n'=>'signalgroupstatus'}],
-}
-result = subscribe_to_status(options)
-result.keys => # [:sent]
+message = send_command(
+  [{'cCI' => 'M0001', 'n' => 'status', 'v' => 'NormalControl'}],
+  component: 'AA+BBCCC=DDDEE001'
+)
 ```
 
-Note: If you want to use this simple form and manually collect responses, it's best to start collection in an asyncronous task _before_ you subscribe, to make sure you don't miss early responses:
+To send and wait for the CommandResponse, use `send_command_and_collect`. It returns a collector; call `.ok!` to raise on NotAck or timeout.
+
+```ruby
+collector = send_command_and_collect(
+  [{'cCI' => 'M0001', 'n' => 'status', 'v' => 'NormalControl'}],
+  within: 5,
+  component: 'AA+BBCCC=DDDEE001'
+)
+collector.ok!
+```
+
+## Requesting status
+The method `request_status` sends a StatusRequest to the site and returns `{ sent: message }`. `component:` defaults to `main.c_id`.
+
+```ruby
+result = request_status(
+  [{'sCI' => 'S0001', 'n' => 'signalgroupstatus'}],
+  component: 'AA+BBCCC=DDDEE001'
+)
+result[:sent]  # => the StatusRequest message
+```
+
+To send and wait for the StatusResponse, use `request_status_and_collect`. It returns a collector; call `.ok!` to raise on NotAck or timeout.
+
+```ruby
+collector = request_status_and_collect(
+  [{'sCI' => 'S0001', 'n' => 'signalgroupstatus'}],
+  within: 5,
+  component: 'AA+BBCCC=DDDEE001'
+)
+collector.ok!
+```
+
+## Subscribing to status updates
+The method `subscribe_to_status` sends a StatusSubscribe message to the site and returns `{ sent: message }`. `component:` defaults to `main.c_id`.
+
+### Without collection
+
+```ruby
+result = subscribe_to_status(
+  [{'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'uRt' => '1'}],
+  component: 'AA+BBCCC=DDDEE001'
+)
+result[:sent]  # => the StatusSubscribe message
+```
+
+If you want to manually collect incoming status updates after subscribing, start a collector before subscribing so you don't miss early responses:
 
 ```ruby
 task = async do
-	MessageCollector.new(options).collect(num: 5, timeout:10)  # start listening for status messages
+  MessageCollector.new(options).collect(num: 5, timeout: 10)
 end
-result = subscribe_to_status(options) # subscribe
-task.wait  # wait for collection task to complete (or time out)
+subscribe_to_status(status_list)
+task.wait
 ```
 
 ### With collection
-If you provide `:collect` options, it will be used to construct a StatusCollector for collecting the relevant status messages. When collection completes the collector is returned in the `:collector` key:
+
+Use `subscribe_to_status_and_collect` to subscribe and collect status updates matching the criteria. It returns a collector; call `.ok!` to raise on NotAck or timeout.
 
 ```ruby
-options = {
-	list: [{'sCI'=>'S0001','n'=>'signalgroupstatus'}],
-	collect: {timeout: 5}
-}
-result = subscribe_to_status(options)
-result.keys => # [:sent, :collector]
-result[:collector].messages # => list of collected messages
-```
-
-You can pass you own collector which will give you more control of how to collect the incoming status messages:
-
-```ruby
-collector = Collector.new(options)
-options = {collect: collector}
-result = subscribe_to_status(options)
-result.keys => # [:sent, :collector]
-result[:collector].messages # => list of collected messages
-```
-
-### Processing responses
-If you pass a block, the block will be used to construct a collector. The block will be called for each matching  status item received.
-Collection will continue until the block returns :cancel, or it times out.
-
-```ruby
-options = {
-	list: [{'sCI'=>'S0001','n'=>'signalgroupstatus'}]
-}
-result = subscribe_to_status(options) do |message|
-	# do something with message
-	:keep # or not
-end
-result.keys => # [:sent, :collector]
+collector = subscribe_to_status_and_collect(
+  [{'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'uRt' => '1'}],
+  within: 5,
+  component: 'AA+BBCCC=DDDEE001'
+)
+collector.ok!
 ```
 
