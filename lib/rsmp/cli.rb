@@ -86,7 +86,8 @@ module RSMP
 
     def apply_basic_site_options(settings)
       settings['site_id'] = options[:id] if options[:id]
-      settings['core_version'] = options[:core] if options[:core]
+      settings['core_version'] = options[:core] || ENV['CORE_VERSION'] if options[:core] || ENV['CORE_VERSION']
+      settings['sxl_version'] = ENV['SXL_VERSION'] if ENV['SXL_VERSION']
     end
 
     def parse_supervisors(settings)
