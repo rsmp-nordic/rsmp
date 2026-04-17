@@ -3,7 +3,8 @@ module RSMP
     module Modules
       # Handles aggregated status requests and responses
       module AggregatedStatus
-        def request_aggregated_status(component, within: nil, m_id: nil, validate: true)
+        # Build and send an AggregatedStatusRequest. Returns { sent: message }.
+        def request_aggregated_status(component, m_id: nil, validate: true)
           validate_ready 'request aggregated status'
           m_id ||= RSMP::Message.make_m_id
           message = RSMP::AggregatedStatusRequest.new({
@@ -11,15 +12,22 @@ module RSMP
                                                         'mId' => m_id
                                                       })
           apply_nts_message_attributes message
-          if within
-            collector = AggregatedStatusCollector.new(self, timeout: within, m_id: m_id, num: 1)
-            result = send_message_and_collect message, collector, validate: validate
-            result[:collector].ok!
-            result
-          else
-            send_message message, validate: validate
-            { sent: message }
-          end
+          send_message message, validate: validate
+          { sent: message }
+        end
+
+        # Build, send an AggregatedStatusRequest and collect the response. Returns the collector.
+        # Call .ok! on the result to raise on NotAck or timeout.
+        def request_aggregated_status_and_collect(component, within:, m_id: nil, validate: true)
+          validate_ready 'request aggregated status'
+          m_id ||= RSMP::Message.make_m_id
+          message = RSMP::AggregatedStatusRequest.new({
+                                                        'cId' => component,
+                                                        'mId' => m_id
+                                                      })
+          apply_nts_message_attributes message
+          collector = AggregatedStatusCollector.new(self, timeout: within, m_id: m_id, num: 1)
+          send_message_and_collect(message, collector, validate: validate)[:collector]
         end
 
         def validate_aggregated_status(message, status_elements)
