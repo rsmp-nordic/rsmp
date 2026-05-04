@@ -40,10 +40,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 2
-        expect(collector.messages.first).to be == right
-        expect(collector.messages.last).to be == wrong
+        expect(collector.messages).to be == [right, wrong]
       end
       proxy.distribute right
       proxy.distribute wrong
@@ -70,9 +67,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right
@@ -87,9 +82,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right
@@ -104,9 +97,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right
@@ -121,9 +112,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right
@@ -138,9 +127,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right
@@ -155,9 +142,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right
@@ -172,9 +157,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right
@@ -189,9 +172,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right
@@ -206,9 +187,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right
@@ -224,9 +203,7 @@ describe RSMP::AlarmCollector do
         result = collector.collect
 
         expect(result).to be == :ok
-        expect(collector.messages).to be_a(Array)
-        expect(collector.messages.size).to be == 1
-        expect(collector.messages.first).to be == right
+        expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
       proxy.distribute right

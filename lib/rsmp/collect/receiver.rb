@@ -2,7 +2,9 @@ module RSMP
   # Receives items from a Distributor when included as a receiver.
   # Optionally filter messages using a Filter.
   module Receiver
-    include Inspect
+    def inspect
+      "#<#{self.class.name}:#{object_id}>"
+    end
 
     def initialize_receiver(distributor, filter: nil)
       @distributor = distributor

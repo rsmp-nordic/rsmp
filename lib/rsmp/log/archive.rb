@@ -2,8 +2,6 @@ module RSMP
   # Archive of log items, which can be messages or info items.
   # All items are timestamped, and stored chronologically.
   class Archive
-    include Inspect
-
     attr_reader :items
 
     @index = 0

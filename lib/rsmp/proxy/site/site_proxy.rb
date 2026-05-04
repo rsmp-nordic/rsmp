@@ -38,12 +38,6 @@ module RSMP
       @settings = @supervisor.supervisor_settings.clone
     end
 
-    def inspect
-      "#<#{self.class.name}:#{object_id}, #{inspector(
-        :@acknowledgements, :@settings, :@site_settings, :@components
-      )}>"
-    end
-
     def node
       supervisor
     end

@@ -8,7 +8,6 @@ module RSMP
 
     include Logging
     include Distributor
-    include Inspect
     include Task
     include Modules::State
     include Modules::Watchdogs
@@ -30,6 +29,10 @@ module RSMP
       clear
       @state = :disconnected
       @state_condition = Async::Notification.new
+    end
+
+    def inspect
+      "#<#{self.class.name}:#{object_id} state:#{state}}>"
     end
 
     def now
@@ -157,12 +160,6 @@ module RSMP
 
       @collector = RSMP::Collector.new self, options[:collect]
       @collector.start
-    end
-
-    def inspect
-      "#<#{self.class.name}:#{object_id}, #{inspector(
-        :@acknowledgements, :@settings, :@site_settings
-      )}>"
     end
 
     def clock

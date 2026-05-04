@@ -1,8 +1,6 @@
 module RSMP
   # RSMP component base class.
   class ComponentBase
-    include Inspect
-
     attr_reader :c_id, :ntsoid, :xnid, :node, :alarms, :statuses,
                 :aggregated_status, :aggregated_status_bools, :grouped
 
@@ -28,6 +26,10 @@ module RSMP
       @grouped = grouped
       clear_aggregated_status
       @alarms = {}
+    end
+
+    def inspect
+      "#<#{self.class.name}:#{object_id}:#{object_id} c_id:#{@c_id}>"
     end
 
     def now

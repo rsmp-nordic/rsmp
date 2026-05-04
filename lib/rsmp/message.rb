@@ -4,8 +4,6 @@ require 'rsmp_schema'
 module RSMP
   # Base RSMP message class used to represent parsed and built messages.
   class Message
-    include Inspect
-
     attr_reader :now, :attributes, :out, :timestamp # this is an internal timestamp recording when we receive/send
     attr_accessor :json, :direction
 
@@ -82,6 +80,10 @@ module RSMP
       end
     end
 
+    def inspect
+      "#<#{self.class.name}:#{object_id} m_id: #{m_id_short}>"
+    end
+
     def type
       @attributes['type']
     end
@@ -91,6 +93,8 @@ module RSMP
     end
 
     def self.shorten_m_id(m_id, length = 4)
+      return nil unless m_id
+
       m_id[0..(length - 1)]
     end
 

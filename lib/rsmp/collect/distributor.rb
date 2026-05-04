@@ -3,10 +3,8 @@ module RSMP
   module Distributor
     attr_reader :receivers
 
-    include Inspect
-
     def inspect
-      "#<#{self.class.name}:#{object_id}, #{inspector(:@receivers)}>"
+      "#<#{self.class.name}:#{object_id}}>"
     end
 
     def initialize_distributor

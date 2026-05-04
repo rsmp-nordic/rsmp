@@ -2,7 +2,6 @@ module RSMP
   # Base class for sites and supervisors.
   class Node
     include Logging
-    include Inspect
     include Task
 
     attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock, :collector
@@ -15,6 +14,10 @@ module RSMP
       @error_queue = Async::Queue.new
       @ignore_errors = []
       @collect = options[:collect]
+    end
+
+    def inspect
+      "#<#{self.class.name}:#{object_id} id: #{site_id}}>"
     end
 
     def now
