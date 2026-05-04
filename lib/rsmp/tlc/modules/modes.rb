@@ -196,8 +196,8 @@ module RSMP
 
         # S0006 - Emergency route status (deprecated, use S0035)
         def handle_s0006(_status_code, status_name = nil, options = {})
-          if Proxy.version_meets_requirement? options[:sxl_version],
-                                              '>=1.2.0'
+          if RSMP::Proxy.version_meets_requirement? options[:sxl_version],
+                                                    '>=1.2.0'
             log 'S0006 is depreciated, use S0035 instead.',
                 level: :warning
           end

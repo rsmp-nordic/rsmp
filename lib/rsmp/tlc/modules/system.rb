@@ -63,22 +63,36 @@ module RSMP
         end
 
         # S0091 - Operator logged in/out OP-panel
-        def handle_s0091(_status_code, status_name = nil, _options = {})
-          case status_name
-          when 'user'
-            TrafficControllerSite.make_status 0
-          when 'username'
-            TrafficControllerSite.make_status ''
+        def handle_s0091(_status_code, status_name = nil, options = {})
+          if RSMP::Proxy.version_meets_requirement?(options[:sxl_version], '>=1.1')
+            case status_name
+            when 'user'
+              TrafficControllerSite.make_status 0
+            end
+          else
+            case status_name
+            when 'user'
+              TrafficControllerSite.make_status 'nobody'
+            when 'status'
+              TrafficControllerSite.make_status 'logout'
+            end
           end
         end
 
         # S0092 - Operator logged in/out web-interface
-        def handle_s0092(_status_code, status_name = nil, _options = {})
-          case status_name
-          when 'user'
-            TrafficControllerSite.make_status 0
-          when 'username'
-            TrafficControllerSite.make_status ''
+        def handle_s0092(_status_code, status_name = nil, options = {})
+          if RSMP::Proxy.version_meets_requirement?(options[:sxl_version], '>=1.1')
+            case status_name
+            when 'user'
+              TrafficControllerSite.make_status 0
+            end
+          else
+            case status_name
+            when 'user'
+              TrafficControllerSite.make_status 'nobody'
+            when 'status'
+              TrafficControllerSite.make_status 'logout'
+            end
           end
         end
 
