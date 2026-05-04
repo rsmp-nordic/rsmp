@@ -57,7 +57,7 @@ module RSMP
 
     # Inspect formatter that shows the message we have collected
     def inspect
-      "#<#{self.class.name}:#{object_id}, #{inspector(:@messages)}>"
+      "#<#{self.class.name}:#{object_id}, message:#{@messages}>"
     end
 
     # if an errors caused collection to abort, then raise it

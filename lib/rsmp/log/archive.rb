@@ -16,7 +16,7 @@ module RSMP
     end
 
     def inspect
-      "#<#{self.class.name}:#{object_id}, #{inspector(:@items)}>"
+      "#<#{self.class.name}:#{object_id}, messages:#{@items}>"
     end
 
     def self.prepare_item(item)
