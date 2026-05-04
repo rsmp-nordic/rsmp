@@ -125,12 +125,12 @@ module RSMP
       # note that the type comes from the site config, while the version
       # comes from the Version message send by the site
       type = @site_settings['sxl']
-      version = RSMP::Schema.sanitize_version(message.attribute('SXL'))
-      RSMP::Schema.find_schema! type, version
+      sanitized_version = RSMP::Schema.sanitize_version(message.attribute('SXL'))
+      RSMP::Schema.find_schema! type, sanitized_version
 
-      # store sanitized sxl version requested by site
+      # store raw sxl version from site (may be 2-part like "1.2"), so we echo it back unchanged
       # TODO should check agaist site settings
-      @site_sxl_version = version
+      @site_sxl_version = message.attribute('SXL')
     rescue RSMP::Schema::UnknownSchemaError => e
       dont_acknowledge message, "Rejected #{message.type} message,", e.to_s
     end

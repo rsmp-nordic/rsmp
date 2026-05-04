@@ -144,7 +144,7 @@ module RSMP
         # unsubscribes to all statuses (with all attributes) defined in the used SXL
         def unsubscribe_from_all(component: nil)
           component ||= main.c_id
-          catalogue = RSMP::Schema.status_catalogue(@sxl, sxl_version)
+          catalogue = RSMP::Schema.status_catalogue(@sxl, RSMP::Schema.sanitize_version(sxl_version))
           status_list = catalogue.flat_map do |status_code_id, names|
             names.map { |name| { 'sCI' => status_code_id.to_s, 'n' => name.to_s } }
           end

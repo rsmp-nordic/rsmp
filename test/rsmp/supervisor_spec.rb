@@ -180,5 +180,33 @@ describe RSMP::Supervisor do
         expect(proxy.core_version).to be == core_version
       end
     end
+
+    it 'accepts a 2-part sxl version like "1.2" and echoes it back unchanged' do
+      with_async_context(context: lambda {
+        supervisor.start
+      }) do |_task|
+        core_versions = RSMP::Schema.core_versions
+        sxl_version = '1.2'
+        protocol = site_connect
+        proxy = handshake(protocol, core_versions: core_versions, sxl_version: sxl_version)
+
+        expect(proxy).to be_a(RSMP::SiteProxy)
+        expect(proxy.state).to be == :ready
+      end
+    end
+
+    it 'accepts a 3-part sxl version like "1.2.1" and echoes it back unchanged' do
+      with_async_context(context: lambda {
+        supervisor.start
+      }) do |_task|
+        core_versions = RSMP::Schema.core_versions
+        sxl_version = '1.2.1'
+        protocol = site_connect
+        proxy = handshake(protocol, core_versions: core_versions, sxl_version: sxl_version)
+
+        expect(proxy).to be_a(RSMP::SiteProxy)
+        expect(proxy.state).to be == :ready
+      end
+    end
   end
 end
