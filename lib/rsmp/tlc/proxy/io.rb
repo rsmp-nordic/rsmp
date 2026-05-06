@@ -106,9 +106,12 @@ module RSMP
         end
 
         def force_input_confirm_status(input, status, value)
-          result = [
-            { 'sCI' => 'S0029', 'n' => 'status', 's' => /^.{#{input.to_i - 1}}#{status == 'True' ? '1' : '0'}/ }
-          ]
+          result = []
+          # S0029 is used to check the forced status, but is only available from sxl 1.0.13
+          if RSMP::Proxy.version_meets_requirement?(sxl_version, '>=1.0.13')
+            result << { 'sCI' => 'S0029', 'n' => 'status',
+                        's' => /^.{#{input.to_i - 1}}#{status == 'True' ? '1' : '0'}/ }
+          end
           if status == 'True'
             result << { 'sCI' => 'S0003', 'n' => 'inputstatus',
                         's' => /^.{#{input.to_i - 1}}#{value == 'True' ? '1' : '0'}/ }
