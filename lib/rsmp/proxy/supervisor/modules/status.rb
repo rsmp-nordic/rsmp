@@ -138,7 +138,7 @@ module RSMP
 
         def check_status_subscription(subscription, component, code, name, now)
           current, should_send = check_on_change_update(subscription, component, code, name)
-          should_send ||= interval_update_due?(subscription, now)
+          should_send ||= interval_update_due?(subscription, now) if subscription[:interval].positive?
           return [nil, false] unless should_send
 
           subscription[:last_sent_at] = now
