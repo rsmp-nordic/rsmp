@@ -6,7 +6,6 @@ module RSMP
         return false if @settings['info'] == false && item[:level] == :info
         return false if @settings['debug'] != true && item[:level] == :debug
         return false if @settings['statistics'] != true && item[:level] == :statistics
-        return false if @settings['test'] != true && item[:level] == :test
 
         true
       end

@@ -115,15 +115,6 @@ module RSMP
       item[:ip] && item[:port] && @muted["#{item[:ip]}:#{item[:port]}"]
     end
 
-    def level_enabled?(item)
-      return false if @settings['info'] == false && item[:level] == :info
-      return false if @settings['debug'] != true && item[:level] == :debug
-      return false if @settings['statistics'] != true && item[:level] == :statistics
-      return false if @settings['test'] != true && item[:level] == :test
-
-      true
-    end
-
     def output(level, str)
       return if str.empty? || /^\s+$/.match(str)
 
