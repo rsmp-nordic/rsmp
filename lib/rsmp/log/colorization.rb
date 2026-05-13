@@ -4,36 +4,47 @@ module RSMP
     module Colorization
       def default_colors
         {
-          'info' => 'white',
-          'log' => 'light_blue',
-          'statistics' => 'light_black',
-          'warning' => 'light_yellow',
-          'error' => 'red',
-          'debug' => 'light_black',
-          'collect' => 'light_black'
+          'error' => { 'color' => 'red' },
+          'warning' => { 'color' => 'yellow' },
+          'info' => { 'color' => 'white' },
+          'log' => { 'color' => 'white', 'mode' => 'dim' },
+          'statistics' => { 'color' => 'grey', 'mode' => 'dim' },
+          'debug' => { 'color' => 'grey', 'mode' => 'dim' },
+          'collect' => { 'color' => 'grey', 'mode' => 'dim' }
         }
       end
 
       def colorize_with_map(level, str, colors)
         color = colors[level.to_s]
-        color ? str.colorize(color.to_sym) : str
+        return str unless color
+
+        if color.is_a?(Hash)
+          opts = {}
+          opts[:color] = color['color'].to_sym if color['color']
+          opts[:mode] = color['mode'].to_sym if color['mode']
+          str.colorize(opts)
+        else
+          str.colorize(color.to_sym)
+        end
       end
 
       def apply_hash_colors(level, str)
         colors = default_colors
-        colors.merge! @settings['color'] if @settings['color'].is_a?(Hash)
+        style = @settings['style']
+        colors.merge!(style) if style.is_a?(Hash)
         colorize_with_map(level, str, colors)
       end
 
       def colorize(level, str)
-        return str if @settings['color'] == false || @settings['color'].nil?
+        style = @settings['style']
+        return str if style == false || style.nil?
 
-        if @settings['color'] == true || @settings['color'].is_a?(Hash)
+        if style == true || style.is_a?(Hash)
           apply_hash_colors(level, str)
         elsif %i[nack warning error].include?(level)
-          str.colorize(@settings['color']).bold
+          str.colorize(style).bold
         else
-          str.colorize @settings['color']
+          str.colorize style
         end
       end
     end

@@ -11,7 +11,7 @@ module RSMP
         'active' => true,
         'path' => nil,
         'stream' => nil,
-        'color' => true,
+        'style' => true,
         'debug' => false,
         'statistics' => false,
         'hide_ip_and_port' => false,
