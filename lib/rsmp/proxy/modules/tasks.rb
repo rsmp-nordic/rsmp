@@ -24,7 +24,7 @@ module RSMP
         rescue EOFError, Async::Stop
           log 'Connection closed', level: :warning
         rescue IOError => e
-          log "IOError: #{e}", level: :warning
+          log "IOError: #{e}", level: :debug
         rescue Errno::ECONNRESET
           log 'Connection reset by peer', level: :warning
         rescue Errno::EPIPE
