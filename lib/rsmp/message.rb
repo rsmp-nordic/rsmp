@@ -1,5 +1,3 @@
-require 'rsmp_schema'
-
 # rsmp messages
 module RSMP
   # Base RSMP message class used to represent parsed and built messages.
