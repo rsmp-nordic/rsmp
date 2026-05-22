@@ -1,0 +1,133 @@
+{
+  "allOf": [
+    {
+      "$ref": "core.json"
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "MessageAck" } }
+      },
+      "then": {
+        "$ref": "../3.1.2/message_ack.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "MessageNotAck" } }
+      },
+      "then": {
+        "$ref": "../3.1.2/message_not_ack.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "Version" } }
+      },
+      "then": {
+        "$ref": "../3.1.2/version.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "AggregatedStatus" } }
+      },
+      "then": {
+        "$ref": "../3.1.3/aggregated_status.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "AggregatedStatusRequest" } }
+      },
+      "then": {
+        "$ref": "../3.1.5/aggregated_status_request.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "Watchdog" } }
+      },
+      "then": {
+        "$ref": "../3.1.2/watchdog.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "Alarm" } }
+      },
+      "then": {
+        "$ref": "alarm.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "CommandRequest" } }
+      },
+      "then": {
+        "$ref": "../3.1.2/command_request.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "CommandResponse" } }
+      },
+      "then": {
+        "$ref": "../3.1.2/command_response.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "StatusRequest" } }
+      },
+      "then": {
+        "$ref": "../3.1.2/status_request.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "StatusResponse" } }
+      },
+      "then": {
+        "$ref": "../3.2.0/status_response.json"
+      }
+    },
+    {
+      "if": {
+         "required" : ["type"],
+       "properties": { "type": { "const": "StatusSubscribe" } }
+      },
+      "then": {
+        "$ref": "../3.1.5/status_subscribe.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "StatusUnsubscribe" } }
+      },
+      "then": {
+        "$ref": "../3.1.2/status_unsubscribe.json"
+      }
+    },
+    {
+      "if": {
+        "required" : ["type"],
+        "properties": { "type": { "const": "StatusUpdate" } }
+      },
+      "then": {
+        "$ref": "../3.2.0/status_update.json"
+      }
+    }
+  ]
+}
