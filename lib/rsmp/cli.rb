@@ -2,6 +2,24 @@ require 'thor'
 require_relative '../rsmp'
 
 module RSMP
+  # CLI subcommands for SXL schema operations.
+  class SchemaCLI < Thor
+    namespace :schema
+    desc 'generate', 'Generate JSON Schema files from sxl.yaml'
+    method_option :in,  type: :string, aliases: '-i', banner: 'Path to sxl.yaml input file', default: 'sxl.yaml'
+    method_option :out, type: :string, aliases: '-o', banner: 'Path to output directory',    default: '.'
+    def generate
+      input  = options[:in]
+      output = options[:out]
+      unless File.exist?(input)
+        puts "Error: Input file #{input} not found"
+        exit 1
+      end
+      sxl = RSMP::Convert::Import::YAML.read(input)
+      RSMP::Convert::Export::JSONSchema.write(sxl, output)
+    end
+  end
+
   # CLI commands for running RSMP site and supervisor.
   class CLI < Thor
     desc 'version', 'Show version'
@@ -47,14 +65,7 @@ module RSMP
       # ctrl-c
     end
 
-    desc 'convert', 'Convert SXL from YAML to JSON Schema'
-    method_option :in, type: :string, aliases: '-i', banner: 'Path to YAML input file'
-    method_option :out, type: :string, aliases: '-o', banner: 'Path to JSON Schema output file'
-    def convert
-      validate_convert_options
-      validate_input_file_exists
-      perform_conversion
-    end
+    register SchemaCLI, 'schema', 'schema COMMAND', 'SXL schema commands'
 
     no_commands do
       def load_site_configuration
@@ -185,30 +196,6 @@ module RSMP
              RSMP::ConfigurationError => e
         puts "Cannot start supervisor: #{e}"
       end
-    end
-
-    def validate_convert_options
-      unless options[:in]
-        puts 'Error: Input option missing'
-        exit
-      end
-
-      return if options[:out]
-
-      puts 'Error: Output option missing'
-      exit
-    end
-
-    def validate_input_file_exists
-      return if File.exist? options[:in]
-
-      puts "Error: Input path file #{options[:in]} not found"
-      exit
-    end
-
-    def perform_conversion
-      sxl = RSMP::Convert::Import::YAML.read options[:in]
-      RSMP::Convert::Export::JSONSchema.write sxl, options[:out]
     end
 
     # avoid Thor returnin 0 on failures, see
