@@ -653,3 +653,9 @@ Initial release.
 ## 0.40.1
 - fix config normalization
 - improve config schema validation
+
+## 0.43.0
+- rsmp_schema folded into this gem
+- all schema files vendored into this repo, with rake task to update them
+- moved `rake regenerate` to `rsmp schema generate` CLI
+ 
