@@ -1,7 +1,7 @@
 {
   "allOf": [
     {
-      "$ref": "../3.2.0/core.json"
+      "$ref": "core.json"
     },
     {
       "if": {
@@ -9,7 +9,7 @@
         "properties": { "type": { "const": "MessageAck" } }
       },
       "then": {
-        "$ref": "../3.1.2/message_ack.json"
+        "$ref": "message_ack.json"
       }
     },
     {
@@ -18,7 +18,7 @@
         "properties": { "type": { "const": "MessageNotAck" } }
       },
       "then": {
-        "$ref": "../3.1.2/message_not_ack.json"
+        "$ref": "message_not_ack.json"
       }
     },
     {
@@ -27,7 +27,7 @@
         "properties": { "type": { "const": "Version" } }
       },
       "then": {
-        "$ref": "../3.1.2/version.json"
+        "$ref": "version.json"
       }
     },
     {
@@ -36,7 +36,7 @@
         "properties": { "type": { "const": "AggregatedStatus" } }
       },
       "then": {
-        "$ref": "../3.1.3/aggregated_status.json"
+        "$ref": "aggregated_status.json"
       }
     },
     {
@@ -45,7 +45,7 @@
         "properties": { "type": { "const": "AggregatedStatusRequest" } }
       },
       "then": {
-        "$ref": "../3.1.5/aggregated_status_request.json"
+        "$ref": "aggregated_status_request.json"
       }
     },
     {
@@ -54,7 +54,7 @@
         "properties": { "type": { "const": "Watchdog" } }
       },
       "then": {
-        "$ref": "../3.1.2/watchdog.json"
+        "$ref": "watchdog.json"
       }
     },
     {
@@ -63,7 +63,7 @@
         "properties": { "type": { "const": "Alarm" } }
       },
       "then": {
-        "$ref": "../3.2.0/alarm.json"
+        "$ref": "alarm.json"
       }
     },
     {
@@ -72,7 +72,7 @@
         "properties": { "type": { "const": "CommandRequest" } }
       },
       "then": {
-        "$ref": "../3.1.2/command_request.json"
+        "$ref": "command_request.json"
       }
     },
     {
@@ -81,7 +81,7 @@
         "properties": { "type": { "const": "CommandResponse" } }
       },
       "then": {
-        "$ref": "../3.1.2/command_response.json"
+        "$ref": "command_response.json"
       }
     },
     {
@@ -90,7 +90,7 @@
         "properties": { "type": { "const": "StatusRequest" } }
       },
       "then": {
-        "$ref": "../3.1.2/status_request.json"
+        "$ref": "status_request.json"
       }
     },
     {
@@ -99,7 +99,7 @@
         "properties": { "type": { "const": "StatusResponse" } }
       },
       "then": {
-        "$ref": "../3.2.0/status_response.json"
+        "$ref": "status_response.json"
       }
     },
     {
@@ -108,7 +108,7 @@
        "properties": { "type": { "const": "StatusSubscribe" } }
       },
       "then": {
-        "$ref": "../3.1.5/status_subscribe.json"
+        "$ref": "status_subscribe.json"
       }
     },
     {
@@ -117,7 +117,7 @@
         "properties": { "type": { "const": "StatusUnsubscribe" } }
       },
       "then": {
-        "$ref": "../3.1.2/status_unsubscribe.json"
+        "$ref": "status_unsubscribe.json"
       }
     },
     {
@@ -126,7 +126,7 @@
         "properties": { "type": { "const": "StatusUpdate" } }
       },
       "then": {
-        "$ref": "../3.2.0/status_update.json"
+        "$ref": "status_update.json"
       }
     }
   ]

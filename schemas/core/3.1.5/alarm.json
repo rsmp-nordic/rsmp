@@ -2,9 +2,9 @@
   "title" :  "Alarm",
   "description" :  "Alarm messsage",
   "properties" : {
-    "mId" : { "$ref": "../3.1.2/definitions.json#/message_id" },
-    "cId" : { "$ref": "../3.1.2/definitions.json#/component_id" },
-    "aCId" : { "$ref": "../3.1.2/definitions.json#/alarm_code" },
+    "mId" : { "$ref": "definitions.json#/message_id" },
+    "cId" : { "$ref": "definitions.json#/component_id" },
+    "aCId" : { "$ref": "definitions.json#/alarm_code" },
     "xACId" : { "description" : "External alarm code id", "type" : "string" },
     "aSp" : {
       "description" : "Alarm specialization",
@@ -23,7 +23,7 @@
                                "issue"] }
         }
       },
-      "then": { "$ref": "../3.1.2/alarm_issue.json" }
+      "then": { "$ref": "alarm_issue.json" }
     },
     {
       "if": {
@@ -39,7 +39,7 @@
           }
         ]
       },
-      "then": { "$ref": "../3.1.2/alarm_suspend_resume.json" }
+      "then": { "$ref": "alarm_suspend_resume.json" }
     },
     {
       "if": {
@@ -50,7 +50,7 @@
                               "Suspended", "NotSuspended" ] }
         }
       },
-      "then": { "$ref": "../3.1.2/alarm_suspended_resumed.json" }
+      "then": { "$ref": "alarm_suspended_resumed.json" }
     },
     {
       "if": {
@@ -59,7 +59,7 @@
           "aSp" : { "enum" : [ "Acknowledge"] }
         }
       },
-      "then": { "$ref": "../3.1.2/alarm_acknowledge.json" }
+      "then": { "$ref": "alarm_acknowledge.json" }
     },
     {
       "if": {
