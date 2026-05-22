@@ -8,6 +8,8 @@ AllCops:
     - '.bundle/**/*'
     - 'ignore/**/*'
     - 'config/private/**/*'
+    - 'schemas/**/*'
+    - 'tmp/**/*'
 
 # Allow longer line lengths for tests with long JSON strings
 Layout/LineLength:
