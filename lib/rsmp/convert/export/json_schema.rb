@@ -211,17 +211,17 @@ module RSMP
         def self.output_statuses(out, items)
           # ensure shared guard is written (relative to version folder)
           out['defs/guards.json'] ||= output_json({
-                                                     '$schema' => 'https://json-schema.org/draft/2020-12/schema',
-                                                     '$defs' => {
-                                                       'q_unknown_or_undefined' => {
-                                                         'allOf' => [
-                                                           { 'required' => ['q'] },
-                                                           { 'properties' => { 'q' => { 'enum' => %w[undefined
-                                                                                                     unknown] } } }
-                                                         ]
-                                                       }
-                                                     }
-                                                   })
+                                                    '$schema' => 'https://json-schema.org/draft/2020-12/schema',
+                                                    '$defs' => {
+                                                      'q_unknown_or_undefined' => {
+                                                        'allOf' => [
+                                                          { 'required' => ['q'] },
+                                                          { 'properties' => { 'q' => { 'enum' => %w[undefined
+                                                                                                    unknown] } } }
+                                                        ]
+                                                      }
+                                                    }
+                                                  })
 
           list = [{ 'properties' => { 'sCI' => { 'enum' => items.keys.sort } } }]
           items.keys.sort.each do |key|
