@@ -7,7 +7,7 @@ module RSMP
         def self.build_value(item)
           out = {}
           out['description'] = item['description'] if item['description']
-          if item['type'] =~ /_list$/
+          if item['type'] =~ /_list(_as_string)?$/
             handle_string_list item, out
           else
             handle_types item, out
@@ -59,11 +59,13 @@ module RSMP
         # convert a yaml item with list: true to json schema
         def self.handle_string_list(item, out)
           case item['type']
-          when 'boolean_list'
+          when 'boolean_list', 'boolean_list_as_string'
             out['$ref'] = '../defs/definitions.json#/boolean_list'
-          when 'integer_list'
+          when 'integer_list', 'integer_list_as_string'
             out['$ref'] = '../defs/definitions.json#/integer_list'
-          when 'string_list'
+          when 'number_list', 'number_list_as_string'
+            out['$ref'] = '../defs/definitions.json#/number_list'
+          when 'string_list', 'string_list_as_string'
             out['$ref'] = '../defs/definitions.json#/string_list'
           else
             raise "Error: List of #{item['type']} is not supported: #{item.inspect}"
