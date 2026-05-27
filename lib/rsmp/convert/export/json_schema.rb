@@ -26,8 +26,11 @@ module RSMP
           JSON.generate(item, JSON_OPTIONS)
         end
 
-        # Default path to definitions.json bundled with the gem's core schemas
-        DEFINITIONS_SOURCE = File.expand_path('../../../../schemas/core/3.1.2/definitions.json', __dir__)
+        # Path to definitions.json for the latest bundled core schema version
+        def self.definitions_source
+          version = RSMP::Schema.latest_core_version
+          File.expand_path("../../../../schemas/core/#{version}/definitions.json", __dir__)
+        end
 
         # generate the json schema from a string containing yaml
         def self.generate(sxl)
@@ -50,7 +53,8 @@ module RSMP
           # Copy definitions.json so each version folder is self-contained
           defs_dest = File.join(folder, 'defs', 'definitions.json')
           FileUtils.mkdir_p File.dirname(defs_dest)
-          FileUtils.cp DEFINITIONS_SOURCE, defs_dest if File.exist?(DEFINITIONS_SOURCE)
+          source = definitions_source
+          FileUtils.cp source, defs_dest if File.exist?(source)
         end
       end
     end
