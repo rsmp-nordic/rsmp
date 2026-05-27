@@ -394,5 +394,29 @@ describe RSMP::Collector do
       collector.start
       expect { collector.wait! }.to raise_exception(RSMP::TimeoutError)
     end
+
+    it 'raises error when cancelled due to schema error' do
+      task = Async::Task.current
+      proxy = RSMP::SiteProxyStub.new task
+      collect_task = task.async do
+        collector = subject.new proxy, num: 1, timeout: collect_timeout
+        collector.start
+        expect { collector.wait! }.to raise_exception(RSMP::SchemaError)
+      end
+      proxy.distribute_error RSMP::SchemaError.new, message: RSMP::Watchdog.new
+      collect_task.wait
+    end
+
+    it 'raises error when cancelled due to schema error' do
+      task = Async::Task.current
+      proxy = RSMP::SiteProxyStub.new task
+      collect_task = task.async do
+        collector = subject.new proxy, num: 1, timeout: collect_timeout
+        collector.start
+        expect { collector.wait! }.to raise_exception(RSMP::SchemaError)
+      end
+      proxy.distribute_error RSMP::SchemaError.new, message: RSMP::Watchdog.new
+      collect_task.wait
+    end
   end
 end

@@ -104,10 +104,10 @@ module RSMP
 
     # If collection is not active, raise an error. Otherwise wait until
     # the desired messages have been collected.
-    # If timeout is reached, an exceptioin is raised.
+    # If timeout is reached or collection was cancelled with an error, an exception is raised.
     def wait!
       wait
-      raise @error if timeout?
+      raise @error if timeout? || (cancelled? && @error)
 
       @messages
     end
