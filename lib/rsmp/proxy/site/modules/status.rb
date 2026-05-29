@@ -125,12 +125,13 @@ module RSMP
         end
 
         def unsubscribe_to_status(status_list, component: nil, validate: nil)
-          validate_ready 'unsubscribe to status'
           component ||= main.c_id
 
           status_list.each do |item|
             remove_subscription_item(component, item['sCI'], item['n'])
           end
+
+          return unless ready? # if the connection is don't we skip sending
 
           message = RSMP::StatusUnsubscribe.new({
                                                   'cId' => component,
