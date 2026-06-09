@@ -3,8 +3,10 @@ class Hash
   def deep_merge(other_hash)
     return self unless other_hash
 
-    merge(other_hash) do |_key, old, fresh|
-      if old.is_a?(Hash) && fresh.is_a?(Hash)
+    merge(other_hash) do |key, old, fresh|
+      if key == 'sxls'
+        fresh
+      elsif old.is_a?(Hash) && fresh.is_a?(Hash)
         old.deep_merge(fresh)
       else
         fresh

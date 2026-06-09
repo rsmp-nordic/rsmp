@@ -21,10 +21,14 @@ def sxl_version
   RSMP::Schema.latest_version(:tlc)
 end
 
+def sxls
+  [{ 'name' => 'tlc', 'version' => sxl_version }]
+end
+
 describe RSMP::Message do
   let(:message_config) do
     {
-      version_str: %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}),
+      version_str: %({"mType":"rSMsg","type":"Version","step":"Request","RSMP":#{core_versions.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","SXLS":#{sxls.to_json},"mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"}),
       ack_str: '{"mType":"rSMsg","type":"MessageAck","oMId":"a54dc38b-7ddb-42a6-b6e8-95b0d00dad19"}',
       not_ack_str: '{"mType":"rSMsg","type":"MessageNotAck","rea":"since we are a rsmp::SupervisorProxy","oMId":"24b5e2d1-fd32-4f12-80cf-f32f8b2772af"}',
       watchdog_str: '{"mType":"rSMsg","type":"Watchdog","wTs":"2015-06-08T12:01:39.654Z","mId":"a8cafa58-31bc-40bb-b335-645b5ac985cd"}',
@@ -82,9 +86,11 @@ describe RSMP::Message do
       {
         'RSMP' => core_versions,
         'SXL' => sxl_version,
+        'SXLS' => sxls,
         'mId' => '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6',
         'mType' => 'rSMsg',
         'siteId' => [{ 'sId' => 'RN+SI0001' }],
+        'step' => 'Request',
         'type' => 'Version'
       }
     end
@@ -162,7 +168,7 @@ describe RSMP::Message do
     it 'generates json' do
       message = RSMP::Version.new(json)
       message.generate_json
-      str = %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions.to_json},"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","siteId":[{"sId":"RN+SI0001"}]})
+      str = %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions.to_json},"SXL":"#{sxl_version}","SXLS":#{sxls.to_json},"mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6","siteId":[{"sId":"RN+SI0001"}],"step":"Request"})
       expect(message.json).to be == str
     end
 

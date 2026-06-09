@@ -86,6 +86,8 @@ module RSMP
             case original.type
             when 'Version'
               version_acknowledged
+            when 'ComponentList'
+              component_list_acknowledged
             when 'StatusSubscribe'
               status_subscribe_acknowledged original
             end

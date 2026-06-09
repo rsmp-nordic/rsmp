@@ -1,7 +1,7 @@
 module RSMP
   # RSMP component base class.
   class ComponentBase
-    attr_reader :c_id, :ntsoid, :xnid, :node, :alarms, :statuses,
+    attr_reader :c_id, :component_type, :name, :ntsoid, :xnid, :node, :alarms, :statuses,
                 :aggregated_status, :aggregated_status_bools, :grouped
 
     AGGREGATED_STATUS_KEYS = %i[local_control
@@ -13,13 +13,15 @@ module RSMP
                                 rest
                                 not_connected].freeze
 
-    def initialize(node:, id:, ntsoid: nil, xnid: nil, grouped: false)
+    def initialize(node:, id:, type: nil, name: nil, ntsoid: nil, xnid: nil, grouped: false)
       if grouped == false && (ntsoid || xnid)
         raise RSMP::ConfigurationError,
               'ntsoid and xnid are only allowed for grouped objects'
       end
 
       @c_id = id
+      @component_type = type
+      @name = name || id
       @ntsoid = ntsoid
       @xnid = xnid
       @node = node
@@ -30,6 +32,11 @@ module RSMP
 
     def inspect
       "#<#{self.class.name}:#{object_id}:#{object_id} c_id:#{@c_id}>"
+    end
+
+    def update_metadata(type: nil, name: nil)
+      @component_type = type if type
+      @name = name if name
     end
 
     def now

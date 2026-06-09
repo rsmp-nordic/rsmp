@@ -44,7 +44,8 @@ module RSMP
 
     def handshake_complete
       super
-      log "Connection to site #{@site_id} established, using core #{@core_version}, #{@sxl} #{@site_sxl_version}",
+      sxl_summary = accepted_sxls.map { |item| "#{item['name']} #{item['version']}" }.join(', ')
+      log "Connection to site #{@site_id} established, using core #{@core_version}, SXLs [#{sxl_summary}]",
           level: :info
       start_watchdog
     end
@@ -55,6 +56,8 @@ module RSMP
       case message
       when StatusUnsubscribe, AggregatedStatusRequest
         will_not_handle message
+      when ComponentList
+        process_component_list message
       when AggregatedStatus
         process_aggregated_status message
       when AlarmIssue, AlarmSuspended, AlarmResumed, AlarmAcknowledged
@@ -82,7 +85,8 @@ module RSMP
       log "Received Version message for site #{@site_id}", message: message, level: :log
       start_timer
       acknowledge message
-      send_version @site_id, core_versions
+      response_id = core_3_3? ? (@supervisor.site_id || @site_id) : @site_id
+      send_version_response response_id, core_versions
       @version_determined = true
     end
 
@@ -96,7 +100,12 @@ module RSMP
     def acknowledged_first_outgoing(message)
       case message.type
       when 'Watchdog'
-        handshake_complete
+        if core_3_3?
+          @outgoing_watchdog_acknowledged = true
+          handshake_complete if @component_list_received
+        else
+          handshake_complete
+        end
       end
     end
 
@@ -105,6 +114,32 @@ module RSMP
     end
 
     def version_acknowledged; end
+
+    def process_component_list(message)
+      log "Received #{message.type}", message: message, level: :log
+      rebuild_components_from_list message.attributes['components']
+      acknowledge message
+      @component_list_received = true
+      handshake_complete if @outgoing_watchdog_acknowledged
+    end
+
+    def rebuild_components_from_list(items)
+      main_id = @site_settings.dig('components', 'main')&.keys&.first
+      @components = {}
+      @main = nil
+      items.each do |item|
+        grouped = item['id'] == main_id
+        component = ComponentProxy.new(
+          id: item['id'],
+          node: self,
+          type: item['type'],
+          name: item['name'],
+          grouped: grouped
+        )
+        @components[component.c_id] = component
+        @main = component if grouped
+      end
+    end
 
     def site_ids_changed
       @supervisor.site_ids_changed
@@ -115,24 +150,53 @@ module RSMP
     end
 
     def check_sxl_version(message)
-      # check that we have a schema for specified sxl type and version
-      # note that the type comes from the site config, while the version
-      # comes from the Version message send by the site
-      type = @site_settings['sxl']
-      sanitized_version = RSMP::Schema.sanitize_version(message.attribute('SXL'))
-      RSMP::Schema.find_schema! type, sanitized_version
-
-      # store raw sxl version from site (may be 2-part like "1.2"), so we echo it back unchanged
-      # TODO should check agaist site settings
-      @site_sxl_version = message.attribute('SXL')
+      if core_3_3?
+        select_sxls message
+      else
+        select_legacy_sxl message
+      end
     rescue RSMP::Schema::UnknownSchemaError => e
       dont_acknowledge message, "Rejected #{message.type} message,", e.to_s
     end
 
-    def sxl_version
-      # a supervisor does not maintain it's own sxl version
-      # instead we use what the site requests
-      @site_sxl_version
+    def select_legacy_sxl(message)
+      primary = configured_sxls.first
+      unless primary
+        reason = 'Legacy Version message received, but no SXL is configured'
+        dont_acknowledge message, "Rejected #{message.type} message,", reason
+        raise HandshakeError, reason
+      end
+
+      sanitized_version = RSMP::Schema.sanitize_version(message.attribute('SXL'))
+      RSMP::Schema.find_schema! primary['name'], sanitized_version
+      @accepted_sxls = [{ 'name' => primary['name'], 'version' => message.attribute('SXL') }]
+      @rejected_sxls = []
+    end
+
+    def select_sxls(message)
+      @accepted_sxls = []
+      @rejected_sxls = []
+
+      message.sxls.each do |requested|
+        configured = configured_sxls.find { |item| item['name'] == requested['name'] }
+        if configured.nil?
+          @rejected_sxls << rejected_sxl(requested, 1, 'SXL not supported')
+        elsif configured['version'].to_s == requested['version'].to_s
+          RSMP::Schema.find_schema! requested['name'], requested['version'], lenient: true
+          @accepted_sxls << requested.slice('name', 'version', 'prefix')
+        else
+          @rejected_sxls << rejected_sxl(requested, 2, "Supervisor only supports #{configured['version']}")
+        end
+      end
+    end
+
+    def rejected_sxl(requested, code, reason)
+      {
+        'name' => requested['name'],
+        'version' => requested['version'],
+        'rejected' => code,
+        'reason' => reason
+      }.compact
     end
 
     def process_version(message)
@@ -173,7 +237,8 @@ module RSMP
     def setup_site_settings
       @site_settings = find_site_settings @site_id
       if @site_settings
-        @sxl = @site_settings['sxl']
+        @sxls = configured_sxls
+        @accepted_sxls = @sxls.dup
         setup_components @site_settings['components']
       else
         dont_acknowledge message, 'Rejected', "No config found for site #{@site_id}"
@@ -188,10 +253,10 @@ module RSMP
     def build_component(id:, type:, settings: {})
       settings ||= {}
       if type == 'main'
-        ComponentProxy.new id: id, node: self, grouped: true,
+        ComponentProxy.new id: id, node: self, type: type, name: settings['name'], grouped: true,
                            ntsoid: settings['ntsOId'], xnid: settings['xNId']
       else
-        ComponentProxy.new id: id, node: self, grouped: false
+        ComponentProxy.new id: id, node: self, type: type, name: settings['name'], grouped: false
       end
     end
 

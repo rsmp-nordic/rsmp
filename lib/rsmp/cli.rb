@@ -98,7 +98,19 @@ module RSMP
     def apply_basic_site_options(settings)
       settings['site_id'] = options[:id] if options[:id]
       settings['core_version'] = options[:core] || ENV['CORE_VERSION'] if options[:core] || ENV['CORE_VERSION']
-      settings['sxl_version'] = ENV['SXL_VERSION'] if ENV['SXL_VERSION']
+      settings['sxls'] = parse_sxls(ENV['SXLS']) if ENV['SXLS']
+    end
+
+    def parse_sxls(value)
+      value.split(',').each_with_object({}) do |item, memo|
+        parts = item.split(':')
+        unless parts.length == 2
+          raise RSMP::ConfigurationError, "Invalid SXLS item #{item.inspect}, expected name:version"
+        end
+
+        name, version = parts
+        memo[name] = version
+      end
     end
 
     def parse_supervisors(settings)

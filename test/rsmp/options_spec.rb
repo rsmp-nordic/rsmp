@@ -99,7 +99,53 @@ describe RSMP::Options do
       options = RSMP::Supervisor::Options.new({})
 
       expect(options.to_h['port']).to be == 12_111
-      expect(options.to_h['default']['sxl']).to be == 'tlc'
+      expect(options.to_h['default']['sxls']).to be == [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }]
+    end
+
+    it 'normalizes sxls from hash form' do
+      options = RSMP::Supervisor::Options.new(
+        'default' => {
+          'sxls' => {
+            'tlc' => '1.3.0',
+            'vms' => '1.5.4'
+          }
+        }
+      )
+
+      expect(options.to_h['default']['sxls']).to be == [
+        { 'name' => 'tlc', 'version' => '1.3.0' },
+        { 'version' => '1.5.4', 'name' => 'vms' }
+      ]
+    end
+
+    it 'rejects sxls in list form' do
+      expect do
+        RSMP::Supervisor::Options.new(
+          'default' => {
+            'sxls' => [{ 'name' => 'tlc', 'version' => '1.3.0' }]
+          }
+        )
+      end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls must be a hash of SXL names to versions')
+    end
+
+    it 'rejects sxls in expanded form' do
+      expect do
+        RSMP::Supervisor::Options.new(
+          'default' => {
+            'sxls' => { 'tlc' => { 'version' => '1.3.0' } }
+          }
+        )
+      end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls/tlc must be a version string')
+    end
+
+    it 'rejects configured SXL prefix' do
+      expect do
+        RSMP::Supervisor::Options.new(
+          'default' => {
+            'sxls' => { 'tlc' => { 'version' => '1.3.0', 'prefix' => 'tlc/' } }
+          }
+        )
+      end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls/tlc must be a version string')
     end
 
     it 'rejects invalid config files on load' do

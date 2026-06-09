@@ -4,8 +4,8 @@ module RSMP
     class DetectorLogic < Component
       attr_reader :forced, :value
 
-      def initialize(node:, id:)
-        super(node: node, id: id, grouped: false)
+      def initialize(node:, id:, type: nil, name: nil)
+        super(node: node, id: id, type: type, name: name, grouped: false)
         @forced = 0
         @value = 0
       end
