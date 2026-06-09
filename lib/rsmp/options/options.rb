@@ -25,9 +25,9 @@ module RSMP
       options = extra if options.nil? && extra.any?
       @source = source
       @log_settings = normalize(log_settings || {})
-      normalized = normalize(options || {})
-      @data = apply_defaults(normalized)
-      validate! if validate
+      config = normalize_config(options || {})
+      validate!(config) if validate
+      @data = normalize(apply_defaults(config))
     end
 
     def defaults
@@ -44,11 +44,11 @@ module RSMP
       File.join(SCHEMAS_PATH, schema_file)
     end
 
-    def validate!
+    def validate!(data = @data)
       return unless schema_path && File.exist?(schema_path)
 
       schemer = JSONSchemer.schema(Pathname.new(schema_path))
-      errors = schemer.validate(@data).to_a
+      errors = schemer.validate(data).to_a
       return if errors.empty?
 
       message = errors.map { |error| format_error(error) }.join("\n")
@@ -82,12 +82,61 @@ module RSMP
       case value
       when Hash
         value.each_with_object({}) do |(key, val), memo|
-          memo[key.to_s] = normalize(val)
+          normalized_key = key.to_s
+          memo[normalized_key] = normalized_key == 'sxls' ? normalize_sxls(val) : normalize(val)
         end
       when Array
         value.map { |item| normalize(item) }
       else
         value
+      end
+    end
+
+    def normalize_sxls(value)
+      case value
+      when Hash
+        value.map do |name, details|
+          normalize_sxl_item(name.to_s, details)
+        end
+      when Array
+        value.map { |item| normalize(item) }
+      else
+        value
+      end
+    end
+
+    def normalize_config(value)
+      case value
+      when Hash
+        value.each_with_object({}) do |(key, val), memo|
+          normalized_key = key.to_s
+          memo[normalized_key] = normalized_key == 'sxls' ? normalize_config_sxls(val) : normalize_config(val)
+        end
+      when Array
+        value.map { |item| normalize_config(item) }
+      else
+        value
+      end
+    end
+
+    def normalize_config_sxls(value)
+      raise RSMP::ConfigurationError, 'sxls must be a hash of SXL names to versions' unless value.is_a?(Hash)
+
+      value.each_with_object({}) do |(name, details), memo|
+        raise RSMP::ConfigurationError, "sxls/#{name} must be a version string" if details.is_a?(Hash)
+
+        memo[name.to_s] = details.to_s
+      end
+    end
+
+    def normalize_sxl_item(name, details)
+      case details
+      when Hash
+        raise RSMP::ConfigurationError, "sxls/#{name} must be a version string"
+      when nil
+        { 'name' => name }
+      else
+        { 'name' => name, 'version' => details.to_s }
       end
     end
 

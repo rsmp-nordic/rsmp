@@ -20,8 +20,8 @@ module RSMP
       attr_reader :pos, :cycle_time, :plan, :cycle_counter,
                   :functional_position, :startup_sequence
 
-      def initialize(node:, id:, ntsoid: nil, xnid: nil, **options)
-        super(node: node, id: id, ntsoid: ntsoid, xnid: xnid, grouped: true)
+      def initialize(node:, id:, type: nil, name: nil, ntsoid: nil, xnid: nil, **options)
+        super(node: node, id: id, type: type, name: name, ntsoid: ntsoid, xnid: xnid, grouped: true)
         @signal_groups = []
         @detector_logics = []
         @plans = options[:signal_plans]

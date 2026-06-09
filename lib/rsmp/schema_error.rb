@@ -1,6 +1,6 @@
 module RSMP
   module Schema
-    # Base error class for rsmp_schema.
+    # Base error class for schema validation.
     class Error < StandardError
     end
 

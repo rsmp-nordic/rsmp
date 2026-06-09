@@ -17,8 +17,11 @@
         "additionalProperties": true
       }
     },
-    "sxl": { "type": "string" },
-    "sxl_version": { "type": "string" },
+    "sxls": {
+      "type": "object",
+      "propertyNames": { "not": { "const": "core" } },
+      "additionalProperties": { "type": "string" }
+    },
     "core_version": { "type": "string" },
     "intervals": {
       "type": "object",

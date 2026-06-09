@@ -3,8 +3,11 @@
   "$id": "supervisor_site.json",
   "type": "object",
   "properties": {
-    "sxl": { "type": "string" },
-    "sxl_version": { "type": "string" },
+    "sxls": {
+      "type": "object",
+      "propertyNames": { "not": { "const": "core" } },
+      "additionalProperties": { "type": "string" }
+    },
     "type": { "type": "string" },
     "components": { "type": "object" },
     "supervisors": {

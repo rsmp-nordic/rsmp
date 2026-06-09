@@ -124,7 +124,24 @@ RN+SU0001     RN+SI0001     -->  f8c7  Received Version message for sites [RN+SI
 ```
 
 ### JSON Schema validation
-All messages sent and received will be validated against the core [RSMP JSON Schema](https://github.com/rsmp-nordic/rsmp_schema).
+All messages sent and received are validated against the copied RSMP JSON Schemas maintained in
+`rsmp_core`.
+
+Core and SXL schemas are selected with a flat map:
+
+```ruby
+RSMP::Schema.validate(message, {
+  core: '3.3.0',
+  tlc: '1.3.0'
+})
+```
+
+Sites and supervisors configure one or more SXLs with `sxls`:
+
+```yaml
+sxls:
+  tlc: '1.3.0'
+```
 
 ## Command-line tool
 Tools for easily running RSMP supervisors and sites. The binary is called ```rsmp```.
@@ -198,4 +215,3 @@ Feature: Run site
 28 steps (28 passed)
 0m7.036s
 ```
-

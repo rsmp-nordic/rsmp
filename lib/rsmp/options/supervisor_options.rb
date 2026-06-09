@@ -7,7 +7,9 @@ module RSMP
           'port' => 12_111,
           'ips' => 'all',
           'default' => {
-            'sxl' => 'tlc',
+            'sxls' => {
+              'tlc' => RSMP::Schema.latest_version(:tlc)
+            },
             'intervals' => {
               'timer' => 1,
               'watchdog' => 1

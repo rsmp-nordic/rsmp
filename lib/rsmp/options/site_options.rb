@@ -8,8 +8,9 @@ module RSMP
           'supervisors' => [
             { 'ip' => '127.0.0.1', 'port' => 12_111 }
           ],
-          'sxl' => 'tlc',
-          'sxl_version' => RSMP::Schema.latest_version(:tlc),
+          'sxls' => {
+            'tlc' => RSMP::Schema.latest_version(:tlc)
+          },
           'intervals' => {
             'timer' => 0.1,
             'watchdog' => 1,

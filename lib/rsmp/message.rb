@@ -30,6 +30,7 @@ module RSMP
         'MessageAck' => MessageAck,
         'MessageNotAck' => MessageNotAck,
         'Version' => Version,
+        'ComponentList' => ComponentList,
         'AggregatedStatus' => AggregatedStatus,
         'AggregatedStatusRequest' => AggregatedStatusRequest,
         'Watchdog' => Watchdog,
@@ -215,6 +216,37 @@ module RSMP
 
     def versions
       attribute('RSMP').map { |item| item['vers'] }
+    end
+
+    def step
+      @attributes['step']
+    end
+
+    def request?
+      step == 'Request'
+    end
+
+    def response?
+      step == 'Response'
+    end
+
+    def sxls
+      (@attributes['SXLS'] || []).map do |item|
+        item.transform_keys(&:to_s)
+      end
+    end
+
+    def site_ids
+      attribute('siteId').map { |item| item['sId'] }
+    end
+  end
+
+  # ComponentList message, lists site components and their component types.
+  class ComponentList < Message
+    def initialize(attributes = {})
+      super({
+        'type' => 'ComponentList'
+      }.merge attributes)
     end
   end
 

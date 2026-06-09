@@ -17,7 +17,8 @@ module RSMP
     include Modules::Versions
     include Modules::Tasks
 
-    attr_reader :state, :archive, :connection_info, :sxl, :collector, :ip, :port, :node, :core_version
+    attr_reader :state, :archive, :connection_info, :sxls, :accepted_sxls, :rejected_sxls,
+                :collector, :ip, :port, :node, :core_version
 
     def initialize(options)
       @node = options[:node]
@@ -136,6 +137,8 @@ module RSMP
       @ingoing_acknowledged = {}
       @outgoing_acknowledged = {}
       @latest_watchdog_send_at = nil
+      @component_list_received = false
+      @outgoing_watchdog_acknowledged = false
 
       @acknowledgements = {}
       @acknowledgement_condition = Async::Notification.new
@@ -154,7 +157,10 @@ module RSMP
       @ip = options[:ip]
       @port = options[:port]
       @connection_info = options[:info]
-      @sxl = nil
+      @sxls = []
+      @accepted_sxls = []
+      @rejected_sxls = []
+      @receive_alarms = true
       @site_settings = nil # can't pick until we know the site id
       return unless options[:collect]
 
@@ -177,8 +183,26 @@ module RSMP
     def schemas
       schemas = { core: RSMP::Schema.latest_core_version } # use latest core
       schemas[:core] = core_version if core_version
-      schemas[sxl] = RSMP::Schema.sanitize_version(sxl_version.to_s) if sxl && sxl_version
+      accepted_sxls.each do |sxl|
+        schemas[sxl['name'].to_sym] = RSMP::Schema.sanitize_version(sxl['version'].to_s)
+      end
       schemas
+    end
+
+    def receive_alarms?
+      @receive_alarms != false
+    end
+
+    def primary_sxl
+      (accepted_sxls.first || sxls.first)
+    end
+
+    def sxl
+      primary_sxl && primary_sxl['name']
+    end
+
+    def sxl_version
+      primary_sxl && primary_sxl['version']
     end
 
     def author

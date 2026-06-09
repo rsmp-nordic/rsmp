@@ -5,8 +5,8 @@ module RSMP
       attr_reader :plan, :state
 
       # plan is a string, with each character representing a signal phase at a particular second in the cycle
-      def initialize(node:, id:)
-        super(node: node, id: id, grouped: false)
+      def initialize(node:, id:, type: nil, name: nil)
+        super(node: node, id: id, type: type, name: name, grouped: false)
       end
 
       def timer
