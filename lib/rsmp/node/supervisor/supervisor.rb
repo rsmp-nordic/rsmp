@@ -59,10 +59,9 @@ module RSMP
     end
 
     def build_proxy(settings)
-      # Determine proxy type from site settings (SXL). Fall back to supervisor
-      # default settings when site-specific settings are not present.
+      # Determine proxy type from the primary configured SXL.
       site_settings = settings[:site_settings] || @supervisor_settings['default']
-      sxl_type = site_settings && site_settings['sxl']
+      sxl_type = site_settings && site_settings.dig('sxls', 0, 'name')
 
       return RSMP::TLC::TrafficControllerProxy.new(settings) if sxl_type == 'tlc'
 

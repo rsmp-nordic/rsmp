@@ -17,7 +17,9 @@ module RSMP
       @ip = options[:ip]
       @port = options[:port]
       @status_subscriptions = {}
-      @sxl = @site_settings['sxl']
+      @sxls = configured_sxls
+      @accepted_sxls = @sxls.dup
+      @rejected_sxls = []
       @synthetic_id = Supervisor.build_id_from_ip_port @ip, @port
     end
 
@@ -46,7 +48,7 @@ module RSMP
     end
 
     def start_handshake
-      send_version @site_settings['site_id'], core_versions
+      send_version_request @site_settings['site_id'], core_versions
     end
 
     # connect to the supervisor and initiate handshake supervisor
@@ -87,14 +89,14 @@ module RSMP
     end
 
     def handshake_complete
-      sanitized_sxl_version = RSMP::Schema.sanitize_version(sxl_version)
-      log "Connection to supervisor established, using core #{@core_version}, #{sxl} #{sanitized_sxl_version}",
+      sxl_summary = accepted_sxls.map { |item| "#{item['name']} #{item['version']}" }.join(', ')
+      log "Connection to supervisor established, using core #{@core_version}, SXLs [#{sxl_summary}]",
           level: :info
       self.state = :ready
       start_watchdog
       if @site_settings['send_after_connect']
         send_all_aggregated_status
-        send_active_alarms
+        send_active_alarms if receive_alarms?
       end
       super
     end
@@ -128,7 +130,11 @@ module RSMP
     def acknowledged_first_ingoing(message)
       case message.type
       when 'Watchdog'
-        handshake_complete
+        if core_3_3?
+          send_component_list
+        else
+          handshake_complete
+        end
       end
     end
 
@@ -155,10 +161,6 @@ module RSMP
       status_update_timer now if ready?
     end
 
-    def sxl_version
-      @site_settings['sxl_version'].to_s
-    end
-
     def process_version(message)
       return extraneous_version message if @version_determined
 
@@ -168,7 +170,27 @@ module RSMP
       version_accepted message
     end
 
-    def check_sxl_version(message); end
+    def check_sxl_version(message)
+      if core_3_3?
+        @accepted_sxls = message.sxls.reject { |item| item['rejected'] }
+        @rejected_sxls = message.sxls.select { |item| item['rejected'] }
+        @receive_alarms = message.attributes.fetch('receiveAlarms', true)
+      else
+        primary = primary_configured_sxl
+        raise HandshakeError, 'Legacy Version response received, but no SXL is configured' unless primary
+
+        @accepted_sxls = [primary]
+        @rejected_sxls = []
+      end
+    end
+
+    def send_component_list
+      send_message ComponentList.new('components' => @site.component_list)
+    end
+
+    def component_list_acknowledged
+      handshake_complete
+    end
 
     def main
       @site.main

@@ -63,6 +63,8 @@ module RSMP
         when 'main'
           TrafficController.new node: self,
                                 id: id,
+                                type: type,
+                                name: settings['name'],
                                 ntsoid: settings['ntsOId'],
                                 xnid: settings['xNId'],
                                 startup_sequence: @startup_sequence,
@@ -70,11 +72,11 @@ module RSMP
                                 live_output: @site_settings['live_output'],
                                 inputs: @site_settings['inputs']
         when 'signal_group'
-          group = SignalGroup.new node: self, id: id
+          group = SignalGroup.new node: self, id: id, type: type, name: settings['name']
           main.add_signal_group group
           group
         when 'detector_logic'
-          logic = DetectorLogic.new node: self, id: id
+          logic = DetectorLogic.new node: self, id: id, type: type, name: settings['name']
           main.add_detector_logic logic
           logic
         end

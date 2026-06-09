@@ -5,6 +5,8 @@ module RSMP
       # Handles receiving and processing incoming messages
       module Receive
         def should_validate_ingoing_message?(message)
+          return false if message.is_a?(Version) && !@version_determined
+
           return true unless @site_settings
 
           skip = @site_settings['skip_validation']

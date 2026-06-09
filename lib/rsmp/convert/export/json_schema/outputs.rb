@@ -112,6 +112,7 @@ module RSMP
             'version' => meta['version'],
             'allOf' => root_type_rules
           }
+          json['prefix'] = meta['prefix'] if meta['prefix']
           out['rsmp.json'] = output_json json
         end
 

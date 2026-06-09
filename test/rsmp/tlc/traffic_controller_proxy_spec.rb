@@ -3,7 +3,7 @@ describe RSMP::TLC::TrafficControllerProxy do
     {
       'port' => 13_113,
       'default' => {
-        'sxl' => 'tlc',
+        'sxls' => { 'tlc' => RSMP::Schema.latest_version(:tlc) },
         'type' => 'tlc',
         'timeouts' => {
           'watchdog' => 0.2,
@@ -12,7 +12,7 @@ describe RSMP::TLC::TrafficControllerProxy do
         }
       },
       'sites' => {
-        'TLC001' => { 'sxl' => 'tlc', 'type' => 'tlc' }
+        'TLC001' => { 'sxls' => { 'tlc' => RSMP::Schema.latest_version(:tlc) }, 'type' => 'tlc' }
       }
     }
   end

@@ -19,8 +19,16 @@ module RSMP
       build_proxies
     end
 
+    def sxls
+      @site_settings['sxls']
+    end
+
+    def primary_sxl
+      sxls.first
+    end
+
     def sxl_version
-      @site_settings['sxl_version']
+      primary_sxl && primary_sxl['version']
     end
 
     def site_id
@@ -33,15 +41,21 @@ module RSMP
       @site_options = options_class.new(settings)
       @site_settings = @site_options.to_h
 
-      check_sxl_version
+      check_sxls
       check_core_versions
       setup_components @site_settings['components']
     end
 
-    def check_sxl_version
-      sxl = @site_settings['sxl']
-      version = @site_settings['sxl_version'].to_s
-      RSMP::Schema.find_schema! sxl, version, lenient: true
+    def check_sxls
+      raise RSMP::ConfigurationError, 'No SXLs specified' unless sxls
+
+      sxls.each do |sxl|
+        name = sxl['name']
+        version = sxl['version'].to_s
+        raise RSMP::ConfigurationError, 'SXL name cannot be core' if name.to_s == 'core'
+
+        RSMP::Schema.find_schema! name, version, lenient: true
+      end
     end
 
     def check_core_versions
@@ -60,7 +74,7 @@ module RSMP
 
     def log_site_starting
       log "Starting #{site_type_name} #{@site_settings['site_id']}", level: :info, timestamp: @clock.now
-      sxl = "Using #{@site_settings['sxl']} sxl #{@site_settings['sxl_version']}"
+      sxl = "Using SXLs #{sxls.map { |item| "#{item['name']} #{item['version']}" }.join(', ')}"
       version = @site_settings['core_version']
       core = if version
                "accepting only core version #{version}"
@@ -113,7 +127,7 @@ module RSMP
 
     def send_alarm(alarm)
       @proxies.each do |proxy|
-        proxy.send_message alarm if proxy.ready?
+        proxy.send_message alarm if proxy.ready? && proxy.receive_alarms?
       end
     end
 
@@ -158,10 +172,10 @@ module RSMP
     def build_component(id:, type:, settings:)
       settings ||= {}
       if type == 'main'
-        Component.new id: id, node: self, grouped: true,
+        Component.new id: id, node: self, type: type, name: settings['name'], grouped: true,
                       ntsoid: settings['ntsOId'], xnid: settings['xNId']
       else
-        Component.new id: id, node: self, grouped: false
+        Component.new id: id, node: self, type: type, name: settings['name'], grouped: false
       end
     end
   end

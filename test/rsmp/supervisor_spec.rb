@@ -7,7 +7,7 @@ describe RSMP::Supervisor do
     {
       'port' => 13_111,
       'default' => {
-        'sxl' => 'tlc'
+        'sxls' => { 'tlc' => RSMP::Schema.latest_version(:tlc) }
       }
     }
   end
@@ -67,19 +67,56 @@ describe RSMP::Supervisor do
       RSMP::Protocol.new(stream)
     end
 
-    def handshake(protocol, core_versions:, sxl_version:)
+    def handshake(protocol, core_versions:, sxl_version:, sxls: nil, expected_response_sxls: nil)
+      sxls ||= [{ 'name' => 'tlc', 'version' => sxl_version }]
+      expected_response_sxls ||= sxls
       core_versions_array = core_versions.map { |version| { 'vers' => version } }
 
-      send_version_message(protocol, core_versions_array, sxl_version)
+      send_version_request(protocol, core_versions_array, sxl_version, sxls)
       receive_version_ack(protocol)
-      receive_version_message(protocol, core_versions_array, sxl_version)
+      receive_version_response(
+        protocol,
+        core_versions.max_by { |version| Gem::Version.new(version) },
+        expected_response_sxls
+      )
       send_version_ack(protocol)
-      perform_watchdog_handshake(protocol)
+      perform_watchdog_handshake(protocol, component_list: true)
       wait_for_proxy_creation
     end
 
-    def send_version_message(protocol, core_versions_array, sxl_version)
-      protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":#{core_versions_array.to_json},"siteId":[{"sId":"RN+SI0001"}],"SXL":#{sxl_version.to_json},"mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"})
+    def handshake_legacy(protocol, core_versions:, sxl_version:)
+      core_versions_array = core_versions.map { |version| { 'vers' => version } }
+
+      send_legacy_version(protocol, core_versions_array, sxl_version)
+      receive_version_ack(protocol)
+      receive_legacy_version(protocol, RSMP::Schema.latest_version(:tlc))
+      send_version_ack(protocol)
+      perform_watchdog_handshake(protocol, component_list: false)
+      wait_for_proxy_creation
+    end
+
+    def send_version_request(protocol, core_versions_array, sxl_version, sxls)
+      protocol.write_lines({
+        'mType' => 'rSMsg',
+        'type' => 'Version',
+        'step' => 'Request',
+        'RSMP' => core_versions_array,
+        'siteId' => [{ 'sId' => 'RN+SI0001' }],
+        'SXL' => sxl_version,
+        'SXLS' => sxls,
+        'mId' => '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
+      }.to_json)
+    end
+
+    def send_legacy_version(protocol, core_versions_array, sxl_version)
+      protocol.write_lines({
+        'mType' => 'rSMsg',
+        'type' => 'Version',
+        'RSMP' => core_versions_array,
+        'siteId' => [{ 'sId' => 'RN+SI0001' }],
+        'SXL' => sxl_version,
+        'mId' => '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
+      }.to_json)
     end
 
     def receive_version_ack(protocol)
@@ -90,10 +127,29 @@ describe RSMP::Supervisor do
       expect(version_ack['mId']).to be_nil
     end
 
-    def receive_version_message(protocol, core_versions_array, sxl_version)
+    def receive_version_response(protocol, core_version, sxls)
       version = JSON.parse protocol.read_line
-      expect(version).to be == ({ 'RSMP' => core_versions_array, 'SXL' => sxl_version,
-                                  'mId' => '1b206e56-31be-4739-9164-3a24d47b0aa2', 'mType' => 'rSMsg', 'siteId' => [{ 'sId' => 'RN+SI0001' }], 'type' => 'Version' })
+      expect(version).to be == ({
+        'RSMP' => [{ 'vers' => core_version }],
+        'SXLS' => sxls,
+        'mId' => '1b206e56-31be-4739-9164-3a24d47b0aa2',
+        'mType' => 'rSMsg',
+        'receiveAlarms' => true,
+        'step' => 'Response',
+        'supervisorId' => 'RN+SI0001',
+        'type' => 'Version'
+      })
+    end
+
+    def receive_legacy_version(protocol, sxl_version)
+      version = JSON.parse protocol.read_line
+      expect(version['mType']).to be == 'rSMsg'
+      expect(version['type']).to be == 'Version'
+      expect(version['mId']).to be == '1b206e56-31be-4739-9164-3a24d47b0aa2'
+      expect(version['siteId']).to be == [{ 'sId' => 'RN+SI0001' }]
+      expect(version['SXL']).to be == sxl_version
+      expect(version['step']).to be_nil
+      expect(version['SXLS']).to be_nil
     end
 
     def send_version_ack(protocol)
@@ -101,7 +157,7 @@ describe RSMP::Supervisor do
                                          'mId' => SecureRandom.uuid)
     end
 
-    def perform_watchdog_handshake(protocol)
+    def perform_watchdog_handshake(protocol, component_list:)
       # send watchdog
       protocol.write_lines %({"mType":"rSMsg","type":"Watchdog","wTs":"2022-09-08T13:10:24.695Z","mId":"439e5748-0662-4ab2-a0d7-80fc680f04f5"})
 
@@ -109,10 +165,24 @@ describe RSMP::Supervisor do
       JSON.parse protocol.read_line
 
       # read watchdog
-      JSON.parse protocol.read_line
+      watchdog = JSON.parse protocol.read_line
 
       # send watchdog ack
-      protocol.write_lines %({"mType":"rSMsg","type":"MessageAck","oMId":"1e363b78-a67a-40f0-a2b1-acb231656594"})
+      protocol.write_lines JSON.generate('mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => watchdog['mId'])
+
+      return unless component_list
+
+      protocol.write_lines JSON.generate(
+        'mType' => 'rSMsg',
+        'type' => 'ComponentList',
+        'components' => [{ 'id' => 'C1', 'type' => 'main', 'name' => 'C1' }],
+        'mId' => '89170d40-2d0c-42a3-8e6f-96ff4e0ae821'
+      )
+
+      component_list_ack = JSON.parse protocol.read_line
+      expect(component_list_ack['mType']).to be == 'rSMsg'
+      expect(component_list_ack['type']).to be == 'MessageAck'
+      expect(component_list_ack['oMId']).to be == '89170d40-2d0c-42a3-8e6f-96ff4e0ae821'
     end
 
     def wait_for_proxy_creation
@@ -132,6 +202,40 @@ describe RSMP::Supervisor do
 
         expect(proxy).to be_a(RSMP::SiteProxy)
         expect(proxy.site_id).to be == 'RN+SI0001'
+        expect(proxy.accepted_sxls).to be == [{ 'name' => 'tlc', 'version' => sxl_version }]
+        expect(proxy.rejected_sxls).to be == []
+        expect(proxy.components.keys).to be == ['C1']
+      end
+    end
+
+    it 'reports rejected SXLs in a 3.3.0 Version response' do
+      with_async_context(context: lambda {
+        supervisor.start
+      }) do |_task|
+        core_versions = RSMP::Schema.core_versions
+        sxl_version = RSMP::Schema.latest_version(:tlc)
+        requested_sxls = [
+          { 'name' => 'tlc', 'version' => sxl_version },
+          { 'name' => 'vms', 'version' => '1.5.4' }
+        ]
+        response_sxls = [
+          { 'name' => 'tlc', 'version' => sxl_version },
+          { 'name' => 'vms', 'version' => '1.5.4', 'rejected' => 1, 'reason' => 'SXL not supported' }
+        ]
+
+        protocol = site_connect
+        proxy = handshake(
+          protocol,
+          core_versions: core_versions,
+          sxl_version: sxl_version,
+          sxls: requested_sxls,
+          expected_response_sxls: response_sxls
+        )
+
+        expect(proxy.accepted_sxls).to be == [{ 'name' => 'tlc', 'version' => sxl_version }]
+        expect(proxy.rejected_sxls).to be == [
+          { 'name' => 'vms', 'version' => '1.5.4', 'rejected' => 1, 'reason' => 'SXL not supported' }
+        ]
       end
     end
 
@@ -157,7 +261,9 @@ describe RSMP::Supervisor do
           'Sent MessageAck for Watchdog 439e',
           'Sent Watchdog',
           'Received MessageAck for Watchdog 1e36',
-          "Connection to site RN+SI0001 established, using core #{core_versions.last}, tlc #{sxl_version}"
+          'Received ComponentList',
+          'Sent MessageAck for ComponentList 8917',
+          "Connection to site RN+SI0001 established, using core #{core_versions.last}, SXLs [tlc #{sxl_version}]"
         ]
         expect(got.sort).to be == expected.sort
       end
@@ -181,28 +287,28 @@ describe RSMP::Supervisor do
       end
     end
 
-    it 'accepts a 2-part sxl version like "1.2" and echoes it back unchanged' do
+    it 'accepts a 2-part sxl version like "1.2"' do
       with_async_context(context: lambda {
         supervisor.start
       }) do |_task|
-        core_versions = RSMP::Schema.core_versions
+        core_versions = ['3.2.2']
         sxl_version = '1.2'
         protocol = site_connect
-        proxy = handshake(protocol, core_versions: core_versions, sxl_version: sxl_version)
+        proxy = handshake_legacy(protocol, core_versions: core_versions, sxl_version: sxl_version)
 
         expect(proxy).to be_a(RSMP::SiteProxy)
         expect(proxy.state).to be == :ready
       end
     end
 
-    it 'accepts a 3-part sxl version like "1.2.1" and echoes it back unchanged' do
+    it 'accepts a 3-part sxl version like "1.2.1"' do
       with_async_context(context: lambda {
         supervisor.start
       }) do |_task|
-        core_versions = RSMP::Schema.core_versions
+        core_versions = ['3.2.2']
         sxl_version = '1.2.1'
         protocol = site_connect
-        proxy = handshake(protocol, core_versions: core_versions, sxl_version: sxl_version)
+        proxy = handshake_legacy(protocol, core_versions: core_versions, sxl_version: sxl_version)
 
         expect(proxy).to be_a(RSMP::SiteProxy)
         expect(proxy.state).to be == :ready

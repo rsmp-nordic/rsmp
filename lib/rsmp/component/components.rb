@@ -19,7 +19,12 @@ module RSMP
 
         components_by_type.each_pair do |id, component_settings|
           component_settings ||= {}
-          @components[id] = build_component(id: id, type: type, settings: component_settings)
+          component = build_component(id: id, type: type, settings: component_settings)
+          component.update_metadata(
+            type: component_settings['type'] || type,
+            name: component_settings['name'] || id
+          )
+          @components[id] = component
           @main = @components[id] if type == 'main'
         end
       end
@@ -34,6 +39,22 @@ module RSMP
 
     def add_component(component)
       @components[component.c_id] = component
+    end
+
+    def natural_sort_key(value)
+      value.to_s.split(/(\d+)/).map do |part|
+        part.match?(/\A\d+\z/) ? part.to_i : part
+      end
+    end
+
+    def component_list
+      @components.values.sort_by { |component| natural_sort_key(component.c_id) }.map do |component|
+        {
+          'id' => component.c_id,
+          'type' => component.component_type || 'component',
+          'name' => component.name || component.c_id
+        }
+      end
     end
 
     def infer_component_type(component_id)

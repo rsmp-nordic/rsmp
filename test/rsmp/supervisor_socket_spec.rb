@@ -5,7 +5,7 @@ describe RSMP::Supervisor do
     {
       'port' => 13_111,
       'default' => {
-        'sxl' => 'tlc'
+        'sxls' => { 'tlc' => RSMP::Schema.latest_version(:tlc) }
       }
     }
   end
@@ -29,13 +29,15 @@ describe RSMP::Supervisor do
         message_ids: {
           version_from_site: '1b206e56-31be-4739-9164-3a24d47b0aa2',
           watchdog_from_site: 'fd92d6f6-f0c3-4a91-a582-6fff4e5bb63b',
+          component_list_from_site: '89170d40-2d0c-42a3-8e6f-96ff4e0ae821',
           version_from_supervisor: '51931724-b143-45a3-aa43-171f79ebb337',
           watchdog_from_supervisor: '439e5748-0662-4ab2-a0d7-80fc680f04f5'
         },
         watchdog_timestamp: '2022-09-08T13:10:24.695Z',
         core_versions: core_versions,
         core_versions_array: core_versions.map { |version| { 'vers' => version } },
-        sxl_version: RSMP::Schema.latest_version(:tlc)
+        sxl_version: RSMP::Schema.latest_version(:tlc),
+        sxls: [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }]
       }
     end
 
@@ -43,8 +45,26 @@ describe RSMP::Supervisor do
       protocol.write_lines JSON.generate('mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => original_id)
     end
 
-    def send_version_message(protocol, rsmp_version, sxl_version, site_id, message_id)
-      protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{rsmp_version}"}],"siteId":[{"sId":"#{site_id}"}],"SXL":"#{sxl_version}","mId":"#{message_id}"})
+    def send_version_response(protocol, rsmp_version, site_id, message_id)
+      protocol.write_lines JSON.generate(
+        'mType' => 'rSMsg',
+        'type' => 'Version',
+        'step' => 'Response',
+        'RSMP' => [{ 'vers' => rsmp_version }],
+        'supervisorId' => site_id,
+        'SXLS' => test_data[:sxls],
+        'receiveAlarms' => true,
+        'mId' => message_id
+      )
+    end
+
+    def send_component_list_message(protocol, message_id)
+      protocol.write_lines JSON.generate(
+        'mType' => 'rSMsg',
+        'type' => 'ComponentList',
+        'components' => [{ 'id' => 'C1', 'type' => 'main', 'name' => 'C1' }],
+        'mId' => message_id
+      )
     end
 
     def send_watchdog_message(protocol, timestamp, message_id)
@@ -73,12 +93,21 @@ describe RSMP::Supervisor do
     end
 
     def send_supervisor_version_message(protocol)
-      send_version_message(protocol, test_data[:core_versions].last, test_data[:sxl_version], test_data[:site_id],
-                           test_data[:message_ids][:version_from_supervisor])
+      send_version_response(protocol, test_data[:core_versions].last, test_data[:site_id],
+                            test_data[:message_ids][:version_from_supervisor])
     end
 
     def send_site_version_message(protocol)
-      protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":#{test_data[:core_versions_array].to_json},"siteId":[{"sId":"#{test_data[:site_id]}"}],"SXL":"#{test_data[:sxl_version]}","mId":"#{test_data[:message_ids][:version_from_site]}"})
+      protocol.write_lines JSON.generate(
+        'mType' => 'rSMsg',
+        'type' => 'Version',
+        'step' => 'Request',
+        'RSMP' => test_data[:core_versions_array],
+        'siteId' => [{ 'sId' => test_data[:site_id] }],
+        'SXL' => test_data[:sxl_version],
+        'SXLS' => test_data[:sxls],
+        'mId' => test_data[:message_ids][:version_from_site]
+      )
     end
 
     def expect_supervisor_version_message_header(message)
@@ -89,7 +118,10 @@ describe RSMP::Supervisor do
 
     def expect_supervisor_version_message_body(message)
       expect(message['RSMP']).to be == [{ 'vers' => test_data[:core_versions].last }]
-      expect(message['SXL']).to be == test_data[:sxl_version]
+      expect(message['step']).to be == 'Response'
+      expect(message['supervisorId']).to be == test_data[:site_id]
+      expect(message['SXLS']).to be == test_data[:sxls]
+      expect(message['receiveAlarms']).to be == true
     end
 
     def expect_supervisor_version_message(message)
@@ -111,6 +143,8 @@ describe RSMP::Supervisor do
     def expect_incoming_version_message_body(message)
       expect(message['RSMP']).to be == test_data[:core_versions_array]
       expect(message['SXL']).to be == test_data[:sxl_version]
+      expect(message['step']).to be == 'Request'
+      expect(message['SXLS']).to be == test_data[:sxls]
     end
 
     def expect_incoming_version_message(message)
@@ -135,6 +169,12 @@ describe RSMP::Supervisor do
                             test_data[:message_ids][:watchdog_from_supervisor])
       watchdog_ack = parse_message(protocol)
       expect_message_ack(watchdog_ack, test_data[:message_ids][:watchdog_from_supervisor])
+
+      component_list = parse_message(protocol)
+      expect(component_list['mType']).to be == 'rSMsg'
+      expect(component_list['type']).to be == 'ComponentList'
+      expect(component_list['components']).to be == [{ 'id' => 'C1', 'type' => 'main', 'name' => 'C1' }]
+      send_message_ack(protocol, component_list['mId'])
     end
 
     def site_interaction_logic(site_protocol)
@@ -158,6 +198,9 @@ describe RSMP::Supervisor do
       message = parse_message(site_protocol)
       expect_watchdog_message(message, test_data[:message_ids][:watchdog_from_supervisor])
       send_message_ack(site_protocol, message['mId'])
+      send_component_list_message(site_protocol, test_data[:message_ids][:component_list_from_site])
+      message = parse_message(site_protocol)
+      expect_message_ack(message, test_data[:message_ids][:component_list_from_site])
     end
 
     it 'exchanges messages manually without Site or Supervisor objects' do

@@ -72,15 +72,26 @@ describe RSMP::Site do
           sxl_version = site.sxl_version
           expect(message['mType']).to be == 'rSMsg'
           expect(message['type']).to be == 'Version'
+          expect(message['step']).to be == 'Request'
           expect(message['siteId']).to be == [{ 'sId' => 'RN+SI0001' }]
           expect(message['RSMP']).to be == core_versions_array
           expect(message['SXL']).to be == sxl_version
+          expect(message['SXLS']).to be == [{ 'name' => 'tlc', 'version' => sxl_version }]
 
           # send version ack
           protocol.write_lines JSON.generate('mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => message['mId'])
 
-          # write version message
-          protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_versions.last}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"51931724-b143-45a3-aa43-171f79ebb337"})
+          # write version response
+          protocol.write_lines({
+            'mType' => 'rSMsg',
+            'type' => 'Version',
+            'step' => 'Response',
+            'RSMP' => [{ 'vers' => core_versions.last }],
+            'supervisorId' => 'SUPERVISOR',
+            'SXLS' => [{ 'name' => 'tlc', 'version' => sxl_version }],
+            'receiveAlarms' => true,
+            'mId' => '51931724-b143-45a3-aa43-171f79ebb337'
+          }.to_json)
 
           # read version ack
           message = JSON.parse protocol.read_line
@@ -100,7 +111,18 @@ describe RSMP::Site do
           protocol.write_lines %({"mType":"rSMsg","type":"Watchdog","wTs":"2022-09-08T13:10:24.695Z","mId":"439e5748-0662-4ab2-a0d7-80fc680f04f5"})
 
           # read watchdog ack
-          JSON.parse protocol.read_line
+          message = JSON.parse protocol.read_line
+          expect(message['mType']).to be == 'rSMsg'
+          expect(message['type']).to be == 'MessageAck'
+
+          # read component list
+          message = JSON.parse protocol.read_line
+          expect(message['mType']).to be == 'rSMsg'
+          expect(message['type']).to be == 'ComponentList'
+          expect(message['components']).to be == [{ 'id' => 'C1', 'type' => 'main', 'name' => 'C1' }]
+
+          # send component list ack
+          protocol.write_lines JSON.generate('mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => message['mId'])
         end
       }) do |_task|
         site.start
@@ -108,6 +130,25 @@ describe RSMP::Site do
         expect(proxy).to be_a(RSMP::SupervisorProxy)
         proxy.wait_for_state(:ready, timeout: collect_timeout)
       end
+    end
+  end
+
+  with '#send_alarm' do
+    it 'does not send unsolicited alarms to supervisors that opted out' do
+      site = subject.new(
+        site_settings: site_settings,
+        log_settings: log_settings
+      )
+      sent = []
+      proxy = Object.new
+      proxy.define_singleton_method(:ready?) { true }
+      proxy.define_singleton_method(:receive_alarms?) { false }
+      proxy.define_singleton_method(:send_message) { |message| sent << message }
+      site.instance_variable_set(:@proxies, [proxy])
+
+      site.send_alarm RSMP::AlarmIssue.new
+
+      expect(sent).to be == []
     end
   end
 end

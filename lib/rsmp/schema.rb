@@ -1,4 +1,6 @@
 require 'json_schemer'
+require 'json'
+require 'yaml'
 
 # RSMP (Road Side Message Protocol) schema validation library.
 module RSMP
@@ -8,6 +10,7 @@ module RSMP
 
     def self.setup
       @schemas = {}
+      @schema_paths = {}
       schemas_path = File.expand_path(File.join(__dir__, '..', '..', 'schemas'))
       Dir.glob("#{schemas_path}/*").select { |f| File.directory? f }.each do |type_path|
         type = File.basename(type_path).to_sym
@@ -26,9 +29,12 @@ module RSMP
     #
     #  an error is raised if the schema type already exists, and force is not set to true
     def self.load_schema_type(type, type_path, force: false)
+      type = type.to_sym
       raise "Schema type #{type} already loaded" if @schemas[type] && force != true
 
       @schemas[type] = {}
+      @schema_paths ||= {}
+      @schema_paths[type] = {}
       Dir.glob("#{type_path}/*").select { |f| File.directory? f }.each do |schema_path|
         version = File.basename(schema_path)
         file_path = File.join(schema_path, 'rsmp.json')
@@ -37,12 +43,15 @@ module RSMP
         @schemas[type][version] = JSONSchemer.schema(
           Pathname.new(File.join(schema_path, 'rsmp.json'))
         )
+        @schema_paths[type][version] = schema_path
       end
     end
 
     # remove a schema type
     def self.remove_schema_type(type)
+      type = type.to_sym
       schemas.delete type
+      @schema_paths&.delete type
     end
 
     # get schemas types
@@ -174,6 +183,24 @@ module RSMP
       find_schema(type, version, options) != nil
     end
 
+    def self.sxl_metadata(type, version, options = {})
+      version = sanitize_version version if options[:lenient]
+      find_schema! type, version
+
+      path = @schema_paths&.dig(type.to_sym, version)
+      return {} unless path
+
+      yaml_path = File.join(path, 'sxl.yaml')
+      return YAML.load_file(yaml_path).fetch('meta', {}) if File.exist?(yaml_path)
+
+      json_path = File.join(path, 'rsmp.json')
+      File.exist?(json_path) ? JSON.parse(File.read(json_path)) : {}
+    end
+
+    def self.sxl_prefix(type, version, options = {})
+      sxl_metadata(type, version, options)['prefix']
+    end
+
     # return a catalogue of statuses for a particular schema type and version
     # returns a hash of { status_code_id_sym => [arg_name_sym, ...] }
     # raises an error if the schema type/version is not found, or has no sxl.yaml
@@ -189,19 +216,53 @@ module RSMP
       end
     end
 
-    # validate using a particular schema and version
-    # raises error if schema is not found
-    # return nil if validation succeds, otherwise returns an array of errors
+    def self.core_message_type?(message)
+      type = message['type']
+      %w[
+        MessageAck
+        MessageNotAck
+        Version
+        ComponentList
+        AggregatedStatus
+        AggregatedStatusRequest
+        Watchdog
+      ].include?(type)
+    end
+
+    def self.validate_core(message, schemas, options)
+      core_version = schemas[:core] || schemas['core']
+      raise ArgumentError, 'schemas must include core' unless core_version
+
+      schema = find_schema! :core, core_version, options
+      validate_using_schema(message, schema)
+    end
+
+    def self.validate_sxls(message, schemas, options)
+      sxl_schemas = schemas.reject { |type, _version| type.to_sym == :core }
+      return [] if sxl_schemas.empty? || core_message_type?(message)
+
+      all_errors = []
+      sxl_schemas.each do |type, version|
+        schema = find_schema! type, version, options
+        errors = validate_using_schema(message, schema)
+        return [] if errors.empty?
+
+        all_errors.concat errors
+      end
+      all_errors
+    end
+
+    # validate using core and optional SXL schemas.
+    # Core must pass. SXL-defined messages pass if at least one SXL schema passes.
+    # returns nil if validation succeeds, otherwise returns an array of errors.
     def self.validate(message, schemas, options = {})
       raise ArgumentError, 'message missing' unless message
       raise ArgumentError, 'schemas missing' unless schemas
       raise ArgumentError, 'schemas must be a Hash' unless schemas.is_a?(Hash)
       raise ArgumentError, 'schemas cannot be empty' unless schemas.any?
 
-      errors = schemas.flat_map do |type, version|
-        schema = find_schema! type, version, options
-        validate_using_schema(message, schema)
-      end
+      errors = validate_core(message, schemas, options)
+      errors.concat validate_sxls(message, schemas, options) if errors.empty?
       return nil if errors.empty?
 
       errors

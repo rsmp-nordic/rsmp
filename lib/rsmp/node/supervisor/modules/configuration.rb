@@ -7,19 +7,24 @@ module RSMP
           options = RSMP::Supervisor::Options.new(supervisor_settings || {})
           @supervisor_settings = options.to_h
           @core_version = @supervisor_settings.dig('default', 'core_version')
-          check_site_sxl_types
+          check_site_sxls
         end
 
-        def check_site_sxl_types
+        def check_site_sxls
           sites = @supervisor_settings['sites'].clone || {}
           sites['default'] = @supervisor_settings['default']
           sites.each do |site_id, settings|
             raise RSMP::ConfigurationError, "Configuration for site '#{site_id}' is empty" unless settings
 
-            sxl = settings['sxl']
-            raise RSMP::ConfigurationError, "Configuration error for site '#{site_id}': No SXL specified" unless sxl
+            sxls = settings['sxls']
+            raise RSMP::ConfigurationError, "Configuration error for site '#{site_id}': No SXLs specified" unless sxls
 
-            RSMP::Schema.find_schemas! sxl if sxl
+            sxls.each do |sxl|
+              name = sxl['name']
+              raise RSMP::ConfigurationError, "Configuration error for site '#{site_id}': SXL name cannot be core" if name.to_s == 'core'
+
+              RSMP::Schema.find_schema! name, sxl['version'], lenient: true
+            end
           rescue RSMP::Schema::UnknownSchemaError => e
             raise RSMP::ConfigurationError, "Configuration error for site '#{site_id}': #{e}"
           end
