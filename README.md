@@ -4,7 +4,7 @@ This is a Ruby implementation of the RSMP protocol, including:
  - Command-line tools for quickly running RSMP supervisors or sites and view messages exchanged
 
 ## Installation
-You need a recent version of Ruby intalled. 2.6.3 or later is recommended.
+You need a recent version of Ruby intalled. 4.0.5 or later is recommended.
 
 Install required gems:
 

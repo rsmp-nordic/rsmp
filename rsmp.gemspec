@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'Easy RSMP site and supervisor communication.'
   spec.homepage      = 'https://github.com/rsmp-nordic/rsmp'
   spec.licenses      = ['MIT']
-  spec.required_ruby_version = '>= 3.4.0'
+  spec.required_ruby_version = '>= 4.0.0'
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://github.com/rsmp-nordic/rsmp'
@@ -31,12 +31,12 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'async', '~> 2.32'
+  spec.add_dependency 'async', '~> 2.39'
   spec.add_dependency 'colorize', '~> 1.1'
-  spec.add_dependency 'io-endpoint', '~> 0.15'
-  spec.add_dependency 'io-stream', '~> 0.10'
+  spec.add_dependency 'io-endpoint', '~> 0.17'
+  spec.add_dependency 'io-stream', '~> 0.13'
   spec.add_dependency 'json_schemer', '~> 2.5'
-  spec.add_dependency 'logger', '~> 1.6'
+  spec.add_dependency 'logger', '~> 1.7'
   spec.add_dependency 'ostruct', '~> 0.6'
   spec.add_dependency 'thor', '~> 1.5'
 end
