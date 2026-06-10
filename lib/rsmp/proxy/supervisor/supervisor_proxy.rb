@@ -138,10 +138,7 @@ module RSMP
         process_status_unsubcribe message
       when Alarm, AlarmAcknowledged, AlarmSuspend, AlarmResume, AlarmRequest
         process_alarm message
-      else
-        return false
       end
-      true
     end
 
     def acknowledged_first_ingoing(message)
@@ -189,8 +186,7 @@ module RSMP
 
     def check_sxl_version(message)
       if core_3_3?
-        @accepted_sxls = message.sxls.reject { |item| item['rejected'] }
-        @rejected_sxls = message.sxls.select { |item| item['rejected'] }
+        @rejected_sxls, @accepted_sxls = message.sxls.partition { |item| item['rejected'] }
         @receive_alarms = message.attributes.fetch('receiveAlarms', true)
       else
         primary = primary_configured_sxl

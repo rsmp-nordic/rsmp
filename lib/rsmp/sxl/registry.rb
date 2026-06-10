@@ -1,5 +1,6 @@
 module RSMP
   module SXL
+    # Registry of SXL interface classes keyed by SXL name and connection side.
     module Registry
       @interfaces = {}
 

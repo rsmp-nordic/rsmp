@@ -2,6 +2,7 @@ require 'forwardable'
 
 module RSMP
   module SXL
+    # Base interface for SXL-specific behavior on a proxy connection.
     class Interface
       extend Forwardable
 

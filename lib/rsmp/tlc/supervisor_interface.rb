@@ -1,5 +1,7 @@
 module RSMP
+  # Traffic Light Controller SXL support.
   module TLC
+    # Supervisor-side TLC SXL interface.
     class SupervisorInterface < RSMP::SXL::SupervisorInterface
       include Proxy::Control
       include Proxy::IO

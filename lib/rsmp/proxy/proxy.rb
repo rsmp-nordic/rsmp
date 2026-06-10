@@ -212,8 +212,8 @@ module RSMP
     end
 
     def build_sxl_interfaces
-      @sxl_interfaces = accepted_sxls.each_with_object({}) do |sxl, memo|
-        memo[sxl['name']] = RSMP::SXL::Registry.build_for(self, sxl)
+      @sxl_interfaces = accepted_sxls.to_h do |sxl|
+        [sxl['name'], RSMP::SXL::Registry.build_for(self, sxl)]
       end
     end
 

@@ -13,7 +13,13 @@ module RSMP
                                 rest
                                 not_connected].freeze
 
-    def initialize(node:, id:, type: nil, name: nil, ntsoid: nil, xnid: nil, grouped: false)
+    def initialize(node:, id:, **attributes)
+      type = attributes[:type]
+      name = attributes[:name]
+      ntsoid = attributes[:ntsoid]
+      xnid = attributes[:xnid]
+      grouped = attributes.fetch(:grouped, false)
+
       if grouped == false && (ntsoid || xnid)
         raise RSMP::ConfigurationError,
               'ntsoid and xnid are only allowed for grouped objects'
