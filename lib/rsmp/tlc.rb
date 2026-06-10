@@ -1,4 +1,5 @@
 module RSMP
+  # Traffic Light Controller SXL support.
   module TLC
     SXL_NAME = 'tlc'.freeze
 

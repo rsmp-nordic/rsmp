@@ -2,6 +2,7 @@ require 'forwardable'
 
 module RSMP
   module SXL
+    # SXL interface used by a supervisor-side proxy.
     class SupervisorInterface < Interface
       extend Forwardable
 

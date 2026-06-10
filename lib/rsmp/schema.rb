@@ -30,21 +30,29 @@ module RSMP
     #  an error is raised if the schema type already exists, and force is not set to true
     def self.load_schema_type(type, type_path, force: false)
       type = type.to_sym
-      raise "Schema type #{type} already loaded" if @schemas[type] && force != true
+      ensure_schema_type_available(type, force)
 
       @schemas[type] = {}
       @schema_paths ||= {}
       @schema_paths[type] = {}
-      Dir.glob("#{type_path}/*").select { |f| File.directory? f }.each do |schema_path|
-        version = File.basename(schema_path)
-        file_path = File.join(schema_path, 'rsmp.json')
-        next unless File.exist? file_path
+      schema_version_paths(type_path).each { |schema_path| load_schema_version(type, schema_path) }
+    end
 
-        @schemas[type][version] = JSONSchemer.schema(
-          Pathname.new(File.join(schema_path, 'rsmp.json'))
-        )
-        @schema_paths[type][version] = schema_path
-      end
+    def self.ensure_schema_type_available(type, force)
+      raise "Schema type #{type} already loaded" if @schemas[type] && force != true
+    end
+
+    def self.schema_version_paths(type_path)
+      Dir.glob("#{type_path}/*").select { |path| File.directory? path }
+    end
+
+    def self.load_schema_version(type, schema_path)
+      version = File.basename(schema_path)
+      file_path = File.join(schema_path, 'rsmp.json')
+      return unless File.exist? file_path
+
+      @schemas[type][version] = JSONSchemer.schema(Pathname.new(file_path))
+      @schema_paths[type][version] = schema_path
     end
 
     # remove a schema type
@@ -220,78 +228,6 @@ module RSMP
       sxl.fetch(kind)
     end
 
-    def self.message_codes(message)
-      case message['type']
-      when 'StatusRequest', 'StatusSubscribe', 'StatusUnsubscribe'
-        (message['sS'] || []).map { |item| item['sCI'] }.compact
-      when 'StatusResponse', 'StatusUpdate'
-        (message['sS'] || []).map { |item| item['sCI'] }.compact
-      when 'CommandRequest'
-        (message['arg'] || []).map { |item| item['cCI'] }.compact
-      when 'CommandResponse'
-        (message['rvs'] || []).map { |item| item['cCI'] }.compact
-      when 'Alarm'
-        [message['aCId']].compact
-      else
-        []
-      end.uniq
-    end
-
-    def self.message_code_kind(message)
-      case message['type']
-      when 'StatusRequest', 'StatusSubscribe', 'StatusUnsubscribe', 'StatusResponse', 'StatusUpdate'
-        :statuses
-      when 'CommandRequest', 'CommandResponse'
-        :commands
-      when 'Alarm'
-        :alarms
-      end
-    end
-
-    def self.sxl_defines_codes?(type, version, kind, codes, options)
-      version = sanitize_version(version.to_s) if options[:lenient]
-      catalogue = sxl_catalogue(type, version, kind)
-      prefix = sxl_prefix(type, version, options)
-      codes.all? do |code|
-        unprefixed = prefix && code.start_with?(prefix) ? code[prefix.length..] : code
-        catalogue.key?(code) || catalogue.key?(code.to_sym) ||
-          catalogue.key?(unprefixed) || catalogue.key?(unprefixed.to_sym)
-      end
-    end
-
-    def self.message_code_kind_name(kind)
-      {
-        statuses: 'status',
-        commands: 'command',
-        alarms: 'alarm'
-      }.fetch(kind) { kind.to_s.delete_suffix('s') }
-    end
-
-    def self.resolve_sxl(message, schemas:, **options)
-      kind = message_code_kind(message)
-      codes = message_codes(message)
-      return nil unless kind && codes.any?
-
-      sxl_schemas = schemas.reject { |type, _version| type.to_sym == :core }
-      matches = sxl_schemas.select do |type, version|
-        sxl_defines_codes?(type, version, kind, codes, options)
-      rescue UnknownSchemaError
-        false
-      end
-
-      if matches.empty?
-        raise UnknownMessageCodeError,
-              "No accepted SXL defines #{message_code_kind_name(kind)} code(s) #{codes.join(', ')}"
-      end
-
-      if matches.size > 1
-        names = matches.map { |type, version| "#{type} #{version}" }.join(', ')
-        raise AmbiguousMessageCodeError, "Message code(s) #{codes.join(', ')} match multiple accepted SXLs: #{names}"
-      end
-
-      matches.first
-    end
-
     def self.core_message_type?(message)
       type = message['type']
       %w[
@@ -352,3 +288,5 @@ module RSMP
     end
   end
 end
+
+require_relative 'schema/message_resolution'

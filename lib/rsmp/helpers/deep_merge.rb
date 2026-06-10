@@ -4,9 +4,7 @@ class Hash
     return self unless other_hash
 
     merge(other_hash) do |key, old, fresh|
-      if key == 'sxls'
-        fresh
-      elsif old.is_a?(Hash) && fresh.is_a?(Hash)
+      if key != 'sxls' && old.is_a?(Hash) && fresh.is_a?(Hash)
         old.deep_merge(fresh)
       else
         fresh

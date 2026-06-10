@@ -117,11 +117,13 @@ describe RSMP::Supervisor do
     end
 
     def expect_supervisor_version_message_body(message)
-      expect(message['RSMP']).to be == [{ 'vers' => test_data[:core_versions].last }]
-      expect(message['step']).to be == 'Response'
-      expect(message['supervisorId']).to be == test_data[:site_id]
-      expect(message['SXLS']).to be == test_data[:sxls]
-      expect(message['receiveAlarms']).to be == true
+      expect(message.slice('RSMP', 'step', 'supervisorId', 'SXLS', 'receiveAlarms')).to be == {
+        'RSMP' => [{ 'vers' => test_data[:core_versions].last }],
+        'step' => 'Response',
+        'supervisorId' => test_data[:site_id],
+        'SXLS' => test_data[:sxls],
+        'receiveAlarms' => true
+      }
     end
 
     def expect_supervisor_version_message(message)
@@ -141,10 +143,12 @@ describe RSMP::Supervisor do
     end
 
     def expect_incoming_version_message_body(message)
-      expect(message['RSMP']).to be == test_data[:core_versions_array]
-      expect(message['SXL']).to be == test_data[:sxl_version]
-      expect(message['step']).to be == 'Request'
-      expect(message['SXLS']).to be == test_data[:sxls]
+      expect(message.slice('RSMP', 'SXL', 'step', 'SXLS')).to be == {
+        'RSMP' => test_data[:core_versions_array],
+        'SXL' => test_data[:sxl_version],
+        'step' => 'Request',
+        'SXLS' => test_data[:sxls]
+      }
     end
 
     def expect_incoming_version_message(message)
@@ -162,6 +166,11 @@ describe RSMP::Supervisor do
     end
 
     def handle_supervisor_watchdog_exchange(protocol)
+      handle_supervisor_watchdog_pair(protocol)
+      handle_supervisor_component_list(protocol)
+    end
+
+    def handle_supervisor_watchdog_pair(protocol)
       message = parse_message(protocol)
       expect_watchdog_message(message, test_data[:message_ids][:watchdog_from_site])
       send_message_ack(protocol, message['mId'])
@@ -169,7 +178,9 @@ describe RSMP::Supervisor do
                             test_data[:message_ids][:watchdog_from_supervisor])
       watchdog_ack = parse_message(protocol)
       expect_message_ack(watchdog_ack, test_data[:message_ids][:watchdog_from_supervisor])
+    end
 
+    def handle_supervisor_component_list(protocol)
       component_list = parse_message(protocol)
       expect(component_list['mType']).to be == 'rSMsg'
       expect(component_list['type']).to be == 'ComponentList'
@@ -192,15 +203,23 @@ describe RSMP::Supervisor do
     end
 
     def handle_site_watchdog_exchange(site_protocol)
-      send_watchdog_message(site_protocol, test_data[:watchdog_timestamp], test_data[:message_ids][:watchdog_from_site])
-      message = parse_message(site_protocol)
-      expect_message_ack(message, test_data[:message_ids][:watchdog_from_site])
-      message = parse_message(site_protocol)
-      expect_watchdog_message(message, test_data[:message_ids][:watchdog_from_supervisor])
-      send_message_ack(site_protocol, message['mId'])
+      send_site_watchdog(site_protocol)
+      acknowledge_supervisor_watchdog(site_protocol)
       send_component_list_message(site_protocol, test_data[:message_ids][:component_list_from_site])
       message = parse_message(site_protocol)
       expect_message_ack(message, test_data[:message_ids][:component_list_from_site])
+    end
+
+    def send_site_watchdog(site_protocol)
+      send_watchdog_message(site_protocol, test_data[:watchdog_timestamp], test_data[:message_ids][:watchdog_from_site])
+      message = parse_message(site_protocol)
+      expect_message_ack(message, test_data[:message_ids][:watchdog_from_site])
+    end
+
+    def acknowledge_supervisor_watchdog(site_protocol)
+      message = parse_message(site_protocol)
+      expect_watchdog_message(message, test_data[:message_ids][:watchdog_from_supervisor])
+      send_message_ack(site_protocol, message['mId'])
     end
 
     it 'exchanges messages manually without Site or Supervisor objects' do
