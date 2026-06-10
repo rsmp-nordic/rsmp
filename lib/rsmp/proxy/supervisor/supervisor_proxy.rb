@@ -107,10 +107,29 @@ module RSMP
         will_not_handle message
       when AggregatedStatusRequest
         process_aggregated_status_request message
-      when CommandRequest
-        process_command_request message
       when CommandResponse
         process_command_response message
+      when CommandRequest, StatusRequest, StatusSubscribe, StatusUnsubscribe,
+           Alarm, AlarmAcknowledged, AlarmSuspend, AlarmResume, AlarmRequest
+        handle_interface_request message
+      else
+        super
+      end
+    rescue UnknownComponent, UnknownCommand, UnknownStatus,
+           MessageRejected, MissingAttribute => e
+      dont_acknowledge message, '', e.to_s
+    end
+
+    def handle_interface_request(message)
+      interface = sxl_interface_for message
+      interface.validate_message! message
+      interface.process_message message
+    end
+
+    def process_sxl_request(message)
+      case message
+      when CommandRequest
+        process_command_request message
       when StatusRequest
         process_status_request message
       when StatusSubscribe
@@ -120,11 +139,9 @@ module RSMP
       when Alarm, AlarmAcknowledged, AlarmSuspend, AlarmResume, AlarmRequest
         process_alarm message
       else
-        super
+        return false
       end
-    rescue UnknownComponent, UnknownCommand, UnknownStatus,
-           MessageRejected, MissingAttribute => e
-      dont_acknowledge message, '', e.to_s
+      true
     end
 
     def acknowledged_first_ingoing(message)
@@ -182,6 +199,7 @@ module RSMP
         @accepted_sxls = [primary]
         @rejected_sxls = []
       end
+      build_sxl_interfaces
     end
 
     def send_component_list

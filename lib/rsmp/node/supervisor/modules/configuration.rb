@@ -21,7 +21,10 @@ module RSMP
 
             sxls.each do |sxl|
               name = sxl['name']
-              raise RSMP::ConfigurationError, "Configuration error for site '#{site_id}': SXL name cannot be core" if name.to_s == 'core'
+              if name.to_s == 'core'
+                raise RSMP::ConfigurationError,
+                      "Configuration error for site '#{site_id}': SXL name cannot be core"
+              end
 
               RSMP::Schema.find_schema! name, sxl['version'], lenient: true
             end

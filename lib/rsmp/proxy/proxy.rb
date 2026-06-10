@@ -18,7 +18,8 @@ module RSMP
     include Modules::Tasks
 
     attr_reader :state, :archive, :connection_info, :sxls, :accepted_sxls, :rejected_sxls,
-                :collector, :ip, :port, :node, :core_version
+                :collector, :ip, :port, :node, :core_version, :sxl_interfaces,
+                :site_settings
 
     def initialize(options)
       @node = options[:node]
@@ -139,6 +140,7 @@ module RSMP
       @latest_watchdog_send_at = nil
       @component_list_received = false
       @outgoing_watchdog_acknowledged = false
+      @sxl_interfaces = {}
 
       @acknowledgements = {}
       @acknowledgement_condition = Async::Notification.new
@@ -194,7 +196,7 @@ module RSMP
     end
 
     def primary_sxl
-      (accepted_sxls.first || sxls.first)
+      accepted_sxls.first || sxls.first
     end
 
     def sxl
@@ -207,6 +209,29 @@ module RSMP
 
     def author
       @node.site_id
+    end
+
+    def build_sxl_interfaces
+      @sxl_interfaces = accepted_sxls.each_with_object({}) do |sxl, memo|
+        memo[sxl['name']] = RSMP::SXL::Registry.build_for(self, sxl)
+      end
+    end
+
+    def sxl_interface(name)
+      sxl_interfaces.fetch(name.to_s) do
+        raise RSMP::Schema::UnknownSchemaTypeError, "SXL #{name} is not accepted on this connection"
+      end
+    end
+
+    def tlc
+      sxl_interface 'tlc'
+    end
+
+    def sxl_interface_for(message)
+      resolved = RSMP::Schema.resolve_sxl(message.attributes, schemas: schemas)
+      return unless resolved
+
+      sxl_interface resolved.first
     end
 
     # Use Gem class to check version requirement
