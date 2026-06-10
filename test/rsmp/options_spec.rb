@@ -130,6 +130,24 @@ describe RSMP::Options do
       expect(site.sxls).to be == [{ 'name' => 'tlc', 'version' => '1.3.0' }]
     end
 
+    it 'accepts normalized supervisor settings when constructing a supervisor' do
+      settings = RSMP::Supervisor::Options.new(
+        'sites' => {
+          'default' => {
+            'sxls' => {
+              'tlc' => '1.3.0'
+            }
+          }
+        }
+      ).to_h
+
+      supervisor = RSMP::Supervisor.new(supervisor_settings: settings)
+
+      expect(supervisor.supervisor_settings.dig('sites', 'default', 'sxls')).to be == [
+        { 'name' => 'tlc', 'version' => '1.3.0' }
+      ]
+    end
+
     it 'rejects sxls in list form' do
       expect do
         RSMP::Supervisor::Options.new(
