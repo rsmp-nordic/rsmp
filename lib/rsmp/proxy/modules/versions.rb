@@ -79,29 +79,45 @@ module RSMP
         end
 
         def send_version_message(site_id, core_versions, step:)
-          versions = if core_versions == 'latest'
-                       [RSMP::Schema.latest_core_version]
-                     elsif core_versions == 'all'
-                       RSMP::Schema.core_versions
-                     else
-                       [core_versions].flatten
-                     end
-          versions_array = versions.map { |v| { 'vers' => v } }
+          attributes = version_message_attributes(site_id, core_versions)
+          attributes.merge!(version_request_attributes) if step == 'Request'
+          send_message Version.new(attributes), validate: false
+        end
 
-          site_id_array = [site_id].flatten.map { |id| { 'sId' => id } }
+        def version_message_attributes(site_id, core_versions)
           primary = primary_configured_sxl
-
           attributes = {
-            'RSMP' => versions_array,
-            'siteId' => site_id_array
+            'RSMP' => version_items(core_versions),
+            'siteId' => site_id_items(site_id)
           }
           attributes['SXL'] = primary['version'].to_s if primary
-          if step == 'Request'
-            attributes['step'] = 'Request'
-            attributes['SXLS'] = sxl_request_items
-          end
+          attributes
+        end
 
-          send_message Version.new(attributes), validate: false
+        def version_items(core_versions)
+          normalized_core_versions(core_versions).map { |version| { 'vers' => version } }
+        end
+
+        def normalized_core_versions(core_versions)
+          case core_versions
+          when 'latest'
+            [RSMP::Schema.latest_core_version]
+          when 'all'
+            RSMP::Schema.core_versions
+          else
+            [core_versions].flatten
+          end
+        end
+
+        def site_id_items(site_id)
+          [site_id].flatten.map { |id| { 'sId' => id } }
+        end
+
+        def version_request_attributes
+          {
+            'step' => 'Request',
+            'SXLS' => sxl_request_items
+          }
         end
 
         def version_response_sxls

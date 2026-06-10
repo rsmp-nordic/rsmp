@@ -6,6 +6,7 @@ module RSMP
     include Modules::AggregatedStatus
     include Modules::Alarms
     include Modules::Commands
+    include SiteSxlSelection
 
     attr_reader :supervisor, :site_id
 
@@ -163,56 +164,6 @@ module RSMP
 
     def watchdog_interval=(interval)
       @settings['intervals']['watchdog'] = interval
-    end
-
-    def check_sxl_version(message)
-      if core_3_3?
-        select_sxls message
-      else
-        select_legacy_sxl message
-      end
-    rescue RSMP::Schema::UnknownSchemaError => e
-      dont_acknowledge message, "Rejected #{message.type} message,", e.to_s
-    end
-
-    def select_legacy_sxl(message)
-      primary = configured_sxls.first
-      unless primary
-        reason = 'Legacy Version message received, but no SXL is configured'
-        dont_acknowledge message, "Rejected #{message.type} message,", reason
-        raise HandshakeError, reason
-      end
-
-      sanitized_version = RSMP::Schema.sanitize_version(message.attribute('SXL'))
-      RSMP::Schema.find_schema! primary['name'], sanitized_version
-      @accepted_sxls = [{ 'name' => primary['name'], 'version' => message.attribute('SXL') }]
-      @rejected_sxls = []
-    end
-
-    def select_sxls(message)
-      @accepted_sxls = []
-      @rejected_sxls = []
-
-      message.sxls.each do |requested|
-        configured = configured_sxls.find { |item| item['name'] == requested['name'] }
-        if configured.nil?
-          @rejected_sxls << rejected_sxl(requested, 1, 'SXL not supported')
-        elsif configured['version'].to_s == requested['version'].to_s
-          RSMP::Schema.find_schema! requested['name'], requested['version'], lenient: true
-          @accepted_sxls << requested.slice('name', 'version', 'prefix')
-        else
-          @rejected_sxls << rejected_sxl(requested, 2, "Supervisor only supports #{configured['version']}")
-        end
-      end
-    end
-
-    def rejected_sxl(requested, code, reason)
-      {
-        'name' => requested['name'],
-        'version' => requested['version'],
-        'rejected' => code,
-        'reason' => reason
-      }.compact
     end
 
     def process_version(message)

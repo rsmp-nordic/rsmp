@@ -1,10 +1,6 @@
 module RSMP
   # RSMP component
   class Component < ComponentBase
-    def initialize(node:, id:, type: nil, name: nil, ntsoid: nil, xnid: nil, grouped: false)
-      super
-    end
-
     def handle_command(command_code, _arg)
       raise UnknownCommand, "Command #{command_code} not implemented by #{self.class}"
     end

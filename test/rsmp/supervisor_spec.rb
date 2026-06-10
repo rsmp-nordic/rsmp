@@ -143,13 +143,14 @@ describe RSMP::Supervisor do
 
     def receive_legacy_version(protocol, sxl_version)
       version = JSON.parse protocol.read_line
-      expect(version['mType']).to be == 'rSMsg'
-      expect(version['type']).to be == 'Version'
-      expect(version['mId']).to be == '1b206e56-31be-4739-9164-3a24d47b0aa2'
-      expect(version['siteId']).to be == [{ 'sId' => 'RN+SI0001' }]
-      expect(version['SXL']).to be == sxl_version
-      expect(version['step']).to be_nil
-      expect(version['SXLS']).to be_nil
+      expect(version.slice('mType', 'type', 'mId', 'siteId', 'SXL')).to be == {
+        'mType' => 'rSMsg',
+        'type' => 'Version',
+        'mId' => '1b206e56-31be-4739-9164-3a24d47b0aa2',
+        'siteId' => [{ 'sId' => 'RN+SI0001' }],
+        'SXL' => sxl_version
+      }
+      expect(version.values_at('step', 'SXLS')).to be == [nil, nil]
     end
 
     def send_version_ack(protocol)
@@ -158,20 +159,19 @@ describe RSMP::Supervisor do
     end
 
     def perform_watchdog_handshake(protocol, component_list:)
-      # send watchdog
+      perform_watchdog_exchange(protocol)
+      perform_component_list_exchange(protocol) if component_list
+    end
+
+    def perform_watchdog_exchange(protocol)
       protocol.write_lines %({"mType":"rSMsg","type":"Watchdog","wTs":"2022-09-08T13:10:24.695Z","mId":"439e5748-0662-4ab2-a0d7-80fc680f04f5"})
 
-      # read watchdog ack
       JSON.parse protocol.read_line
-
-      # read watchdog
       watchdog = JSON.parse protocol.read_line
-
-      # send watchdog ack
       protocol.write_lines JSON.generate('mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => watchdog['mId'])
+    end
 
-      return unless component_list
-
+    def perform_component_list_exchange(protocol)
       protocol.write_lines JSON.generate(
         'mType' => 'rSMsg',
         'type' => 'ComponentList',
