@@ -38,12 +38,22 @@ module RSMP
     def handle_site_settings(options = {})
       options_class = self.class.options_class
       settings = options[:site_settings] || {}
+      settings = denormalize_sxls(settings)
       @site_options = options_class.new(settings)
       @site_settings = @site_options.to_h
 
       check_sxls
       check_core_versions
       setup_components @site_settings['components']
+    end
+
+    def denormalize_sxls(settings)
+      sxls = settings['sxls']
+      return settings unless sxls.is_a?(Array)
+
+      settings.merge(
+        'sxls' => sxls.to_h { |sxl| [sxl['name'], sxl['version']] }
+      )
     end
 
     def check_sxls

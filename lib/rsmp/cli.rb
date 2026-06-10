@@ -75,7 +75,7 @@ module RSMP
         return [settings, log_settings] unless options[:config]
 
         begin
-          options_object = RSMP::Site::Options.load_file(options[:config])
+          options_object = site_options_class.load_file(options[:config])
           settings = options_object.to_h
           log_settings = log_settings.deep_merge(options_object.log_settings)
         rescue RSMP::ConfigurationError => e
@@ -88,6 +88,15 @@ module RSMP
     end
 
     private
+
+    def site_options_class
+      case site_type
+      when 'tlc'
+        RSMP::TLC::TrafficControllerSite::Options
+      else
+        RSMP::Site::Options
+      end
+    end
 
     def apply_site_options(settings, log_settings)
       apply_basic_site_options(settings)
@@ -124,14 +133,17 @@ module RSMP
     end
 
     def determine_site_class(settings)
-      site_type = options[:type] || settings['type']
-      case site_type
+      case site_type(settings)
       when 'tlc'
         RSMP::TLC::TrafficControllerSite
       else
-        puts "Error: Unknown site type #{site_type}"
+        puts "Error: Unknown site type #{site_type(settings)}"
         exit
       end
+    end
+
+    def site_type(settings = nil)
+      options[:type] || settings&.fetch('type', nil)
     end
 
     def run_site(site_class, settings, log_settings)
