@@ -1,5 +1,6 @@
 require 'rsmp'
 require 'tmpdir'
+require 'fileutils'
 
 describe RSMP::Schema do
   let(:schemas_path) { File.expand_path('../../schemas', __dir__) }
@@ -30,16 +31,74 @@ describe RSMP::Schema do
     expect(subject.validate(version_request, { core: '3.3.0' })).to be_nil
   end
 
-  it 'validates SXL messages using a flat multi-SXL schema map' do
-    subject.load_schema_type(:tlc_copy, File.join(schemas_path, 'tlc'), force: true)
-
+  it 'validates SXL messages using the matching flat SXL schema' do
     expect(subject.validate(status_request, {
                               core: '3.3.0',
-                              tlc: '1.3.0',
-                              tlc_copy: '1.3.0'
+                              tlc: '1.3.0'
                             })).to be_nil
+  end
+
+  it 'raises when an SXL message code matches multiple accepted SXL schemas' do
+    subject.load_schema_type(:tlc_copy, File.join(schemas_path, 'tlc'), force: true)
+
+    expect do
+      subject.validate(status_request, {
+                         core: '3.3.0',
+                         tlc: '1.3.0',
+                         tlc_copy: '1.3.0'
+                       })
+    end.to raise_exception(RSMP::Schema::AmbiguousMessageCodeError, message: be =~ /S0001/)
   ensure
     subject.remove_schema_type(:tlc_copy)
+  end
+
+  it 'does not use component metadata to resolve duplicate SXL message codes' do
+    subject.load_schema_type(:tlc_copy, File.join(schemas_path, 'tlc'), force: true)
+
+    expect do
+      subject.resolve_sxl(status_request,
+                          schemas: {
+                            core: '3.3.0',
+                            tlc: '1.3.0',
+                            tlc_copy: '1.3.0'
+                          })
+    end.to raise_exception(RSMP::Schema::AmbiguousMessageCodeError, message: be =~ /S0001/)
+  ensure
+    subject.remove_schema_type(:tlc_copy)
+  end
+
+  it 'raises when no accepted SXL defines the message code' do
+    unknown_status_request = status_request.merge(
+      'sS' => [{ 'sCI' => 'S9999', 'n' => 'unknown' }]
+    )
+
+    expect do
+      subject.validate(unknown_status_request, {
+                         core: '3.3.0',
+                         tlc: '1.3.0'
+                       })
+    end.to raise_exception(RSMP::Schema::UnknownMessageCodeError, message: be =~ /S9999/)
+  end
+
+  it 'resolves SXL messages with an SXL metadata prefix' do
+    Dir.mktmpdir do |dir|
+      FileUtils.cp_r(File.join(schemas_path, 'tlc', '1.3.0'), File.join(dir, '1.3.0'))
+      sxl_path = File.join(dir, '1.3.0', 'sxl.yaml')
+      sxl_yaml = File.read(sxl_path).sub("  version: 1.3.0\n", "  version: 1.3.0\n  prefix: pre/\n")
+      File.write(sxl_path, sxl_yaml)
+      subject.load_schema_type(:prefixed_tlc, dir, force: true)
+
+      prefixed_status_request = status_request.merge(
+        'sS' => [{ 'sCI' => 'pre/S0001', 'n' => 'signalgroupstatus' }]
+      )
+
+      expect(subject.resolve_sxl(prefixed_status_request, schemas: {
+                                   core: '3.3.0',
+                                   prefixed_tlc: '1.3.0'
+                                 })).to be == [:prefixed_tlc, '1.3.0']
+    ensure
+      subject.remove_schema_type(:prefixed_tlc)
+    end
   end
 
   it 'requires the core schema key' do
@@ -82,8 +141,8 @@ describe RSMP::Schema do
         include RSMP::Proxy::Modules::Versions
       end.new
       proxy.instance_variable_set(:@site_settings, {
-        'sxls' => [{ 'name' => 'prefixed', 'version' => '1.0.0' }]
-      })
+                                    'sxls' => [{ 'name' => 'prefixed', 'version' => '1.0.0' }]
+                                  })
 
       expect(proxy.sxl_request_items).to be == [
         { 'name' => 'prefixed', 'version' => '1.0.0', 'prefix' => 'pre/' }

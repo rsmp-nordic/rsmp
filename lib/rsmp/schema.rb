@@ -205,15 +205,91 @@ module RSMP
     # returns a hash of { status_code_id_sym => [arg_name_sym, ...] }
     # raises an error if the schema type/version is not found, or has no sxl.yaml
     def self.status_catalogue(type, version)
-      find_schema! type, version
-      schemas_path = File.expand_path(File.join(__dir__, '..', '..', 'schemas'))
-      yaml_path = File.join(schemas_path, type.to_s, version, 'sxl.yaml')
-      raise "No sxl.yaml for #{type} #{version}" unless File.exist?(yaml_path)
-
-      sxl = RSMP::Convert::Import::YAML.read(yaml_path)
-      sxl[:statuses].transform_keys(&:to_sym).transform_values do |status|
+      sxl_catalogue(type, version, :statuses).transform_keys(&:to_sym).transform_values do |status|
         (status['arguments'] || {}).keys.map(&:to_sym)
       end
+    end
+
+    def self.sxl_catalogue(type, version, kind)
+      find_schema! type, version
+      schema_path = @schema_paths&.dig(type.to_sym, version)
+      yaml_path = File.join(schema_path, 'sxl.yaml') if schema_path
+      raise "No sxl.yaml for #{type} #{version}" unless yaml_path && File.exist?(yaml_path)
+
+      sxl = RSMP::Convert::Import::YAML.read(yaml_path)
+      sxl.fetch(kind)
+    end
+
+    def self.message_codes(message)
+      case message['type']
+      when 'StatusRequest', 'StatusSubscribe', 'StatusUnsubscribe'
+        (message['sS'] || []).map { |item| item['sCI'] }.compact
+      when 'StatusResponse', 'StatusUpdate'
+        (message['sS'] || []).map { |item| item['sCI'] }.compact
+      when 'CommandRequest'
+        (message['arg'] || []).map { |item| item['cCI'] }.compact
+      when 'CommandResponse'
+        (message['rvs'] || []).map { |item| item['cCI'] }.compact
+      when 'Alarm'
+        [message['aCId']].compact
+      else
+        []
+      end.uniq
+    end
+
+    def self.message_code_kind(message)
+      case message['type']
+      when 'StatusRequest', 'StatusSubscribe', 'StatusUnsubscribe', 'StatusResponse', 'StatusUpdate'
+        :statuses
+      when 'CommandRequest', 'CommandResponse'
+        :commands
+      when 'Alarm'
+        :alarms
+      end
+    end
+
+    def self.sxl_defines_codes?(type, version, kind, codes, options)
+      version = sanitize_version(version.to_s) if options[:lenient]
+      catalogue = sxl_catalogue(type, version, kind)
+      prefix = sxl_prefix(type, version, options)
+      codes.all? do |code|
+        unprefixed = prefix && code.start_with?(prefix) ? code[prefix.length..] : code
+        catalogue.key?(code) || catalogue.key?(code.to_sym) ||
+          catalogue.key?(unprefixed) || catalogue.key?(unprefixed.to_sym)
+      end
+    end
+
+    def self.message_code_kind_name(kind)
+      {
+        statuses: 'status',
+        commands: 'command',
+        alarms: 'alarm'
+      }.fetch(kind) { kind.to_s.delete_suffix('s') }
+    end
+
+    def self.resolve_sxl(message, schemas:, **options)
+      kind = message_code_kind(message)
+      codes = message_codes(message)
+      return nil unless kind && codes.any?
+
+      sxl_schemas = schemas.reject { |type, _version| type.to_sym == :core }
+      matches = sxl_schemas.select do |type, version|
+        sxl_defines_codes?(type, version, kind, codes, options)
+      rescue UnknownSchemaError
+        false
+      end
+
+      if matches.empty?
+        raise UnknownMessageCodeError,
+              "No accepted SXL defines #{message_code_kind_name(kind)} code(s) #{codes.join(', ')}"
+      end
+
+      if matches.size > 1
+        names = matches.map { |type, version| "#{type} #{version}" }.join(', ')
+        raise AmbiguousMessageCodeError, "Message code(s) #{codes.join(', ')} match multiple accepted SXLs: #{names}"
+      end
+
+      matches.first
     end
 
     def self.core_message_type?(message)
@@ -240,6 +316,13 @@ module RSMP
     def self.validate_sxls(message, schemas, options)
       sxl_schemas = schemas.reject { |type, _version| type.to_sym == :core }
       return [] if sxl_schemas.empty? || core_message_type?(message)
+
+      resolved = resolve_sxl(message, schemas: schemas, **options)
+      if resolved
+        type, version = resolved
+        schema = find_schema! type, version, options
+        return validate_using_schema(message, schema)
+      end
 
       all_errors = []
       sxl_schemas.each do |type, version|

@@ -1,6 +1,38 @@
 require_relative '../support/site_proxy_stub'
 
 describe RSMP::Proxy do
+  class CapturingProtocol
+    attr_reader :lines
+
+    def initialize
+      @lines = []
+    end
+
+    def write_lines(line)
+      @lines << line
+    end
+  end
+
+  class RejectingSxlInterface
+    def validate_message!(_message)
+      raise RSMP::MessageRejected, 'SXL says no'
+    end
+  end
+
+  class CapturingSxlInterface
+    attr_reader :messages
+
+    def initialize
+      @messages = []
+    end
+
+    def validate_message!(_message); end
+
+    def process_message(message)
+      @messages << message
+    end
+  end
+
   let(:options) { {} }
   let(:proxy) { subject.new options }
 
@@ -123,6 +155,174 @@ describe RSMP::Proxy do
       expect(subject.version_meets_requirement?('1.0.10', ['>=1.0.10', '<1.0.12'])).to be == true
       expect(subject.version_meets_requirement?('1.0.11', ['>=1.0.10', '<1.0.12'])).to be == true
       expect(subject.version_meets_requirement?('1.0.12', ['>=1.0.10', '<1.0.12'])).to be == false
+    end
+  end
+
+  with 'SXL interfaces' do
+    let(:supervisor_settings) do
+      {
+        'port' => 13_111,
+        'default' => {
+          'sxls' => { 'tlc' => RSMP::Schema.latest_version(:tlc) },
+          'timeouts' => {}
+        }
+      }
+    end
+
+    let(:supervisor) do
+      RSMP::Supervisor.new(
+        supervisor_settings: supervisor_settings,
+        log_settings: { 'active' => false }
+      )
+    end
+
+    let(:site_proxy) do
+      RSMP::SiteProxy.new(
+        supervisor: supervisor,
+        ip: '127.0.0.1',
+        port: 12_345,
+        site_id: 'TLC001'
+      )
+    end
+
+    it 'builds a TLC interface for accepted TLC connections' do
+      site_proxy.instance_variable_set(
+        :@accepted_sxls,
+        [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }]
+      )
+
+      site_proxy.build_sxl_interfaces
+
+      expect(site_proxy.sxl_interfaces.keys).to be == ['tlc']
+      expect(site_proxy.sxl_interface('tlc')).to be_a(RSMP::TLC::SupervisorInterface)
+      expect(site_proxy.tlc).to be == site_proxy.sxl_interface('tlc')
+    end
+
+    it 'raises when requesting an interface that was not accepted' do
+      expect do
+        site_proxy.tlc
+      end.to raise_exception(RSMP::Schema::UnknownSchemaTypeError, message: be =~ /tlc/)
+    end
+
+    it 'builds generic SiteProxy connections from the supervisor' do
+      built_proxy = supervisor.build_proxy(
+        supervisor: supervisor,
+        ip: '127.0.0.1',
+        port: 12_345,
+        site_id: 'TLC001'
+      )
+
+      expect(built_proxy).to be_a(RSMP::SiteProxy)
+    end
+
+    it 'sends MessageNotAck when an SXL interface rejects an incoming message before generic acknowledgement' do
+      protocol = CapturingProtocol.new
+      site_proxy.instance_variable_set(:@protocol, protocol)
+      site_proxy.instance_variable_set(:@state, :connected)
+      site_proxy.instance_variable_set(:@core_version, '3.3.0')
+      site_proxy.instance_variable_set(:@version_determined, true)
+      site_proxy.instance_variable_set(
+        :@accepted_sxls,
+        [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }]
+      )
+      site_proxy.instance_variable_set(:@sxl_interfaces, { 'tlc' => RejectingSxlInterface.new })
+
+      site_proxy.process_packet({
+        'mType' => 'rSMsg',
+        'type' => 'StatusUpdate',
+        'cId' => 'C1',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '1', 'q' => 'recent' }],
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda'
+      }.to_json)
+
+      response = JSON.parse(protocol.lines.last)
+      expect(response['type']).to be == 'MessageNotAck'
+      expect(response['oMId']).to be == '859e189e-c973-4b40-90c4-45a7a25f2dda'
+      expect(response['rea']).to be == 'SXL says no'
+    end
+
+    it 'sends MessageNotAck when no accepted SXL defines an incoming message code' do
+      protocol = CapturingProtocol.new
+      site_proxy.instance_variable_set(:@protocol, protocol)
+      site_proxy.instance_variable_set(:@state, :connected)
+      site_proxy.instance_variable_set(:@core_version, '3.3.0')
+      site_proxy.instance_variable_set(:@version_determined, true)
+      site_proxy.instance_variable_set(
+        :@accepted_sxls,
+        [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }]
+      )
+
+      site_proxy.process_packet({
+        'mType' => 'rSMsg',
+        'type' => 'StatusUpdate',
+        'cId' => 'C1',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0000', 'n' => 'status', 's' => '1', 'q' => 'recent' }],
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda'
+      }.to_json)
+
+      response = JSON.parse(protocol.lines.last)
+      expect(response['type']).to be == 'MessageNotAck'
+      expect(response['oMId']).to be == '859e189e-c973-4b40-90c4-45a7a25f2dda'
+      expect(response['rea']).to be =~ /No accepted SXL defines status code\(s\) S0000/
+    end
+
+    it 'dispatches supervisor-side SXL requests to the interface without generic pre-processing' do
+      site = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'TLC001',
+          'supervisors' => [],
+          'sxls' => { 'tlc' => RSMP::Schema.latest_version(:tlc) }
+        },
+        log_settings: { 'active' => false }
+      )
+      supervisor_proxy = RSMP::SupervisorProxy.new(
+        site: site,
+        ip: '127.0.0.1',
+        port: 12_345
+      )
+      supervisor_proxy.instance_variable_set(:@core_version, '3.3.0')
+      supervisor_proxy.instance_variable_set(
+        :@accepted_sxls,
+        [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }]
+      )
+      interface = CapturingSxlInterface.new
+      supervisor_proxy.instance_variable_set(:@sxl_interfaces, { 'tlc' => interface })
+
+      generic_calls = 0
+      supervisor_proxy.define_singleton_method(:process_sxl_request) do |_message|
+        generic_calls += 1
+      end
+
+      message = RSMP::StatusRequest.new(
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
+        'cId' => 'TLC001',
+        'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus' }]
+      )
+
+      supervisor_proxy.process_message message
+
+      expect(interface.messages).to be == [message]
+      expect(generic_calls).to be == 0
+    end
+
+    it 'lets the default site-side interface delegate request processing to the proxy' do
+      handled = nil
+      proxy = Object.new
+      proxy.define_singleton_method(:process_sxl_request) do |message|
+        handled = message
+      end
+      message = RSMP::CommandRequest.new(
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
+        'cId' => 'TLC001',
+        'arg' => [{ 'cCI' => 'M0001', 'n' => 'status', 'cO' => 'setValue', 'v' => 'true' }]
+      )
+
+      interface = RSMP::SXL::SiteInterface.new(proxy: proxy, name: 'tlc', version: '1.2.1')
+      interface.process_message message
+
+      expect(handled).to be == message
     end
   end
 end

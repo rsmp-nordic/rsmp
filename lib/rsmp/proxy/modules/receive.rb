@@ -39,7 +39,8 @@ module RSMP
         end
 
         def handle_schema_error(message, error)
-          schemas_string = error.schemas.map { |schema| "#{schema.first}: #{schema.last}" }.join(', ')
+          failed_schemas = error.respond_to?(:schemas) && error.schemas ? error.schemas : schemas
+          schemas_string = failed_schemas.map { |schema| "#{schema.first}: #{schema.last}" }.join(', ')
           reason = "schema errors (#{schemas_string}): #{error.message}"
           str = "Received invalid #{message.type}"
           distribute_error error.exception(str), message: message
@@ -81,7 +82,7 @@ module RSMP
           handle_malformed_message(attributes, e)
         rescue SchemaError, RSMP::Schema::Error => e
           handle_schema_error(message, e)
-        rescue InvalidMessage => e
+        rescue InvalidMessage, MessageRejected => e
           handle_invalid_message(message, e)
         rescue FatalError => e
           handle_fatal_error(message, e)

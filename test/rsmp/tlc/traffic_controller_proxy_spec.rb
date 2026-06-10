@@ -1,4 +1,4 @@
-describe RSMP::TLC::TrafficControllerProxy do
+describe RSMP::TLC::SupervisorInterface do
   let(:supervisor_settings) do
     {
       'port' => 13_113,
@@ -17,18 +17,25 @@ describe RSMP::TLC::TrafficControllerProxy do
     }
   end
 
-  let(:proxy) do
+  let(:connection_proxy) do
     supervisor = RSMP::Supervisor.new(
       supervisor_settings: supervisor_settings,
       log_settings: { 'active' => false }
     )
 
-    subject.new(
+    proxy = RSMP::SiteProxy.new(
       supervisor: supervisor,
       ip: '127.0.0.1',
       port: 12_345,
       site_id: 'TLC001'
     )
+    proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }])
+    proxy.build_sxl_interfaces
+    proxy
+  end
+
+  let(:proxy) do
+    connection_proxy.tlc
   end
 
   with 'initialize' do
@@ -47,16 +54,17 @@ describe RSMP::TLC::TrafficControllerProxy do
       expect(proxy.timeouts).to be == expected
     end
 
-    it 'is a subclass of SiteProxy' do
-      expect(proxy).to be_a(RSMP::SiteProxy)
+    it 'is attached to a SiteProxy connection' do
+      expect(connection_proxy).to be_a(RSMP::SiteProxy)
+      expect(proxy).to be_a(RSMP::TLC::SupervisorInterface)
     end
   end
 
   with 'status value storage' do
     def setup_proxy
-      main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true)
-      proxy.instance_variable_set(:@main, main_component)
-      proxy.instance_variable_set(:@state, :connected)
+      main_component = RSMP::ComponentProxy.new(id: 'TLC001', node: connection_proxy, grouped: true)
+      connection_proxy.instance_variable_set(:@main, main_component)
+      connection_proxy.instance_variable_set(:@state, :connected)
     end
 
     it 'updates timeplan and plan_source when processing S0014 status updates' do
@@ -116,21 +124,21 @@ describe RSMP::TLC::TrafficControllerProxy do
 
     it 'returns timeplan attributes from main component' do
       setup_proxy
-      proxy.instance_variable_get(:@main).instance_variable_set(
+      connection_proxy.instance_variable_get(:@main).instance_variable_set(
         :@statuses, { 'S0014' => { 'status' => { 's' => '2', 'q' => 'recent' } } }
       )
       expect(proxy.timeplan_attributes).to be == ({ 'status' => { 's' => '2', 'q' => 'recent' } })
     end
 
     it 'returns empty hash when no main component' do
-      proxy.instance_variable_set(:@main, nil)
+      connection_proxy.instance_variable_set(:@main, nil)
       expect(proxy.timeplan_attributes).to be == {}
     end
   end
 
   with 'method functionality' do
     def setup_proxy
-      proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: proxy, grouped: true))
+      connection_proxy.instance_variable_set(:@main, RSMP::ComponentProxy.new(id: 'TLC001', node: connection_proxy, grouped: true))
     end
 
     with 'with positional arguments' do
@@ -210,8 +218,8 @@ describe RSMP::TLC::TrafficControllerProxy do
     end
 
     it 'raises error when main component is missing for set_timeplan' do
-      proxy.instance_variable_set(:@main, nil)
-      proxy.instance_variable_set(:@state, :ready)
+      connection_proxy.instance_variable_set(:@main, nil)
+      connection_proxy.instance_variable_set(:@state, :ready)
 
       expect do
         proxy.set_timeplan(3, within: 1)
@@ -229,33 +237,33 @@ describe RSMP::TLC::TrafficControllerProxy do
   with 'security_code_for' do
     with 'when security codes are configured with integer keys' do
       it 'returns the code for level 1' do
-        proxy.instance_variable_set(:@site_settings, { 'security_codes' => { 1 => 'alpha', 2 => 'beta' } })
+        connection_proxy.instance_variable_set(:@site_settings, { 'security_codes' => { 1 => 'alpha', 2 => 'beta' } })
         expect(proxy.send(:security_code_for, 1)).to be == 'alpha'
       end
 
       it 'returns the code for level 2' do
-        proxy.instance_variable_set(:@site_settings, { 'security_codes' => { 1 => 'alpha', 2 => 'beta' } })
+        connection_proxy.instance_variable_set(:@site_settings, { 'security_codes' => { 1 => 'alpha', 2 => 'beta' } })
         expect(proxy.send(:security_code_for, 2)).to be == 'beta'
       end
     end
 
     with 'when security codes are configured with string keys' do
       it 'returns the code for level 1 (string key fallback)' do
-        proxy.instance_variable_set(:@site_settings, { 'security_codes' => { '1' => 'alpha', '2' => 'beta' } })
+        connection_proxy.instance_variable_set(:@site_settings, { 'security_codes' => { '1' => 'alpha', '2' => 'beta' } })
         expect(proxy.send(:security_code_for, 1)).to be == 'alpha'
       end
     end
 
     with 'when security code is missing' do
       it 'raises ArgumentError' do
-        proxy.instance_variable_set(:@site_settings, { 'security_codes' => {} })
+        connection_proxy.instance_variable_set(:@site_settings, { 'security_codes' => {} })
         expect { proxy.send(:security_code_for, 2) }.to raise_exception(ArgumentError, message: be =~ /level 2/)
       end
     end
 
     with 'when site_settings is nil' do
       it 'raises ArgumentError' do
-        proxy.instance_variable_set(:@site_settings, nil)
+        connection_proxy.instance_variable_set(:@site_settings, nil)
         expect { proxy.send(:security_code_for, 1) }.to raise_exception(ArgumentError, message: be =~ /level 1/)
       end
     end
@@ -263,22 +271,22 @@ describe RSMP::TLC::TrafficControllerProxy do
 
   with 'use_soc?' do
     it 'returns false when core_version is nil' do
-      proxy.instance_variable_set(:@core_version, nil)
+      connection_proxy.instance_variable_set(:@core_version, nil)
       expect(proxy.send(:use_soc?)).to be == false
     end
 
     it 'returns false for core version below 3.1.5' do
-      proxy.instance_variable_set(:@core_version, '3.1.4')
+      connection_proxy.instance_variable_set(:@core_version, '3.1.4')
       expect(proxy.send(:use_soc?)).to be == false
     end
 
     it 'returns true for core version 3.1.5' do
-      proxy.instance_variable_set(:@core_version, '3.1.5')
+      connection_proxy.instance_variable_set(:@core_version, '3.1.5')
       expect(proxy.send(:use_soc?)).to be == true
     end
 
     it 'returns true for core version above 3.1.5' do
-      proxy.instance_variable_set(:@core_version, '3.2.0')
+      connection_proxy.instance_variable_set(:@core_version, '3.2.0')
       expect(proxy.send(:use_soc?)).to be == true
     end
   end
