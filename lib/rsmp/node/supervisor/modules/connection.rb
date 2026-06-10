@@ -128,8 +128,6 @@ module RSMP
           stop if @supervisor_settings['one_shot']
         end
 
-        # Proxy type is derived from the primary configured SXL in Supervisor#build_proxy.
-
         def reject_connection(_socket, info)
           log 'Site rejected', ip: info[:ip], level: :info
         end

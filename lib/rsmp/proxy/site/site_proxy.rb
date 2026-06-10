@@ -60,14 +60,9 @@ module RSMP
         process_component_list message
       when AggregatedStatus
         process_aggregated_status message
-      when AlarmIssue, AlarmSuspended, AlarmResumed, AlarmAcknowledged
-        process_alarm message
-      when CommandResponse
-        process_command_response message
-      when StatusResponse
-        process_status_response message
-      when StatusUpdate
-        process_status_update message
+      when AlarmIssue, AlarmSuspended, AlarmResumed, AlarmAcknowledged,
+           CommandResponse, StatusResponse, StatusUpdate
+        handle_interface_message message
       else
         super
       end
@@ -79,6 +74,26 @@ module RSMP
 
     def handled_by_parent?(message)
       message.is_a?(CommandRequest) || message.is_a?(StatusRequest) || message.is_a?(StatusSubscribe)
+    end
+
+    def handle_interface_message(message)
+      interface = sxl_interface_for message
+      interface.validate_message! message
+      record_interface_message message
+      interface.process_message message
+    end
+
+    def record_interface_message(message)
+      case message
+      when AlarmIssue, AlarmSuspended, AlarmResumed, AlarmAcknowledged
+        process_alarm message
+      when CommandResponse
+        process_command_response message
+      when StatusResponse
+        process_status_response message
+      when StatusUpdate
+        process_status_update message
+      end
     end
 
     def version_accepted(message)
@@ -118,6 +133,7 @@ module RSMP
     def process_component_list(message)
       log "Received #{message.type}", message: message, level: :log
       rebuild_components_from_list message.attributes['components']
+      build_sxl_interfaces
       acknowledge message
       @component_list_received = true
       handshake_complete if @outgoing_watchdog_acknowledged
@@ -239,6 +255,7 @@ module RSMP
       if @site_settings
         @sxls = configured_sxls
         @accepted_sxls = @sxls.dup
+        build_sxl_interfaces
         setup_components @site_settings['components']
       else
         dont_acknowledge message, 'Rejected', "No config found for site #{@site_id}"

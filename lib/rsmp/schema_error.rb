@@ -15,5 +15,11 @@ module RSMP
     # Raised when the requested schema version does not exist.
     class UnknownSchemaVersionError < UnknownSchemaError
     end
+
+    class UnknownMessageCodeError < Error
+    end
+
+    class AmbiguousMessageCodeError < Error
+    end
   end
 end
