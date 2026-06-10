@@ -118,6 +118,18 @@ describe RSMP::Options do
       ]
     end
 
+    it 'accepts normalized site settings when constructing a TLC site' do
+      settings = RSMP::Site::Options.new(
+        'sxls' => {
+          'tlc' => '1.3.0'
+        }
+      ).to_h
+
+      site = RSMP::TLC::TrafficControllerSite.new(site_settings: settings)
+
+      expect(site.sxls).to be == [{ 'name' => 'tlc', 'version' => '1.3.0' }]
+    end
+
     it 'rejects sxls in list form' do
       expect do
         RSMP::Supervisor::Options.new(
