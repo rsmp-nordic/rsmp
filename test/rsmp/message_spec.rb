@@ -95,23 +95,71 @@ describe RSMP::Message do
       }
     end
 
-    it 'builds right type of objects when parsing JSON' do
+    it 'builds Version when parsing JSON' do
       expect(build(message_config[:version_str])).to be_a(RSMP::Version)
+    end
+
+    it 'builds MessageAck when parsing JSON' do
       expect(build(message_config[:ack_str])).to be_a(RSMP::MessageAck)
+    end
+
+    it 'builds MessageNotAck when parsing JSON' do
       expect(build(message_config[:not_ack_str])).to be_a(RSMP::MessageNotAck)
+    end
+
+    it 'builds Watchdog when parsing JSON' do
       expect(build(message_config[:watchdog_str])).to be_a(RSMP::Watchdog)
+    end
+
+    it 'builds CommandRequest when parsing JSON' do
       expect(build(message_config[:command_request_str])).to be_a(RSMP::CommandRequest)
+    end
+
+    it 'builds CommandResponse when parsing JSON' do
       expect(build(message_config[:command_response_str])).to be_a(RSMP::CommandResponse)
+    end
+
+    it 'builds AggregatedStatus when parsing JSON' do
       expect(build(message_config[:aggregated_status_str])).to be_a(RSMP::AggregatedStatus)
+    end
+
+    it 'builds StatusRequest when parsing JSON' do
       expect(build(message_config[:status_request_str])).to be_a(RSMP::StatusRequest)
+    end
+
+    it 'builds StatusResponse when parsing JSON' do
       expect(build(message_config[:status_response_str])).to be_a(RSMP::StatusResponse)
+    end
+
+    it 'builds StatusSubscribe when parsing JSON' do
       expect(build(message_config[:status_subscribe_str])).to be_a(RSMP::StatusSubscribe)
+    end
+
+    it 'builds StatusUnsubscribe when parsing JSON' do
       expect(build(message_config[:status_unsubscribe_str])).to be_a(RSMP::StatusUnsubscribe)
+    end
+
+    it 'builds AlarmSuspended when parsing JSON' do
       expect(build(message_config[:alarm_suspended])).to be_a(RSMP::AlarmSuspended)
+    end
+
+    it 'builds AlarmResumed when parsing JSON' do
       expect(build(message_config[:alarm_resumed])).to be_a(RSMP::AlarmResumed)
+    end
+
+    it 'builds AlarmAcknowledge when parsing JSON' do
       expect(build(message_config[:alarm_acknowledge])).to be_a(RSMP::AlarmAcknowledge)
+    end
+
+    it 'builds AlarmAcknowledged when parsing JSON' do
       expect(build(message_config[:alarm_acknowledged])).to be_a(RSMP::AlarmAcknowledged)
+    end
+
+    it 'builds StatusUpdate when parsing JSON' do
       expect(build(message_config[:status_update_str])).to be_a(RSMP::StatusUpdate)
+    end
+
+    it 'builds Unknown when parsing JSON' do
       expect(build(message_config[:unknown_str])).to be_a(RSMP::Unknown)
     end
 
