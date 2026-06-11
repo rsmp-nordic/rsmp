@@ -41,8 +41,8 @@ site_id: RN+SI0001
 supervisors:
   - ip: 127.0.0.1
     port: 12111
-sxl: tlc
-sxl_version: "1.2.1"
+sxls:
+  tlc: "1.3.0"
 components:
   main:
     TC:
@@ -55,7 +55,8 @@ log:
 ```yaml
 port: 12111
 default:
-  sxl: tlc
+  sxls:
+    tlc: "1.3.0"
   intervals:
     timer: 0.1
     watchdog: 0.1
@@ -63,8 +64,8 @@ log:
   json: true
 sites:
   TLC001:
-    sxl: tlc
-    sxl_version: "1.2.1"
+    sxls:
+      tlc: "1.3.0"
     intervals:
       timer: 0.1
       watchdog: 0.1
@@ -76,7 +77,7 @@ sites:
         TC:
 ```
 
-Per-site configuration follows the supervisor-side site schema (`lib/rsmp/options/schemas/supervisor_site.json`). Each site entry must include an `sxl` value; if `sxl` is missing the supervisor will raise a `RSMP::ConfigurationError` on startup.
+Per-site configuration follows the supervisor-side site schema (`lib/rsmp/options/schemas/supervisor_site.json`). Each site entry can define an `sxls` map, or inherit it from `default`. The SXL name `core` is reserved for the RSMP core schema and cannot be used as an SXL key.
 
 ## Supervisor settings
 
@@ -90,8 +91,8 @@ Top-level supervisor settings
 - `site_id`: string — optional site identifier for the supervisor itself.
 - `max_sites`: integer — limit concurrent connected sites.
 - `default`: object — default settings applied to sites that don't have a specific `sites` entry. Contains keys:
-  - `sxl`: string — default SXL type for default sites (e.g. `tlc`).
-  - `sxl_version`, `core_version`: strings for version hints.
+  - `sxls`: object — default SXL versions for default sites, for example `{ "tlc": "1.3.0" }`.
+  - `core_version`: string for the accepted RSMP Core version.
   - `intervals`: object with `timer`, `watchdog` (numbers, seconds).
   - `timeouts`: object with `watchdog`, `acknowledgement` (numbers, seconds).
 - `log`: object — log settings (see `log_settings` elsewhere in docs).
@@ -101,13 +102,13 @@ Top-level supervisor settings
 
 Each key under `sites` is a site id (for example `TLC001`) and the value is the supervisor-side configuration for that site. These settings tell the supervisor how to handle incoming connections from that specific site (which SXL/schema to use, per-site timeouts, component layout, etc.). Per-site configuration follows the supervisor-side schema at `lib/rsmp/options/schemas/supervisor_site.json`.
 
-If a connecting site's id is not present under `sites`, the supervisor will fall back to the `default` settings. The runtime configuration check will raise `RSMP::ConfigurationError` if a site entry is present but missing the required `sxl` key.
+If a connecting site's id is not present under `sites`, the supervisor will fall back to the `default` settings. The runtime configuration check will raise `RSMP::ConfigurationError` if neither the site entry nor the default settings provide usable SXL information.
 
 
 Common per-site keys
 
-- `sxl` (string, required): the SXL type to use for this site (for example `tlc`). The supervisor will attempt to load the corresponding schemas for this SXL.
-- `sxl_version` (string): preferred SXL version (informational; runtime version comes from the site's Version message).
+- `sxls` (object): SXL versions to use for this site, keyed by SXL name, for example `tlc: "1.3.0"`. The supervisor will attempt to load the corresponding schemas for these SXLs.
+- `core_version` (string): accepted RSMP Core version for this site.
 - `type` (string): optional human-readable type identifier.
 - `site_id` (string): explicit site identifier (if different from the mapping key).
 - `supervisors` (array): list of supervisor endpoints (objects with `ip` and `port`). Useful for reverse mappings or local-site configs.
