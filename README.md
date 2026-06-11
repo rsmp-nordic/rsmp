@@ -185,31 +185,12 @@ Use ```--config <path>``` or ```--options <path>``` to point to a .yaml config f
 
 ## Tests
 ### Sus
-Sus tests are located in test/. The tests will start supervisors and sites to test communication, but will do so on port 13111, rather than the usual port 12111, to avoid interference with other RSMP processes running locally.
+Sus tests are located in test/. Some tests start supervisors and sites to test communication, but will do so on port 13111, rather than the usual port 12111, to avoid interference with other RSMP processes running locally. CLI tests call the Thor CLI class directly, without spawning a separate `rsmp` process.
 
 Note that these tests are NOT intended for testing external equipment or systems. The tests are for validating the code in this repository. To test external equipment or systems use the rsmp_validator tool.
 
 ```console
 $ bundle exec sus
-279 passed out of 279 total (779 assertions)
+288 passed out of 288 total (798 assertions)
 
-```
-
-# Cucumber
-Cucumber is used to test the CLI binaries.
-
-```console
-$ cucumber
-Feature: Help
-
-  Scenario: Displaying help              # features/help.feature:3
-    When I run `rsmp help`               # aruba-0.14.11/lib/aruba/cucumber/command.rb:6
-    Then it should pass with "Commands:" # aruba-0.14.11/lib/aruba/cucumber/command.rb:271
-
-Feature: Run site
-...
-
-7 scenarios (7 passed)
-28 steps (28 passed)
-0m7.036s
 ```
