@@ -71,8 +71,17 @@ describe RSMP::CLI do
 
     expect(result.status).to be == 0
     expect(result.output).to be(:include?, 'Commands:')
+    expect(result.output).to be(:include?, 'schema')
     expect(result.output).to be(:include?, 'site')
     expect(result.output).to be(:include?, 'supervisor')
+    expect(result.output).to be(:include?, 'version')
+  end
+
+  it 'displays the version' do
+    result = invoke_cli('version')
+
+    expect(result.status).to be == 0
+    expect(result.output).to be == "#{RSMP::VERSION}\n"
   end
 
   with 'site command' do
@@ -105,6 +114,26 @@ describe RSMP::CLI do
       ]
     end
 
+    it 'applies multiple supervisors and default ip values' do
+      result = invoke_cli('site', '-s', '127.0.0.8:12118,:12119')
+
+      expect(result.site_run[:settings]['supervisors']).to be == [
+        { 'ip' => '127.0.0.8', 'port' => '12118' },
+        { 'ip' => '127.0.0.1', 'port' => '12119' }
+      ]
+    end
+
+    it 'applies core and log options' do
+      result = invoke_cli('site', '--core', '3.3.0', '--log', 'traffic.log', '--json')
+
+      expect(result.site_run[:settings]['core_version']).to be == '3.3.0'
+      expect(result.site_run[:log_settings]).to be == {
+        'active' => true,
+        'path' => 'traffic.log',
+        'json' => true
+      }
+    end
+
     it 'loads config files' do
       with_temp_config('site.yaml', "site_id: RN+SI0932\n") do |path|
         result = invoke_cli('site', '-c', path)
@@ -128,9 +157,63 @@ describe RSMP::CLI do
 
       expect(result.output).to be(:include?, 'Error: Config bad/path/site.yaml not found')
     end
+
+    it 'rejects unknown core versions' do
+      result = invoke_cli('site', '--core', '9.9.9')
+
+      expect(result.status).to be == 1
+      expect(result.error).to be(:include?, "Expected '--core'")
+      expect(result.error).to be(:include?, '9.9.9')
+    end
+
+    it 'rejects unknown site types' do
+      result = invoke_cli('site', '--type', 'bad')
+
+      expect(result.status).to be == 1
+      expect(result.error).to be(:include?, "Expected '--type'")
+      expect(result.error).to be(:include?, 'bad')
+    end
   end
 
   with 'supervisor command' do
+    it 'uses empty settings by default' do
+      result = invoke_cli('supervisor')
+
+      expect(result.supervisor_run[:settings]).to be == {}
+      expect(result.supervisor_run[:log_settings]).to be == { 'active' => true }
+    end
+
+    it 'shows help' do
+      result = invoke_cli('help', 'supervisor')
+
+      expect(result.output).to be(:include?, 'Usage:')
+      expect(result.output).to be(:include?, 'Options:')
+    end
+
+    it 'applies supervisor options' do
+      result = invoke_cli(
+        'supervisor',
+        '-i', 'RN+SU0639',
+        '--ip', '0.0.0.0',
+        '-p', '13111',
+        '--core', '3.3.0',
+        '--log', 'supervisor.log',
+        '--json'
+      )
+
+      expect(result.supervisor_run[:settings]).to be == {
+        'site_id' => 'RN+SU0639',
+        'ip' => '0.0.0.0',
+        'port' => '13111',
+        'default' => { 'core_version' => '3.3.0' }
+      }
+      expect(result.supervisor_run[:log_settings]).to be == {
+        'active' => true,
+        'path' => 'supervisor.log',
+        'json' => true
+      }
+    end
+
     it 'reports invalid config files' do
       with_temp_config('supervisor_invalid.yaml', "default: invalid\n") do |path|
         result = invoke_cli('supervisor', '-c', path)
@@ -139,6 +222,23 @@ describe RSMP::CLI do
         expect(result.output).to be(:include?, '/default')
         expect(result.output).to be(:include?, 'expected object, got string')
       end
+    end
+
+    it 'rejects unknown core versions' do
+      result = invoke_cli('supervisor', '--core', '9.9.9')
+
+      expect(result.status).to be == 1
+      expect(result.error).to be(:include?, "Expected '--core'")
+      expect(result.error).to be(:include?, '9.9.9')
+    end
+  end
+
+  with 'schema command' do
+    it 'reports missing input files' do
+      result = invoke_cli('schema', 'generate', '--in', 'missing-sxl.yaml')
+
+      expect(result.status).to be == 1
+      expect(result.output).to be(:include?, 'Error: Input file missing-sxl.yaml not found')
     end
   end
 end
