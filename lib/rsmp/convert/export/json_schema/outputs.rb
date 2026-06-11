@@ -103,6 +103,23 @@ module RSMP
           out["commands/#{key}.json"] = output_json json
         end
 
+        def self.output_sxl_index(out, sxl)
+          out['sxl_index.json'] = output_json({
+                                                'meta' => sxl[:meta],
+                                                'statuses' => index_items(sxl[:statuses]),
+                                                'commands' => index_items(sxl[:commands]),
+                                                'alarms' => index_items(sxl[:alarms])
+                                              })
+        end
+
+        def self.index_items(items)
+          items.keys.sort.each_with_object({}) do |key, index|
+            index[key] = {
+              'arguments' => (items[key]['arguments'] || {}).keys.sort
+            }
+          end
+        end
+
         # output the json schema root
         def self.output_root(out, meta)
           json = {
