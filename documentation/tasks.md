@@ -145,5 +145,4 @@ If you mark an Async task with `transient: true` when you created it, that task 
 
 Transient tasks can be used to cleanup, but using an `ensure` block in the transient task. When you call `stop` on a task, an Async::Stop exception is raised, which will run the code in the `ensure` block.
 
-Some of the RSpec tests runs tests in in transient task. As soon as the main test code is complete, any subtasks like Sites or Supervisors that might otherwise prevent the test from completing, will be stopped automatically.
-
+Some sus tests run in transient tasks. As soon as the main test code is complete, any subtasks like Sites or Supervisors that might otherwise prevent the test from completing will be stopped automatically.

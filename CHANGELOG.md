@@ -658,4 +658,14 @@ Initial release.
 - rsmp_schema folded into this gem
 - all schema files vendored into this repo, with rake task to update them
 - moved `rake regenerate` to `rsmp schema generate` CLI
- 
+
+## 0.43.1
+- update gems
+
+## 0.43.2
+- maintenance release
+
+## 0.45.0
+- initial suport for core 3.3.0 and TLC SXL 1.3.0
+- fix issues with config normalization
+- make collector cancellation raise pending errors

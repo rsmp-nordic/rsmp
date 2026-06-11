@@ -1,10 +1,11 @@
 # rsmp
 This is a Ruby implementation of the RSMP protocol, including:
  - RSMP classes that can be used to build tests or other RSMP tools
- - Command-line tools for quickly running RSMP supervisors or sites and view messages exchanged
+ - Command-line tools for quickly running RSMP supervisors or sites and viewing exchanged messages
+ - Vendored RSMP Core and SXL JSON Schemas, including Core 3.3.0 and TLC SXL 1.3.0
 
 ## Installation
-You need a recent version of Ruby intalled. 4.0.5 or later is recommended.
+You need Ruby 3.4 or later.
 
 Install required gems:
 
@@ -62,19 +63,19 @@ Async do |task|
   site = RSMP::Site.new(site_settings:settings)
   site.start 					# run concurrently since we're inside an Async block
   loop do
-    task.sleep 1			# use task.sleep() instead of sleep() to avoid blocking
+    sleep 1				# sleep yields to other fibers inside Async
     puts "Latest archive item: #{site.archive.items.last}"
   end
 end
 ```
 
-Use task.show_hierarchy to see what task are created, task.stop() to stop all sites and supervisors running inside it:
+Use task.show_hierarchy to see what task are created and task.stop() to stop all sites and supervisors running inside it:
 
 ```ruby
 require 'rsmp'
 Async do |task|
   RSMP::Site.new.start
-  task.sleep 1
+  sleep 1
   task.print_hierarchy
   task.stop     # stop everything inside this Async block
 end
@@ -103,7 +104,7 @@ archive = RSMP::Archive.new
 Async do |task|
   RSMP::Supervisor.new(archive:archive,logger:logger).start
   RSMP::Site.new(archive:archive,logger:logger).start
-  task.sleep 0.1
+  sleep 0.1
   task.stop
 end
 
@@ -124,8 +125,8 @@ RN+SU0001     RN+SI0001     -->  f8c7  Received Version message for sites [RN+SI
 ```
 
 ### JSON Schema validation
-All messages sent and received are validated against the copied RSMP JSON Schemas maintained in
-`rsmp_core`.
+All messages sent and received are validated against the vendored RSMP JSON Schemas maintained in
+the RSMP Core and SXL source repositories.
 
 Core and SXL schemas are selected with a flat map:
 
@@ -183,17 +184,14 @@ Use ```--help <command>``` to get a list of available options.
 Use ```--config <path>``` or ```--options <path>``` to point to a .yaml config file, controlling things like IP adresses, ports, and log output. Examples of config files can be found the folder ```config/```.
 
 ## Tests
-### RSpec
-RSpec tests are located in spec/. The tests will start supervisor and sites to test communication, but will do so on port 13111, rather than the usual port 12111, to avoid inferference with other RMSP processes running locally.
+### Sus
+Sus tests are located in test/. The tests will start supervisors and sites to test communication, but will do so on port 13111, rather than the usual port 12111, to avoid interference with other RSMP processes running locally.
 
-Note that these tests are NOT intented for testing external equipment or systems. The tests are for validating the code in this repository. To test external equipment or systems use the rsmp_validator tool.
+Note that these tests are NOT intended for testing external equipment or systems. The tests are for validating the code in this repository. To test external equipment or systems use the rsmp_validator tool.
 
 ```console
-$ rspec
-.........................
-
-Finished in 0.12746 seconds (files took 0.6571 seconds to load)
-25 examples, 0 failures
+$ bundle exec sus
+279 passed out of 279 total (779 assertions)
 
 ```
 

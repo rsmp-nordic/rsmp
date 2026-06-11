@@ -1,4 +1,4 @@
-# This workflow runs RSpec tests
+# This workflow runs Sus tests
 
 name: sus
 on: [push]
