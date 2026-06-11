@@ -39,6 +39,7 @@ module RSMP
           output_alarms out, sxl[:alarms]
           output_statuses out, sxl[:statuses]
           output_commands out, sxl[:commands]
+          output_sxl_index out, sxl
           out
         end
 

@@ -83,9 +83,15 @@ describe RSMP::Schema do
   it 'resolves SXL messages with an SXL metadata prefix' do
     Dir.mktmpdir do |dir|
       FileUtils.cp_r(File.join(schemas_path, 'tlc', '1.3.0'), File.join(dir, '1.3.0'))
-      sxl_path = File.join(dir, '1.3.0', 'sxl.yaml')
-      sxl_yaml = File.read(sxl_path).sub("  version: 1.3.0\n", "  version: 1.3.0\n  prefix: pre/\n")
-      File.write(sxl_path, sxl_yaml)
+      rsmp_path = File.join(dir, '1.3.0', 'rsmp.json')
+      rsmp_json = JSON.parse(File.read(rsmp_path, encoding: 'UTF-8')).merge('prefix' => 'pre/')
+      File.write(rsmp_path, JSON.pretty_generate(rsmp_json))
+      index_path = File.join(dir, '1.3.0', 'sxl_index.json')
+      if File.exist?(index_path)
+        index = JSON.parse(File.read(index_path, encoding: 'UTF-8'))
+        index['meta'] = index.fetch('meta', {}).merge('prefix' => 'pre/')
+        File.write(index_path, JSON.pretty_generate(index))
+      end
       subject.load_schema_type(:prefixed_tlc, dir, force: true)
 
       prefixed_status_request = status_request.merge(
@@ -116,12 +122,46 @@ describe RSMP::Schema do
         'version' => '1.0.0',
         'prefix' => 'pre/'
       }.to_json)
+      write_sxl_index(schema_dir, meta: {
+                        'name' => 'prefixed',
+                        'version' => '1.0.0',
+                        'prefix' => 'pre/'
+                      })
 
       subject.load_schema_type(:prefixed, dir, force: true)
 
       expect(subject.sxl_prefix(:prefixed, '1.0.0')).to be == 'pre/'
     ensure
       subject.remove_schema_type(:prefixed)
+    end
+  end
+
+  it 'reads SXL catalogues from the generated JSON index' do
+    Dir.mktmpdir do |dir|
+      schema_dir = File.join(dir, '1.0.0')
+      Dir.mkdir(schema_dir)
+      File.write(File.join(schema_dir, 'rsmp.json'), {
+        '$schema' => 'https://json-schema.org/draft/2020-12/schema',
+        'name' => 'cached',
+        'version' => '1.0.0'
+      }.to_json)
+      write_sxl_index(schema_dir,
+                      meta: {
+                        'name' => 'cached',
+                        'version' => '1.0.0'
+                      },
+                      statuses: {
+                        'S0001' => {
+                          'arguments' => %w[signalgroupstatus]
+                        }
+                      })
+
+      subject.load_schema_type(:cached, dir, force: true)
+      expect(subject.status_catalogue(:cached, '1.0.0')).to be == {
+        S0001: [:signalgroupstatus]
+      }
+    ensure
+      subject.remove_schema_type(:cached)
     end
   end
 
@@ -135,6 +175,11 @@ describe RSMP::Schema do
         'version' => '1.0.0',
         'prefix' => 'pre/'
       }.to_json)
+      write_sxl_index(schema_dir, meta: {
+                        'name' => 'prefixed',
+                        'version' => '1.0.0',
+                        'prefix' => 'pre/'
+                      })
       subject.load_schema_type(:prefixed, dir, force: true)
 
       proxy = Class.new do
@@ -151,4 +196,14 @@ describe RSMP::Schema do
       subject.remove_schema_type(:prefixed)
     end
   end
+
+  def write_sxl_index(schema_dir, meta:, statuses: {}, commands: {}, alarms: {})
+    File.write(File.join(schema_dir, 'sxl_index.json'), {
+      'meta' => meta,
+      'statuses' => statuses,
+      'commands' => commands,
+      'alarms' => alarms
+    }.to_json)
+  end
+
 end
