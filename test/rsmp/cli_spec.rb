@@ -277,5 +277,19 @@ describe RSMP::CLI do
       expect(result.status).to be == 1
       expect(result.output).to be(:include?, 'Error: Input file missing-sxl.yaml not found')
     end
+
+    it 'generates an SXL index alongside JSON Schema files' do
+      Dir.mktmpdir do |dir|
+        input = File.expand_path('../../schemas/tlc/1.3.0/sxl.yaml', __dir__)
+        result = invoke_cli('schema', 'generate', '--in', input, '--out', dir)
+        index = JSON.parse(File.read(File.join(dir, 'sxl_index.json'), encoding: 'UTF-8'))
+
+        expect(result.status).to be == 0
+        expect(index.dig('meta', 'name')).to be == 'tlc'
+        expect(index.dig('statuses', 'S0001', 'arguments')).to be(:include?, 'signalgroupstatus')
+        expect(index.dig('commands', 'M0001', 'arguments')).to be(:include?, 'status')
+        expect(index.dig('alarms')).to be(:include?, 'A0001')
+      end
+    end
   end
 end

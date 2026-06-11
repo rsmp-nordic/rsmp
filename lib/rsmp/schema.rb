@@ -1,6 +1,5 @@
 require 'json_schemer'
 require 'json'
-require 'yaml'
 
 # RSMP (Road Side Message Protocol) schema validation library.
 module RSMP
@@ -11,6 +10,7 @@ module RSMP
     def self.setup
       @schemas = {}
       @schema_paths = {}
+      @sxl_indexes = {}
       schemas_path = File.expand_path(File.join(__dir__, '..', '..', 'schemas'))
       Dir.glob("#{schemas_path}/*").select { |f| File.directory? f }.each do |type_path|
         type = File.basename(type_path).to_sym
@@ -35,6 +35,7 @@ module RSMP
       @schemas[type] = {}
       @schema_paths ||= {}
       @schema_paths[type] = {}
+      clear_sxl_index(type)
       schema_version_paths(type_path).each { |schema_path| load_schema_version(type, schema_path) }
     end
 
@@ -53,6 +54,7 @@ module RSMP
 
       @schemas[type][version] = JSONSchemer.schema(Pathname.new(file_path))
       @schema_paths[type][version] = schema_path
+      clear_sxl_index(type, version)
     end
 
     # remove a schema type
@@ -60,6 +62,7 @@ module RSMP
       type = type.to_sym
       schemas.delete type
       @schema_paths&.delete type
+      clear_sxl_index(type)
     end
 
     # get schemas types
@@ -195,14 +198,7 @@ module RSMP
       version = sanitize_version version if options[:lenient]
       find_schema! type, version
 
-      path = @schema_paths&.dig(type.to_sym, version)
-      return {} unless path
-
-      yaml_path = File.join(path, 'sxl.yaml')
-      return YAML.load_file(yaml_path).fetch('meta', {}) if File.exist?(yaml_path)
-
-      json_path = File.join(path, 'rsmp.json')
-      File.exist?(json_path) ? JSON.parse(File.read(json_path)) : {}
+      sxl_index(type, version).fetch('meta', {})
     end
 
     def self.sxl_prefix(type, version, options = {})
@@ -211,21 +207,47 @@ module RSMP
 
     # return a catalogue of statuses for a particular schema type and version
     # returns a hash of { status_code_id_sym => [arg_name_sym, ...] }
-    # raises an error if the schema type/version is not found, or has no sxl.yaml
+    # raises an error if the schema type/version is not found, or has no status catalogue
     def self.status_catalogue(type, version)
       sxl_catalogue(type, version, :statuses).transform_keys(&:to_sym).transform_values do |status|
-        (status['arguments'] || {}).keys.map(&:to_sym)
+        status.fetch('arguments', []).map(&:to_sym)
       end
     end
 
     def self.sxl_catalogue(type, version, kind)
       find_schema! type, version
-      schema_path = @schema_paths&.dig(type.to_sym, version)
-      yaml_path = File.join(schema_path, 'sxl.yaml') if schema_path
-      raise "No sxl.yaml for #{type} #{version}" unless yaml_path && File.exist?(yaml_path)
+      catalogue = sxl_index(type, version)[kind.to_s]
+      raise "No #{kind} catalogue for #{type} #{version}" unless catalogue
 
-      sxl = RSMP::Convert::Import::YAML.read(yaml_path)
-      sxl.fetch(kind)
+      catalogue
+    end
+
+    def self.clear_sxl_index(type = nil, version = nil)
+      @sxl_indexes ||= {}
+      return @sxl_indexes.clear unless type
+
+      type = type.to_sym
+      if version
+        @sxl_indexes.delete([type, version.to_s])
+      else
+        @sxl_indexes.delete_if { |key, _value| key.first == type }
+      end
+    end
+
+    def self.sxl_index(type, version)
+      key = [type.to_sym, version.to_s]
+      @sxl_indexes ||= {}
+      @sxl_indexes[key] ||= load_sxl_index(type, version)
+    end
+
+    def self.load_sxl_index(type, version)
+      schema_path = @schema_paths&.dig(type.to_sym, version.to_s)
+      raise UnknownSchemaVersionError, "Unknown schema version #{type} #{version}" unless schema_path
+
+      index_path = File.join(schema_path, 'sxl_index.json')
+      raise Error, "Missing SXL index #{index_path}" unless File.exist?(index_path)
+
+      JSON.parse(File.read(index_path, encoding: 'UTF-8'))
     end
 
     def self.core_message_type?(message)
