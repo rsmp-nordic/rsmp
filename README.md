@@ -191,6 +191,6 @@ Note that these tests are NOT intended for testing external equipment or systems
 
 ```console
 $ bundle exec sus
-298 passed out of 298 total (822 assertions)
+301 passed out of 301 total (830 assertions)
 
 ```

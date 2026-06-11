@@ -66,6 +66,10 @@ describe RSMP::CLI do
     end
   end
 
+  def default_site_port
+    RSMP::TLC::TrafficControllerSite::Options.new.to_h.dig('supervisors', 0, 'port')
+  end
+
   it 'displays help' do
     result = invoke_cli('help')
 
@@ -121,6 +125,39 @@ describe RSMP::CLI do
         { 'ip' => '127.0.0.8', 'port' => '12118' },
         { 'ip' => '127.0.0.1', 'port' => '12119' }
       ]
+    end
+
+    it 'uses the default port for supervisor values without a port' do
+      result = invoke_cli('site', '-s', '127.0.0.2')
+
+      expect(result.status).to be == 0
+      expect(result.output).to be == ''
+      expect(result.site_run[:settings]['supervisors']).to be == [
+        { 'ip' => '127.0.0.2', 'port' => default_site_port }
+      ]
+    end
+
+    it 'uses the configured port for supervisor values without a port' do
+      with_temp_config('site.yaml', <<~YAML) do |path|
+        supervisors:
+          - ip: 127.0.0.1
+            port: 13111
+      YAML
+        result = invoke_cli('site', '-c', path, '-s', '127.0.0.2')
+
+        expect(result.site_run[:settings]['supervisors']).to be == [
+          { 'ip' => '127.0.0.2', 'port' => 13_111 }
+        ]
+      end
+    end
+
+    it 'rejects supervisor values with blank ports' do
+      result = invoke_cli('site', '-s', '127.0.0.2:')
+
+      expect(result.status).to be == 1
+      expect(result.output).to be(:include?, 'Invalid supervisor "127.0.0.2:"')
+      expect(result.output).to be(:include?, 'non-empty port')
+      expect(result.site_run).to be_nil
     end
 
     it 'applies core and log options' do
