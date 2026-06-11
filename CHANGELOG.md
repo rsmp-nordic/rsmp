@@ -669,3 +669,4 @@ Initial release.
 - initial suport for core 3.3.0 and TLC SXL 1.3.0
 - fix issues with config normalization
 - make collector cancellation raise pending errors
+- replace Cucumber/Aruba CLI tests with sus tests that call the Thor CLI directly
