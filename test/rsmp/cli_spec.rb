@@ -288,8 +288,58 @@ describe RSMP::CLI do
         expect(index.dig('meta', 'name')).to be == 'tlc'
         expect(index.dig('statuses', 'S0001', 'arguments')).to be(:include?, 'signalgroupstatus')
         expect(index.dig('commands', 'M0001', 'arguments')).to be(:include?, 'status')
-        expect(index.dig('alarms')).to be(:include?, 'A0001')
+        expect(index['alarms']).to be(:include?, 'A0001')
       end
     end
+
+    it 'copies fallback definitions from the minimum core version' do
+      with_temp_config('sxl.yaml', minimal_sxl_yaml('minimum_core_version: 3.1.2')) do |input|
+        Dir.mktmpdir do |dir|
+          result = invoke_cli('schema', 'generate', '--in', input, '--out', dir)
+          generated = File.read(File.join(dir, 'defs', 'definitions.json'), encoding: 'UTF-8')
+          expected = File.read(File.expand_path('../../schemas/core/3.1.2/definitions.json', __dir__),
+                               encoding: 'UTF-8')
+          root = JSON.parse(File.read(File.join(dir, 'rsmp.json'), encoding: 'UTF-8'))
+
+          expect(result.status).to be == 0
+          expect(generated).to be == expected
+          expect(root['minimum_core_version']).to be == '3.1.2'
+        end
+      end
+    end
+
+    it 'uses latest core definitions for legacy SXLs without a minimum core version' do
+      with_temp_config('sxl.yaml', minimal_sxl_yaml) do |input|
+        Dir.mktmpdir do |dir|
+          result = invoke_cli('schema', 'generate', '--in', input, '--out', dir)
+          generated = File.read(File.join(dir, 'defs', 'definitions.json'), encoding: 'UTF-8')
+          expected = File.read(
+            File.expand_path("../../schemas/core/#{RSMP::Schema.latest_core_version}/definitions.json", __dir__),
+            encoding: 'UTF-8'
+          )
+
+          expect(result.status).to be == 0
+          expect(generated).to be == expected
+        end
+      end
+    end
+  end
+
+  def minimal_sxl_yaml(extra_meta = nil)
+    extra_meta = "  #{extra_meta}\n" if extra_meta
+    <<~YAML
+      ---
+      meta:
+        name: test
+        description: Test SXL
+        version: 1.0.0
+      #{extra_meta}objects:
+        Test Object:
+          statuses:
+            S0001:
+              arguments:
+                flag:
+                  type: boolean
+    YAML
   end
 end

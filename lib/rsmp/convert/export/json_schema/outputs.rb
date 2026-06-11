@@ -113,10 +113,10 @@ module RSMP
         end
 
         def self.index_items(items)
-          items.keys.sort.each_with_object({}) do |key, index|
-            index[key] = {
+          items.keys.sort.to_h do |key|
+            [key, {
               'arguments' => (items[key]['arguments'] || {}).keys.sort
-            }
+            }]
           end
         end
 
@@ -130,6 +130,7 @@ module RSMP
             'allOf' => root_type_rules
           }
           json['prefix'] = meta['prefix'] if meta['prefix']
+          json['minimum_core_version'] = meta['minimum_core_version'] if meta['minimum_core_version']
           out['rsmp.json'] = output_json json
         end
 

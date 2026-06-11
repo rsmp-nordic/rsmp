@@ -26,10 +26,17 @@ module RSMP
           JSON.generate(item, JSON_OPTIONS)
         end
 
-        # Path to definitions.json for the latest bundled core schema version
-        def self.definitions_source
-          version = RSMP::Schema.latest_core_version
-          File.expand_path("../../../../schemas/core/#{version}/definitions.json", __dir__)
+        def self.minimum_core_version(sxl)
+          sxl.dig(:meta, 'minimum_core_version') || RSMP::Schema.latest_core_version
+        end
+
+        # Path to definitions.json for the fallback bundled core schema version
+        def self.definitions_source(sxl)
+          version = minimum_core_version(sxl)
+          path = File.expand_path("../../../../schemas/core/#{version}/definitions.json", __dir__)
+          raise "Missing core definitions for RSMP #{version}" unless File.exist?(path)
+
+          path
         end
 
         # generate the json schema from a string containing yaml
@@ -54,8 +61,8 @@ module RSMP
           # Copy definitions.json so each version folder is self-contained
           defs_dest = File.join(folder, 'defs', 'definitions.json')
           FileUtils.mkdir_p File.dirname(defs_dest)
-          source = definitions_source
-          FileUtils.cp source, defs_dest if File.exist?(source)
+          source = definitions_source(sxl)
+          FileUtils.cp source, defs_dest
         end
       end
     end

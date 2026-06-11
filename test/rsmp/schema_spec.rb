@@ -38,6 +38,83 @@ describe RSMP::Schema do
                             })).to be_nil
   end
 
+  it 'resolves SXL definitions using the negotiated core version' do
+    Dir.mktmpdir do |dir|
+      write_dynamic_defs_sxl(File.join(dir, '1.0.0'))
+      subject.load_schema_type(:dynamic_defs, dir, force: true)
+
+      expect(subject.validate(dynamic_defs_status_response('clean'), {
+                                core: '3.2.2',
+                                dynamic_defs: '1.0.0'
+                              })).to be_nil
+      expect(subject.validate(dynamic_defs_status_response('clean'), {
+                                core: '3.3.0',
+                                dynamic_defs: '1.0.0'
+                              })).to be_nil
+
+      expect(subject.validate(dynamic_defs_status_response("bad\u0001"), {
+                                core: '3.2.2',
+                                dynamic_defs: '1.0.0'
+                              })).to be_nil
+      expect(subject.validate(dynamic_defs_status_response("bad\u0001"), {
+                                core: '3.3.0',
+                                dynamic_defs: '1.0.0'
+                              })).not.to be_nil
+    ensure
+      subject.remove_schema_type(:dynamic_defs)
+    end
+  end
+
+  it 'caches core-aware SXL schemas per negotiated core version' do
+    Dir.mktmpdir do |dir|
+      write_dynamic_defs_sxl(File.join(dir, '1.0.0'))
+      subject.load_schema_type(:dynamic_cache, dir, force: true)
+
+      subject.validate(dynamic_defs_status_response('clean'), {
+                         core: '3.2.2',
+                         dynamic_cache: '1.0.0'
+                       })
+      subject.validate(dynamic_defs_status_response('clean'), {
+                         core: '3.3.0',
+                         dynamic_cache: '1.0.0'
+                       })
+
+      cache = subject.instance_variable_get(:@core_sxl_schemas)
+      expect(cache.keys).to be(:include?, [:dynamic_cache, '1.0.0', '3.2.2'])
+      expect(cache.keys).to be(:include?, [:dynamic_cache, '1.0.0', '3.3.0'])
+      expect(cache[[:dynamic_cache, '1.0.0', '3.2.2']])
+        .not.to be == cache[[:dynamic_cache, '1.0.0', '3.3.0']]
+    ensure
+      subject.remove_schema_type(:dynamic_cache)
+    end
+  end
+
+  it 'keeps generated SXL schemas usable with their fallback definitions' do
+    Dir.mktmpdir do |dir|
+      schema_dir = File.join(dir, '1.0.0')
+      write_dynamic_defs_sxl(schema_dir)
+
+      schemer = JSONSchemer.schema(Pathname.new(File.join(schema_dir, 'rsmp.json')))
+      expect(schemer.valid?(dynamic_defs_status_response("bad\u0001"))).to be == true
+    end
+  end
+
+  it 'raises a clear error when negotiated core definitions are missing' do
+    Dir.mktmpdir do |dir|
+      write_dynamic_defs_sxl(File.join(dir, '1.0.0'))
+      subject.load_schema_type(:missing_core_defs, dir, force: true)
+
+      expect do
+        subject.validate(dynamic_defs_status_response('clean'), {
+                           core: '9.9.9',
+                           missing_core_defs: '1.0.0'
+                         })
+      end.to raise_exception(RSMP::Schema::UnknownSchemaVersionError, message: be =~ /core/)
+    ensure
+      subject.remove_schema_type(:missing_core_defs)
+    end
+  end
+
   it 'raises when an SXL message code matches multiple accepted SXL schemas' do
     subject.load_schema_type(:tlc_copy, File.join(schemas_path, 'tlc'), force: true)
 
@@ -206,4 +283,83 @@ describe RSMP::Schema do
     }.to_json)
   end
 
+  def dynamic_defs_status_response(value)
+    {
+      'mType' => 'rSMsg',
+      'type' => 'StatusResponse',
+      'cId' => 'AA+BBCCC=DDDEE002',
+      'sTs' => '2015-06-08T11:49:03.293Z',
+      'sS' => [{ 'sCI' => 'S0001', 'n' => 'text', 's' => value, 'q' => 'recent' }],
+      'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda'
+    }
+  end
+
+  def write_dynamic_defs_sxl(schema_dir)
+    FileUtils.mkdir_p(File.join(schema_dir, 'statuses'))
+    FileUtils.mkdir_p(File.join(schema_dir, 'defs'))
+    write_dynamic_root_schema(schema_dir)
+    write_dynamic_statuses_schema(schema_dir)
+    write_dynamic_status_schema(schema_dir)
+    FileUtils.cp(File.join(schemas_path, 'core', '3.2.2', 'definitions.json'),
+                 File.join(schema_dir, 'defs', 'definitions.json'))
+    write_sxl_index(schema_dir,
+                    meta: {
+                      'name' => 'dynamic_defs',
+                      'version' => '1.0.0'
+                    },
+                    statuses: {
+                      'S0001' => {
+                        'arguments' => ['text']
+                      }
+                    })
+  end
+
+  def write_dynamic_root_schema(schema_dir)
+    File.write(File.join(schema_dir, 'rsmp.json'), {
+      '$schema' => 'https://json-schema.org/draft/2020-12/schema',
+      'name' => 'dynamic_defs',
+      'version' => '1.0.0',
+      'allOf' => [
+        {
+          'if' => {
+            'required' => ['type'],
+            'properties' => { 'type' => { 'const' => 'StatusResponse' } }
+          },
+          'then' => { '$ref' => 'statuses/statuses.json' }
+        }
+      ]
+    }.to_json)
+  end
+
+  def write_dynamic_statuses_schema(schema_dir)
+    File.write(File.join(schema_dir, 'statuses', 'statuses.json'), {
+      '$schema' => 'https://json-schema.org/draft/2020-12/schema',
+      'properties' => {
+        'sS' => {
+          'items' => {
+            'allOf' => [
+              { 'properties' => { 'sCI' => { 'enum' => ['S0001'] } } },
+              {
+                'if' => {
+                  'required' => ['sCI'],
+                  'properties' => { 'sCI' => { 'const' => 'S0001' } }
+                },
+                'then' => { '$ref' => 'S0001.json' }
+              }
+            ]
+          }
+        }
+      }
+    }.to_json)
+  end
+
+  def write_dynamic_status_schema(schema_dir)
+    File.write(File.join(schema_dir, 'statuses', 'S0001.json'), {
+      '$schema' => 'https://json-schema.org/draft/2020-12/schema',
+      'properties' => {
+        'n' => { 'const' => 'text' },
+        's' => { '$ref' => '../defs/definitions.json#/string_list' }
+      }
+    }.to_json)
+  end
 end
