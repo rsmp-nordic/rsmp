@@ -44,6 +44,9 @@ module RSMP
       run_site(site_class, settings, log_settings)
     rescue Interrupt
       # ctrl-c
+    rescue RSMP::ConfigurationError => e
+      puts "Error: #{e}"
+      exit 1
     rescue StandardError => e
       puts "Uncaught error: #{e}"
       puts caller.join("\n")
@@ -123,13 +126,40 @@ module RSMP
     end
 
     def parse_supervisors(settings)
+      default_port = default_supervisor_port(settings)
       settings['supervisors'] = []
       options[:supervisors].split(',').each do |supervisor|
-        ip, port = supervisor.split ':'
-        ip = '127.0.0.1' if ip.empty?
-        port = '12111' if port.empty?
+        ip, port = parse_supervisor(supervisor, default_port)
         settings['supervisors'] << { 'ip' => ip, 'port' => port }
       end
+    end
+
+    def parse_supervisor(supervisor, default_port)
+      parts = supervisor.split(':', -1)
+
+      case parts.size
+      when 1
+        ip = parts.first
+        port = default_port
+      when 2
+        ip, port = parts
+      else
+        raise RSMP::ConfigurationError,
+              "Invalid supervisor #{supervisor.inspect}, expected ip[:port]"
+      end
+
+      if port.nil? || port.to_s.empty?
+        raise RSMP::ConfigurationError,
+              "Invalid supervisor #{supervisor.inspect}, expected ip[:port] with a non-empty port"
+      end
+
+      ip = '127.0.0.1' if ip.empty?
+      [ip, port]
+    end
+
+    def default_supervisor_port(settings)
+      settings.dig('supervisors', 0, 'port') ||
+        site_options_class.new.to_h.dig('supervisors', 0, 'port')
     end
 
     def determine_site_class(settings)
