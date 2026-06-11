@@ -11,11 +11,16 @@ module RSMP
       @schemas = {}
       @schema_paths = {}
       @sxl_indexes = {}
-      schemas_path = File.expand_path(File.join(__dir__, '..', '..', 'schemas'))
+      @core_sxl_schemas = {}
+      schemas_path = schema_root_path
       Dir.glob("#{schemas_path}/*").select { |f| File.directory? f }.each do |type_path|
         type = File.basename(type_path).to_sym
         load_schema_type type, type_path
       end
+    end
+
+    def self.schema_root_path
+      File.expand_path(File.join(__dir__, '..', '..', 'schemas'))
     end
 
     # load an schema from a folder. schemas are organized by version, and contain
@@ -36,6 +41,7 @@ module RSMP
       @schema_paths ||= {}
       @schema_paths[type] = {}
       clear_sxl_index(type)
+      clear_core_sxl_schemas(type)
       schema_version_paths(type_path).each { |schema_path| load_schema_version(type, schema_path) }
     end
 
@@ -55,6 +61,7 @@ module RSMP
       @schemas[type][version] = JSONSchemer.schema(Pathname.new(file_path))
       @schema_paths[type][version] = schema_path
       clear_sxl_index(type, version)
+      clear_core_sxl_schemas(type, version)
     end
 
     # remove a schema type
@@ -63,6 +70,7 @@ module RSMP
       schemas.delete type
       @schema_paths&.delete type
       clear_sxl_index(type)
+      clear_core_sxl_schemas(type)
     end
 
     # get schemas types
@@ -249,66 +257,9 @@ module RSMP
 
       JSON.parse(File.read(index_path, encoding: 'UTF-8'))
     end
-
-    def self.core_message_type?(message)
-      type = message['type']
-      %w[
-        MessageAck
-        MessageNotAck
-        Version
-        ComponentList
-        AggregatedStatus
-        AggregatedStatusRequest
-        Watchdog
-      ].include?(type)
-    end
-
-    def self.validate_core(message, schemas, options)
-      core_version = schemas[:core] || schemas['core']
-      raise ArgumentError, 'schemas must include core' unless core_version
-
-      schema = find_schema! :core, core_version, options
-      validate_using_schema(message, schema)
-    end
-
-    def self.validate_sxls(message, schemas, options)
-      sxl_schemas = schemas.reject { |type, _version| type.to_sym == :core }
-      return [] if sxl_schemas.empty? || core_message_type?(message)
-
-      resolved = resolve_sxl(message, schemas: schemas, **options)
-      if resolved
-        type, version = resolved
-        schema = find_schema! type, version, options
-        return validate_using_schema(message, schema)
-      end
-
-      all_errors = []
-      sxl_schemas.each do |type, version|
-        schema = find_schema! type, version, options
-        errors = validate_using_schema(message, schema)
-        return [] if errors.empty?
-
-        all_errors.concat errors
-      end
-      all_errors
-    end
-
-    # validate using core and optional SXL schemas.
-    # Core must pass. SXL-defined messages pass if at least one SXL schema passes.
-    # returns nil if validation succeeds, otherwise returns an array of errors.
-    def self.validate(message, schemas, options = {})
-      raise ArgumentError, 'message missing' unless message
-      raise ArgumentError, 'schemas missing' unless schemas
-      raise ArgumentError, 'schemas must be a Hash' unless schemas.is_a?(Hash)
-      raise ArgumentError, 'schemas cannot be empty' unless schemas.any?
-
-      errors = validate_core(message, schemas, options)
-      errors.concat validate_sxls(message, schemas, options) if errors.empty?
-      return nil if errors.empty?
-
-      errors
-    end
   end
 end
 
+require_relative 'schema/core_sxl_resolution'
 require_relative 'schema/message_resolution'
+require_relative 'schema/validation'
