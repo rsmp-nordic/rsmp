@@ -2,15 +2,14 @@
   "meta" : {
     "name" : "tlc",
     "description" : "Traffic Light Controllers",
-    "version" : "1.3.0",
-    "minimum_core_version" : "3.3.0"
+    "version" : "1.2.1",
+    "minimum_core_version" : "3.2.0"
   },
   "statuses" : {
     "S0001" : {
       "arguments" : [
         "basecyclecounter",
         "cyclecounter",
-        "millisecond",
         "signalgroupstatus",
         "stage"
       ]
@@ -361,7 +360,6 @@
     },
     "M0008" : {
       "arguments" : [
-        "duration",
         "mode",
         "securityCode",
         "status"
@@ -465,11 +463,6 @@
     "M0023" : {
       "arguments" : [
         "securityCode",
-        "status"
-      ]
-    },
-    "M0024" : {
-      "arguments" : [
         "status"
       ]
     },
