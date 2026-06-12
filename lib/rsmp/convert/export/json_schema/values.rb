@@ -76,7 +76,7 @@ module RSMP
             out['pattern'] = /(?-mix:^(#{value_list})(?:,(#{value_list}))*$)/
           end
 
-          puts "Warning: Pattern not support for lists: #{item.inspect}" if item['pattern']
+          handle_pattern item, out
         end
 
         # convert yaml values to json schema enum
