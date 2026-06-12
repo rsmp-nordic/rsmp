@@ -323,6 +323,21 @@ describe RSMP::CLI do
         end
       end
     end
+
+    it 'keeps custom patterns on list values' do
+      with_temp_config('sxl.yaml', list_pattern_sxl_yaml) do |input|
+        Dir.mktmpdir do |dir|
+          result = invoke_cli('schema', 'generate', '--in', input, '--out', dir)
+          status = JSON.parse(File.read(File.join(dir, 'statuses', 'S0001.json'), encoding: 'UTF-8'))
+          value = status.dig('else', 'allOf', 0, 'then', 'properties', 's')
+
+          expect(result.status).to be == 0
+          expect(value['$ref']).to be == '../defs/definitions.json#/string_list'
+          expect(value['pattern']).to be == '^(\\d{1,3}\\-\\d{1,3})(?:,(\\d{1,3}\\-\\d{1,3}))*$'
+          expect(result.output).to be == ''
+        end
+      end
+    end
   end
 
   def minimal_sxl_yaml(extra_meta = nil)
@@ -340,6 +355,24 @@ describe RSMP::CLI do
               arguments:
                 flag:
                   type: boolean
+    YAML
+  end
+
+  def list_pattern_sxl_yaml
+    <<~YAML
+      ---
+      meta:
+        name: test
+        description: Test SXL
+        version: 1.0.0
+      objects:
+        Test Object:
+          statuses:
+            S0001:
+              arguments:
+                status:
+                  type: string_list_as_string
+                  pattern: "^(\\\\d{1,3}\\\\-\\\\d{1,3})(?:,(\\\\d{1,3}\\\\-\\\\d{1,3}))*$"
     YAML
   end
 end
