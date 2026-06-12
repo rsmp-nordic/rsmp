@@ -2,15 +2,14 @@
   "meta" : {
     "name" : "tlc",
     "description" : "Traffic Light Controllers",
-    "version" : "1.3.0",
-    "minimum_core_version" : "3.3.0"
+    "version" : "1.0.9",
+    "minimum_core_version" : "3.1.2"
   },
   "statuses" : {
     "S0001" : {
       "arguments" : [
         "basecyclecounter",
         "cyclecounter",
-        "millisecond",
         "signalgroupstatus",
         "stage"
       ]
@@ -22,18 +21,19 @@
     },
     "S0003" : {
       "arguments" : [
+        "extendedinputstatus",
         "inputstatus"
       ]
     },
     "S0004" : {
       "arguments" : [
+        "extendedoutputstatus",
         "outputstatus"
       ]
     },
     "S0005" : {
       "arguments" : [
-        "status",
-        "statusByIntersection"
+        "status"
       ]
     },
     "S0006" : {
@@ -45,42 +45,36 @@
     "S0007" : {
       "arguments" : [
         "intersection",
-        "source",
         "status"
       ]
     },
     "S0008" : {
       "arguments" : [
         "intersection",
-        "source",
         "status"
       ]
     },
     "S0009" : {
       "arguments" : [
         "intersection",
-        "source",
         "status"
       ]
     },
     "S0010" : {
       "arguments" : [
         "intersection",
-        "source",
         "status"
       ]
     },
     "S0011" : {
       "arguments" : [
         "intersection",
-        "source",
         "status"
       ]
     },
     "S0012" : {
       "arguments" : [
         "intersection",
-        "source",
         "status"
       ]
     },
@@ -92,13 +86,11 @@
     },
     "S0014" : {
       "arguments" : [
-        "source",
         "status"
       ]
     },
     "S0015" : {
       "arguments" : [
-        "source",
         "status"
       ]
     },
@@ -108,6 +100,11 @@
       ]
     },
     "S0017" : {
+      "arguments" : [
+        "number"
+      ]
+    },
+    "S0018" : {
       "arguments" : [
         "number"
       ]
@@ -128,92 +125,15 @@
         "detectorlogics"
       ]
     },
-    "S0022" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0023" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0024" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0025" : {
-      "arguments" : [
-        "ToGConfidence",
-        "ToRConfidence",
-        "likelyToGEstimate",
-        "likelyToREstimate",
-        "maxToGEstimate",
-        "maxToREstimate",
-        "minToGEstimate",
-        "minToREstimate"
-      ]
-    },
-    "S0026" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0027" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0028" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0029" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0030" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0031" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0032" : {
-      "arguments" : [
-        "intersection",
-        "source",
-        "status"
-      ]
-    },
-    "S0033" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0034" : {
-      "arguments" : [
-        "status"
-      ]
-    },
-    "S0035" : {
-      "arguments" : [
-        "emergencyroutes"
-      ]
-    },
     "S0091" : {
       "arguments" : [
+        "status",
         "user"
       ]
     },
     "S0092" : {
       "arguments" : [
+        "status",
         "user"
       ]
     },
@@ -230,19 +150,6 @@
         "month",
         "second",
         "year"
-      ]
-    },
-    "S0097" : {
-      "arguments" : [
-        "checksum",
-        "timestamp"
-      ]
-    },
-    "S0098" : {
-      "arguments" : [
-        "config",
-        "timestamp",
-        "version"
       ]
     },
     "S0201" : {
@@ -275,38 +182,6 @@
         "PS",
         "SP",
         "starttime"
-      ]
-    },
-    "S0205" : {
-      "arguments" : [
-        "start",
-        "vehicles"
-      ]
-    },
-    "S0206" : {
-      "arguments" : [
-        "speed",
-        "start"
-      ]
-    },
-    "S0207" : {
-      "arguments" : [
-        "occupancy",
-        "start"
-      ]
-    },
-    "S0208" : {
-      "arguments" : [
-        "B",
-        "C",
-        "F",
-        "L",
-        "LS",
-        "MC",
-        "P",
-        "PS",
-        "SP",
-        "start"
       ]
     }
   },
@@ -361,7 +236,6 @@
     },
     "M0008" : {
       "arguments" : [
-        "duration",
         "mode",
         "securityCode",
         "status"
@@ -391,85 +265,11 @@
         "status"
       ]
     },
-    "M0014" : {
-      "arguments" : [
-        "plan",
-        "securityCode",
-        "status"
-      ]
-    },
-    "M0015" : {
-      "arguments" : [
-        "plan",
-        "securityCode",
-        "status"
-      ]
-    },
-    "M0016" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
-    },
-    "M0017" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
-    },
-    "M0018" : {
-      "arguments" : [
-        "plan",
-        "securityCode",
-        "status"
-      ]
-    },
     "M0019" : {
       "arguments" : [
         "input",
         "inputValue",
         "securityCode",
-        "status"
-      ]
-    },
-    "M0020" : {
-      "arguments" : [
-        "output",
-        "outputValue",
-        "securityCode",
-        "status"
-      ]
-    },
-    "M0021" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
-    },
-    "M0022" : {
-      "arguments" : [
-        "approachId",
-        "connectionId",
-        "eta",
-        "inputId",
-        "laneInId",
-        "laneOutId",
-        "level",
-        "priorityId",
-        "requestId",
-        "signalGroupId",
-        "type",
-        "vehicleType"
-      ]
-    },
-    "M0023" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
-    },
-    "M0024" : {
-      "arguments" : [
         "status"
       ]
     },
@@ -512,9 +312,7 @@
       "arguments" : []
     },
     "A0007" : {
-      "arguments" : [
-        "protocol"
-      ]
+      "arguments" : []
     },
     "A0008" : {
       "arguments" : [
@@ -522,9 +320,6 @@
       ]
     },
     "A0009" : {
-      "arguments" : []
-    },
-    "A0010" : {
       "arguments" : []
     },
     "A0101" : {
@@ -549,23 +344,6 @@
       ]
     },
     "A0302" : {
-      "arguments" : [
-        "detector",
-        "errormode",
-        "logicerror",
-        "manual",
-        "type"
-      ]
-    },
-    "A0303" : {
-      "arguments" : [
-        "detector",
-        "errormode",
-        "manual",
-        "type"
-      ]
-    },
-    "A0304" : {
       "arguments" : [
         "detector",
         "errormode",
