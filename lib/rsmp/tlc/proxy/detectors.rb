@@ -4,7 +4,7 @@ module RSMP
       # Command methods for operational control of a remote TLC.
       # Covers functional position, emergency routes, I/O modes, signal group orders, and system settings.
       module Detectors
-        # M0008 — Force detector logic to a given mode and status.
+        # M0008 - Force detector logic to a given mode and status.
         # component_id must refer to the detector logic component, not main.
         def force_detector_logic(component_id, status:, mode:, within:)
           validate_ready 'force detector logic'
@@ -30,7 +30,7 @@ module RSMP
           send_command_and_collect(command_list, component: component_id, within: within).ok!
         end
 
-        # M0021 — Set the trigger level for traffic counting.
+        # M0021 - Set the trigger level for traffic counting.
         def set_trigger_level(status, within:)
           validate_ready 'set trigger level'
           raise 'TLC main component not found' unless main

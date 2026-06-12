@@ -85,18 +85,18 @@ The following lists the top-level supervisor settings and the keys available for
 
 Top-level supervisor settings
 
-- `port`: integer|string — TCP port the supervisor listens on (default: `12111`).
-- `ip`: string — address to bind to.
-- `ips`: string or array — `'all'` or a list of allowed IP addresses.
-- `site_id`: string — optional site identifier for the supervisor itself.
-- `max_sites`: integer — limit concurrent connected sites.
-- `default`: object — default settings applied to sites that don't have a specific `sites` entry. Contains keys:
-  - `sxls`: object — default SXL versions for default sites, for example `{ "tlc": "1.3.0" }`.
+- `port`: integer|string - TCP port the supervisor listens on (default: `12111`).
+- `ip`: string - address to bind to.
+- `ips`: string or array - `'all'` or a list of allowed IP addresses.
+- `site_id`: string - optional site identifier for the supervisor itself.
+- `max_sites`: integer - limit concurrent connected sites.
+- `default`: object - default settings applied to sites that don't have a specific `sites` entry. Contains keys:
+  - `sxls`: object - default SXL versions for default sites, for example `{ "tlc": "1.3.0" }`.
   - `core_version`: string for the accepted RSMP Core version.
   - `intervals`: object with `timer`, `watchdog` (numbers, seconds).
   - `timeouts`: object with `watchdog`, `acknowledgement` (numbers, seconds).
-- `log`: object — log settings (see `log_settings` elsewhere in docs).
-- `sites`: mapping — per-site settings (see below).
+- `log`: object - log settings (see `log_settings` elsewhere in docs).
+- `sites`: mapping - per-site settings (see below).
 
 ## Per-site settings (`sites` mapping)
 
@@ -113,8 +113,8 @@ Common per-site keys
 - `site_id` (string): explicit site identifier (if different from the mapping key).
 - `supervisors` (array): list of supervisor endpoints (objects with `ip` and `port`). Useful for reverse mappings or local-site configs.
 - `components` (object): component definitions (same structure as site `components`), used by the supervisor-side proxies to set up component proxies.
-- `intervals` (object): per-site timer settings — `timer`, `watchdog`, `reconnect`, `after_connect` (numbers, seconds).
-- `timeouts` (object): per-site timeouts — `connect`, `watchdog`, `acknowledgement` (numbers, seconds).
+- `intervals` (object): per-site timer settings - `timer`, `watchdog`, `reconnect`, `after_connect` (numbers, seconds).
+- `timeouts` (object): per-site timeouts - `connect`, `watchdog`, `acknowledgement` (numbers, seconds).
 - `send_after_connect` (boolean): whether to send messages after connect without waiting for additional events.
 - `skip_validation` (array[string]): list of message types to skip JSON schema validation for this site.
 - `security_codes` (object): map of security code levels to secrets.

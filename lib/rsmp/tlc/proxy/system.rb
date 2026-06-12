@@ -4,7 +4,7 @@ module RSMP
       # Command methods for operational control of a remote TLC.
       # Covers functional position, emergency routes, I/O modes, signal group orders, and system settings.
       module System
-        # M0103 — Change security code for a given level.
+        # M0103 - Change security code for a given level.
         # Does not use security_code_for since the codes are passed explicitly.
         def set_security_code(level:, old_code:, new_code:, within:)
           validate_ready 'set security code'
@@ -29,7 +29,7 @@ module RSMP
           send_command_and_collect(command_list, within: within).ok!
         end
 
-        # M0104 — Set the clock on the remote TLC. clock must respond to year/month/day/hour/min/sec.
+        # M0104 - Set the clock on the remote TLC. clock must respond to year/month/day/hour/min/sec.
         def set_clock(clock, within:)
           validate_ready 'set clock'
           raise 'TLC main component not found' unless main

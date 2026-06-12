@@ -4,7 +4,7 @@ module RSMP
       # Command methods for signal plans.
       # Covers time plans, week/day tables, bands, offsets, and cycle times.
       module Plans
-        # M0014 — Set dynamic bands for a signal plan.
+        # M0014 - Set dynamic bands for a signal plan.
         def set_dynamic_bands(plan:, status:, within:)
           validate_ready 'set dynamic bands'
           raise 'TLC main component not found' unless main
@@ -30,7 +30,7 @@ module RSMP
           send_command_and_collect(command_list, within: within).ok!
         end
 
-        # M0023 — Set timeout for dynamic bands.
+        # M0023 - Set timeout for dynamic bands.
         def set_dynamic_bands_timeout(status, within:)
           validate_ready 'set dynamic bands timeout'
           raise 'TLC main component not found' unless main
@@ -51,7 +51,7 @@ module RSMP
           send_command_and_collect(command_list, within: within).ok!
         end
 
-        # M0015 — Set offset for a signal plan.
+        # M0015 - Set offset for a signal plan.
         def set_offset(plan:, offset:, within:)
           validate_ready 'set offset'
           raise 'TLC main component not found' unless main
@@ -105,7 +105,7 @@ module RSMP
           wait_for_status("timeplan #{plan_nr}", confirm_status, timeout: within)
         end
 
-        # M0016 — Set week table (mapping week days to traffic situations).
+        # M0016 - Set week table (mapping week days to traffic situations).
         def set_week_table(status, within:)
           validate_ready 'set week table'
           raise 'TLC main component not found' unless main
@@ -126,7 +126,7 @@ module RSMP
           send_command_and_collect(command_list, within:).ok!
         end
 
-        # M0017 — Set day table (mapping time periods to signal plans).
+        # M0017 - Set day table (mapping time periods to signal plans).
         def set_day_table(status, within:)
           validate_ready 'set day table'
           raise 'TLC main component not found' unless main
@@ -147,7 +147,7 @@ module RSMP
           send_command_and_collect(command_list, within:).ok!
         end
 
-        # M0018 — Set cycle time for a signal plan.
+        # M0018 - Set cycle time for a signal plan.
         def set_cycle_time(plan:, cycle_time:, within:)
           validate_ready 'set cycle time'
           raise 'TLC main component not found' unless main
@@ -173,7 +173,7 @@ module RSMP
           send_command_and_collect(command_list, within:).ok!
         end
 
-        # M0010 — Order signal start for a signal group component.
+        # M0010 - Order signal start for a signal group component.
         def order_signal_start(component_id, within:)
           validate_ready 'order signal start'
 
@@ -193,7 +193,7 @@ module RSMP
           send_command_and_collect(command_list, component: component_id, within:).ok!
         end
 
-        # M0011 — Order signal stop for a signal group component.
+        # M0011 - Order signal stop for a signal group component.
         def order_signal_stop(component_id, within:)
           validate_ready 'order signal stop'
 
