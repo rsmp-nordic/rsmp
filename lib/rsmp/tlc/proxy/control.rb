@@ -4,7 +4,7 @@ module RSMP
       # Command methods for operational control of a remote TLC.
       # Covers functional position, emergency routes, I/O modes, signal group orders, and system settings.
       module Control
-        # M0001 — Set functional position (NormalControl, YellowFlash, Dark).
+        # M0001 - Set functional position (NormalControl, YellowFlash, Dark).
         def set_functional_position(status, within:, timeout_minutes: 0)
           validate_ready 'set functional position'
           raise 'TLC main component not found' unless main
@@ -17,7 +17,7 @@ module RSMP
           { collector: collector }
         end
 
-        # M0005 — Set or clear an emergency route.
+        # M0005 - Set or clear an emergency route.
         def set_emergency_route(route:, active:, within:)
           validate_ready 'set emergency route'
           raise 'TLC main component not found' unless main
@@ -45,7 +45,7 @@ module RSMP
           send_command_and_collect(command_list, within: within).ok!
         end
 
-        # M0007 — Enable or disable fixed-time control.
+        # M0007 - Enable or disable fixed-time control.
         def set_fixed_time(status, within:)
           validate_ready 'set fixed time'
           raise 'TLC main component not found' unless main
@@ -70,7 +70,7 @@ module RSMP
           wait_for_status "fixed time #{status}", confirm_status, timeout: within
         end
 
-        # M0003 — Set traffic situation (activate a specific situation number).
+        # M0003 - Set traffic situation (activate a specific situation number).
         def set_traffic_situation(situation, within:)
           validate_ready 'set traffic situation'
           raise 'TLC main component not found' unless main
@@ -99,7 +99,7 @@ module RSMP
           wait_for_status "traffic situation #{situation}", confirm_status, timeout: within
         end
 
-        # M0003 — Clear the active traffic situation.
+        # M0003 - Clear the active traffic situation.
         def unset_traffic_situation(within:)
           validate_ready 'unset traffic situation'
           raise 'TLC main component not found' unless main

@@ -4,7 +4,7 @@ module RSMP
       # Command methods for I/O control of a remote TLC.
       # Covers detector logic, input/output forcing and setting.
       module IO
-        # M0006 — Set a single input to a given status.
+        # M0006 - Set a single input to a given status.
         def set_input(input:, status:, within:)
           validate_ready 'set input'
           raise 'TLC main component not found' unless main
@@ -30,7 +30,7 @@ module RSMP
           send_command_and_collect(command_list, within: within).ok!
         end
 
-        # M0013 — Set all inputs via a bit-pattern string.
+        # M0013 - Set all inputs via a bit-pattern string.
         def set_inputs(status, within:)
           validate_ready 'set inputs'
           raise 'TLC main component not found' unless main
@@ -51,7 +51,7 @@ module RSMP
           send_command_and_collect(command_list, within: within).ok!
         end
 
-        # M0019 — Force an input to a given value.
+        # M0019 - Force an input to a given value.
         def force_input(input:, status:, value:, within:)
           validate_ready 'force input'
           raise 'TLC main component not found' unless main
@@ -62,7 +62,7 @@ module RSMP
           wait_for_status "force input #{input}", confirm_status, timeout: within
         end
 
-        # M0020 — Force an output to a given value.
+        # M0020 - Force an output to a given value.
         def force_output(output:, status:, value:, within:)
           validate_ready 'force output'
           raise 'TLC main component not found' unless main
