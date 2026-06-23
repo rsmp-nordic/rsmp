@@ -96,10 +96,9 @@ module RSMP
 
     def run
       log_site_starting
-      @proxies.each do |proxy|
-        proxy.start
-        proxy.wait
-      end
+      start_status_timer
+      @proxies.each(&:start)
+      @proxies.each(&:wait)
     end
 
     def build_proxies
@@ -119,7 +118,7 @@ module RSMP
 
     def aggregated_status_changed(component, _options = {})
       @proxies.each do |proxy|
-        proxy.send_aggregated_status component if proxy.ready?
+        proxy.send_aggregated_status component
       end
     end
 
@@ -137,8 +136,48 @@ module RSMP
 
     def send_alarm(alarm)
       @proxies.each do |proxy|
-        proxy.send_message alarm if proxy.ready? && proxy.receive_alarms?
+        proxy.send_message alarm if proxy.receive_alarms?
       end
+    end
+
+    def start_status_timer
+      return if @status_timer
+
+      interval = @site_settings['intervals']['timer'] || 1
+      log "Starting site status timer with interval #{interval} seconds", level: :debug
+      @status_timer = @task.async do |task|
+        task.annotate 'site status timer'
+        run_status_timer task, interval
+      end
+    end
+
+    def run_status_timer(task, interval)
+      next_time = Time.now.to_f
+      loop do
+        now = Clock.now
+        tick_status_subscriptions now
+      rescue StandardError => e
+        distribute_error e, level: :internal
+      ensure
+        next_time += interval
+        duration = next_time - Time.now.to_f
+        task.sleep duration
+      end
+    end
+
+    def tick_status_subscriptions(now)
+      @proxies.each { |proxy| proxy.status_update_timer now }
+    end
+
+    def stop_status_timer
+      @status_timer&.stop
+    ensure
+      @status_timer = nil
+    end
+
+    def stop_subtasks
+      stop_status_timer
+      super
     end
 
     def connect_to_supervisor(_task, supervisor_settings)

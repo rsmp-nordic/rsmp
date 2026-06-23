@@ -13,7 +13,7 @@ module RSMP
         def send_aggregated_status(component, m_id: nil)
           m_id ||= RSMP::Message.make_m_id
 
-          se = if Proxy.version_meets_requirement?(core_version, '<=3.1.2')
+          se = if core_version && Proxy.version_meets_requirement?(core_version, '<=3.1.2')
                  component.aggregated_status_bools.map { |bool| bool ? 'true' : 'false' }
                else
                  component.aggregated_status_bools

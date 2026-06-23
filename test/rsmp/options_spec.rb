@@ -19,6 +19,26 @@ describe RSMP::Options do
         .to raise_exception(RSMP::ConfigurationError, message: be =~ /supervisors/)
     end
 
+    it 'applies message buffer defaults' do
+      options = RSMP::Site::Options.new({})
+
+      expect(options.to_h['message_buffer']).to be == {
+        'enabled' => true,
+        'max_messages' => 10_000,
+        'statuses' => []
+      }
+    end
+
+    it 'validates message buffer status selectors' do
+      expect do
+        RSMP::Site::Options.new(
+          'message_buffer' => {
+            'statuses' => [{ 'n' => 'status' }]
+          }
+        )
+      end.to raise_exception(RSMP::ConfigurationError, message: be =~ /message_buffer/)
+    end
+
     it 'loads from file and extracts log settings' do
       file = Tempfile.new(['rsmp-site', '.yaml'])
       file.write({

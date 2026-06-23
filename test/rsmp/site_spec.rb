@@ -151,4 +151,22 @@ describe RSMP::Site do
       expect(sent).to be == []
     end
   end
+
+  with '#tick_status_subscriptions' do
+    it 'ticks supervisor proxies even when they are not ready' do
+      site = subject.new(
+        site_settings: site_settings,
+        log_settings: log_settings
+      )
+      now = Time.now
+      ticks = []
+      proxy = Object.new
+      proxy.define_singleton_method(:status_update_timer) { |time| ticks << time }
+      site.instance_variable_set(:@proxies, [proxy])
+
+      site.tick_status_subscriptions now
+
+      expect(ticks).to be == [now]
+    end
+  end
 end

@@ -11,8 +11,13 @@ module RSMP
           distribute_error error.exception("#{str} #{message.json}")
         end
 
-        def send_message(message, reason = nil, validate: true, force: false)
-          raise NotReady if !force && !connected?
+        def send_message(message, reason = nil, validate: true, force: false, buffer: true)
+          unless force || connected?
+            error = NotReady.new
+            raise error unless buffer
+
+            return buffer_message(message, error)
+          end
           raise IOError unless @protocol
 
           message.direction = :out
@@ -22,15 +27,18 @@ module RSMP
           expect_acknowledgement message
           distribute message
           log_send message, reason
-        rescue IOError
-          buffer_message message
+        rescue NotReady, IOError => e
+          raise e unless buffer
+
+          buffer_message message, e
         rescue SchemaError, RSMP::Schema::Error => e
           handle_send_schema_error(message, e)
         end
 
-        def buffer_message(message)
-          # TODO
-          # log "Cannot send #{message.type} because the connection is closed.", message: message, level: :error
+        def buffer_message(message, error = nil)
+          str = "Cannot send #{message.type} because the connection is closed."
+          log str, message: message, level: :error
+          raise error if error
         end
 
         def log_send(message, reason = nil)
