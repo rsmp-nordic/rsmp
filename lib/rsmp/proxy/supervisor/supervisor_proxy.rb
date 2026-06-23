@@ -7,8 +7,9 @@ module RSMP
     include Modules::Commands
     include Modules::Alarms
     include Modules::AggregatedStatus
+    include Modules::MessageBuffer
 
-    attr_reader :supervisor_id, :site
+    attr_reader :supervisor_id, :site, :message_buffer
 
     def initialize(options)
       super(options.merge(node: options[:site]))
@@ -21,6 +22,7 @@ module RSMP
       @accepted_sxls = @sxls.dup
       @rejected_sxls = []
       @synthetic_id = Supervisor.build_id_from_ip_port @ip, @port
+      @message_buffer = []
     end
 
     # handle communication
@@ -49,6 +51,11 @@ module RSMP
 
     def start_handshake
       send_version_request @site_settings['site_id'], core_versions
+    end
+
+    def close
+      prune_unbuffered_status_subscriptions
+      super
     end
 
     # connect to the supervisor and initiate handshake supervisor
@@ -98,6 +105,7 @@ module RSMP
         send_all_aggregated_status
         send_active_alarms if receive_alarms?
       end
+      flush_message_buffer
       super
     end
 
@@ -168,11 +176,6 @@ module RSMP
       acknowledge message
       @version_determined = true
       send_watchdog
-    end
-
-    def timer(now)
-      super
-      status_update_timer now if ready?
     end
 
     def process_version(message)

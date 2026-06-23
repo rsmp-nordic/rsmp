@@ -325,4 +325,167 @@ describe RSMP::Proxy do
       expect(handled).to be == message
     end
   end
+
+  with 'message buffering' do
+    def build_supervisor_proxy(message_buffer: {}, core_version: '3.2.2')
+      site = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'TLC001',
+          'supervisors' => [],
+          'sxls' => { 'tlc' => '1.2.1' },
+          'message_buffer' => {
+            'enabled' => true,
+            'max_messages' => 10_000,
+            'statuses' => []
+          }.merge(message_buffer)
+        },
+        log_settings: { 'active' => false }
+      )
+      proxy = RSMP::SupervisorProxy.new(
+        site: site,
+        ip: '127.0.0.1',
+        port: 12_345
+      )
+      proxy.instance_variable_set(:@core_version, core_version)
+      proxy
+    end
+
+    it 'buffers site-originated aggregated status while disconnected' do
+      proxy = build_supervisor_proxy
+      message = RSMP::AggregatedStatus.new(
+        'cId' => 'C1',
+        'aSTS' => '2024-01-01T10:00:00.000Z',
+        'fP' => nil,
+        'fS' => nil,
+        'se' => [false, false, false, false, false, true, false, false]
+      )
+
+      proxy.send_message message
+
+      expect(proxy.message_buffer.size).to be == 1
+      expect(proxy.message_buffer.first).to be_a(RSMP::AggregatedStatus)
+    end
+
+    it 'buffers aggregated status before a core version has been negotiated' do
+      proxy = build_supervisor_proxy(core_version: nil)
+      component = RSMP::Component.new(id: 'C1', node: proxy.site, grouped: true)
+
+      proxy.send_aggregated_status component
+
+      expect(proxy.message_buffer.size).to be == 1
+      expect(proxy.message_buffer.first.attributes['se']).to be == [false, false, false, false, false, true, false, false]
+    end
+
+    it 'does not buffer command messages while disconnected' do
+      proxy = build_supervisor_proxy
+      message = RSMP::CommandResponse.new(
+        'cId' => 'C1',
+        'cTS' => '2024-01-01T10:00:00.000Z',
+        'cCI' => 'M0001',
+        'n' => 'status',
+        'age' => 'recent',
+        'rvs' => [{ 'n' => 'status', 'v' => 'true' }]
+      )
+
+      expect { proxy.send_message message }.to raise_exception(RSMP::NotReady)
+      expect(proxy.message_buffer).to be == []
+    end
+
+    it 'filters buffered status updates by configured selector' do
+      proxy = build_supervisor_proxy(
+        message_buffer: { 'statuses' => [{ 'sCI' => 'S0001', 'n' => 'status' }] }
+      )
+      message = RSMP::StatusUpdate.new(
+        'cId' => 'C1',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [
+          { 'sCI' => 'S0001', 'n' => 'status', 's' => '1', 'q' => 'recent' },
+          { 'sCI' => 'S0002', 'n' => 'status', 's' => '2', 'q' => 'recent' }
+        ]
+      )
+
+      proxy.send_message message
+
+      expect(proxy.message_buffer.size).to be == 1
+      expect(proxy.message_buffer.first.attributes['sS']).to be == [
+        { 'sCI' => 'S0001', 'n' => 'status', 's' => '1', 'q' => 'recent' }
+      ]
+    end
+
+    it 'marks buffered status updates as old when flushing with core 3.2 or newer' do
+      proxy = build_supervisor_proxy(
+        message_buffer: { 'statuses' => true },
+        core_version: '3.1.5'
+      )
+      proxy.send_message RSMP::StatusUpdate.new(
+        'cId' => 'C1',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '1', 'q' => 'recent' }]
+      )
+
+      protocol = CapturingProtocol.new
+      proxy.instance_variable_set(:@protocol, protocol)
+      proxy.instance_variable_set(:@state, :connected)
+      proxy.instance_variable_set(:@core_version, '3.2.2')
+      proxy.flush_message_buffer
+
+      sent = JSON.parse(protocol.lines.last)
+      expect(sent['sS']).to be == [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '1', 'q' => 'old' }]
+      expect(proxy.message_buffer).to be == []
+    end
+
+    it 'uses the reconnect core version when flushing buffered aggregated status' do
+      proxy = build_supervisor_proxy(core_version: '3.1.2')
+      proxy.send_message RSMP::AggregatedStatus.new(
+        'cId' => 'C1',
+        'aSTS' => '2024-01-01T10:00:00.000Z',
+        'fP' => nil,
+        'fS' => nil,
+        'se' => %w[false false false false false true false false]
+      )
+
+      protocol = CapturingProtocol.new
+      proxy.instance_variable_set(:@protocol, protocol)
+      proxy.instance_variable_set(:@state, :connected)
+      proxy.instance_variable_set(:@core_version, '3.2.2')
+      proxy.flush_message_buffer
+
+      sent = JSON.parse(protocol.lines.last)
+      expect(sent['se']).to be == [false, false, false, false, false, true, false, false]
+    end
+
+    it 'drops the oldest buffered message when the buffer is full' do
+      proxy = build_supervisor_proxy(message_buffer: { 'max_messages' => 1 })
+
+      first = RSMP::AlarmIssue.new('cId' => 'C1', 'aCId' => 'A1')
+      second = RSMP::AlarmIssue.new('cId' => 'C1', 'aCId' => 'A2')
+      proxy.send_message first
+      proxy.send_message second
+
+      expect(proxy.message_buffer.size).to be == 1
+      expect(proxy.message_buffer.first.attributes['aCId']).to be == 'A2'
+    end
+
+    it 'prunes subscriptions that are not configured for buffering' do
+      proxy = build_supervisor_proxy(
+        message_buffer: { 'statuses' => [{ 'sCI' => 'S0001', 'n' => 'keep' }] }
+      )
+      proxy.instance_variable_set(
+        :@status_subscriptions,
+        {
+          'C1' => {
+            'S0001' => {
+              'keep' => { interval: 1, last_sent_at: Time.now },
+              'drop' => { interval: 1, last_sent_at: Time.now }
+            }
+          }
+        }
+      )
+
+      proxy.prune_unbuffered_status_subscriptions
+
+      subscriptions = proxy.instance_variable_get(:@status_subscriptions)
+      expect(subscriptions['C1']['S0001'].keys).to be == ['keep']
+    end
+  end
 end

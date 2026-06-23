@@ -21,6 +21,7 @@ module RSMP
             'acknowledgement' => 2
           },
           'send_after_connect' => true,
+          'message_buffer' => default_message_buffer,
           'components' => {
             'main' => {
               'C1' => {}
@@ -34,6 +35,14 @@ module RSMP
       end
 
       private
+
+      def default_message_buffer
+        {
+          'enabled' => true,
+          'max_messages' => 10_000,
+          'statuses' => []
+        }
+      end
 
       def apply_defaults(options)
         defaults = defaults()

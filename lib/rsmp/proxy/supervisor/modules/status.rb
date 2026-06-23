@@ -101,6 +101,21 @@ module RSMP
           acknowledge message
         end
 
+        def prune_unbuffered_status_subscriptions
+          @status_subscriptions.each_key.to_a.each do |component_id|
+            by_code = @status_subscriptions[component_id]
+            by_code.each_key.to_a.each do |code|
+              by_name = by_code[code]
+              by_name.delete_if do |name, _subscription|
+                status = { 'sCI' => code, 'n' => name }
+                !status_buffer_selector?(component_id, status)
+              end
+              by_code.delete(code) if by_name.empty?
+            end
+            @status_subscriptions.delete(component_id) if by_code.empty?
+          end
+        end
+
         def fetch_last_sent_status(component, code, name)
           @last_status_sent&.dig component, code, name
         end
