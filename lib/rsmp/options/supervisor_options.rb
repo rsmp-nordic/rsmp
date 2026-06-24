@@ -5,6 +5,7 @@ module RSMP
       def defaults
         {
           'port' => 12_111,
+          'connection_role' => 'server',
           'ips' => 'all',
           'default' => {
             'sxls' => {

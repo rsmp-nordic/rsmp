@@ -113,6 +113,29 @@ describe 'Connecting' do
     end
   end
 
+  it 'builds proxies for reversed client/server roles' do
+    config[:port] = 13_112
+    config[:site_settings]['connection_role'] = 'server'
+    config[:site_settings]['ip'] = '127.0.0.1'
+    config[:site_settings]['port'] = config[:port]
+    config[:site_settings]['core_version'] = '3.3.0'
+    config[:supervisor_settings]['connection_role'] = 'client'
+    config[:supervisor_settings]['sites'] = {
+      config[:site_id] => {
+        'core_version' => '3.3.0',
+        'sxls' => { 'tlc' => RSMP::Schema.latest_version(:tlc) },
+        'supervisors' => [{ 'ip' => '127.0.0.1', 'port' => config[:port] }]
+      }
+    }
+
+    expect(site.proxies).to be == []
+    supervisor.send(:build_outbound_proxies)
+
+    expect(supervisor.proxies.size).to be == 1
+    expect(supervisor.proxies.first).to be_a(RSMP::SiteProxy)
+    expect(supervisor.proxies.first.site_id).to be == config[:site_id]
+  end
+
   it 'stores receiveAlarms false from a 3.3.0 Version response' do
     config[:site_settings]['core_version'] = '3.3.0'
     config[:supervisor_settings]['default']['core_version'] = '3.3.0'

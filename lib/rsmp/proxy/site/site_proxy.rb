@@ -16,12 +16,21 @@ module RSMP
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
       @site_id = options[:site_id]
+      @configured_site_settings = options[:site_settings]
       @status_subscriptions = {}
     end
 
     # handle communication
     # when we're created, the socket is already open
     def run
+      if @protocol
+        run_accepted_connection
+      else
+        run_outbound_connection
+      end
+    end
+
+    def run_accepted_connection
       self.state = :connected
       start_reader
       wait_for_reader # run until disconnected
@@ -33,10 +42,62 @@ module RSMP
       close
     end
 
+    def run_outbound_connection
+      loop do
+        setup_site_settings
+        connect
+        start_reader
+        wait_for_reader
+        break unless reconnect_delay?
+      rescue Restart
+        @logger.mute @ip, @port
+        raise
+      rescue RSMP::ConnectionError => e
+        log e, level: :error
+        break unless reconnect_delay?
+      rescue StandardError => e
+        distribute_error e, level: :internal
+        break unless reconnect_delay?
+      ensure
+        close
+        stop_subtasks
+      end
+    end
+
+    def connect
+      log "Connecting to site #{@site_id} at #{@ip}:#{@port}", level: :info
+      self.state = :connecting
+      endpoint = IO::Endpoint.tcp(@ip, @port)
+      timeout = @site_settings.dig('timeouts', 'connect') || 1.1
+      task.with_timeout timeout do
+        @socket = endpoint.connect
+      end
+      @stream = IO::Stream::Buffered.new(@socket)
+      @protocol = RSMP::Protocol.new(@stream)
+      self.state = :connected
+      @logger.unmute @ip, @port
+      log "Connected to site #{@site_id} at #{@ip}:#{@port}", level: :info
+    rescue SystemCallError => e
+      raise ConnectionError, "Could not connect to site #{@site_id} at #{@ip}:#{@port}: Errno #{e.errno} #{e}"
+    rescue StandardError => e
+      raise ConnectionError, "Error while connecting to site #{@site_id} at #{@ip}:#{@port}: #{e}"
+    end
+
+    def reconnect_delay?
+      return false if @site_settings['intervals']['reconnect'] == :no
+
+      interval = @site_settings['intervals']['reconnect'] || 0.1
+      log "Will try to reconnect again every #{interval} seconds...", level: :info
+      @logger.mute @ip, @port
+      @task.sleep interval
+      true
+    end
+
     def revive(options)
       super
       @supervisor = options[:supervisor]
       @settings = @supervisor.supervisor_settings.clone
+      @configured_site_settings = options[:site_settings]
     end
 
     def node
@@ -170,6 +231,7 @@ module RSMP
       return extraneous_version message if @version_determined
 
       check_site_ids message
+      check_core_version message
       check_sxl_version message
       version_accepted message
     end
@@ -177,6 +239,7 @@ module RSMP
     def check_site_ids(message)
       # RSMP support multiple site ids. we don't support this yet. instead we use the first id only
       site_id = message.attribute('siteId').map { |item| item['sId'] }.first
+      @site_id ||= site_id
       @supervisor.check_site_id site_id
       site_ids_changed
     end
@@ -202,7 +265,7 @@ module RSMP
     end
 
     def setup_site_settings
-      @site_settings = find_site_settings @site_id
+      @site_settings = @configured_site_settings || find_site_settings(@site_id)
       if @site_settings
         @sxls = configured_sxls
         @accepted_sxls = @sxls.dup
