@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rsmp (0.45.2)
+    rsmp (0.46.0)
       async (~> 2.39)
       colorize (~> 1.1)
       io-endpoint (~> 0.17)
@@ -46,7 +46,6 @@ GEM
     logger (1.7.0)
     metrics (0.15.0)
     ostruct (0.6.3)
-    parallel (2.1.0)
     parallel (2.1.0)
     parser (3.3.11.1)
       ast (~> 2.4.1)
