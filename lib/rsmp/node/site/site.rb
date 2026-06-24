@@ -3,7 +3,7 @@ module RSMP
   class Site < Node
     include Components
 
-    attr_reader :core_version, :site_settings, :logger, :proxies
+    attr_reader :core_version, :site_settings, :logger, :proxies, :ready_condition
 
     def self.options_class
       RSMP::Site::Options
@@ -16,6 +16,7 @@ module RSMP
       @proxies = []
       @sleep_condition = Async::Notification.new
       @proxies_condition = Async::Notification.new
+      @ready_condition = Async::Notification.new
       build_proxies
     end
 
@@ -33,6 +34,14 @@ module RSMP
 
     def site_id
       @site_settings['site_id']
+    end
+
+    def client_role?
+      @site_settings['connection_role'] != 'server'
+    end
+
+    def server_role?
+      @site_settings['connection_role'] == 'server'
     end
 
     def handle_site_settings(options = {})
@@ -97,11 +106,17 @@ module RSMP
     def run
       log_site_starting
       start_status_timer
-      @proxies.each(&:start)
-      @proxies.each(&:wait)
+      if server_role?
+        listen_for_supervisors
+      else
+        @proxies.each(&:start)
+        @proxies.each(&:wait)
+      end
     end
 
     def build_proxies
+      return if server_role?
+
       @site_settings['supervisors'].each do |supervisor_settings|
         @proxies << SupervisorProxy.new({
                                           site: self,
@@ -112,8 +127,55 @@ module RSMP
                                           logger: @logger,
                                           archive: @archive,
                                           collect: @collect
-                                        })
+        })
       end
+    end
+
+    def listen_for_supervisors
+      ip = @site_settings['ip'] || '0.0.0.0'
+      port = @site_settings['port']
+      log "Starting #{site_type_name} listener on #{ip}:#{port}", level: :info, timestamp: @clock.now
+      @endpoint = IO::Endpoint.tcp(ip, port)
+      @accept_task = Async::Task.current.async do |task|
+        task.annotate 'site accept loop'
+        @endpoint.accept do |socket|
+          accept_supervisor_connection socket
+        rescue StandardError => e
+          distribute_error e, level: :internal
+        end
+      rescue Async::Stop
+        # Expected during shutdown - no action needed
+      rescue StandardError => e
+        distribute_error e, level: :internal
+      end
+
+      @ready_condition.signal
+      @accept_task.wait
+    end
+
+    def accept_supervisor_connection(socket)
+      remote_port = socket.remote_address.ip_port
+      remote_ip = socket.remote_address.ip_address
+      info = { ip: remote_ip, port: remote_port, hostname: remote_ip, now: Clock.now }
+      stream = IO::Stream::Buffered.new(socket)
+      proxy = SupervisorProxy.new({
+                                    site: self,
+                                    task: @task,
+                                    settings: @site_settings,
+                                    socket: socket,
+                                    stream: stream,
+                                    protocol: RSMP::Protocol.new(stream),
+                                    ip: remote_ip,
+                                    port: remote_port,
+                                    info: info,
+                                    logger: @logger,
+                                    archive: @archive,
+                                    collect: @collect
+                                  })
+      @proxies << proxy
+      @proxies_condition.signal
+      proxy.start
+      proxy.wait
     end
 
     def aggregated_status_changed(component, _options = {})
@@ -177,6 +239,9 @@ module RSMP
 
     def stop_subtasks
       stop_status_timer
+      @accept_task&.stop
+      @accept_task = nil
+      @endpoint = nil
       super
     end
 
@@ -202,11 +267,11 @@ module RSMP
       super
     end
 
-    def wait_for_supervisor(ip, timeout)
+    def wait_for_supervisor(ip, timeout:)
       supervisor = find_supervisor ip
       return supervisor if supervisor
 
-      wait_for_condition(@proxy_condition, timeout: timeout) { find_supervisor ip }
+      wait_for_condition(@proxies_condition, timeout: timeout) { find_supervisor ip }
     rescue Async::TimeoutError
       raise RSMP::TimeoutError, "Supervisor '#{ip}' did not connect within #{timeout}s"
     end

@@ -28,6 +28,11 @@ module RSMP
     # handle communication
     # if disconnected, then try to reconnect
     def run
+      if @protocol
+        run_accepted_connection
+        return
+      end
+
       loop do
         connect
         start_reader
@@ -47,6 +52,20 @@ module RSMP
         close
         stop_subtasks
       end
+    end
+
+    def run_accepted_connection
+      self.state = :connected
+      start_reader
+      start_handshake
+      wait_for_reader
+    rescue RSMP::ConnectionError => e
+      log e, level: :error
+    rescue StandardError => e
+      distribute_error e, level: :internal
+    ensure
+      close
+      stop_subtasks
     end
 
     def start_handshake

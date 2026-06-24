@@ -5,6 +5,9 @@
   "properties": {
     "site_id": { "type": "string" },
     "type": { "type": "string" },
+    "connection_role": { "enum": ["client", "server"] },
+    "ip": { "type": "string" },
+    "port": { "type": ["integer", "string"] },
     "supervisors": {
       "type": "array",
       "items": { "$ref": "config_common.json#/$defs/endpoint" }
