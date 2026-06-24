@@ -334,9 +334,8 @@ describe RSMP::Proxy do
           'supervisors' => [],
           'sxls' => { 'tlc' => '1.2.1' },
           'message_buffer' => {
-            'enabled' => true,
             'max_messages' => 10_000,
-            'statuses' => []
+            'statuses' => true
           }.merge(message_buffer)
         },
         log_settings: { 'active' => false }

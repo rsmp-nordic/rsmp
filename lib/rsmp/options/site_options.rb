@@ -38,9 +38,8 @@ module RSMP
 
       def default_message_buffer
         {
-          'enabled' => true,
           'max_messages' => 10_000,
-          'statuses' => []
+          'statuses' => true
         }
       end
 

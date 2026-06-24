@@ -46,9 +46,35 @@ sxls:
 components:
   main:
     TC:
+message_buffer:
+  max_messages: 10000
+  statuses: true
 log:
   json: true
 ```
+
+## Message Buffer
+
+Sites buffer outgoing alarm and aggregated status messages while a supervisor connection is down. Status updates are buffered according to `message_buffer.statuses`, which defaults to `true`.
+
+```yaml
+message_buffer:
+  max_messages: 10000
+  statuses: true
+```
+
+`statuses: true` buffers all subscribed status updates during communication disruption. To buffer only selected statuses, provide selectors:
+
+```yaml
+message_buffer:
+  statuses:
+    - sCI: S0001
+      n: signalgroupstatus
+```
+
+Use `statuses: false` or an empty list to avoid buffering status updates. Subscriptions for statuses that are not buffered are removed when the connection is lost.
+
+The current implementation uses an in-memory buffer per supervisor connection. Buffered messages survive reconnects while the process keeps running, but are lost if the process exits, crashes, or the host loses power. The RSMP core specification requires the outgoing communication buffer to survive communication failure and power outage, so this is not yet a complete persistent buffer implementation.
 
 ## Example: supervisor YAML
 
