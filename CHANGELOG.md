@@ -685,3 +685,7 @@ Initial release.
 
 ## 0.46.0
 - add outgoing message buffering for sites
+
+## 0.47.0
+- add cli command for checking configs
+- tighten config schemas
