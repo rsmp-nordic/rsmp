@@ -434,6 +434,23 @@ describe RSMP::Proxy do
       expect(proxy.message_buffer).to be == []
     end
 
+    it 'preserves buffered status update timestamps when flushing' do
+      proxy = build_supervisor_proxy(message_buffer: { 'statuses' => true })
+      proxy.send_message RSMP::StatusUpdate.new(
+        'cId' => 'C1',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '1', 'q' => 'recent' }]
+      )
+
+      protocol = CapturingProtocol.new
+      proxy.instance_variable_set(:@protocol, protocol)
+      proxy.instance_variable_set(:@state, :connected)
+      proxy.flush_message_buffer
+
+      sent = JSON.parse(protocol.lines.last)
+      expect(sent['sTs']).to be == '2024-01-01T10:00:00.000Z'
+    end
+
     it 'uses the reconnect core version when flushing buffered aggregated status' do
       proxy = build_supervisor_proxy(core_version: '3.1.2')
       proxy.send_message RSMP::AggregatedStatus.new(
@@ -452,6 +469,51 @@ describe RSMP::Proxy do
 
       sent = JSON.parse(protocol.lines.last)
       expect(sent['se']).to be == [false, false, false, false, false, true, false, false]
+    end
+
+    it 'preserves buffered aggregated status timestamps when flushing' do
+      proxy = build_supervisor_proxy
+      proxy.send_message RSMP::AggregatedStatus.new(
+        'cId' => 'C1',
+        'aSTS' => '2024-01-01T10:00:00.000Z',
+        'fP' => nil,
+        'fS' => nil,
+        'se' => [false, false, false, false, false, true, false, false]
+      )
+
+      protocol = CapturingProtocol.new
+      proxy.instance_variable_set(:@protocol, protocol)
+      proxy.instance_variable_set(:@state, :connected)
+      proxy.flush_message_buffer
+
+      sent = JSON.parse(protocol.lines.last)
+      expect(sent['aSTS']).to be == '2024-01-01T10:00:00.000Z'
+    end
+
+    it 'preserves buffered alarm timestamps when flushing' do
+      proxy = build_supervisor_proxy
+      proxy.send_message RSMP::AlarmIssue.new(
+        'cId' => 'C1',
+        'aCId' => 'A0001',
+        'xACId' => '',
+        'xNACId' => '',
+        'aSp' => 'Issue',
+        'aTs' => '2024-01-01T10:00:00.000Z',
+        'ack' => 'notAcknowledged',
+        'sS' => 'notSuspended',
+        'aS' => 'Active',
+        'cat' => 'D',
+        'pri' => '2',
+        'rvs' => []
+      )
+
+      protocol = CapturingProtocol.new
+      proxy.instance_variable_set(:@protocol, protocol)
+      proxy.instance_variable_set(:@state, :connected)
+      proxy.flush_message_buffer
+
+      sent = JSON.parse(protocol.lines.last)
+      expect(sent['aTs']).to be == '2024-01-01T10:00:00.000Z'
     end
 
     it 'drops the oldest buffered message when the buffer is full' do

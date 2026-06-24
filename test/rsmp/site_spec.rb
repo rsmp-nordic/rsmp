@@ -1,6 +1,18 @@
 require_relative '../support/async_helper'
 
 describe RSMP::Site do
+  class SiteCapturingProtocol
+    attr_reader :lines
+
+    def initialize
+      @lines = []
+    end
+
+    def write_lines(line)
+      @lines << line
+    end
+  end
+
   let(:collect_timeout) { 1 }
 
   let(:ip) { 'localhost' }
@@ -149,6 +161,85 @@ describe RSMP::Site do
       site.send_alarm RSMP::AlarmIssue.new
 
       expect(sent).to be == []
+    end
+  end
+
+  with 'message buffering with multiple supervisors' do
+    def build_buffering_site
+      subject.new(
+        site_settings: {
+          'site_id' => 'TLC001',
+          'supervisors' => [],
+          'sxls' => { 'tlc' => '1.2.1' },
+          'message_buffer' => {
+            'enabled' => true,
+            'max_messages' => 10_000,
+            'statuses' => true
+          }
+        },
+        log_settings: { 'active' => false }
+      )
+    end
+
+    def build_site_supervisor_proxy(site, port:, state:, protocol: nil)
+      proxy = RSMP::SupervisorProxy.new(
+        site: site,
+        ip: '127.0.0.1',
+        port: port
+      )
+      proxy.instance_variable_set(:@core_version, '3.2.2')
+      proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.2.1' }])
+      proxy.instance_variable_set(:@state, state)
+      proxy.instance_variable_set(:@protocol, protocol) if protocol
+      proxy
+    end
+
+    it 'sends aggregated status to connected supervisors and buffers it for disconnected supervisors' do
+      site = build_buffering_site
+      protocol = SiteCapturingProtocol.new
+      connected = build_site_supervisor_proxy(site, port: 12_345, state: :connected, protocol: protocol)
+      disconnected = build_site_supervisor_proxy(site, port: 12_346, state: :disconnected)
+      site.instance_variable_set(:@proxies, [connected, disconnected])
+      component = RSMP::Component.new(node: site, id: 'C1', grouped: true)
+
+      site.aggregated_status_changed component
+
+      sent = JSON.parse(protocol.lines.first)
+      expect(sent['type']).to be == 'AggregatedStatus'
+      expect(connected.message_buffer).to be == []
+      expect(disconnected.message_buffer.size).to be == 1
+      expect(disconnected.message_buffer.first).to be_a(RSMP::AggregatedStatus)
+    end
+
+    it 'sends alarms to connected supervisors and buffers them for disconnected supervisors' do
+      site = build_buffering_site
+      protocol = SiteCapturingProtocol.new
+      connected = build_site_supervisor_proxy(site, port: 12_345, state: :connected, protocol: protocol)
+      disconnected = build_site_supervisor_proxy(site, port: 12_346, state: :disconnected)
+      site.instance_variable_set(:@proxies, [connected, disconnected])
+      alarm = RSMP::AlarmIssue.new(
+        'cId' => 'C1',
+        'aCId' => 'A0001',
+        'xACId' => '',
+        'xNACId' => '',
+        'aSp' => 'Issue',
+        'aTs' => '2024-01-01T10:00:00.000Z',
+        'ack' => 'notAcknowledged',
+        'sS' => 'notSuspended',
+        'aS' => 'Active',
+        'cat' => 'D',
+        'pri' => '2',
+        'rvs' => []
+      )
+
+      site.send_alarm alarm
+
+      sent = JSON.parse(protocol.lines.first)
+      expect(sent['type']).to be == 'Alarm'
+      expect(sent['aCId']).to be == 'A0001'
+      expect(connected.message_buffer).to be == []
+      expect(disconnected.message_buffer.size).to be == 1
+      expect(disconnected.message_buffer.first).to be_a(RSMP::AlarmIssue)
     end
   end
 
