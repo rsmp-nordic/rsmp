@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "config_common.json",
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "properties": {
+        "ip": { "type": "string" },
+        "port": { "type": ["integer", "string"] }
+      },
+      "required": ["ip", "port"],
+      "additionalProperties": false
+    },
+    "intervals": {
+      "type": "object",
+      "properties": {
+        "timer": { "type": "number" },
+        "watchdog": { "type": "number" },
+        "reconnect": { "type": "number" },
+        "after_connect": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "timeouts": {
+      "type": "object",
+      "properties": {
+        "connect": { "type": "number" },
+        "ready": { "type": "number" },
+        "watchdog": { "type": "number" },
+        "acknowledgement": { "type": "number" },
+        "command": { "type": "number" },
+        "command_timeout": { "type": "number" },
+        "status_response": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "component_settings": {
+      "type": ["object", "null"],
+      "properties": {
+        "name": { "type": "string" },
+        "ntsOId": { "type": "string" },
+        "xNId": { "type": "string" },
+        "type": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "components": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["object", "null"],
+        "additionalProperties": { "$ref": "#/$defs/component_settings" }
+      }
+    },
+    "security_codes": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "signal_plans": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "cycle_time": { "type": "number" },
+          "states": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "dynamic_bands": {
+            "type": "object",
+            "additionalProperties": { "type": "integer" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "input_programming_action": {
+      "type": ["object", "null"],
+      "properties": {
+        "raise_alarm": { "type": "string" },
+        "component": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "total": { "type": "integer", "minimum": 1 },
+        "programming": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/input_programming_action" }
+            },
+            {
+              "type": "array",
+              "items": { "$ref": "#/$defs/input_programming_action" }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "message_buffer": {
+      "type": "object",
+      "properties": {
+        "max_messages": { "type": "integer", "minimum": 1 },
+        "statuses": {
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "cId": { "type": "string" },
+                  "sCI": { "type": "string" },
+                  "n": { "type": "string" }
+                },
+                "required": ["sCI"],
+                "additionalProperties": false
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
