@@ -13,57 +13,63 @@
       "const" : "setCommands"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "plan"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "plan"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Plan to be changed",
+              "$ref" : "../defs/definitions.json#/integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Plan to be changed",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "status"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "status"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Dynamic bands.\nEach dynamic band are written as dd-ee where:\ndd=Dynamic band number (from 1-10)\nee=Extension in seconds in this band\n\nEach dynamic band is separated with a comma.\n\nE.g.\ndd-ee,dd-ee",
-            "$ref" : "../defs/definitions.json#/string_list"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "securityCode"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Dynamic bands.\nEach dynamic band are written as dd-ee where:\ndd=Dynamic band number (from 1-10)\nee=Extension in seconds in this band\n\nEach dynamic band is separated with a comma.\n\nE.g.\ndd-ee,dd-ee",
+              "$ref" : "../defs/definitions.json#/string_list"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Security code 2",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "securityCode"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Security code 2",
+              "type" : "string"
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

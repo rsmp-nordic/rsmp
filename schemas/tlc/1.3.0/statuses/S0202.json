@@ -44,7 +44,7 @@
           "properties" : {
             "s" : {
               "description" : "Average speed in km/h",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

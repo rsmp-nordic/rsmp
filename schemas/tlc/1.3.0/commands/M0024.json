@@ -11,23 +11,29 @@
       "const" : "clearAlarms"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "status"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "status"
+            }
           }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "True: Clear all alarms",
-            "$ref" : "../defs/definitions.json#/boolean"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "True: Clear all alarms",
+              "type" : "boolean"
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

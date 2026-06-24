@@ -32,7 +32,7 @@ describe RSMP::Message do
       ack_str: '{"mType":"rSMsg","type":"MessageAck","oMId":"a54dc38b-7ddb-42a6-b6e8-95b0d00dad19"}',
       not_ack_str: '{"mType":"rSMsg","type":"MessageNotAck","rea":"since we are a rsmp::SupervisorProxy","oMId":"24b5e2d1-fd32-4f12-80cf-f32f8b2772af"}',
       watchdog_str: '{"mType":"rSMsg","type":"Watchdog","wTs":"2015-06-08T12:01:39.654Z","mId":"a8cafa58-31bc-40bb-b335-645b5ac985cd"}',
-      command_request_str: '{"mType":"rSMsg","type":"CommandRequest","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","arg":[{"cCI":"M0001","n":"status","cO":"setValue","v":"NormalControl"}],"mId":"1a913af3-82ba-489b-8895-54c2fb56d728"}',
+      command_request_str: '{"mType":"rSMsg","type":"CommandRequest","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","arg":[{"cCI":"M0001","n":"securityCode","cO":"setValue","v":"1111"},{"cCI":"M0001","n":"status","cO":"setValue","v":"NormalControl"}],"mId":"1a913af3-82ba-489b-8895-54c2fb56d728"}',
       command_response_str: '{"mType":"rSMsg","type":"CommandResponse","cId":"AA+BBCCC=DDDEE002","cTS":"2019-07-11T06:37:55.914Z","rvs":[{"cCI":"M0001","n":"status","v":"NormalControl","age":"recent"}],"mId":"f0f38584-e3ff-46f8-88a1-598e7de0e671"}',
       aggregated_status_str: ' {"mType":"rSMsg","type":"AggregatedStatus","aSTS":"2019-07-11T06:37:55.913Z","fP":null,"fS":null,"se":[false,false,false,false,false,false,false,false],"mId":"d9a904cc-b39d-4b72-ad67-f7d634552d36"}',
       status_request_str: '{"mType":"rSMsg","type":"StatusRequest","ntsOId":"","xNId":"","cId":"AA+BBCCC=DDDEE002","sS":[{"sCI":"S0001","n":"signalgroupstatus"}],"mId":"859e189e-c973-4b40-90c4-45a7a25f2dda"}',

@@ -11,6 +11,12 @@ module RSMP
                 { 'required' => ['q'] },
                 { 'properties' => { 'q' => { 'enum' => %w[undefined unknown] } } }
               ]
+            },
+            'age_unknown_or_undefined' => {
+              'allOf' => [
+                { 'required' => ['age'] },
+                { 'properties' => { 'age' => { 'enum' => %w[undefined unknown] } } }
+              ]
             }
           }
         }.freeze
@@ -67,6 +73,8 @@ module RSMP
 
         # convert commands to json schema
         def self.output_commands(out, items)
+          out['defs/guards.json'] ||= output_json(GUARDS_JSON)
+
           list = [{ 'properties' => { 'cCI' => { 'enum' => items.keys.sort } } }]
           items.keys.sort.each do |key|
             list << {
@@ -82,7 +90,7 @@ module RSMP
 
           json = {
             '$schema' => 'https://json-schema.org/draft/2020-12/schema',
-            'properties' => { 'arg' => { '$ref' => 'commands.json' } }
+            'properties' => { 'arg' => command_request_arg_schema(items) }
           }
           out['commands/command_requests.json'] = output_json json
 
@@ -93,6 +101,49 @@ module RSMP
           out['commands/command_responses.json'] = output_json json
 
           items.each_pair { |key, item| output_command out, key, item }
+        end
+
+        def self.command_request_arg_schema(items)
+          schema = { '$ref' => 'commands.json' }
+          required_rules = command_required_argument_rules(items)
+          return schema if required_rules.empty?
+
+          { 'allOf' => [schema] + required_rules }
+        end
+
+        def self.command_required_argument_rules(items)
+          items.keys.sort.filter_map do |key|
+            required = required_argument_names(items[key])
+            next if required.empty?
+
+            {
+              'if' => {
+                'contains' => {
+                  'required' => ['cCI'],
+                  'properties' => { 'cCI' => { 'const' => key } }
+                }
+              },
+              'then' => {
+                'allOf' => required.map { |name| command_argument_contains_rule(key, name) }
+              }
+            }
+          end
+        end
+
+        def self.command_argument_contains_rule(command_code, name)
+          {
+            'contains' => {
+              'required' => %w[cCI n],
+              'properties' => {
+                'cCI' => { 'const' => command_code },
+                'n' => { 'const' => name }
+              }
+            }
+          }
+        end
+
+        def self.required_argument_names(item)
+          (item['arguments'] || {}).reject { |_name, argument| argument['optional'] == true }.keys.sort
         end
 
         # convert a command to json schema
@@ -114,8 +165,11 @@ module RSMP
 
         def self.index_items(items)
           items.keys.sort.to_h do |key|
+            arguments = items[key]['arguments'] || {}
             [key, {
-              'arguments' => (items[key]['arguments'] || {}).keys.sort
+              'arguments' => arguments.keys.sort,
+              'required_arguments' => required_argument_names(items[key]),
+              'optional_arguments' => arguments.select { |_name, argument| argument['optional'] == true }.keys.sort
             }]
           end
         end

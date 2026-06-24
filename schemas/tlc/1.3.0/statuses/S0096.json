@@ -31,7 +31,7 @@
           "properties" : {
             "s" : {
               "description" : "Year",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -48,7 +48,7 @@
           "properties" : {
             "s" : {
               "description" : "Month",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -65,7 +65,7 @@
           "properties" : {
             "s" : {
               "description" : "Day of month",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -82,7 +82,7 @@
           "properties" : {
             "s" : {
               "description" : "Hour",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -99,7 +99,7 @@
           "properties" : {
             "s" : {
               "description" : "Minute",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -116,7 +116,7 @@
           "properties" : {
             "s" : {
               "description" : "Second",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

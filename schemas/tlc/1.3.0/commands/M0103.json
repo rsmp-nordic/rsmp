@@ -13,60 +13,66 @@
       "const" : "setSecurityCode"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "status"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "status"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "type" : "string",
+              "enum" : [
+                "Level1",
+                "Level2"
+              ]
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "type" : "string",
-            "enum" : [
-              "Level1",
-              "Level2"
-            ]
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "oldSecurityCode"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "oldSecurityCode"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Previous security code",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Previous security code",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "newSecurityCode"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "New security code",
+              "type" : "string"
+            }
           }
         }
       }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "newSecurityCode"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "New security code",
-            "type" : "string"
-          }
-        }
-      }
-    }
-  ]
+    ]
+  }
 }
