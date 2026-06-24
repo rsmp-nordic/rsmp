@@ -8,6 +8,8 @@ module RSMP
             value
           elsif %w[undefined unknown].include?(quality.to_s)
             nil
+          elsif core_3_3?
+            value
           else
             value.to_s
           end
@@ -15,9 +17,16 @@ module RSMP
 
         def fetch_status_values(component, args)
           args.map do |arg|
-            value, quality = component.get_status arg['sCI'], arg['n'], { sxl_version: sxl_version }
-            { 's' => rsmpify_value(value, quality), 'q' => quality.to_s }.merge arg
+            fetch_status_value component, arg
           end
+        end
+
+        def fetch_status_value(component, arg)
+          value, quality = component.get_status arg['sCI'], arg['n'], { sxl_version: sxl_version }
+          { 's' => rsmpify_value(value, quality), 'q' => quality.to_s }.merge arg
+        rescue UnknownStatus => e
+          log e.to_s, level: :warning
+          { 's' => nil, 'q' => 'unknown' }.merge arg
         end
 
         def build_undefined_statuses(args)
@@ -186,7 +195,13 @@ module RSMP
               if value
                 quality = 'recent'
               else
-                value, quality = component.get_status code, status_name
+                begin
+                  value, quality = component.get_status code, status_name
+                rescue UnknownStatus => e
+                  log e.to_s, level: :warning
+                  value = nil
+                  quality = 'unknown'
+                end
               end
               ss << { 'sCI' => code,
                       'n' => status_name,

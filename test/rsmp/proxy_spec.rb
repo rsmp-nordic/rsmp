@@ -326,6 +326,184 @@ describe RSMP::Proxy do
     end
   end
 
+  with 'core 3.3.0 message semantics' do
+    def build_core_3_3_supervisor_proxy
+      site = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'TLC001',
+          'supervisors' => [],
+          'sxls' => { 'tlc' => '1.3.0' },
+          'core_version' => '3.3.0'
+        },
+        log_settings: { 'active' => false }
+      )
+      protocol = CapturingProtocol.new
+      proxy = RSMP::SupervisorProxy.new(
+        site: site,
+        ip: '127.0.0.1',
+        port: 12_345
+      )
+      proxy.instance_variable_set(:@protocol, protocol)
+      proxy.instance_variable_set(:@state, :connected)
+      proxy.instance_variable_set(:@core_version, '3.3.0')
+      proxy.instance_variable_set(:@version_determined, true)
+      proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
+      [proxy, protocol]
+    end
+
+    def build_core_3_3_site_proxy
+      supervisor = RSMP::Supervisor.new(
+        supervisor_settings: {
+          'default' => {
+            'sxls' => { 'tlc' => '1.3.0' },
+            'core_version' => '3.3.0'
+          }
+        },
+        log_settings: { 'active' => false }
+      )
+      protocol = CapturingProtocol.new
+      proxy = RSMP::SiteProxy.new(
+        supervisor: supervisor,
+        ip: '127.0.0.1',
+        port: 12_345,
+        site_id: 'TLC001'
+      )
+      proxy.instance_variable_set(:@protocol, protocol)
+      proxy.instance_variable_set(:@state, :connected)
+      proxy.instance_variable_set(:@core_version, '3.3.0')
+      proxy.instance_variable_set(:@version_determined, true)
+      proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
+      [proxy, protocol]
+    end
+
+    it 'rejects command requests with multiple command codes' do
+      proxy, protocol = build_core_3_3_supervisor_proxy
+      message = RSMP::CommandRequest.new(
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
+        'cId' => 'C1',
+        'arg' => [
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'status', 'v' => 'NormalControl' },
+          { 'cCI' => 'M0002', 'cO' => 'setValue', 'n' => 'status', 'v' => '1' }
+        ]
+      )
+
+      proxy.process_command_request message
+
+      response = JSON.parse(protocol.lines.last)
+      expect(response['type']).to be == 'MessageNotAck'
+      expect(response['rea']).to be =~ /more than one command code/
+    end
+
+    it 'rejects command responses with multiple command codes' do
+      proxy, protocol = build_core_3_3_site_proxy
+      message = RSMP::CommandResponse.new(
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
+        'cId' => 'C1',
+        'cTS' => '2024-01-01T10:00:00.000Z',
+        'rvs' => [
+          { 'cCI' => 'M0001', 'n' => 'status', 'v' => 'NormalControl', 'age' => 'recent' },
+          { 'cCI' => 'M0002', 'n' => 'status', 'v' => '1', 'age' => 'recent' }
+        ]
+      )
+
+      proxy.process_command_response message
+
+      response = JSON.parse(protocol.lines.last)
+      expect(response['type']).to be == 'MessageNotAck'
+      expect(response['rea']).to be =~ /more than one command code/
+    end
+
+    it 'marks unimplemented commands as unknown in CommandResponse' do
+      proxy, protocol = build_core_3_3_supervisor_proxy
+      message = RSMP::CommandRequest.new(
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
+        'cId' => 'C1',
+        'arg' => [
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'status', 'v' => 'NormalControl' },
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'securityCode', 'v' => '1111' }
+        ]
+      )
+
+      proxy.process_command_request message
+
+      response = JSON.parse(protocol.lines.last)
+      expect(response['type']).to be == 'CommandResponse'
+      expect(response['rvs']).to be == [
+        { 'cCI' => 'M0001', 'n' => 'status', 'v' => nil, 'age' => 'unknown' },
+        { 'cCI' => 'M0001', 'n' => 'securityCode', 'v' => nil, 'age' => 'unknown' }
+      ]
+    end
+
+    it 'allows optional command arguments to be omitted' do
+      proxy, protocol = build_core_3_3_supervisor_proxy
+      message = RSMP::CommandRequest.new(
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
+        'cId' => 'C1',
+        'arg' => [
+          { 'cCI' => 'M0022', 'cO' => 'setValue', 'n' => 'requestId', 'v' => 'priority-1' },
+          { 'cCI' => 'M0022', 'cO' => 'setValue', 'n' => 'type', 'v' => 'new' },
+          { 'cCI' => 'M0022', 'cO' => 'setValue', 'n' => 'level', 'v' => '1' }
+        ]
+      )
+
+      proxy.process_command_request message
+
+      response = JSON.parse(protocol.lines.last)
+      expect(response['type']).to be == 'CommandResponse'
+    end
+
+    it 'rejects command requests missing required command arguments' do
+      proxy, = build_core_3_3_supervisor_proxy
+      message = RSMP::CommandRequest.new(
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
+        'cId' => 'C1',
+        'arg' => [
+          { 'cCI' => 'M0022', 'cO' => 'setValue', 'n' => 'requestId', 'v' => 'priority-1' },
+          { 'cCI' => 'M0022', 'cO' => 'setValue', 'n' => 'type', 'v' => 'new' }
+        ]
+      )
+
+      expect do
+        proxy.check_required_command_arguments message
+      end.to raise_exception(RSMP::MissingAttribute, message: be =~ /level/)
+    end
+
+    it 'marks unimplemented statuses as unknown in StatusResponse' do
+      proxy, protocol = build_core_3_3_supervisor_proxy
+      message = RSMP::StatusRequest.new(
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
+        'cId' => 'C1',
+        'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus' }]
+      )
+
+      proxy.process_status_request message
+
+      response = JSON.parse(protocol.lines.last)
+      expect(response['type']).to be == 'StatusResponse'
+      expect(response['sS']).to be == [
+        { 's' => nil, 'q' => 'unknown', 'sCI' => 'S0001', 'n' => 'signalgroupstatus' }
+      ]
+    end
+
+    it 'keeps JSON-native status values for 3.3.0' do
+      proxy, = build_core_3_3_supervisor_proxy
+
+      expect(proxy.rsmpify_value({ 'ok' => true }, 'recent')).to be == { 'ok' => true }
+      expect(proxy.rsmpify_value(3, 'recent')).to be == 3
+      expect(proxy.rsmpify_value(false, 'recent')).to be == false
+    end
+
+    it 'does not add legacy NTS attributes for 3.3.0 messages' do
+      proxy, = build_core_3_3_supervisor_proxy
+      message = RSMP::StatusRequest.new
+
+      proxy.apply_nts_message_attributes message
+
+      expect(message.attributes.key?('ntsOId')).to be == false
+      expect(message.attributes.key?('xNId')).to be == false
+    end
+  end
+
   with 'message buffering' do
     def build_supervisor_proxy(message_buffer: {}, core_version: '3.2.2')
       site = RSMP::Site.new(

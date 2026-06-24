@@ -67,6 +67,8 @@ module RSMP
         end
 
         def apply_nts_message_attributes(message)
+          return if core_3_3?
+
           message.attributes['ntsOId'] = main && main.ntsoid ? main.ntsoid : ''
           message.attributes['xNId'] = main && main.xnid ? main.xnid : ''
         end

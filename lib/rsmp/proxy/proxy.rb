@@ -234,6 +234,23 @@ module RSMP
       sxl_interface resolved.first
     end
 
+    def command_items(message)
+      key = message.is_a?(CommandResponse) ? 'rvs' : 'arg'
+      message.attributes[key] || []
+    end
+
+    def command_codes(message)
+      command_items(message).map { |item| item['cCI'] }.compact.uniq
+    end
+
+    def multiple_command_codes?(message)
+      command_codes(message).size > 1
+    end
+
+    def reject_multiple_command_codes(message)
+      dont_acknowledge message, 'Rejected', 'more than one command code in a single command message'
+    end
+
     # Use Gem class to check version requirement
     # Requirement must be a string like '1.1', '>=1.0.3' or '<2.1.4',
     # or list of strings, like ['<=1.4','<1.5']

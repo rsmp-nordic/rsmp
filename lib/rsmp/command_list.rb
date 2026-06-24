@@ -18,7 +18,7 @@ module RSMP
           'cCI' => command_code_id.to_s,
           'cO' => command_name.to_s,
           'n' => n.to_s,
-          'v' => v.to_s
+          'v' => v
         }
       end
     end
