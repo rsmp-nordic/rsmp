@@ -4,6 +4,7 @@
   "properties": {
     "port": { "type": ["integer", "string"] },
     "ip": { "type": "string" },
+    "proxy_type": { "type": "string" },
     "ips": {
       "oneOf": [
         { "type": "string" },
@@ -12,38 +13,11 @@
     },
     "site_id": { "type": "string" },
     "max_sites": { "type": "integer" },
-    "default": {
-      "type": "object",
-      "properties": {
-        "sxls": {
-          "type": "object",
-          "propertyNames": { "not": { "const": "core" } },
-          "additionalProperties": { "type": "string" }
-        },
-        "core_version": { "type": "string" },
-        "intervals": {
-          "type": "object",
-          "properties": {
-            "timer": { "type": "number" },
-            "watchdog": { "type": "number" }
-          },
-          "additionalProperties": true
-        },
-        "timeouts": {
-          "type": "object",
-          "properties": {
-            "watchdog": { "type": "number" },
-            "acknowledgement": { "type": "number" }
-          },
-          "additionalProperties": true
-        }
-      },
-      "additionalProperties": true
-    },
+    "default": { "$ref": "supervisor_site.json" },
     "sites": {
       "type": "object",
       "additionalProperties": { "$ref": "supervisor_site.json" }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

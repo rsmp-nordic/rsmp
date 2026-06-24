@@ -10,6 +10,8 @@ module RSMP
 
     def self.load_file(path, validate: true)
       raise RSMP::ConfigurationError, "Config #{path} not found" unless File.exist?(path)
+      raise RSMP::ConfigurationError, "Config #{path} is not a file" unless File.file?(path)
+      raise RSMP::ConfigurationError, "Config #{path} must be a YAML file (.yml or .yaml)" unless yaml_file?(path)
 
       raw = YAML.load_file(path)
       raise RSMP::ConfigurationError, "Config #{path} must be a hash" unless raw.is_a?(Hash) || raw.nil?
@@ -19,6 +21,10 @@ module RSMP
       new(raw, source: path, log_settings: log_settings, validate: validate)
     rescue Psych::SyntaxError => e
       raise RSMP::ConfigurationError, "Cannot read config file #{path}: #{e}"
+    end
+
+    def self.yaml_file?(path)
+      %w[.yml .yaml].include?(File.extname(path).downcase)
     end
 
     def initialize(options = nil, source: nil, log_settings: nil, validate: true, **extra)

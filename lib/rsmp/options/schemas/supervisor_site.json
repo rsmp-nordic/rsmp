@@ -8,6 +8,13 @@
       "propertyNames": { "not": { "const": "core" } },
       "additionalProperties": { "type": "string" }
     },
+    "core_version": { "type": "string" },
+    "rsmp_versions": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ]
+    },
     "type": { "type": "string" },
     "components": { "type": "object" },
     "supervisors": {
@@ -42,8 +49,38 @@
       "additionalProperties": true
     },
     "send_after_connect": { "type": "boolean" },
+    "receive_alarms": { "type": "boolean" },
+    "message_buffer": {
+      "type": "object",
+      "properties": {
+        "max_messages": { "type": "integer", "minimum": 1 },
+        "statuses": {
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "cId": { "type": "string" },
+                  "sCI": { "type": "string" },
+                  "n": { "type": "string" }
+                },
+                "required": ["sCI"],
+                "additionalProperties": false
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "skip_validation": { "type": "array", "items": { "type": "string" } },
-    "security_codes": { "type": "object" }
+    "security_codes": { "type": "object" },
+    "startup_sequence": { "type": "string" },
+    "signal_plans": { "type": "object" },
+    "inputs": { "type": "object" },
+    "live_output": { "type": ["string", "null"] }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }
