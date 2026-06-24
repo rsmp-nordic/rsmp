@@ -14,74 +14,80 @@
       "const" : "setOutput"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "status"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "status"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "True: Force output\nFalse: Release output",
+              "$ref" : "../defs/definitions.json#/boolean"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "True: Force output\nFalse: Release output",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "securityCode"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "securityCode"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Security code 2",
-            "type" : "string"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "output"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Security code 2",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Number of Output",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "output"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "outputValue"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Number of Output",
+              "$ref" : "../defs/definitions.json#/integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "False: output forced off\nTrue: output forced on",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "outputValue"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "False: output forced off\nTrue: output forced on",
+              "$ref" : "../defs/definitions.json#/boolean"
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

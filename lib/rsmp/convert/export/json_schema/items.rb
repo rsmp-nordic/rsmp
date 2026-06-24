@@ -42,12 +42,20 @@ module RSMP
               'then' => { 'properties' => { property_key => build_value(argument) } }
             }
           end
-          {
+          schema = {
             '$schema' => 'https://json-schema.org/draft/2020-12/schema',
             'description' => item['description'],
             'properties' => { 'n' => { 'enum' => arguments.keys.sort } },
             'allOf' => rules
           }
+          return schema unless property_key == 'v'
+
+          schema.delete 'allOf'
+          schema.merge(
+            'if' => { '$ref' => '../defs/guards.json#/$defs/age_unknown_or_undefined' },
+            'then' => {},
+            'else' => { 'allOf' => rules }
+          )
         end
       end
     end

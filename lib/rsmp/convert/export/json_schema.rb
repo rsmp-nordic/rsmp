@@ -19,7 +19,8 @@ module RSMP
           object_nl: "\n",
           indent: '  ',
           space_before: ' ',
-          space: ' '
+          space: ' ',
+          ascii_only: true
         }.freeze
 
         def self.output_json(item)

@@ -21,13 +21,30 @@ module RSMP
         def self.handle_types(item, out)
           case item['type']
           when 'boolean'
+            out['type'] = 'boolean'
+          when 'boolean_as_string'
             out['$ref'] = '../defs/definitions.json#/boolean'
           when 'timestamp'
             out['$ref'] = '../defs/definitions.json#/timestamp'
           when 'integer', 'ordinal', 'unit', 'scale', 'long'
+            out['type'] = 'integer'
+          when 'integer_as_string', 'ordinal_as_string', 'unit_as_string', 'scale_as_string', 'long_as_string'
             out['$ref'] = '../defs/definitions.json#/integer'
+          when 'number'
+            out['type'] = 'number'
+          when 'number_as_string'
+            out['type'] = 'string'
+            out['pattern'] = '^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$'
           when 'array' # a json array
-            build_json_array item['items'], out
+            if item['items']
+              build_json_array item['items'], out
+            else
+              out['type'] = 'array'
+            end
+          when 'object'
+            out['type'] = 'object'
+          when 'null'
+            out['type'] = 'null'
           else # string, base64, and any unknown types
             out['type'] = 'string'
           end
@@ -83,7 +100,14 @@ module RSMP
         def self.handle_enum(item, out)
           return unless item['values']
 
-          out['enum'] = stringify_values(enum_keys(item))
+          values = enum_keys(item)
+          values = stringify_values(values) if string_type? item
+          out['enum'] = values
+        end
+
+        def self.string_type?(item)
+          type = item['type'].to_s
+          type == 'string' || type.end_with?('_as_string') || %w[base64 timestamp].include?(type)
         end
 
         def self.enum_keys(item)

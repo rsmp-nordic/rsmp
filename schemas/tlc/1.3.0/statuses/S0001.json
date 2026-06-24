@@ -48,7 +48,7 @@
           "properties" : {
             "s" : {
               "description" : "Base cycle counter.\nUpdates once per second, counting from 0 and wrapping around when reaching the cycle time.",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -65,7 +65,7 @@
           "properties" : {
             "s" : {
               "description" : "Cycle counter.\nUpdates once per second, counting from 0 and wrapping around when reaching the cycle time.",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -82,7 +82,7 @@
           "properties" : {
             "s" : {
               "description" : "Provides the cycle counter (not base cycle counter) in milliseconds\nof when the last signal group state changed occured.\nUpdates only when the signalgroupstatus attribute changes.",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -99,7 +99,7 @@
           "properties" : {
             "s" : {
               "description" : "Current stage (isolated)",
-              "type" : "string"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
