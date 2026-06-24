@@ -38,6 +38,36 @@ describe RSMP::Options do
       end.to raise_exception(RSMP::ConfigurationError, message: be =~ /message_buffer/)
     end
 
+    it 'rejects unknown nested config keys' do
+      expect do
+        RSMP::TLC::TrafficControllerSite::Options.new(
+          'intervals' => { 'watchdogs' => 1 }
+        )
+      end.to raise_exception(RSMP::ConfigurationError, message: be =~ %r{/intervals/watchdogs})
+    end
+
+    it 'rejects unknown component setting keys' do
+      expect do
+        RSMP::TLC::TrafficControllerSite::Options.new(
+          'components' => {
+            'main' => {
+              'TC' => { 'ntsOid' => 'KK+AG9998=001TC000' }
+            }
+          }
+        )
+      end.to raise_exception(RSMP::ConfigurationError, message: be =~ %r{/components/main/TC/ntsOid})
+    end
+
+    it 'rejects invalid nested config types' do
+      expect do
+        RSMP::TLC::TrafficControllerSite::Options.new(
+          'signal_plans' => {
+            '1' => { 'cycle_time' => 'fast' }
+          }
+        )
+      end.to raise_exception(RSMP::ConfigurationError, message: be =~ %r{/signal_plans/1/cycle_time})
+    end
+
     it 'loads from file and extracts log settings' do
       file = Tempfile.new(['rsmp-site', '.yaml'])
       file.write({
@@ -50,6 +80,36 @@ describe RSMP::Options do
 
       expect(options.to_h['site_id']).to be == 'RN+SI1234'
       expect(options.log_settings['json']).to be == true
+    ensure
+      file.close
+      file.unlink
+    end
+
+    it 'rejects unknown log settings' do
+      file = Tempfile.new(['rsmp-site-log-invalid', '.yaml'])
+      file.write({
+        'site_id' => 'RN+SI1234',
+        'log' => { 'jsons' => true }
+      }.to_yaml)
+      file.close
+
+      expect { RSMP::Site::Options.load_file(file.path) }
+        .to raise_exception(RSMP::ConfigurationError, message: be =~ %r{/jsons})
+    ensure
+      file.close
+      file.unlink
+    end
+
+    it 'rejects invalid log setting types' do
+      file = Tempfile.new(['rsmp-site-log-invalid', '.yaml'])
+      file.write({
+        'site_id' => 'RN+SI1234',
+        'log' => { 'debug' => 'yes' }
+      }.to_yaml)
+      file.close
+
+      expect { RSMP::Site::Options.load_file(file.path) }
+        .to raise_exception(RSMP::ConfigurationError, message: be =~ %r{/debug})
     ensure
       file.close
       file.unlink
@@ -209,6 +269,34 @@ describe RSMP::Options do
     ensure
       file.close
       file.unlink
+    end
+
+    it 'rejects unknown nested site settings' do
+      expect do
+        RSMP::Supervisor::Options.new(
+          'sites' => {
+            'default' => {
+              'timeouts' => { 'watchdog_timeout' => 1 }
+            }
+          }
+        )
+      end.to raise_exception(RSMP::ConfigurationError, message: be =~ %r{/sites/default/timeouts/watchdog_timeout})
+    end
+
+    it 'uses common component validation for supervisor site settings' do
+      expect do
+        RSMP::Supervisor::Options.new(
+          'sites' => {
+            'default' => {
+              'components' => {
+                'main' => {
+                  'TC' => { 'ntsOid' => 'bad' }
+                }
+              }
+            }
+          }
+        )
+      end.to raise_exception(RSMP::ConfigurationError, message: be =~ %r{/sites/default/components/main/TC/ntsOid})
     end
 
     it 'supports dig with default and assume values' do

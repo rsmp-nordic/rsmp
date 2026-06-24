@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "log.json",
+  "$defs": {
+    "display_field": {
+      "oneOf": [
+        { "type": "boolean" },
+        { "type": "integer", "minimum": 0 },
+        { "type": "string" }
+      ]
+    },
+    "message_filter": { "type": "boolean" },
+    "style_item": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "properties": {
+            "color": { "type": "string" },
+            "mode": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "style": {
+      "oneOf": [
+        { "type": "boolean" },
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/style_item" }
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "active": { "type": "boolean" },
+    "path": { "type": ["string", "null"] },
+    "stream": {},
+    "style": { "$ref": "#/$defs/style" },
+    "debug": { "type": "boolean" },
+    "info": { "type": "boolean" },
+    "statistics": { "type": "boolean" },
+    "hide_ip_and_port": { "type": "boolean" },
+    "acknowledgements": { "type": "boolean" },
+    "watchdogs": { "$ref": "#/$defs/message_filter" },
+    "alarms": { "$ref": "#/$defs/message_filter" },
+    "versions": { "$ref": "#/$defs/message_filter" },
+    "statuses": { "$ref": "#/$defs/message_filter" },
+    "commands": { "$ref": "#/$defs/message_filter" },
+    "aggregated_status": { "$ref": "#/$defs/message_filter" },
+    "tabs": { "type": ["string", "boolean", "null"] },
+    "prefix": { "$ref": "#/$defs/display_field" },
+    "index": { "$ref": "#/$defs/display_field" },
+    "author": { "$ref": "#/$defs/display_field" },
+    "timestamp": { "$ref": "#/$defs/display_field" },
+    "ip": { "$ref": "#/$defs/display_field" },
+    "port": { "$ref": "#/$defs/display_field" },
+    "site_id": { "$ref": "#/$defs/display_field" },
+    "component": { "$ref": "#/$defs/display_field" },
+    "direction": { "$ref": "#/$defs/display_field" },
+    "level": { "$ref": "#/$defs/display_field" },
+    "id": { "$ref": "#/$defs/display_field" },
+    "text": { "$ref": "#/$defs/display_field" },
+    "json": { "$ref": "#/$defs/display_field" },
+    "exception": { "$ref": "#/$defs/display_field" }
+  },
+  "additionalProperties": false
+}

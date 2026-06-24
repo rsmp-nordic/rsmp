@@ -16,70 +16,21 @@
       ]
     },
     "type": { "type": "string" },
-    "components": { "type": "object" },
+    "components": { "$ref": "config_common.json#/$defs/components" },
     "supervisors": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "ip": { "type": "string" },
-          "port": { "type": ["integer", "string"] }
-        },
-        "required": ["ip", "port"],
-        "additionalProperties": true
-      }
+      "items": { "$ref": "config_common.json#/$defs/endpoint" }
     },
-    "intervals": {
-      "type": "object",
-      "properties": {
-        "timer": { "type": "number" },
-        "watchdog": { "type": "number" },
-        "reconnect": { "type": "number" },
-        "after_connect": { "type": "number" }
-      },
-      "additionalProperties": true
-    },
-    "timeouts": {
-      "type": "object",
-      "properties": {
-        "connect": { "type": "number" },
-        "watchdog": { "type": "number" },
-        "acknowledgement": { "type": "number" }
-      },
-      "additionalProperties": true
-    },
+    "intervals": { "$ref": "config_common.json#/$defs/intervals" },
+    "timeouts": { "$ref": "config_common.json#/$defs/timeouts" },
     "send_after_connect": { "type": "boolean" },
     "receive_alarms": { "type": "boolean" },
-    "message_buffer": {
-      "type": "object",
-      "properties": {
-        "max_messages": { "type": "integer", "minimum": 1 },
-        "statuses": {
-          "oneOf": [
-            { "type": "boolean" },
-            {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "cId": { "type": "string" },
-                  "sCI": { "type": "string" },
-                  "n": { "type": "string" }
-                },
-                "required": ["sCI"],
-                "additionalProperties": false
-              }
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
+    "message_buffer": { "$ref": "config_common.json#/$defs/message_buffer" },
     "skip_validation": { "type": "array", "items": { "type": "string" } },
-    "security_codes": { "type": "object" },
+    "security_codes": { "$ref": "config_common.json#/$defs/security_codes" },
     "startup_sequence": { "type": "string" },
-    "signal_plans": { "type": "object" },
-    "inputs": { "type": "object" },
+    "signal_plans": { "$ref": "config_common.json#/$defs/signal_plans" },
+    "inputs": { "$ref": "config_common.json#/$defs/inputs" },
     "live_output": { "type": ["string", "null"] }
   },
   "additionalProperties": false

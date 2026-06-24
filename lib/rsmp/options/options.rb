@@ -31,23 +31,29 @@ module RSMP
       options = extra if options.nil? && extra.any?
       @source = source
       @log_settings = normalize(log_settings || {})
+      validate_log_settings! if validate
       config = normalize_config(options || {})
       validate!(config) if validate
       @data = normalize(apply_defaults(config))
     end
 
-    def defaults
-      {}
-    end
+    def defaults = {}
 
-    def schema_file
-      nil
-    end
+    def schema_file = nil
 
-    def schema_path
-      return unless schema_file
+    def schema_path = schema_file && File.join(SCHEMAS_PATH, schema_file)
 
-      File.join(SCHEMAS_PATH, schema_file)
+    def log_schema_path = File.join(SCHEMAS_PATH, 'log.json')
+
+    def validate_log_settings!
+      return unless File.exist?(log_schema_path)
+
+      schemer = JSONSchemer.schema(Pathname.new(log_schema_path))
+      errors = schemer.validate(@log_settings).to_a
+      return if errors.empty?
+
+      message = errors.map { |error| format_error(error) }.join("\n")
+      raise RSMP::ConfigurationError, "Invalid log configuration#{source_suffix}:\n#{message}"
     end
 
     def validate!(data = @data)
