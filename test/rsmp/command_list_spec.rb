@@ -19,11 +19,11 @@ describe CommandList do
       expect(list.to_a).to be == raw
     end
 
-    it 'converts non-string values to strings' do
+    it 'preserves non-string values' do
       list = subject.new(:M0002, :setPlan, plan: 3, securityCode: 1234)
       expect(list.to_a).to be == [
-        { 'cCI' => 'M0002', 'cO' => 'setPlan', 'n' => 'plan', 'v' => '3' },
-        { 'cCI' => 'M0002', 'cO' => 'setPlan', 'n' => 'securityCode', 'v' => '1234' }
+        { 'cCI' => 'M0002', 'cO' => 'setPlan', 'n' => 'plan', 'v' => 3 },
+        { 'cCI' => 'M0002', 'cO' => 'setPlan', 'n' => 'securityCode', 'v' => 1234 }
       ]
     end
 
