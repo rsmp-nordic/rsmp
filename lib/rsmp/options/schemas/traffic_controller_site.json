@@ -12,8 +12,7 @@
         "inputs": { "type": "object" },
         "live_output": { "type": ["string", "null"] },
         "type": { "type": "string" }
-      },
-      "additionalProperties": true
+      }
     }
   ]
 }

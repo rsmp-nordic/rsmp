@@ -75,6 +75,7 @@ describe RSMP::CLI do
 
     expect(result.status).to be == 0
     expect(result.output).to be(:include?, 'Commands:')
+    expect(result.output).to be(:include?, 'config')
     expect(result.output).to be(:include?, 'schema')
     expect(result.output).to be(:include?, 'site')
     expect(result.output).to be(:include?, 'supervisor')
@@ -337,6 +338,134 @@ describe RSMP::CLI do
           expect(result.output).to be == ''
         end
       end
+    end
+  end
+
+  with 'config command' do
+    it 'validates TLC site config files' do
+      with_temp_config('tlc.yaml', <<~YAML) do |path|
+        type: tlc
+        site_id: RN+SI0932
+        supervisors:
+          - ip: 127.0.0.1
+            port: 12111
+        sxls:
+          tlc: '1.2.1'
+        components:
+          main:
+            TC:
+      YAML
+        result = invoke_cli('config', 'check', path, '--type', 'tlc')
+
+        expect(result.status).to be == 0
+        expect(result.output).to be == "OK\n"
+      end
+    end
+
+    it 'validates supervisor config files' do
+      with_temp_config('supervisor.yaml', <<~YAML) do |path|
+        port: 12111
+        sites:
+          default:
+            sxls:
+              tlc: '1.2.1'
+      YAML
+        result = invoke_cli('config', 'check', path)
+
+        expect(result.status).to be == 0
+        expect(result.output).to be == "OK\n"
+      end
+    end
+
+    it 'validates the bundled TLC config file' do
+      path = File.expand_path('../../config/tlc.yaml', __dir__)
+      result = invoke_cli('config', 'check', path, '--type', 'tlc')
+
+      expect(result.status).to be == 0
+      expect(result.output).to be == "OK\n"
+    end
+
+    it 'validates the bundled supervisor config file' do
+      path = File.expand_path('../../config/supervisor.yaml', __dir__)
+      result = invoke_cli('config', 'check', path, '--type', 'supervisor')
+
+      expect(result.status).to be == 0
+      expect(result.output).to be == "OK\n"
+    end
+
+    it 'validates hashes through the shared API' do
+      options = RSMP::Config.validate({ 'supervisors' => [{ 'ip' => '127.0.0.1', 'port' => 12_111 }] },
+                                      type: 'site')
+
+      expect(options).to be_a(RSMP::Site::Options)
+      expect(options.to_h.dig('supervisors', 0, 'ip')).to be == '127.0.0.1'
+    end
+
+    it 'reports invalid config files' do
+      with_temp_config('bad.yaml', "supervisors: invalid\n") do |path|
+        result = invoke_cli('config', 'check', path, '--type', 'tlc')
+
+        expect(result.status).to be == 1
+        expect(result.output).to be(:include?, 'Error: Invalid configuration')
+        expect(result.output).to be(:include?, '/supervisors')
+      end
+    end
+
+    it 'reports unknown config keys' do
+      with_temp_config('bad.yaml', <<~YAML) do |path|
+        site_id: RN+SI0932
+        supervisors:
+          - ip: 127.0.0.1
+            port: 12111
+        bad: 1
+      YAML
+        result = invoke_cli('config', 'check', path, '--type', 'tlc')
+
+        expect(result.status).to be == 1
+        expect(result.output).to be(:include?, 'Error: Invalid configuration')
+        expect(result.output).to be(:include?, '/bad')
+      end
+    end
+
+    it 'does not infer config type from type alone' do
+      with_temp_config('typed.yaml', "type: tlc\n") do |path|
+        result = invoke_cli('config', 'check', path)
+
+        expect(result.status).to be == 1
+        expect(result.output).to be(:include?, 'Cannot infer config type')
+      end
+    end
+
+    it 'reports missing paths' do
+      result = invoke_cli('config', 'check', 'missing.yaml')
+
+      expect(result.status).to be == 1
+      expect(result.output).to be(:include?, 'Error: not found')
+    end
+
+    it 'reports directory paths' do
+      Dir.mktmpdir('rsmp-cli-config') do |dir|
+        result = invoke_cli('config', 'check', dir)
+
+        expect(result.status).to be == 1
+        expect(result.output).to be(:include?, 'Error: is not a file')
+      end
+    end
+
+    it 'reports non-yaml files' do
+      with_temp_config('site.json', '{"site_id":"RN+SI0932"}') do |path|
+        result = invoke_cli('config', 'check', path)
+
+        expect(result.status).to be == 1
+        expect(result.output).to be(:include?, 'Error: must be a YAML file')
+      end
+    end
+
+    it 'requires at least one path' do
+      result = invoke_cli('config', 'check')
+
+      expect(result.status).to be == 1
+      expect(result.output).to be == "Error: config check requires at least one path\n"
     end
   end
 

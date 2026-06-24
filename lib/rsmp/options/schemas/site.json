@@ -73,5 +73,5 @@
     "inputs": { "type": "object" },
     "live_output": { "type": ["string", "null"] }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

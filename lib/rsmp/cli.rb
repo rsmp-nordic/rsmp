@@ -20,6 +20,32 @@ module RSMP
     end
   end
 
+  # CLI subcommands for RSMP configuration validation.
+  class ConfigCLI < Thor
+    namespace :config
+    desc 'check PATH...', 'Validate RSMP site or supervisor config files'
+    method_option :type, type: :string, aliases: '-t', default: 'auto',
+                         enum: ['auto'] + RSMP::Config.types,
+                         banner: 'Config type: auto, site, tlc or supervisor'
+    def check(*paths)
+      if paths.empty?
+        puts 'Error: config check requires at least one path'
+        exit 1
+      end
+
+      valid = true
+      paths.each do |path|
+        RSMP::Config.load_file(path, type: options[:type])
+        puts 'OK'
+      rescue RSMP::ConfigurationError => e
+        valid = false
+        puts "Error: #{e.message}"
+      end
+
+      exit 1 unless valid
+    end
+  end
+
   # CLI commands for running RSMP site and supervisor.
   class CLI < Thor
     desc 'version', 'Show version'
@@ -69,6 +95,7 @@ module RSMP
     end
 
     register SchemaCLI, 'schema', 'schema COMMAND', 'SXL schema commands'
+    register ConfigCLI, 'config', 'config COMMAND', 'Configuration commands'
 
     no_commands do
       def load_site_configuration
