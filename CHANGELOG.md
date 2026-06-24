@@ -670,3 +670,18 @@ Initial release.
 - fix issues with config normalization
 - make collector cancellation raise pending errors
 - replace Cucumber/Aruba CLI tests with sus tests that call the Thor CLI directly
+
+## 0.45.1
+- fix CLI execution by using relative requires
+- update schema generation and generated schemas
+- support patterns in list item types
+- resolve SXL schema core definitions dynamically
+- add CLI tests and split message tests
+
+## 0.45.2
+- update gems
+- add AGENTS.md
+- replace em dashes to avoid UTF issues
+
+## 0.46.0
+- add outgoing message buffering for sites
