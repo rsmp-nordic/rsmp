@@ -172,7 +172,6 @@ describe RSMP::Site do
           'supervisors' => [],
           'sxls' => { 'tlc' => '1.2.1' },
           'message_buffer' => {
-            'enabled' => true,
             'max_messages' => 10_000,
             'statuses' => true
           }

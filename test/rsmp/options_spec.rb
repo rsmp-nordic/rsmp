@@ -23,9 +23,8 @@ describe RSMP::Options do
       options = RSMP::Site::Options.new({})
 
       expect(options.to_h['message_buffer']).to be == {
-        'enabled' => true,
         'max_messages' => 10_000,
-        'statuses' => []
+        'statuses' => true
       }
     end
 

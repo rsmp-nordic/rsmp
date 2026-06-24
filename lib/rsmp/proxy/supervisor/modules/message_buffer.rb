@@ -7,10 +7,6 @@ module RSMP
           @site_settings['message_buffer'] || {}
         end
 
-        def message_buffer_enabled?
-          message_buffer_settings['enabled'] != false
-        end
-
         def message_buffer_max_messages
           message_buffer_settings['max_messages'] || 10_000
         end
@@ -79,7 +75,6 @@ module RSMP
         end
 
         def prepare_message_for_buffer(message, core_version: @core_version, for_send: false)
-          return unless message_buffer_enabled?
           return unless site_originated_buffer_candidate? message
           return false if message.is_a?(RSMP::StatusUpdate) && status_buffer_selectors == false
           return false if message.is_a?(RSMP::Alarm) && !receive_alarms?
