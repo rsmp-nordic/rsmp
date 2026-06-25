@@ -166,11 +166,12 @@ module RSMP
         def self.index_items(items)
           items.keys.sort.to_h do |key|
             arguments = items[key]['arguments'] || {}
-            [key, {
-              'arguments' => arguments.keys.sort,
-              'required_arguments' => required_argument_names(items[key]),
-              'optional_arguments' => arguments.select { |_name, argument| argument['optional'] == true }.keys.sort
-            }]
+            entry = {}
+            required = required_argument_names(items[key])
+            optional = arguments.select { |_name, argument| argument['optional'] == true }.keys.sort
+            entry['required'] = required unless required.empty?
+            entry['optional'] = optional unless optional.empty?
+            [key, entry]
           end
         end
 

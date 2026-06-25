@@ -8,27 +8,33 @@
       ]
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "protocol"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "protocol"
+            }
           }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Type of communication error, e.g. NTP or RSMP",
-            "type" : "string",
-            "enum" : [
-              "ntp",
-              "rsmp"
-            ]
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Type of communication error, e.g. NTP or RSMP",
+              "type" : "string",
+              "enum" : [
+                "ntp",
+                "rsmp"
+              ]
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

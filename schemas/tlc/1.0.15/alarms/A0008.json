@@ -8,23 +8,29 @@
       ]
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "timeplan"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "timeplan"
+            }
           }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Current time plan",
-            "$ref" : "../defs/definitions.json#/integer"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Current time plan",
+              "type" : "integer"
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

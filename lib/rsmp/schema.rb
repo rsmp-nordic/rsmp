@@ -218,7 +218,7 @@ module RSMP
     # raises an error if the schema type/version is not found, or has no status catalogue
     def self.status_catalogue(type, version)
       sxl_catalogue(type, version, :statuses).transform_keys(&:to_sym).transform_values do |status|
-        status.fetch('arguments', []).map(&:to_sym)
+        (Array(status['required']) + Array(status['optional'])).sort.map(&:to_sym)
       end
     end
 

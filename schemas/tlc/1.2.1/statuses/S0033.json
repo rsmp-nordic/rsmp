@@ -60,11 +60,11 @@
                   },
                   "e" : {
                     "description" : "Estimated green extension provided by the priority, in seconds\nOnly used when state is 'completed'.",
-                    "$ref" : "../defs/definitions.json#/integer"
+                    "type" : "integer"
                   },
                   "d" : {
                     "description" : "Estimated red reduction provided by the priority, in seconds\nOnly used when state is 'completed'.",
-                    "$ref" : "../defs/definitions.json#/integer"
+                    "type" : "integer"
                   }
                 }
               }

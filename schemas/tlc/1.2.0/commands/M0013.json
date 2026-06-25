@@ -12,40 +12,46 @@
       "const" : "setInput"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "status"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "status"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Sets/Unsets a block of 16 inputs at a time. Can be repeated to set several blocks of 16 inputs. Values are separated with comma. Blocks are separated with semicolon.\nFormat: [Offset];[Bits to set];[Bits to unset];...",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Sets/Unsets a block of 16 inputs at a time. Can be repeated to set several blocks of 16 inputs. Values are separated with comma. Blocks are separated with semicolon.\nFormat: [Offset];[Bits to set];[Bits to unset];...",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "securityCode"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Security code 2",
+              "type" : "string"
+            }
           }
         }
       }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "securityCode"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Security code 2",
-            "type" : "string"
-          }
-        }
-      }
-    }
-  ]
+    ]
+  }
 }
