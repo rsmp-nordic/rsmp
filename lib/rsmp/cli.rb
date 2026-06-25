@@ -59,6 +59,7 @@ module RSMP
     method_option :supervisors, type: :string, aliases: '-s',
                                 banner: 'ip:port,... list of supervisor to connect to'
     method_option :core, type: :string, banner: "Core version: [#{RSMP::Schema.core_versions.join(' ')}]", enum: RSMP::Schema.core_versions
+    method_option :sxls, type: :string, banner: 'SXL versions as name:version,...'
     method_option :type, type: :string, aliases: '-t', banner: 'Type of site: [tlc]', enum: ['tlc'],
                          default: 'tlc'
     method_option :log, type: :string, aliases: '-l', banner: 'Path to log file'
@@ -84,6 +85,7 @@ module RSMP
     method_option :ip, type: :string, banner: 'IP address to listen on'
     method_option :port, type: :string, aliases: '-p', banner: 'Port to listen on'
     method_option :core, type: :string, banner: "Core version: [#{RSMP::Schema.core_versions.join(' ')}]", enum: RSMP::Schema.core_versions
+    method_option :sxls, type: :string, banner: 'Default SXL versions as name:version,...'
     method_option :log, type: :string, aliases: '-l', banner: 'Path to log file'
     method_option :json, type: :boolean, aliases: '-j', banner: 'Show JSON messages in log'
     def supervisor
@@ -136,8 +138,8 @@ module RSMP
 
     def apply_basic_site_options(settings)
       settings['site_id'] = options[:id] if options[:id]
-      settings['core_version'] = options[:core] || ENV['CORE_VERSION'] if options[:core] || ENV['CORE_VERSION']
-      settings['sxls'] = parse_sxls(ENV['SXLS']) if ENV['SXLS']
+      settings['core_version'] = options[:core] if options[:core]
+      settings['sxls'] = parse_sxls(options[:sxls]) if options[:sxls]
     end
 
     def parse_sxls(value)
@@ -243,7 +245,7 @@ module RSMP
 
     def apply_supervisor_options(settings, log_settings)
       apply_basic_supervisor_options(settings)
-      apply_core_version_option(settings)
+      apply_version_options(settings)
       apply_log_options(log_settings)
     end
 
@@ -253,11 +255,17 @@ module RSMP
       settings['port'] = options[:port] if options[:port]
     end
 
-    def apply_core_version_option(settings)
-      return unless options[:core]
+    def apply_version_options(settings)
+      return unless options[:core] || options[:sxls]
 
-      settings['default'] ||= {}
-      settings['default']['core_version'] = options[:core]
+      sxls = parse_sxls(options[:sxls]) if options[:sxls]
+      apply_version_overrides(settings['default'] ||= {}, sxls)
+      (settings['sites'] || {}).each_value { |site_settings| apply_version_overrides(site_settings, sxls) }
+    end
+
+    def apply_version_overrides(settings, sxls)
+      settings['core_version'] = options[:core] if options[:core]
+      settings['sxls'] = sxls if sxls
     end
 
     def apply_log_options(log_settings)

@@ -172,6 +172,15 @@ describe RSMP::CLI do
       }
     end
 
+    it 'applies the sxls option' do
+      result = invoke_cli('site', '--sxls', 'tlc:1.3.0,vms:1.0.0')
+
+      expect(result.site_run[:settings]['sxls']).to be == {
+        'tlc' => '1.3.0',
+        'vms' => '1.0.0'
+      }
+    end
+
     it 'loads config files' do
       with_temp_config('site.yaml', "site_id: RN+SI0932\n") do |path|
         result = invoke_cli('site', '-c', path)
@@ -235,6 +244,7 @@ describe RSMP::CLI do
         '--ip', '0.0.0.0',
         '-p', '13111',
         '--core', '3.3.0',
+        '--sxls', 'tlc:1.3.0,vms:1.0.0',
         '--log', 'supervisor.log',
         '--json'
       )
@@ -243,13 +253,44 @@ describe RSMP::CLI do
         'site_id' => 'RN+SU0639',
         'ip' => '0.0.0.0',
         'port' => '13111',
-        'default' => { 'core_version' => '3.3.0' }
+        'default' => {
+          'core_version' => '3.3.0',
+          'sxls' => {
+            'tlc' => '1.3.0',
+            'vms' => '1.0.0'
+          }
+        }
       }
       expect(result.supervisor_run[:log_settings]).to be == {
         'active' => true,
         'path' => 'supervisor.log',
         'json' => true
       }
+    end
+
+    it 'applies core and sxls options to default and configured sites' do
+      with_temp_config('supervisor.yaml', <<~YAML) do |path|
+        default:
+          core_version: 3.2.2
+          sxls:
+            tlc: '1.2.1'
+        sites:
+          RN+SI0001:
+            core_version: 3.2.1
+            sxls:
+              tlc: '1.1.0'
+      YAML
+        result = invoke_cli('supervisor', '-c', path, '--core', '3.3.0', '--sxls', 'tlc:1.3.0,vms:1.0.0')
+
+        expected_sxls = {
+          'tlc' => '1.3.0',
+          'vms' => '1.0.0'
+        }
+        expect(result.supervisor_run[:settings].dig('default', 'core_version')).to be == '3.3.0'
+        expect(result.supervisor_run[:settings].dig('default', 'sxls')).to be == expected_sxls
+        expect(result.supervisor_run[:settings].dig('sites', 'RN+SI0001', 'core_version')).to be == '3.3.0'
+        expect(result.supervisor_run[:settings].dig('sites', 'RN+SI0001', 'sxls')).to be == expected_sxls
+      end
     end
 
     it 'reports invalid config files' do
