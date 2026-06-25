@@ -38,6 +38,7 @@ Both `--config` and `--options` are accepted as aliases.
 
 ```yaml
 site_id: RN+SI0001
+connection_role: client
 supervisors:
   - ip: 127.0.0.1
     port: 12111
@@ -51,6 +52,25 @@ message_buffer:
   statuses: true
 log:
   json: true
+```
+
+`connection_role` controls which side opens the TCP connection:
+
+- `client` means the node connects to configured remote endpoints.
+- `server` means the node listens for incoming connections.
+
+Configurable connection roles are available from Core 3.3.0.
+
+For sites, `client` is the default and uses the `supervisors` endpoint list. A site in `server` role listens on `ip` and `port` instead.
+
+```yaml
+site_id: RN+SI0001
+connection_role: server
+ip: 0.0.0.0
+port: 12111
+core_version: "3.3.0"
+sxls:
+  tlc: "1.3.0"
 ```
 
 ## Message Buffer
@@ -80,6 +100,7 @@ The current implementation uses an in-memory buffer per supervisor connection. B
 
 ```yaml
 port: 12111
+connection_role: server
 default:
   sxls:
     tlc: "1.3.0"
@@ -105,6 +126,22 @@ sites:
 
 Per-site configuration follows the supervisor-side site schema (`lib/rsmp/options/schemas/supervisor_site.json`). Each site entry can define an `sxls` map, or inherit it from `default`. The SXL name `core` is reserved for the RSMP core schema and cannot be used as an SXL key.
 
+For supervisors, `server` is the default and listens on `ip`/`port`. A supervisor in `client` role connects out to the endpoints listed under each configured site. The outbound endpoint list uses the existing `supervisors` key in the per-site settings:
+
+```yaml
+connection_role: client
+sites:
+  RN+SI0001:
+    core_version: "3.3.0"
+    sxls:
+      tlc: "1.3.0"
+    supervisors:
+      - ip: 127.0.0.1
+        port: 12111
+```
+
+This reversed setup is used when the site listens and the supervision system initiates the connection.
+
 ## Supervisor settings
 
 The following lists the top-level supervisor settings and the keys available for per-site configuration under `sites`.
@@ -113,6 +150,7 @@ Top-level supervisor settings
 
 - `port`: integer|string - TCP port the supervisor listens on (default: `12111`).
 - `ip`: string - address to bind to.
+- `connection_role`: string - `server` to listen for sites, or `client` to connect to configured site endpoints (default: `server`).
 - `ips`: string or array - `'all'` or a list of allowed IP addresses.
 - `site_id`: string - optional site identifier for the supervisor itself.
 - `max_sites`: integer - limit concurrent connected sites.
@@ -143,6 +181,25 @@ Common per-site keys
 - `timeouts` (object): per-site timeouts - `connect`, `watchdog`, `acknowledgement` (numbers, seconds).
 - `send_after_connect` (boolean): whether to send messages after connect without waiting for additional events.
 - `skip_validation` (array[string]): list of message types to skip JSON schema validation for this site.
+- `security_codes` (object): map of security code levels to secrets.
+
+## Site settings
+
+The following lists the top-level site settings.
+
+- `site_id` (string): site identifier sent in the Version message.
+- `type` (string): optional site type.
+- `connection_role` (string): `client` to connect to supervisors, or `server` to listen for supervisor connections (default: `client`).
+- `ip` (string): bind address when `connection_role` is `server` (default: `0.0.0.0`).
+- `port` (integer|string): listen port when `connection_role` is `server`. If omitted, it defaults to the first configured supervisor port.
+- `supervisors` (array): supervisor endpoints used when `connection_role` is `client`.
+- `sxls` (object): SXL versions used by the site, keyed by SXL name.
+- `core_version` (string): RSMP Core version to use.
+- `intervals` (object): timer settings - `timer`, `watchdog`, `reconnect`.
+- `timeouts` (object): timeout settings - `watchdog`, `acknowledgement`.
+- `send_after_connect` (boolean): whether to send messages after connect without waiting for additional events.
+- `message_buffer` (object): outgoing message buffer settings.
+- `components` (object): component definitions.
 - `security_codes` (object): map of security code levels to secrets.
 
 ### TLC-specific settings

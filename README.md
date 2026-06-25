@@ -28,7 +28,7 @@ require 'rsmp'
 RSMP::Supervisor.new.start  		# run supervisor until Ctlr-C is pressed
 ```
 
-Be default, a site will try to connect to a single supervisor on localhost 127.0.0.1, port 12111. By default, a supervisor will listen for sites on port 12111 and accept any site.
+By default, a site will try to connect to a single supervisor on localhost 127.0.0.1, port 12111. By default, a supervisor will listen for sites on port 12111 and accept any site.
 
 You can pass options to control ip adresseses, ports, logging and other behaviour:
 
@@ -143,6 +143,8 @@ Sites and supervisors configure one or more SXLs with `sxls`:
 sxls:
   tlc: '1.3.0'
 ```
+
+See [configuration](documentation/configuration.md) for connection-role examples and other YAML settings.
 
 ## Command-line tool
 Tools for easily running RSMP supervisors and sites. The binary is called ```rsmp```.
