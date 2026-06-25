@@ -44,7 +44,7 @@
           "properties" : {
             "s" : {
               "description" : "Occupancy in percent (0-100%)",
-              "$ref" : "../defs/definitions.json#/integer"
+              "type" : "integer"
             }
           }
         }

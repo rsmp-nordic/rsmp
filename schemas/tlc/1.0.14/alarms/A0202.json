@@ -8,28 +8,34 @@
       ]
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "color"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "color"
+            }
           }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Color of lamp",
-            "type" : "string",
-            "enum" : [
-              "green",
-              "red",
-              "yellow"
-            ]
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Color of lamp",
+              "type" : "string",
+              "enum" : [
+                "green",
+                "red",
+                "yellow"
+              ]
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

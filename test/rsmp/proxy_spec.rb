@@ -485,12 +485,14 @@ describe RSMP::Proxy do
       ]
     end
 
-    it 'keeps JSON-native status values for 3.3.0' do
+    it 'preserves status values for known qualities' do
       proxy, = build_core_3_3_supervisor_proxy
 
       expect(proxy.rsmpify_value({ 'ok' => true }, 'recent')).to be == { 'ok' => true }
       expect(proxy.rsmpify_value(3, 'recent')).to be == 3
       expect(proxy.rsmpify_value(false, 'recent')).to be == false
+      expect(proxy.rsmpify_value('3', 'recent')).to be == '3'
+      expect(proxy.rsmpify_value(3, 'unknown')).to be == nil
     end
 
     it 'does not add legacy NTS attributes for 3.3.0 messages' do

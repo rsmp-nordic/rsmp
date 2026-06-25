@@ -19,6 +19,25 @@
           }
         }
       ]
+    },
+    "age_unknown_or_undefined" : {
+      "allOf" : [
+        {
+          "required" : [
+            "age"
+          ]
+        },
+        {
+          "properties" : {
+            "age" : {
+              "enum" : [
+                "undefined",
+                "unknown"
+              ]
+            }
+          }
+        }
+      ]
     }
   }
 }

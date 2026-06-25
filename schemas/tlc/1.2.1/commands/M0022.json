@@ -22,228 +22,234 @@
       "const" : "requestPriority"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "requestId"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "requestId"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "A string that uniquely identifies the request on the controller",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "A string that uniquely identifies the request on the controller",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "signalGroupId"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "signalGroupId"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "ID of a signal group component.",
-            "type" : "string"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "inputId"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "ID of a signal group component.",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "ID of an input, using the same numbering scheme as M0006",
-            "$ref" : "../defs/definitions.json#/integer"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "inputId"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "connectionId"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "ID of a connection, connecting an ingoing and an outgoing lane",
-            "$ref" : "../defs/definitions.json#/integer"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "approachId"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "ID of an input, using the same numbering scheme as M0006",
+              "type" : "integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "ID of an intersection approach",
-            "$ref" : "../defs/definitions.json#/integer"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "connectionId"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "laneInId"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "ID of an ingoing lane",
-            "$ref" : "../defs/definitions.json#/integer"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "laneOutId"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "ID of a connection, connecting an ingoing and an outgoing lane",
+              "type" : "integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "ID of an outgoing lane",
-            "$ref" : "../defs/definitions.json#/integer"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "approachId"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "priorityId"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "ID of a priority",
-            "$ref" : "../defs/definitions.json#/integer"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "type"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "ID of an intersection approach",
+              "type" : "integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "type" : "string",
-            "enum" : [
-              "cancel",
-              "new",
-              "update"
-            ]
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "laneInId"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "level"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "ID of an ingoing lane",
+              "type" : "integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "0: Lowest, 14: Highest",
-            "$ref" : "../defs/definitions.json#/integer"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "laneOutId"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "eta"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Estimated time of arrival to the intersection, in seconds",
-            "$ref" : "../defs/definitions.json#/integer"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "vehicleType"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "ID of an outgoing lane",
+              "type" : "integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Vehicle type",
-            "type" : "string",
-            "enum" : [
-              "bicycle",
-              "bus",
-              "car",
-              "emergency",
-              "heavyTruck",
-              "lightTruck",
-              "motorcycle",
-              "other",
-              "pedestrian",
-              "safetyCar",
-              "specialTransport",
-              "tram"
-            ]
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "priorityId"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "ID of a priority",
+              "type" : "integer"
+            }
+          }
+        }
+      },
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "type"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "type" : "string",
+              "enum" : [
+                "cancel",
+                "new",
+                "update"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "level"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "0: Lowest, 14: Highest",
+              "type" : "integer"
+            }
+          }
+        }
+      },
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "eta"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Estimated time of arrival to the intersection, in seconds",
+              "type" : "integer"
+            }
+          }
+        }
+      },
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "vehicleType"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Vehicle type",
+              "type" : "string",
+              "enum" : [
+                "bicycle",
+                "bus",
+                "car",
+                "emergency",
+                "heavyTruck",
+                "lightTruck",
+                "motorcycle",
+                "other",
+                "pedestrian",
+                "safetyCar",
+                "specialTransport",
+                "tram"
+              ]
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

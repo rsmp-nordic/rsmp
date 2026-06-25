@@ -27,7 +27,7 @@
           "properties" : {
             "s" : {
               "description" : "Current traffic situation",
-              "$ref" : "../defs/definitions.json#/integer"
+              "type" : "integer"
             }
           }
         }

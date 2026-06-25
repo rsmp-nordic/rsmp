@@ -12,104 +12,110 @@
       ]
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "detector"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "detector"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Designation of the detector (hardware)",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Designation of the detector (hardware)",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "type"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "type"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Type of detector.",
-            "type" : "string",
-            "enum" : [
-              "input",
-              "loop"
-            ]
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "errormode"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Type of detector.",
+              "type" : "string",
+              "enum" : [
+                "input",
+                "loop"
+              ]
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Detector forced on/off while detector error",
-            "type" : "string",
-            "enum" : [
-              "off",
-              "on"
-            ]
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "errormode"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "manual"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Manually controlled detector logic (True/False)",
-            "$ref" : "../defs/definitions.json#/boolean"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "logicerror"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Detector forced on/off while detector error",
+              "type" : "string",
+              "enum" : [
+                "off",
+                "on"
+              ]
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Type of logic error",
-            "type" : "string",
-            "enum" : [
-              "always_off",
-              "always_on",
-              "intermittent"
-            ]
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "manual"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Manually controlled detector logic (True/False)",
+              "type" : "boolean"
+            }
+          }
+        }
+      },
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "logicerror"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Type of logic error",
+              "type" : "string",
+              "enum" : [
+                "always_off",
+                "always_on",
+                "intermittent"
+              ]
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

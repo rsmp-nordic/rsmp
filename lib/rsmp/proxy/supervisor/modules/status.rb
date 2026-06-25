@@ -4,14 +4,10 @@ module RSMP
       # Status request and subscription handling
       module Status
         def rsmpify_value(value, quality)
-          if value.is_a?(Array) || value.is_a?(Set)
-            value
-          elsif %w[undefined unknown].include?(quality.to_s)
+          if %w[undefined unknown].include?(quality.to_s)
             nil
-          elsif core_3_3?
-            value
           else
-            value.to_s
+            value
           end
         end
 

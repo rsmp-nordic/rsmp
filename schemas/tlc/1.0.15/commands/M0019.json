@@ -14,74 +14,80 @@
       "const" : "setInput"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "status"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "status"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "False: Force input\nTrue: Release input",
+              "type" : "boolean"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "False: Force input\nTrue: Release input",
-            "$ref" : "../defs/definitions.json#/boolean"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "securityCode"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "securityCode"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Security code 2",
-            "type" : "string"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "input"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Security code 2",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Number of Input",
-            "$ref" : "../defs/definitions.json#/integer"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "input"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "inputValue"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Number of Input",
+              "type" : "integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "False: input forced to False\nTrue: input forced to True",
-            "$ref" : "../defs/definitions.json#/boolean"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "inputValue"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "False: input forced to False\nTrue: input forced to True",
+              "type" : "boolean"
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

@@ -2,7 +2,901 @@
   "$schema" : "https://json-schema.org/draft/2020-12/schema",
   "properties" : {
     "arg" : {
-      "$ref" : "commands.json"
+      "allOf" : [
+        {
+          "$ref" : "commands.json"
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0001"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0001"
+                    },
+                    "n" : {
+                      "const" : "intersection"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0001"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0001"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0001"
+                    },
+                    "n" : {
+                      "const" : "timeout"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0002"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0002"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0002"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0002"
+                    },
+                    "n" : {
+                      "const" : "timeplan"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0003"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0003"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0003"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0003"
+                    },
+                    "n" : {
+                      "const" : "traficsituation"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0004"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0004"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0004"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0005"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0005"
+                    },
+                    "n" : {
+                      "const" : "emergencyroute"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0005"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0005"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0006"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0006"
+                    },
+                    "n" : {
+                      "const" : "input"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0006"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0006"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0007"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0007"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0007"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0008"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0008"
+                    },
+                    "n" : {
+                      "const" : "mode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0008"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0008"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0010"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0010"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0010"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0011"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0011"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0011"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0019"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0019"
+                    },
+                    "n" : {
+                      "const" : "input"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0019"
+                    },
+                    "n" : {
+                      "const" : "inputValue"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0019"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0019"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0103"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0103"
+                    },
+                    "n" : {
+                      "const" : "newSecurityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0103"
+                    },
+                    "n" : {
+                      "const" : "oldSecurityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0103"
+                    },
+                    "n" : {
+                      "const" : "status"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if" : {
+            "contains" : {
+              "required" : [
+                "cCI"
+              ],
+              "properties" : {
+                "cCI" : {
+                  "const" : "M0104"
+                }
+              }
+            }
+          },
+          "then" : {
+            "allOf" : [
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0104"
+                    },
+                    "n" : {
+                      "const" : "day"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0104"
+                    },
+                    "n" : {
+                      "const" : "hour"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0104"
+                    },
+                    "n" : {
+                      "const" : "minute"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0104"
+                    },
+                    "n" : {
+                      "const" : "month"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0104"
+                    },
+                    "n" : {
+                      "const" : "second"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0104"
+                    },
+                    "n" : {
+                      "const" : "securityCode"
+                    }
+                  }
+                }
+              },
+              {
+                "contains" : {
+                  "required" : [
+                    "cCI",
+                    "n"
+                  ],
+                  "properties" : {
+                    "cCI" : {
+                      "const" : "M0104"
+                    },
+                    "n" : {
+                      "const" : "year"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   }
 }

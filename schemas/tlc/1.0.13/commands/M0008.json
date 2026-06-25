@@ -13,57 +13,63 @@
       "const" : "setForceDetectorLogic"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "status"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "status"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "False: Deactivate manual control of detector logic\nTrue: Activate manual control of detector logic",
+              "type" : "boolean"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "False: Deactivate manual control of detector logic\nTrue: Activate manual control of detector logic",
-            "$ref" : "../defs/definitions.json#/boolean"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "securityCode"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "securityCode"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Security code 2",
-            "type" : "string"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "mode"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Security code 2",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "False: Deactivate detector logic\nTrue: Activate detector logic",
-            "$ref" : "../defs/definitions.json#/boolean"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "mode"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "False: Deactivate detector logic\nTrue: Activate detector logic",
+              "type" : "boolean"
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

@@ -7,7 +7,7 @@
   },
   "statuses" : {
     "S0001" : {
-      "arguments" : [
+      "required" : [
         "basecyclecounter",
         "cyclecounter",
         "signalgroupstatus",
@@ -15,118 +15,118 @@
       ]
     },
     "S0002" : {
-      "arguments" : [
+      "required" : [
         "detectorlogicstatus"
       ]
     },
     "S0003" : {
-      "arguments" : [
+      "required" : [
         "extendedinputstatus",
         "inputstatus"
       ]
     },
     "S0004" : {
-      "arguments" : [
+      "required" : [
         "extendedoutputstatus",
         "outputstatus"
       ]
     },
     "S0005" : {
-      "arguments" : [
+      "required" : [
         "status"
       ]
     },
     "S0006" : {
-      "arguments" : [
+      "required" : [
         "emergencystage",
         "status"
       ]
     },
     "S0007" : {
-      "arguments" : [
+      "required" : [
         "intersection",
         "status"
       ]
     },
     "S0008" : {
-      "arguments" : [
+      "required" : [
         "intersection",
         "status"
       ]
     },
     "S0009" : {
-      "arguments" : [
+      "required" : [
         "intersection",
         "status"
       ]
     },
     "S0010" : {
-      "arguments" : [
+      "required" : [
         "intersection",
         "status"
       ]
     },
     "S0011" : {
-      "arguments" : [
+      "required" : [
         "intersection",
         "status"
       ]
     },
     "S0012" : {
-      "arguments" : [
+      "required" : [
         "intersection",
         "status"
       ]
     },
     "S0013" : {
-      "arguments" : [
+      "required" : [
         "intersection",
         "status"
       ]
     },
     "S0014" : {
-      "arguments" : [
+      "required" : [
         "status"
       ]
     },
     "S0015" : {
-      "arguments" : [
+      "required" : [
         "status"
       ]
     },
     "S0016" : {
-      "arguments" : [
+      "required" : [
         "number"
       ]
     },
     "S0017" : {
-      "arguments" : [
+      "required" : [
         "number"
       ]
     },
     "S0018" : {
-      "arguments" : [
+      "required" : [
         "number"
       ]
     },
     "S0019" : {
-      "arguments" : [
+      "required" : [
         "number"
       ]
     },
     "S0020" : {
-      "arguments" : [
+      "required" : [
         "controlmode",
         "intersection"
       ]
     },
     "S0021" : {
-      "arguments" : [
+      "required" : [
         "detectorlogics"
       ]
     },
     "S0025" : {
-      "arguments" : [
+      "required" : [
         "ToGConfidence",
         "ToRConfidence",
         "likelyToGEstimate",
@@ -138,24 +138,24 @@
       ]
     },
     "S0091" : {
-      "arguments" : [
+      "required" : [
         "status",
         "user"
       ]
     },
     "S0092" : {
-      "arguments" : [
+      "required" : [
         "status",
         "user"
       ]
     },
     "S0095" : {
-      "arguments" : [
+      "required" : [
         "status"
       ]
     },
     "S0096" : {
-      "arguments" : [
+      "required" : [
         "day",
         "hour",
         "minute",
@@ -165,25 +165,25 @@
       ]
     },
     "S0201" : {
-      "arguments" : [
+      "required" : [
         "starttime",
         "vehicles"
       ]
     },
     "S0202" : {
-      "arguments" : [
+      "required" : [
         "speed",
         "starttime"
       ]
     },
     "S0203" : {
-      "arguments" : [
+      "required" : [
         "occupancy",
         "starttime"
       ]
     },
     "S0204" : {
-      "arguments" : [
+      "required" : [
         "B",
         "C",
         "F",
@@ -199,7 +199,7 @@
   },
   "commands" : {
     "M0001" : {
-      "arguments" : [
+      "required" : [
         "intersection",
         "securityCode",
         "status",
@@ -207,66 +207,66 @@
       ]
     },
     "M0002" : {
-      "arguments" : [
+      "required" : [
         "securityCode",
         "status",
         "timeplan"
       ]
     },
     "M0003" : {
-      "arguments" : [
+      "required" : [
         "securityCode",
         "status",
         "traficsituation"
       ]
     },
     "M0004" : {
-      "arguments" : [
+      "required" : [
         "securityCode",
         "status"
       ]
     },
     "M0005" : {
-      "arguments" : [
+      "required" : [
         "emergencyroute",
         "securityCode",
         "status"
       ]
     },
     "M0006" : {
-      "arguments" : [
+      "required" : [
         "input",
         "securityCode",
         "status"
       ]
     },
     "M0007" : {
-      "arguments" : [
+      "required" : [
         "securityCode",
         "status"
       ]
     },
     "M0008" : {
-      "arguments" : [
+      "required" : [
         "mode",
         "securityCode",
         "status"
       ]
     },
     "M0010" : {
-      "arguments" : [
+      "required" : [
         "securityCode",
         "status"
       ]
     },
     "M0011" : {
-      "arguments" : [
+      "required" : [
         "securityCode",
         "status"
       ]
     },
     "M0019" : {
-      "arguments" : [
+      "required" : [
         "input",
         "inputValue",
         "securityCode",
@@ -274,14 +274,14 @@
       ]
     },
     "M0103" : {
-      "arguments" : [
+      "required" : [
         "newSecurityCode",
         "oldSecurityCode",
         "status"
       ]
     },
     "M0104" : {
-      "arguments" : [
+      "required" : [
         "day",
         "hour",
         "minute",
@@ -293,50 +293,32 @@
     }
   },
   "alarms" : {
-    "A0001" : {
-      "arguments" : []
-    },
-    "A0002" : {
-      "arguments" : []
-    },
-    "A0003" : {
-      "arguments" : []
-    },
-    "A0004" : {
-      "arguments" : []
-    },
-    "A0005" : {
-      "arguments" : []
-    },
-    "A0006" : {
-      "arguments" : []
-    },
-    "A0007" : {
-      "arguments" : []
-    },
+    "A0001" : {},
+    "A0002" : {},
+    "A0003" : {},
+    "A0004" : {},
+    "A0005" : {},
+    "A0006" : {},
+    "A0007" : {},
     "A0008" : {
-      "arguments" : [
+      "required" : [
         "timeplan"
       ]
     },
-    "A0009" : {
-      "arguments" : []
-    },
-    "A0101" : {
-      "arguments" : []
-    },
+    "A0009" : {},
+    "A0101" : {},
     "A0201" : {
-      "arguments" : [
+      "required" : [
         "color"
       ]
     },
     "A0202" : {
-      "arguments" : [
+      "required" : [
         "color"
       ]
     },
     "A0301" : {
-      "arguments" : [
+      "required" : [
         "detector",
         "errormode",
         "manual",
@@ -344,7 +326,7 @@
       ]
     },
     "A0302" : {
-      "arguments" : [
+      "required" : [
         "detector",
         "errormode",
         "logicerror",
