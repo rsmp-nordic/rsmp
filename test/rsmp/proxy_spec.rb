@@ -500,6 +500,31 @@ describe RSMP::Proxy do
       ]
     end
 
+    it 'marks commands as undefined for unknown components in CommandResponse' do
+      proxy, protocol = build_core_3_3_supervisor_proxy
+      message = RSMP::CommandRequest.new(
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
+        'cId' => 'bad',
+        'arg' => [
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'status', 'v' => 'NormalControl' },
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'securityCode', 'v' => '1111' },
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'timeout', 'v' => '0' },
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'intersection', 'v' => '0' }
+        ]
+      )
+
+      proxy.process_command_request message
+
+      response = JSON.parse(protocol.lines.last)
+      expect(response['type']).to be == 'CommandResponse'
+      expect(response['rvs']).to be == [
+        { 'cCI' => 'M0001', 'n' => 'status', 'v' => nil, 'age' => 'undefined' },
+        { 'cCI' => 'M0001', 'n' => 'securityCode', 'v' => nil, 'age' => 'undefined' },
+        { 'cCI' => 'M0001', 'n' => 'timeout', 'v' => nil, 'age' => 'undefined' },
+        { 'cCI' => 'M0001', 'n' => 'intersection', 'v' => nil, 'age' => 'undefined' }
+      ]
+    end
+
     it 'allows optional command arguments to be omitted' do
       proxy, protocol = build_core_3_3_supervisor_proxy
       message = RSMP::CommandRequest.new(

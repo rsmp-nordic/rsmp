@@ -1,3 +1,5 @@
+require_relative '../support/site_proxy_stub'
+
 describe RSMP::CommandResponseCollector do
   let(:collect_timeout) { 0.01 }
   let(:want) do
@@ -41,6 +43,25 @@ describe RSMP::CommandResponseCollector do
       collector.start
       collector.receive build_command_response(ok.values)
       expect(collector.summary).to be == [true, true, true]
+      expect(collector.done?).to be == true
+    end
+
+    it 'matches undefined command response values by code and name' do
+      task = Async::Task.current
+      proxy = RSMP::SiteProxyStub.new task
+      request = [
+        { 'cCI' => 'M0001', 'n' => 'securityCode', 'v' => '2222' },
+        { 'cCI' => 'M0001', 'n' => 'status', 'v' => 'NormalControl' },
+        { 'cCI' => 'M0001', 'n' => 'timeout', 'v' => 0 },
+        { 'cCI' => 'M0001', 'n' => 'intersection', 'v' => 0 }
+      ]
+      response = request.map { |item| item.merge('v' => nil, 'age' => 'undefined') }
+      collector = subject.new(proxy, request, timeout: collect_timeout)
+
+      collector.start
+      collector.receive build_command_response(response)
+
+      expect(collector.summary).to be == [true, true, true, true]
       expect(collector.done?).to be == true
     end
 

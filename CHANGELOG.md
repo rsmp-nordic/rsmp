@@ -699,3 +699,6 @@ Initial release.
 - return `unknown` for unimplemented commands and statuses instead of rejecting the whole request
 - omit legacy NTS message attributes from outgoing Core 3.3.0 messages
 -  `CORE_VERSION` or `SXLS` environment variables with command line options `--core` and `--sxls`
+
+## 0.48.1
+- fix command responses and collectors for `v=nil` with `age=undefined` or `age=unknown`

@@ -10,6 +10,7 @@ module RSMP
 
     def match_value?(item)
       return true unless @want.key?('v')
+      return true if %w[undefined unknown].include?(item['age'])
 
       want = @want['v']
       got = item['v']

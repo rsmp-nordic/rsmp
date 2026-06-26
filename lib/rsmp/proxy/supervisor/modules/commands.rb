@@ -69,6 +69,13 @@ module RSMP
           end
         end
 
+        def mark_commands_undefined(rvs)
+          rvs.each do |item|
+            item['age'] = 'undefined'
+            item['v'] = nil
+          end
+        end
+
         def execute_commands(message, component_id, rvs)
           component = @site.find_component component_id
           commands = simplify_command_requests message.attributes['arg']
@@ -82,7 +89,7 @@ module RSMP
         rescue UnknownComponent
           log "Received #{message.type} with unknown component id '#{component_id}' and cannot infer type",
               message: message, level: :warning
-          rvs.map { |item| item['age'] = 'undefined' }
+          mark_commands_undefined rvs
         end
 
         def process_command_request(message)
