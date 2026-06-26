@@ -7,28 +7,13 @@ module RSMP
           'site_id' => 'RN+SI0001',
           'connection_role' => 'client',
           'ip' => '0.0.0.0',
-          'supervisors' => [
-            { 'ip' => '127.0.0.1', 'port' => 12_111 }
-          ],
-          'sxls' => {
-            'tlc' => RSMP::Schema.latest_version(:tlc)
-          },
-          'intervals' => {
-            'timer' => 0.1,
-            'watchdog' => 1,
-            'reconnect' => 0.1
-          },
-          'timeouts' => {
-            'watchdog' => 2,
-            'acknowledgement' => 2
-          },
+          'supervisors' => default_supervisors,
+          'sxls' => default_sxls,
+          'intervals' => default_intervals,
+          'timeouts' => default_timeouts,
           'send_after_connect' => true,
           'message_buffer' => default_message_buffer,
-          'components' => {
-            'main' => {
-              'C1' => {}
-            }
-          }
+          'components' => default_components
         }
       end
 
@@ -43,6 +28,26 @@ module RSMP
           'max_messages' => 10_000,
           'statuses' => true
         }
+      end
+
+      def default_supervisors
+        [{ 'ip' => '127.0.0.1', 'port' => 12_111 }]
+      end
+
+      def default_sxls
+        { 'tlc' => RSMP::Schema.latest_version(:tlc) }
+      end
+
+      def default_intervals
+        { 'timer' => 0.1, 'watchdog' => 1, 'reconnect' => 0.1 }
+      end
+
+      def default_timeouts
+        { 'watchdog' => 2, 'acknowledgement' => 2 }
+      end
+
+      def default_components
+        { 'main' => { 'C1' => {} } }
       end
 
       def apply_defaults(options)

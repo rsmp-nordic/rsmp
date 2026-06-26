@@ -1,5 +1,6 @@
 require 'thor'
 require_relative '../rsmp'
+require_relative 'cli/configuration'
 
 module RSMP
   # CLI subcommands for SXL schema operations.
@@ -48,6 +49,8 @@ module RSMP
 
   # CLI commands for running RSMP site and supervisor.
   class CLI < Thor
+    include Configuration
+
     desc 'version', 'Show version'
     def version
       puts RSMP::VERSION
@@ -98,26 +101,6 @@ module RSMP
 
     register SchemaCLI, 'schema', 'schema COMMAND', 'SXL schema commands'
     register ConfigCLI, 'config', 'config COMMAND', 'Configuration commands'
-
-    no_commands do
-      def load_site_configuration
-        settings = {}
-        log_settings = { 'active' => true }
-
-        return [settings, log_settings] unless options[:config]
-
-        begin
-          options_object = site_options_class.load_file(options[:config])
-          settings = options_object.to_h
-          log_settings = log_settings.deep_merge(options_object.log_settings)
-        rescue RSMP::ConfigurationError => e
-          puts "Error: #{e}"
-          exit
-        end
-
-        [settings, log_settings]
-      end
-    end
 
     private
 
@@ -223,24 +206,6 @@ module RSMP
           site.stop
         end
       end
-    end
-
-    def load_supervisor_configuration
-      settings = {}
-      log_settings = { 'active' => true }
-
-      return [settings, log_settings] unless options[:config]
-
-      begin
-        options_object = RSMP::Supervisor::Options.load_file(options[:config])
-        settings = options_object.to_h
-        log_settings = log_settings.deep_merge(options_object.log_settings)
-      rescue RSMP::ConfigurationError => e
-        puts "Error: #{e}"
-        exit
-      end
-
-      [settings, log_settings]
     end
 
     def apply_supervisor_options(settings, log_settings)

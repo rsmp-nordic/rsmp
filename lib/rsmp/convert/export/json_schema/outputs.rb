@@ -74,7 +74,14 @@ module RSMP
         # convert commands to json schema
         def self.output_commands(out, items)
           out['defs/guards.json'] ||= output_json(GUARDS_JSON)
+          out['commands/commands.json'] = output_json commands_schema(items)
+          out['commands/command_requests.json'] = output_json command_requests_schema(items)
+          out['commands/command_responses.json'] = output_json command_responses_schema
 
+          items.each_pair { |key, item| output_command out, key, item }
+        end
+
+        def self.commands_schema(items)
           list = [{ 'properties' => { 'cCI' => { 'enum' => items.keys.sort } } }]
           items.keys.sort.each do |key|
             list << {
@@ -82,25 +89,24 @@ module RSMP
               'then' => { '$ref' => "#{key}.json" }
             }
           end
-          json = {
+          {
             '$schema' => 'https://json-schema.org/draft/2020-12/schema',
             'items' => { 'allOf' => list }
           }
-          out['commands/commands.json'] = output_json json
+        end
 
-          json = {
+        def self.command_requests_schema(items)
+          {
             '$schema' => 'https://json-schema.org/draft/2020-12/schema',
             'properties' => { 'arg' => command_request_arg_schema(items) }
           }
-          out['commands/command_requests.json'] = output_json json
+        end
 
-          json = {
+        def self.command_responses_schema
+          {
             '$schema' => 'https://json-schema.org/draft/2020-12/schema',
             'properties' => { 'rvs' => { '$ref' => 'commands.json' } }
           }
-          out['commands/command_responses.json'] = output_json json
-
-          items.each_pair { |key, item| output_command out, key, item }
         end
 
         def self.command_request_arg_schema(items)
@@ -152,50 +158,6 @@ module RSMP
           json['properties'] ||= {}
           json['properties']['cO'] = { 'const' => item['command'] }
           out["commands/#{key}.json"] = output_json json
-        end
-
-        def self.output_sxl_index(out, sxl)
-          out['sxl_index.json'] = output_json({
-                                                'meta' => sxl[:meta],
-                                                'statuses' => index_items(sxl[:statuses]),
-                                                'commands' => index_items(sxl[:commands]),
-                                                'alarms' => index_items(sxl[:alarms])
-                                              })
-        end
-
-        def self.index_items(items)
-          items.keys.sort.to_h do |key|
-            arguments = items[key]['arguments'] || {}
-            entry = {}
-            required = typed_arguments(arguments.reject { |_name, argument| argument['optional'] == true })
-            optional = typed_arguments(arguments.select { |_name, argument| argument['optional'] == true })
-            entry['required'] = required unless required.empty?
-            entry['optional'] = optional unless optional.empty?
-            [key, entry]
-          end
-        end
-
-        def self.typed_arguments(arguments)
-          arguments.keys.sort.to_h do |name|
-            [name, argument_type_descriptor(arguments[name])]
-          end
-        end
-
-        def self.argument_type_descriptor(argument)
-          type = argument['type']
-          case type
-          when 'array'
-            descriptor = { 'type' => type }
-            descriptor['items'] = typed_arguments(argument['items']) if argument['items'].is_a?(Hash)
-            descriptor
-          when 'object'
-            descriptor = { 'type' => type }
-            properties = argument['properties'] || argument['items']
-            descriptor['properties'] = typed_arguments(properties) if properties.is_a?(Hash)
-            descriptor
-          else
-            type
-          end
         end
 
         # output the json schema root

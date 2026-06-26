@@ -3,6 +3,21 @@ module RSMP
     module Export
       # Converts SXL definitions to JSON Schema files.
       module JSONSchema
+        DIRECT_JSON_TYPES = {
+          'boolean' => 'boolean',
+          'integer' => 'integer',
+          'number' => 'number',
+          'object' => 'object',
+          'null' => 'null'
+        }.freeze
+
+        DEFINITION_REFS = {
+          'boolean_as_string' => '../defs/definitions.json#/boolean',
+          'timestamp' => '../defs/definitions.json#/timestamp',
+          'integer_as_string' => '../defs/definitions.json#/integer',
+          'long_as_string' => '../defs/definitions.json#/integer'
+        }.freeze
+
         # convert a yaml item to json schema
         def self.build_value(item)
           out = {}
@@ -19,35 +34,25 @@ module RSMP
 
         # convert an item which is not a string-list, to json schema
         def self.handle_types(item, out)
-          case item['type']
-          when 'boolean'
-            out['type'] = 'boolean'
-          when 'boolean_as_string'
-            out['$ref'] = '../defs/definitions.json#/boolean'
-          when 'timestamp'
-            out['$ref'] = '../defs/definitions.json#/timestamp'
-          when 'integer', 'ordinal', 'unit', 'scale', 'long'
-            out['type'] = 'integer'
-          when 'integer_as_string', 'ordinal_as_string', 'unit_as_string', 'scale_as_string', 'long_as_string'
-            out['$ref'] = '../defs/definitions.json#/integer'
-          when 'number'
-            out['type'] = 'number'
-          when 'number_as_string'
-            out['type'] = 'string'
-            out['pattern'] = '^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$'
-          when 'array' # a json array
-            if item['items']
-              build_json_array item['items'], out
-            else
-              out['type'] = 'array'
-            end
-          when 'object'
-            out['type'] = 'object'
-          when 'null'
-            out['type'] = 'null'
-          else # string, base64, and any unknown types
-            out['type'] = 'string'
+          type = item['type']
+          return build_json_array_type(item, out) if type == 'array'
+          return build_number_as_string_type(out) if type == 'number_as_string'
+          return out['$ref'] = DEFINITION_REFS[type] if DEFINITION_REFS.key?(type)
+
+          out['type'] = DIRECT_JSON_TYPES.fetch(type, 'string')
+        end
+
+        def self.build_json_array_type(item, out)
+          if item['items']
+            build_json_array item['items'], out
+          else
+            out['type'] = 'array'
           end
+        end
+
+        def self.build_number_as_string_type(out)
+          out['type'] = 'string'
+          out['pattern'] = '^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$'
         end
 
         # convert an yaml item with type: array to json schema

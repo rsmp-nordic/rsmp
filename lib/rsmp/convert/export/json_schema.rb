@@ -7,6 +7,7 @@ require 'fileutils'
 require_relative 'json_schema/values'
 require_relative 'json_schema/items'
 require_relative 'json_schema/outputs'
+require_relative 'json_schema/index'
 
 module RSMP
   module Convert

@@ -108,7 +108,7 @@ module RSMP
         case type
         when 'boolean', 'boolean_as_string'
           boolean_value(value)
-        when 'integer', 'integer_as_string', 'ordinal_as_string', 'unit_as_string', 'scale_as_string', 'long_as_string'
+        when 'integer', 'integer_as_string', 'long_as_string'
           integer_value(value)
         when /_list(_as_string)?\z/
           list_value(value)

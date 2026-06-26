@@ -68,23 +68,23 @@ module RSMP
     end
 
     def build_outbound_proxies
-      site_entries = (@supervisor_settings['sites'] || {}).reject { |site_id, _settings| site_id == 'default' }
+      site_entries = (@supervisor_settings['sites'] || {}).except('default')
       site_entries.each_pair do |site_id, site_settings|
         endpoints = site_settings['supervisors'] || []
         merged_settings = site_id_to_site_setting site_id
         endpoints.each do |endpoint|
           @proxies << SiteProxy.new({
-                                     supervisor: self,
-                                     task: @task,
-                                     settings: @supervisor_settings,
-                                     site_id: site_id,
-                                     site_settings: merged_settings,
-                                     ip: endpoint['ip'],
-                                     port: endpoint['port'],
-                                     logger: @logger,
-                                     archive: @archive,
-                                     collect: @collect
-                                   })
+                                      supervisor: self,
+                                      task: @task,
+                                      settings: @supervisor_settings,
+                                      site_id: site_id,
+                                      site_settings: merged_settings,
+                                      ip: endpoint['ip'],
+                                      port: endpoint['port'],
+                                      logger: @logger,
+                                      archive: @archive,
+                                      collect: @collect
+                                    })
         end
       end
     end

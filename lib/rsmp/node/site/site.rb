@@ -2,6 +2,7 @@ module RSMP
   # RSMP site implementation that manages proxies and components.
   class Site < Node
     include Components
+    include SiteConnections
 
     attr_reader :core_version, :site_settings, :logger, :proxies, :ready_condition
 
@@ -114,70 +115,6 @@ module RSMP
       end
     end
 
-    def build_proxies
-      return if server_role?
-
-      @site_settings['supervisors'].each do |supervisor_settings|
-        @proxies << SupervisorProxy.new({
-                                          site: self,
-                                          task: @task,
-                                          settings: @site_settings,
-                                          ip: supervisor_settings['ip'],
-                                          port: supervisor_settings['port'],
-                                          logger: @logger,
-                                          archive: @archive,
-                                          collect: @collect
-        })
-      end
-    end
-
-    def listen_for_supervisors
-      ip = @site_settings['ip'] || '0.0.0.0'
-      port = @site_settings['port']
-      log "Starting #{site_type_name} listener on #{ip}:#{port}", level: :info, timestamp: @clock.now
-      @endpoint = IO::Endpoint.tcp(ip, port)
-      @accept_task = Async::Task.current.async do |task|
-        task.annotate 'site accept loop'
-        @endpoint.accept do |socket|
-          accept_supervisor_connection socket
-        rescue StandardError => e
-          distribute_error e, level: :internal
-        end
-      rescue Async::Stop
-        # Expected during shutdown - no action needed
-      rescue StandardError => e
-        distribute_error e, level: :internal
-      end
-
-      @ready_condition.signal
-      @accept_task.wait
-    end
-
-    def accept_supervisor_connection(socket)
-      remote_port = socket.remote_address.ip_port
-      remote_ip = socket.remote_address.ip_address
-      info = { ip: remote_ip, port: remote_port, hostname: remote_ip, now: Clock.now }
-      stream = IO::Stream::Buffered.new(socket)
-      proxy = SupervisorProxy.new({
-                                    site: self,
-                                    task: @task,
-                                    settings: @site_settings,
-                                    socket: socket,
-                                    stream: stream,
-                                    protocol: RSMP::Protocol.new(stream),
-                                    ip: remote_ip,
-                                    port: remote_port,
-                                    info: info,
-                                    logger: @logger,
-                                    archive: @archive,
-                                    collect: @collect
-                                  })
-      @proxies << proxy
-      @proxies_condition.signal
-      proxy.start
-      proxy.wait
-    end
-
     def aggregated_status_changed(component, _options = {})
       @proxies.each do |proxy|
         proxy.send_aggregated_status component
@@ -243,22 +180,6 @@ module RSMP
       @accept_task = nil
       @endpoint = nil
       super
-    end
-
-    def connect_to_supervisor(_task, supervisor_settings)
-      proxy = build_proxy({
-                            site: self,
-                            task: @task,
-                            settings: @site_settings,
-                            ip: supervisor_settings['ip'],
-                            port: supervisor_settings['port'],
-                            logger: @logger,
-                            archive: @archive,
-                            collect: @collect
-                          })
-      @proxies << proxy
-      proxy.start
-      @proxies_condition.signal
     end
 
     # stop
