@@ -3,6 +3,8 @@ module RSMP
     module Modules
       # Status request and subscription handling
       module Status
+        PrecomputedStatusValue = Struct.new(:value)
+
         def rsmpify_value(value, quality)
           if %w[undefined unknown].include?(quality.to_s)
             nil
@@ -142,12 +144,24 @@ module RSMP
           return [nil, false] unless subscription[:interval].zero?
 
           current = nil
+          encoded_current = nil
           if component
             current, quality = *(component.get_status code, name)
             current = rsmpify_value(current, quality)
+            encoded_current = encode_status_value(code, name, current)
           end
           last_sent = fetch_last_sent_status component.c_id, code, name
-          [current, current != last_sent]
+          [current, encoded_current != last_sent]
+        end
+
+        def encode_status_value(code, name, value)
+          message = {
+            'type' => 'StatusUpdate',
+            'sS' => [{ 'sCI' => code, 'n' => name }]
+          }
+          type, version = RSMP::Schema.resolve_sxl(message, schemas: schemas)
+          descriptor = RSMP::Schema.sxl_argument_descriptor(type, version, :statuses, code, name)
+          descriptor ? RSMP::Message.encode_sxl_value(value, descriptor) : value
         end
 
         def interval_update_due?(subscription, now)
@@ -177,7 +191,8 @@ module RSMP
 
                 update_list[component_id] ||= {}
                 update_list[component_id][code] ||= {}
-                update_list[component_id][code][name] = current
+                update_list[component_id][code][name] =
+                  subscription[:interval].zero? ? PrecomputedStatusValue.new(current) : nil
               end
             end
           end
@@ -188,7 +203,8 @@ module RSMP
           ss = []
           by_code.each_pair do |code, names|
             names.map do |status_name, value|
-              if value
+              if value.is_a?(PrecomputedStatusValue)
+                value = value.value
                 quality = 'recent'
               else
                 begin

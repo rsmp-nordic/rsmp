@@ -26,7 +26,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of time plans (depreciated)",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

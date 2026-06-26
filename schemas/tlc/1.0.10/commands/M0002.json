@@ -13,57 +13,63 @@
       "const" : "setPlan"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "status"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "status"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "False: Controller uses time plan according to programming\nTrue: Controller uses time plan according to command",
+              "$ref" : "../defs/definitions.json#/boolean"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "False: Controller uses time plan according to programming\nTrue: Controller uses time plan according to command",
-            "$ref" : "../defs/definitions.json#/boolean"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "securityCode"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "securityCode"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Security code 2",
-            "type" : "string"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "timeplan"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Security code 2",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "designation of time plan",
-            "$ref" : "../defs/definitions.json#/integer"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "timeplan"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "designation of time plan",
+              "$ref" : "../defs/definitions.json#/integer"
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

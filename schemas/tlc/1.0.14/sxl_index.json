@@ -7,401 +7,401 @@
   },
   "statuses" : {
     "S0001" : {
-      "required" : [
-        "basecyclecounter",
-        "cyclecounter",
-        "signalgroupstatus",
-        "stage"
-      ]
+      "required" : {
+        "basecyclecounter" : "integer_as_string",
+        "cyclecounter" : "integer_as_string",
+        "signalgroupstatus" : "string",
+        "stage" : "integer_as_string"
+      }
     },
     "S0002" : {
-      "required" : [
-        "detectorlogicstatus"
-      ]
+      "required" : {
+        "detectorlogicstatus" : "string"
+      }
     },
     "S0003" : {
-      "required" : [
-        "extendedinputstatus",
-        "inputstatus"
-      ]
+      "required" : {
+        "extendedinputstatus" : "string",
+        "inputstatus" : "string"
+      }
     },
     "S0004" : {
-      "required" : [
-        "extendedoutputstatus",
-        "outputstatus"
-      ]
+      "required" : {
+        "extendedoutputstatus" : "string",
+        "outputstatus" : "string"
+      }
     },
     "S0005" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "boolean_as_string"
+      }
     },
     "S0006" : {
-      "required" : [
-        "emergencystage",
-        "status"
-      ]
+      "required" : {
+        "emergencystage" : "integer_as_string",
+        "status" : "boolean_as_string"
+      }
     },
     "S0007" : {
-      "required" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0008" : {
-      "required" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0009" : {
-      "required" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0010" : {
-      "required" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0011" : {
-      "required" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0012" : {
-      "required" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0013" : {
-      "required" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "integer_list"
+      }
     },
     "S0014" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "integer_as_string"
+      }
     },
     "S0015" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "integer_as_string"
+      }
     },
     "S0016" : {
-      "required" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "long_as_string"
+      }
     },
     "S0017" : {
-      "required" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "long_as_string"
+      }
     },
     "S0018" : {
-      "required" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "long_as_string"
+      }
     },
     "S0019" : {
-      "required" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "long_as_string"
+      }
     },
     "S0020" : {
-      "required" : [
-        "controlmode",
-        "intersection"
-      ]
+      "required" : {
+        "controlmode" : "string_list",
+        "intersection" : "integer_list"
+      }
     },
     "S0021" : {
-      "required" : [
-        "detectorlogics"
-      ]
+      "required" : {
+        "detectorlogics" : "string"
+      }
     },
     "S0022" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0023" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0024" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0025" : {
-      "required" : [
-        "ToGConfidence",
-        "ToRConfidence",
-        "likelyToGEstimate",
-        "likelyToREstimate",
-        "maxToGEstimate",
-        "maxToREstimate",
-        "minToGEstimate",
-        "minToREstimate"
-      ]
+      "required" : {
+        "ToGConfidence" : "integer_as_string",
+        "ToRConfidence" : "integer_as_string",
+        "likelyToGEstimate" : "timestamp",
+        "likelyToREstimate" : "timestamp",
+        "maxToGEstimate" : "timestamp",
+        "maxToREstimate" : "timestamp",
+        "minToGEstimate" : "timestamp",
+        "minToREstimate" : "timestamp"
+      }
     },
     "S0026" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0027" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0028" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0029" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0091" : {
-      "required" : [
-        "status",
-        "user"
-      ]
+      "required" : {
+        "status" : "string",
+        "user" : "string"
+      }
     },
     "S0092" : {
-      "required" : [
-        "status",
-        "user"
-      ]
+      "required" : {
+        "status" : "string",
+        "user" : "string"
+      }
     },
     "S0095" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0096" : {
-      "required" : [
-        "day",
-        "hour",
-        "minute",
-        "month",
-        "second",
-        "year"
-      ]
+      "required" : {
+        "day" : "integer_as_string",
+        "hour" : "integer_as_string",
+        "minute" : "integer_as_string",
+        "month" : "integer_as_string",
+        "second" : "integer_as_string",
+        "year" : "integer_as_string"
+      }
     },
     "S0201" : {
-      "required" : [
-        "starttime",
-        "vehicles"
-      ]
+      "required" : {
+        "starttime" : "timestamp",
+        "vehicles" : "long_as_string"
+      }
     },
     "S0202" : {
-      "required" : [
-        "speed",
-        "starttime"
-      ]
+      "required" : {
+        "speed" : "integer_as_string",
+        "starttime" : "timestamp"
+      }
     },
     "S0203" : {
-      "required" : [
-        "occupancy",
-        "starttime"
-      ]
+      "required" : {
+        "occupancy" : "integer_as_string",
+        "starttime" : "timestamp"
+      }
     },
     "S0204" : {
-      "required" : [
-        "B",
-        "C",
-        "F",
-        "L",
-        "LS",
-        "MC",
-        "P",
-        "PS",
-        "SP",
-        "starttime"
-      ]
+      "required" : {
+        "B" : "long_as_string",
+        "C" : "long_as_string",
+        "F" : "long_as_string",
+        "L" : "long_as_string",
+        "LS" : "long_as_string",
+        "MC" : "long_as_string",
+        "P" : "long_as_string",
+        "PS" : "long_as_string",
+        "SP" : "long_as_string",
+        "starttime" : "timestamp"
+      }
     },
     "S0205" : {
-      "required" : [
-        "start",
-        "vehicles"
-      ]
+      "required" : {
+        "start" : "timestamp",
+        "vehicles" : "string"
+      }
     },
     "S0206" : {
-      "required" : [
-        "speed",
-        "start"
-      ]
+      "required" : {
+        "speed" : "string",
+        "start" : "timestamp"
+      }
     },
     "S0207" : {
-      "required" : [
-        "occupancy",
-        "start"
-      ]
+      "required" : {
+        "occupancy" : "string",
+        "start" : "timestamp"
+      }
     },
     "S0208" : {
-      "required" : [
-        "B",
-        "C",
-        "F",
-        "L",
-        "LS",
-        "MC",
-        "P",
-        "PS",
-        "SP",
-        "start"
-      ]
+      "required" : {
+        "B" : "string",
+        "C" : "string",
+        "F" : "string",
+        "L" : "string",
+        "LS" : "string",
+        "MC" : "string",
+        "P" : "string",
+        "PS" : "string",
+        "SP" : "string",
+        "start" : "timestamp"
+      }
     }
   },
   "commands" : {
     "M0001" : {
-      "required" : [
-        "intersection",
-        "securityCode",
-        "status",
-        "timeout"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "securityCode" : "string_list",
+        "status" : "string",
+        "timeout" : "integer_list"
+      }
     },
     "M0002" : {
-      "required" : [
-        "securityCode",
-        "status",
-        "timeplan"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string",
+        "timeplan" : "integer_as_string"
+      }
     },
     "M0003" : {
-      "required" : [
-        "securityCode",
-        "status",
-        "traficsituation"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string",
+        "traficsituation" : "integer_as_string"
+      }
     },
     "M0004" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0005" : {
-      "required" : [
-        "emergencyroute",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "emergencyroute" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0006" : {
-      "required" : [
-        "input",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "input" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0007" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0008" : {
-      "required" : [
-        "mode",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "mode" : "boolean_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0010" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0011" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0012" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0013" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0014" : {
-      "required" : [
-        "plan",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "plan" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0015" : {
-      "required" : [
-        "plan",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "plan" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "integer_as_string"
+      }
     },
     "M0016" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0017" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0018" : {
-      "required" : [
-        "plan",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "plan" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "integer_as_string"
+      }
     },
     "M0019" : {
-      "required" : [
-        "input",
-        "inputValue",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "input" : "integer_as_string",
+        "inputValue" : "boolean_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0103" : {
-      "required" : [
-        "newSecurityCode",
-        "oldSecurityCode",
-        "status"
-      ]
+      "required" : {
+        "newSecurityCode" : "string",
+        "oldSecurityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0104" : {
-      "required" : [
-        "day",
-        "hour",
-        "minute",
-        "month",
-        "second",
-        "securityCode",
-        "year"
-      ]
+      "required" : {
+        "day" : "integer_as_string",
+        "hour" : "integer_as_string",
+        "minute" : "integer_as_string",
+        "month" : "integer_as_string",
+        "second" : "integer_as_string",
+        "securityCode" : "string",
+        "year" : "integer_as_string"
+      }
     }
   },
   "alarms" : {
@@ -413,38 +413,38 @@
     "A0006" : {},
     "A0007" : {},
     "A0008" : {
-      "required" : [
-        "timeplan"
-      ]
+      "required" : {
+        "timeplan" : "integer_as_string"
+      }
     },
     "A0009" : {},
     "A0101" : {},
     "A0201" : {
-      "required" : [
-        "color"
-      ]
+      "required" : {
+        "color" : "string"
+      }
     },
     "A0202" : {
-      "required" : [
-        "color"
-      ]
+      "required" : {
+        "color" : "string"
+      }
     },
     "A0301" : {
-      "required" : [
-        "detector",
-        "errormode",
-        "manual",
-        "type"
-      ]
+      "required" : {
+        "detector" : "string",
+        "errormode" : "string",
+        "manual" : "boolean_as_string",
+        "type" : "string"
+      }
     },
     "A0302" : {
-      "required" : [
-        "detector",
-        "errormode",
-        "logicerror",
-        "manual",
-        "type"
-      ]
+      "required" : {
+        "detector" : "string",
+        "errormode" : "string",
+        "logicerror" : "string",
+        "manual" : "boolean_as_string",
+        "type" : "string"
+      }
     }
   }
 }

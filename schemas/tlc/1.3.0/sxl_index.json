@@ -7,493 +7,513 @@
   },
   "statuses" : {
     "S0001" : {
-      "required" : [
-        "basecyclecounter",
-        "cyclecounter",
-        "millisecond",
-        "signalgroupstatus",
-        "stage"
-      ]
+      "required" : {
+        "basecyclecounter" : "integer_as_string",
+        "cyclecounter" : "integer_as_string",
+        "millisecond" : "integer_as_string",
+        "signalgroupstatus" : "string",
+        "stage" : "integer_as_string"
+      }
     },
     "S0002" : {
-      "required" : [
-        "detectorlogicstatus"
-      ]
+      "required" : {
+        "detectorlogicstatus" : "string_list_as_string"
+      }
     },
     "S0003" : {
-      "required" : [
-        "inputstatus"
-      ]
+      "required" : {
+        "inputstatus" : "string_list_as_string"
+      }
     },
     "S0004" : {
-      "required" : [
-        "outputstatus"
-      ]
+      "required" : {
+        "outputstatus" : "string"
+      }
     },
     "S0005" : {
-      "required" : [
-        "status",
-        "statusByIntersection"
-      ]
+      "required" : {
+        "status" : "boolean_as_string",
+        "statusByIntersection" : {
+          "type" : "array",
+          "items" : {
+            "intersection" : "integer_as_string",
+            "startup" : "boolean_as_string"
+          }
+        }
+      }
     },
     "S0006" : {
-      "required" : [
-        "emergencystage",
-        "status"
-      ]
+      "required" : {
+        "emergencystage" : "integer_as_string",
+        "status" : "boolean_as_string"
+      }
     },
     "S0007" : {
-      "required" : [
-        "intersection",
-        "source",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list_as_string",
+        "source" : "string_list_as_string",
+        "status" : "boolean_list_as_string"
+      }
     },
     "S0008" : {
-      "required" : [
-        "intersection",
-        "source",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list_as_string",
+        "source" : "string_list_as_string",
+        "status" : "boolean_list_as_string"
+      }
     },
     "S0009" : {
-      "required" : [
-        "intersection",
-        "source",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list_as_string",
+        "source" : "string_list_as_string",
+        "status" : "boolean_list_as_string"
+      }
     },
     "S0010" : {
-      "required" : [
-        "intersection",
-        "source",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list_as_string",
+        "source" : "string_list_as_string",
+        "status" : "boolean_list_as_string"
+      }
     },
     "S0011" : {
-      "required" : [
-        "intersection",
-        "source",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list_as_string",
+        "source" : "string_list_as_string",
+        "status" : "boolean_list_as_string"
+      }
     },
     "S0012" : {
-      "required" : [
-        "intersection",
-        "source",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list_as_string",
+        "source" : "string_list_as_string",
+        "status" : "boolean_list_as_string"
+      }
     },
     "S0013" : {
-      "required" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list_as_string",
+        "status" : "integer_list_as_string"
+      }
     },
     "S0014" : {
-      "required" : [
-        "source",
-        "status"
-      ]
+      "required" : {
+        "source" : "string_list_as_string",
+        "status" : "integer_as_string"
+      }
     },
     "S0015" : {
-      "required" : [
-        "source",
-        "status"
-      ]
+      "required" : {
+        "source" : "string_list_as_string",
+        "status" : "integer_as_string"
+      }
     },
     "S0016" : {
-      "required" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "integer_as_string"
+      }
     },
     "S0017" : {
-      "required" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "integer_as_string"
+      }
     },
     "S0019" : {
-      "required" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "integer_as_string"
+      }
     },
     "S0020" : {
-      "required" : [
-        "controlmode",
-        "intersection"
-      ]
+      "required" : {
+        "controlmode" : "string_list_as_string",
+        "intersection" : "integer_list_as_string"
+      }
     },
     "S0021" : {
-      "required" : [
-        "detectorlogics"
-      ]
+      "required" : {
+        "detectorlogics" : "string"
+      }
     },
     "S0022" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "integer_list_as_string"
+      }
     },
     "S0023" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0024" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string_list_as_string"
+      }
     },
     "S0025" : {
-      "required" : [
-        "ToGConfidence",
-        "ToRConfidence",
-        "likelyToGEstimate",
-        "likelyToREstimate",
-        "maxToGEstimate",
-        "maxToREstimate",
-        "minToGEstimate",
-        "minToREstimate"
-      ]
+      "required" : {
+        "ToGConfidence" : "integer_as_string",
+        "ToRConfidence" : "integer_as_string",
+        "likelyToGEstimate" : "timestamp",
+        "likelyToREstimate" : "timestamp",
+        "maxToGEstimate" : "timestamp",
+        "maxToREstimate" : "timestamp",
+        "minToGEstimate" : "timestamp",
+        "minToREstimate" : "timestamp"
+      }
     },
     "S0026" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string_list_as_string"
+      }
     },
     "S0027" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string_list_as_string"
+      }
     },
     "S0028" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string_list_as_string"
+      }
     },
     "S0029" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0030" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0031" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string_list_as_string"
+      }
     },
     "S0032" : {
-      "required" : [
-        "intersection",
-        "source",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list_as_string",
+        "source" : "string_list_as_string",
+        "status" : "string_list_as_string"
+      }
     },
     "S0033" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : {
+          "type" : "array",
+          "items" : {
+            "d" : "integer_as_string",
+            "e" : "integer_as_string",
+            "r" : "string",
+            "s" : "string",
+            "t" : "timestamp"
+          }
+        }
+      }
     },
     "S0034" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "integer_as_string"
+      }
     },
     "S0035" : {
-      "required" : [
-        "emergencyroutes"
-      ]
+      "required" : {
+        "emergencyroutes" : {
+          "type" : "array",
+          "items" : {
+            "id" : "integer_as_string"
+          }
+        }
+      }
     },
     "S0091" : {
-      "required" : [
-        "user"
-      ]
+      "required" : {
+        "user" : "integer_as_string"
+      }
     },
     "S0092" : {
-      "required" : [
-        "user"
-      ]
+      "required" : {
+        "user" : "integer_as_string"
+      }
     },
     "S0095" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0096" : {
-      "required" : [
-        "day",
-        "hour",
-        "minute",
-        "month",
-        "second",
-        "year"
-      ]
+      "required" : {
+        "day" : "integer_as_string",
+        "hour" : "integer_as_string",
+        "minute" : "integer_as_string",
+        "month" : "integer_as_string",
+        "second" : "integer_as_string",
+        "year" : "integer_as_string"
+      }
     },
     "S0097" : {
-      "required" : [
-        "checksum",
-        "timestamp"
-      ]
+      "required" : {
+        "checksum" : "string",
+        "timestamp" : "timestamp"
+      }
     },
     "S0098" : {
-      "required" : [
-        "config",
-        "timestamp",
-        "version"
-      ]
+      "required" : {
+        "config" : "base64",
+        "timestamp" : "timestamp",
+        "version" : "string_list_as_string"
+      }
     },
     "S0201" : {
-      "required" : [
-        "starttime",
-        "vehicles"
-      ]
+      "required" : {
+        "starttime" : "timestamp",
+        "vehicles" : "integer_as_string"
+      }
     },
     "S0202" : {
-      "required" : [
-        "speed",
-        "starttime"
-      ]
+      "required" : {
+        "speed" : "integer_as_string",
+        "starttime" : "timestamp"
+      }
     },
     "S0203" : {
-      "required" : [
-        "occupancy",
-        "starttime"
-      ]
+      "required" : {
+        "occupancy" : "integer_as_string",
+        "starttime" : "timestamp"
+      }
     },
     "S0204" : {
-      "required" : [
-        "B",
-        "C",
-        "F",
-        "L",
-        "LS",
-        "MC",
-        "P",
-        "PS",
-        "SP",
-        "starttime"
-      ]
+      "required" : {
+        "B" : "integer_as_string",
+        "C" : "integer_as_string",
+        "F" : "integer_as_string",
+        "L" : "integer_as_string",
+        "LS" : "integer_as_string",
+        "MC" : "integer_as_string",
+        "P" : "integer_as_string",
+        "PS" : "integer_as_string",
+        "SP" : "integer_as_string",
+        "starttime" : "timestamp"
+      }
     },
     "S0205" : {
-      "required" : [
-        "start",
-        "vehicles"
-      ]
+      "required" : {
+        "start" : "timestamp",
+        "vehicles" : "integer_list_as_string"
+      }
     },
     "S0206" : {
-      "required" : [
-        "speed",
-        "start"
-      ]
+      "required" : {
+        "speed" : "integer_list_as_string",
+        "start" : "timestamp"
+      }
     },
     "S0207" : {
-      "required" : [
-        "occupancy",
-        "start"
-      ]
+      "required" : {
+        "occupancy" : "integer_list_as_string",
+        "start" : "timestamp"
+      }
     },
     "S0208" : {
-      "required" : [
-        "B",
-        "C",
-        "F",
-        "L",
-        "LS",
-        "MC",
-        "P",
-        "PS",
-        "SP",
-        "start"
-      ]
+      "required" : {
+        "B" : "integer_list_as_string",
+        "C" : "integer_list_as_string",
+        "F" : "integer_list_as_string",
+        "L" : "integer_list_as_string",
+        "LS" : "integer_list_as_string",
+        "MC" : "integer_list_as_string",
+        "P" : "integer_list_as_string",
+        "PS" : "integer_list_as_string",
+        "SP" : "integer_list_as_string",
+        "start" : "timestamp"
+      }
     }
   },
   "commands" : {
     "M0001" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ],
-      "optional" : [
-        "intersection",
-        "timeout"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string"
+      },
+      "optional" : {
+        "intersection" : "integer_as_string",
+        "timeout" : "integer_as_string"
+      }
     },
     "M0002" : {
-      "required" : [
-        "securityCode",
-        "status",
-        "timeplan"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string",
+        "timeplan" : "integer_as_string"
+      }
     },
     "M0003" : {
-      "required" : [
-        "securityCode",
-        "status",
-        "traficsituation"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string",
+        "traficsituation" : "integer_as_string"
+      }
     },
     "M0004" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0005" : {
-      "required" : [
-        "emergencyroute",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "emergencyroute" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0006" : {
-      "required" : [
-        "input",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "input" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0007" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0008" : {
-      "required" : [
-        "duration",
-        "mode",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "duration" : "integer_as_string",
+        "mode" : "boolean_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0010" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0011" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0012" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string_list_as_string"
+      }
     },
     "M0013" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string_list_as_string"
+      }
     },
     "M0014" : {
-      "required" : [
-        "plan",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "plan" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "string_list_as_string"
+      }
     },
     "M0015" : {
-      "required" : [
-        "plan",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "plan" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "integer_as_string"
+      }
     },
     "M0016" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string_list_as_string"
+      }
     },
     "M0017" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string_list_as_string"
+      }
     },
     "M0018" : {
-      "required" : [
-        "plan",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "plan" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "integer_as_string"
+      }
     },
     "M0019" : {
-      "required" : [
-        "input",
-        "inputValue",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "input" : "integer_as_string",
+        "inputValue" : "boolean_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0020" : {
-      "required" : [
-        "output",
-        "outputValue",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "output" : "integer_as_string",
+        "outputValue" : "boolean_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0021" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string_list_as_string"
+      }
     },
     "M0022" : {
-      "required" : [
-        "level",
-        "requestId",
-        "type"
-      ],
-      "optional" : [
-        "approachId",
-        "connectionId",
-        "eta",
-        "inputId",
-        "laneInId",
-        "laneOutId",
-        "priorityId",
-        "signalGroupId",
-        "vehicleType"
-      ]
+      "required" : {
+        "level" : "integer_as_string",
+        "requestId" : "string",
+        "type" : "string"
+      },
+      "optional" : {
+        "approachId" : "integer_as_string",
+        "connectionId" : "integer_as_string",
+        "eta" : "integer_as_string",
+        "inputId" : "integer_as_string",
+        "laneInId" : "integer_as_string",
+        "laneOutId" : "integer_as_string",
+        "priorityId" : "integer_as_string",
+        "signalGroupId" : "string",
+        "vehicleType" : "string"
+      }
     },
     "M0023" : {
-      "required" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "integer_as_string"
+      }
     },
     "M0024" : {
-      "required" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "boolean"
+      }
     },
     "M0103" : {
-      "required" : [
-        "newSecurityCode",
-        "oldSecurityCode",
-        "status"
-      ]
+      "required" : {
+        "newSecurityCode" : "string",
+        "oldSecurityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0104" : {
-      "required" : [
-        "day",
-        "hour",
-        "minute",
-        "month",
-        "second",
-        "securityCode",
-        "year"
-      ]
+      "required" : {
+        "day" : "integer_as_string",
+        "hour" : "integer_as_string",
+        "minute" : "integer_as_string",
+        "month" : "integer_as_string",
+        "second" : "integer_as_string",
+        "securityCode" : "string",
+        "year" : "integer_as_string"
+      }
     }
   },
   "alarms" : {
@@ -504,61 +524,61 @@
     "A0005" : {},
     "A0006" : {},
     "A0007" : {
-      "required" : [
-        "protocol"
-      ]
+      "required" : {
+        "protocol" : "string"
+      }
     },
     "A0008" : {
-      "required" : [
-        "timeplan"
-      ]
+      "required" : {
+        "timeplan" : "integer_as_string"
+      }
     },
     "A0009" : {},
     "A0010" : {},
     "A0101" : {},
     "A0201" : {
-      "required" : [
-        "color"
-      ]
+      "required" : {
+        "color" : "string"
+      }
     },
     "A0202" : {
-      "required" : [
-        "color"
-      ]
+      "required" : {
+        "color" : "string"
+      }
     },
     "A0301" : {
-      "required" : [
-        "detector",
-        "errormode",
-        "manual",
-        "type"
-      ]
+      "required" : {
+        "detector" : "string",
+        "errormode" : "string",
+        "manual" : "boolean_as_string",
+        "type" : "string"
+      }
     },
     "A0302" : {
-      "required" : [
-        "detector",
-        "errormode",
-        "logicerror",
-        "manual",
-        "type"
-      ]
+      "required" : {
+        "detector" : "string",
+        "errormode" : "string",
+        "logicerror" : "string",
+        "manual" : "boolean_as_string",
+        "type" : "string"
+      }
     },
     "A0303" : {
-      "required" : [
-        "detector",
-        "errormode",
-        "manual",
-        "type"
-      ]
+      "required" : {
+        "detector" : "string",
+        "errormode" : "string",
+        "manual" : "boolean_as_string",
+        "type" : "string"
+      }
     },
     "A0304" : {
-      "required" : [
-        "detector",
-        "errormode",
-        "logicerror",
-        "manual",
-        "type"
-      ]
+      "required" : {
+        "detector" : "string",
+        "errormode" : "string",
+        "logicerror" : "string",
+        "manual" : "boolean_as_string",
+        "type" : "string"
+      }
     }
   }
 }

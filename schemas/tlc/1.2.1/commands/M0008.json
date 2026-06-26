@@ -31,7 +31,7 @@
           "properties" : {
             "v" : {
               "description" : "False: Deactivate manual control of detector logic\nTrue: Activate manual control of detector logic",
-              "type" : "boolean"
+              "$ref" : "../defs/definitions.json#/boolean"
             }
           }
         }
@@ -65,7 +65,7 @@
           "properties" : {
             "v" : {
               "description" : "False: Deactivate detector logic\nTrue: Activate detector logic",
-              "type" : "boolean"
+              "$ref" : "../defs/definitions.json#/boolean"
             }
           }
         }

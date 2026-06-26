@@ -7,350 +7,332 @@
   },
   "statuses" : {
     "S0001" : {
-      "arguments" : [
-        "basecyclecounter",
-        "cyclecounter",
-        "signalgroupstatus",
-        "stage"
-      ]
+      "required" : {
+        "basecyclecounter" : "integer_as_string",
+        "cyclecounter" : "integer_as_string",
+        "signalgroupstatus" : "string",
+        "stage" : "integer_as_string"
+      }
     },
     "S0002" : {
-      "arguments" : [
-        "detectorlogicstatus"
-      ]
+      "required" : {
+        "detectorlogicstatus" : "string"
+      }
     },
     "S0003" : {
-      "arguments" : [
-        "extendedinputstatus",
-        "inputstatus"
-      ]
+      "required" : {
+        "extendedinputstatus" : "string",
+        "inputstatus" : "string"
+      }
     },
     "S0004" : {
-      "arguments" : [
-        "extendedoutputstatus",
-        "outputstatus"
-      ]
+      "required" : {
+        "extendedoutputstatus" : "string",
+        "outputstatus" : "string"
+      }
     },
     "S0005" : {
-      "arguments" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "boolean_as_string"
+      }
     },
     "S0006" : {
-      "arguments" : [
-        "emergencystage",
-        "status"
-      ]
+      "required" : {
+        "emergencystage" : "integer_as_string",
+        "status" : "boolean_as_string"
+      }
     },
     "S0007" : {
-      "arguments" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0008" : {
-      "arguments" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0009" : {
-      "arguments" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0010" : {
-      "arguments" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0011" : {
-      "arguments" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0012" : {
-      "arguments" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "boolean_list"
+      }
     },
     "S0013" : {
-      "arguments" : [
-        "intersection",
-        "status"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "status" : "integer_list"
+      }
     },
     "S0014" : {
-      "arguments" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "integer_as_string"
+      }
     },
     "S0015" : {
-      "arguments" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "integer_as_string"
+      }
     },
     "S0016" : {
-      "arguments" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "long_as_string"
+      }
     },
     "S0017" : {
-      "arguments" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "long_as_string"
+      }
     },
     "S0018" : {
-      "arguments" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "long_as_string"
+      }
     },
     "S0019" : {
-      "arguments" : [
-        "number"
-      ]
+      "required" : {
+        "number" : "long_as_string"
+      }
     },
     "S0020" : {
-      "arguments" : [
-        "controlmode",
-        "intersection"
-      ]
+      "required" : {
+        "controlmode" : "string_list",
+        "intersection" : "integer_list"
+      }
     },
     "S0021" : {
-      "arguments" : [
-        "detectorlogics"
-      ]
+      "required" : {
+        "detectorlogics" : "string"
+      }
     },
     "S0091" : {
-      "arguments" : [
-        "status",
-        "user"
-      ]
+      "required" : {
+        "status" : "string",
+        "user" : "string"
+      }
     },
     "S0092" : {
-      "arguments" : [
-        "status",
-        "user"
-      ]
+      "required" : {
+        "status" : "string",
+        "user" : "string"
+      }
     },
     "S0095" : {
-      "arguments" : [
-        "status"
-      ]
+      "required" : {
+        "status" : "string"
+      }
     },
     "S0096" : {
-      "arguments" : [
-        "day",
-        "hour",
-        "minute",
-        "month",
-        "second",
-        "year"
-      ]
+      "required" : {
+        "day" : "integer_as_string",
+        "hour" : "integer_as_string",
+        "minute" : "integer_as_string",
+        "month" : "integer_as_string",
+        "second" : "integer_as_string",
+        "year" : "integer_as_string"
+      }
     },
     "S0201" : {
-      "arguments" : [
-        "starttime",
-        "vehicles"
-      ]
+      "required" : {
+        "starttime" : "timestamp",
+        "vehicles" : "long_as_string"
+      }
     },
     "S0202" : {
-      "arguments" : [
-        "speed",
-        "starttime"
-      ]
+      "required" : {
+        "speed" : "integer_as_string",
+        "starttime" : "timestamp"
+      }
     },
     "S0203" : {
-      "arguments" : [
-        "occupancy",
-        "starttime"
-      ]
+      "required" : {
+        "occupancy" : "integer_as_string",
+        "starttime" : "timestamp"
+      }
     },
     "S0204" : {
-      "arguments" : [
-        "B",
-        "C",
-        "F",
-        "L",
-        "LS",
-        "MC",
-        "P",
-        "PS",
-        "SP",
-        "starttime"
-      ]
+      "required" : {
+        "B" : "long_as_string",
+        "C" : "long_as_string",
+        "F" : "long_as_string",
+        "L" : "long_as_string",
+        "LS" : "long_as_string",
+        "MC" : "long_as_string",
+        "P" : "long_as_string",
+        "PS" : "long_as_string",
+        "SP" : "long_as_string",
+        "starttime" : "timestamp"
+      }
     }
   },
   "commands" : {
     "M0001" : {
-      "arguments" : [
-        "intersection",
-        "securityCode",
-        "status",
-        "timeout"
-      ]
+      "required" : {
+        "intersection" : "integer_list",
+        "securityCode" : "string_list",
+        "status" : "string",
+        "timeout" : "integer_list"
+      }
     },
     "M0002" : {
-      "arguments" : [
-        "securityCode",
-        "status",
-        "timeplan"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string",
+        "timeplan" : "integer_as_string"
+      }
     },
     "M0003" : {
-      "arguments" : [
-        "securityCode",
-        "status",
-        "traficsituation"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string",
+        "traficsituation" : "integer_as_string"
+      }
     },
     "M0004" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0005" : {
-      "arguments" : [
-        "emergencyroute",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "emergencyroute" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0006" : {
-      "arguments" : [
-        "input",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "input" : "integer_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0007" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0008" : {
-      "arguments" : [
-        "mode",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "mode" : "boolean_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0010" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0011" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0012" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0013" : {
-      "arguments" : [
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "securityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0019" : {
-      "arguments" : [
-        "input",
-        "inputValue",
-        "securityCode",
-        "status"
-      ]
+      "required" : {
+        "input" : "integer_as_string",
+        "inputValue" : "boolean_as_string",
+        "securityCode" : "string",
+        "status" : "boolean_as_string"
+      }
     },
     "M0103" : {
-      "arguments" : [
-        "newSecurityCode",
-        "oldSecurityCode",
-        "status"
-      ]
+      "required" : {
+        "newSecurityCode" : "string",
+        "oldSecurityCode" : "string",
+        "status" : "string"
+      }
     },
     "M0104" : {
-      "arguments" : [
-        "day",
-        "hour",
-        "minute",
-        "month",
-        "second",
-        "securityCode",
-        "year"
-      ]
+      "required" : {
+        "day" : "integer_as_string",
+        "hour" : "integer_as_string",
+        "minute" : "integer_as_string",
+        "month" : "integer_as_string",
+        "second" : "integer_as_string",
+        "securityCode" : "string",
+        "year" : "integer_as_string"
+      }
     }
   },
   "alarms" : {
-    "A0001" : {
-      "arguments" : []
-    },
-    "A0002" : {
-      "arguments" : []
-    },
-    "A0003" : {
-      "arguments" : []
-    },
-    "A0004" : {
-      "arguments" : []
-    },
-    "A0005" : {
-      "arguments" : []
-    },
-    "A0006" : {
-      "arguments" : []
-    },
-    "A0007" : {
-      "arguments" : []
-    },
+    "A0001" : {},
+    "A0002" : {},
+    "A0003" : {},
+    "A0004" : {},
+    "A0005" : {},
+    "A0006" : {},
+    "A0007" : {},
     "A0008" : {
-      "arguments" : [
-        "timeplan"
-      ]
+      "required" : {
+        "timeplan" : "integer_as_string"
+      }
     },
-    "A0009" : {
-      "arguments" : []
-    },
-    "A0101" : {
-      "arguments" : []
-    },
+    "A0009" : {},
+    "A0101" : {},
     "A0201" : {
-      "arguments" : [
-        "color"
-      ]
+      "required" : {
+        "color" : "string"
+      }
     },
     "A0202" : {
-      "arguments" : [
-        "color"
-      ]
+      "required" : {
+        "color" : "string"
+      }
     },
     "A0301" : {
-      "arguments" : [
-        "detector",
-        "errormode",
-        "manual",
-        "type"
-      ]
+      "required" : {
+        "detector" : "string",
+        "errormode" : "string",
+        "manual" : "boolean_as_string",
+        "type" : "string"
+      }
     },
     "A0302" : {
-      "arguments" : [
-        "detector",
-        "errormode",
-        "logicerror",
-        "manual",
-        "type"
-      ]
+      "required" : {
+        "detector" : "string",
+        "errormode" : "string",
+        "logicerror" : "string",
+        "manual" : "boolean_as_string",
+        "type" : "string"
+      }
     }
   }
 }

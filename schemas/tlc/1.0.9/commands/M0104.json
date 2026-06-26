@@ -17,125 +17,131 @@
       "const" : "setDate"
     }
   },
-  "allOf" : [
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "securityCode"
+  "if" : {
+    "$ref" : "../defs/guards.json#/$defs/age_unknown_or_undefined"
+  },
+  "then" : {},
+  "else" : {
+    "allOf" : [
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "securityCode"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Security code 1",
+              "type" : "string"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Security code 1",
-            "type" : "string"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "year"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "year"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Changes internal clock. Note: UTC is used\nYear according to YYYY",
-            "$ref" : "../defs/definitions.json#/integer"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "month"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Changes internal clock. Note: UTC is used\nYear according to YYYY",
+              "$ref" : "../defs/definitions.json#/integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Changes internal clock. Note: UTC is used\nMonth according to MM (01-12)",
-            "$ref" : "../defs/definitions.json#/integer"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "month"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "day"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Changes internal clock. Note: UTC is used\nDay in month according to DD (01-31)",
-            "$ref" : "../defs/definitions.json#/integer"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "hour"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Changes internal clock. Note: UTC is used\nMonth according to MM (01-12)",
+              "$ref" : "../defs/definitions.json#/integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Changes internal clock. Note: UTC is used\nHour according to HH (00-23)",
-            "$ref" : "../defs/definitions.json#/integer"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "day"
+            }
           }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "minute"
-          }
-        }
-      },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Changes internal clock. Note: UTC is used\nMinute according to MM (00-59)",
-            "$ref" : "../defs/definitions.json#/integer"
-          }
-        }
-      }
-    },
-    {
-      "if" : {
-        "properties" : {
-          "n" : {
-            "const" : "second"
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Changes internal clock. Note: UTC is used\nDay in month according to DD (01-31)",
+              "$ref" : "../defs/definitions.json#/integer"
+            }
           }
         }
       },
-      "then" : {
-        "properties" : {
-          "v" : {
-            "description" : "Changes internal clock. Note: UTC is used\nSecond according to SS (00-59)",
-            "$ref" : "../defs/definitions.json#/integer"
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "hour"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Changes internal clock. Note: UTC is used\nHour according to HH (00-23)",
+              "$ref" : "../defs/definitions.json#/integer"
+            }
+          }
+        }
+      },
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "minute"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Changes internal clock. Note: UTC is used\nMinute according to MM (00-59)",
+              "$ref" : "../defs/definitions.json#/integer"
+            }
+          }
+        }
+      },
+      {
+        "if" : {
+          "properties" : {
+            "n" : {
+              "const" : "second"
+            }
+          }
+        },
+        "then" : {
+          "properties" : {
+            "v" : {
+              "description" : "Changes internal clock. Note: UTC is used\nSecond according to SS (00-59)",
+              "$ref" : "../defs/definitions.json#/integer"
+            }
           }
         }
       }
-    }
-  ]
+    ]
+  }
 }

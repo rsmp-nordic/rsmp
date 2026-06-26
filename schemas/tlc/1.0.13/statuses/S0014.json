@@ -26,7 +26,7 @@
           "properties" : {
             "s" : {
               "description" : "Current time plan",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

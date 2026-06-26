@@ -44,7 +44,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of vehicles on a given detector logic (since last update)",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

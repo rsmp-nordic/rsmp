@@ -27,7 +27,7 @@
           "properties" : {
             "s" : {
               "description" : "False: Emergency stage inactive\nTrue: Emergency stage active",
-              "type" : "boolean"
+              "$ref" : "../defs/definitions.json#/boolean"
             }
           }
         }
@@ -44,7 +44,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of emergency stage",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

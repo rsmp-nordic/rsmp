@@ -47,7 +47,7 @@
           "properties" : {
             "s" : {
               "description" : "Cycle counter",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -64,7 +64,7 @@
           "properties" : {
             "s" : {
               "description" : "Base cycle counter",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -81,7 +81,7 @@
           "properties" : {
             "s" : {
               "description" : "Current stage (isolated)",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
