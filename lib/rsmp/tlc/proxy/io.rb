@@ -15,7 +15,7 @@ module RSMP
             'cCI' => 'M0006',
             'cO' => 'setInput',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0006', 'status', status)
           }, {
             'cCI' => 'M0006',
             'cO' => 'setInput',
@@ -25,7 +25,7 @@ module RSMP
             'cCI' => 'M0006',
             'cO' => 'setInput',
             'n' => 'input',
-            'v' => input.to_s
+            'v' => command_value('M0006', 'input', input)
           }]
           send_command_and_collect(command_list, within: within).ok!
         end
@@ -41,7 +41,7 @@ module RSMP
             'cCI' => 'M0013',
             'cO' => 'setInput',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0013', 'status', status)
           }, {
             'cCI' => 'M0013',
             'cO' => 'setInput',
@@ -73,7 +73,7 @@ module RSMP
             'cCI' => 'M0020',
             'cO' => 'setOutput',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0020', 'status', status)
           }, {
             'cCI' => 'M0020',
             'cO' => 'setOutput',
@@ -83,12 +83,12 @@ module RSMP
             'cCI' => 'M0020',
             'cO' => 'setOutput',
             'n' => 'output',
-            'v' => output.to_s
+            'v' => command_value('M0020', 'output', output)
           }, {
             'cCI' => 'M0020',
             'cO' => 'setOutput',
             'n' => 'outputValue',
-            'v' => value.to_s
+            'v' => command_value('M0020', 'outputValue', value)
           }]
           send_command_and_collect(command_list, within: within).ok!
         end
@@ -98,10 +98,13 @@ module RSMP
         def force_input_command_list(input, status, value)
           security_code = security_code_for(2)
           [
-            { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'status', 'v' => status.to_s },
+            { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'status',
+              'v' => command_value('M0019', 'status', status) },
             { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'securityCode', 'v' => security_code.to_s },
-            { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'input', 'v' => input.to_s },
-            { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'inputValue', 'v' => value.to_s }
+            { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'input',
+              'v' => command_value('M0019', 'input', input) },
+            { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'inputValue',
+              'v' => command_value('M0019', 'inputValue', value) }
           ]
         end
 
@@ -110,11 +113,11 @@ module RSMP
           # S0029 is used to check the forced status, but is only available from sxl 1.0.13
           if RSMP::Proxy.version_meets_requirement?(sxl_version, '>=1.0.13')
             result << { 'sCI' => 'S0029', 'n' => 'status',
-                        's' => /^.{#{input.to_i - 1}}#{status == 'True' ? '1' : '0'}/ }
+                        's' => /^.{#{input.to_i - 1}}#{boolean_value(status) ? '1' : '0'}/ }
           end
-          if status == 'True'
+          if boolean_value(status)
             result << { 'sCI' => 'S0003', 'n' => 'inputstatus',
-                        's' => /^.{#{input.to_i - 1}}#{value == 'True' ? '1' : '0'}/ }
+                        's' => /^.{#{input.to_i - 1}}#{boolean_value(value) ? '1' : '0'}/ }
           end
           result
         end

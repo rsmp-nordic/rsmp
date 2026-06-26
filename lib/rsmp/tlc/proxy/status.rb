@@ -58,9 +58,9 @@ module RSMP
           wait_for_status(
             'normal control on, yellow flash off, startup mode off',
             [
-              { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
-              { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
-              { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
+              { 'sCI' => 'S0007', 'n' => 'status', 's' => [true] },
+              { 'sCI' => 'S0011', 'n' => 'status', 's' => [false] },
+              { 'sCI' => 'S0005', 'n' => 'status', 's' => false }
             ],
             timeout: timeout
           )
@@ -73,7 +73,7 @@ module RSMP
           timeout = options[:timeout] || @timeouts['status_response']
           collector = request_status_and_collect({ S0028: [:status] }, within: timeout)
           collector.ok!
-          collector.messages.first.attributes['sS'].first['s'].split(',').to_h do |item|
+          status_items(collector.messages.first.attributes['sS'].first['s']).to_h do |item|
             item.split('-').map(&:to_i)
           end
         end
@@ -101,11 +101,15 @@ module RSMP
         private
 
         def extract_band_value(collector, plan, band)
-          collector.messages.first.attributes['sS'].first['s'].split(',').each do |item|
+          status_items(collector.messages.first.attributes['sS'].first['s']).each do |item|
             some_plan, some_band, value = item.split('-')
             return value.to_i if some_plan.to_i == plan.to_i && some_band.to_i == band.to_i
           end
           nil
+        end
+
+        def status_items(status)
+          status.is_a?(Array) ? status : status.split(',')
         end
       end
     end

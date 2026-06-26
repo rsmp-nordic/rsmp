@@ -77,6 +77,48 @@ module RSMP
         code
       end
 
+      def boolean_value(value)
+        case value
+        when true, 'True'
+          true
+        when false, 'False'
+          false
+        else
+          value
+        end
+      end
+
+      def integer_value(value)
+        return value.to_i if value.is_a?(String) && value.match?(/\A[+-]?\d+\z/)
+
+        value
+      end
+
+      def list_value(value)
+        value.is_a?(Array) ? value : value.to_s.split(',')
+      end
+
+      def command_value(command_code, argument_name, value)
+        descriptor = RSMP::Schema.sxl_argument_descriptor(name, sxl_version, :commands, command_code, argument_name)
+        normalize_command_value(value, descriptor)
+      end
+
+      def normalize_command_value(value, descriptor)
+        type = descriptor.is_a?(Hash) ? descriptor['type'] : descriptor.to_s
+        case type
+        when 'boolean', 'boolean_as_string'
+          boolean_value(value)
+        when 'integer', 'integer_as_string', 'ordinal_as_string', 'unit_as_string', 'scale_as_string', 'long_as_string'
+          integer_value(value)
+        when /_list(_as_string)?\z/
+          list_value(value)
+        when 'string', 'base64', 'timestamp'
+          value.to_s
+        else
+          value
+        end
+      end
+
       def cache_status_item(item)
         case item['sCI']
         when 'S0007' then @functional_position = item['s'] if item['n'] == 'status'

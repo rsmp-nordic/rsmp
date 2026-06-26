@@ -324,6 +324,72 @@ describe RSMP::Proxy do
 
       expect(handled).to be == message
     end
+
+    it 'decodes incoming SXL values after validating raw wire values' do
+      site = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'TLC001',
+          'supervisors' => [],
+          'sxls' => { 'tlc' => '1.3.0' },
+          'core_version' => '3.3.0'
+        },
+        log_settings: { 'active' => false }
+      )
+      supervisor_proxy = RSMP::SupervisorProxy.new(site: site, ip: '127.0.0.1', port: 12_345)
+      supervisor_proxy.instance_variable_set(:@core_version, '3.3.0')
+      supervisor_proxy.instance_variable_set(:@version_determined, true)
+      supervisor_proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
+      interface = CapturingSxlInterface.new
+      supervisor_proxy.instance_variable_set(:@sxl_interfaces, { 'tlc' => interface })
+
+      json = {
+        'mType' => 'rSMsg',
+        'type' => 'CommandRequest',
+        'cId' => 'TLC001',
+        'arg' => [
+          { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'status', 'v' => 'True' },
+          { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'securityCode', 'v' => '1111' },
+          { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'input', 'v' => '3' },
+          { 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'inputValue', 'v' => 'False' }
+        ],
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda'
+      }.to_json
+
+      supervisor_proxy.process_packet json
+
+      message = interface.messages.first
+      expect(message.json).to be == json
+      expect(message.attributes['arg'].map { |item| item['v'] }).to be == [true, '1111', 3, false]
+    end
+
+    it 'skips incoming decoding when validation is skipped' do
+      site = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'TLC001',
+          'supervisors' => [],
+          'sxls' => { 'tlc' => '1.3.0' },
+          'core_version' => '3.3.0'
+        },
+        log_settings: { 'active' => false }
+      )
+      supervisor_proxy = RSMP::SupervisorProxy.new(site: site, ip: '127.0.0.1', port: 12_345)
+      supervisor_proxy.instance_variable_get(:@site_settings)['skip_validation'] = ['CommandRequest']
+      supervisor_proxy.instance_variable_set(:@core_version, '3.3.0')
+      supervisor_proxy.instance_variable_set(:@version_determined, true)
+      supervisor_proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
+      interface = CapturingSxlInterface.new
+      supervisor_proxy.instance_variable_set(:@sxl_interfaces, { 'tlc' => interface })
+
+      supervisor_proxy.process_packet({
+        'mType' => 'rSMsg',
+        'type' => 'CommandRequest',
+        'cId' => 'TLC001',
+        'arg' => [{ 'cCI' => 'M0019', 'cO' => 'setInput', 'n' => 'inputValue', 'v' => 'False' }],
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda'
+      }.to_json)
+
+      expect(interface.messages.first.attributes['arg'].first['v']).to be == 'False'
+    end
   end
 
   with 'core 3.3.0 message semantics' do

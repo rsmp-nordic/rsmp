@@ -66,8 +66,8 @@ module RSMP
 
       def handle_m0008(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
-        status = arg['status'] == 'True'
-        mode = arg['mode'] == 'True'
+        status = arg['status']
+        mode = arg['mode']
         force_detector_logic status, mode
         arg
       end

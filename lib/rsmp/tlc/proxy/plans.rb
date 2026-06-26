@@ -15,7 +15,7 @@ module RSMP
             'cCI' => 'M0014',
             'cO' => 'setCommands',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0014', 'status', status)
           }, {
             'cCI' => 'M0014',
             'cO' => 'setCommands',
@@ -25,7 +25,7 @@ module RSMP
             'cCI' => 'M0014',
             'cO' => 'setCommands',
             'n' => 'plan',
-            'v' => plan.to_s
+            'v' => command_value('M0014', 'plan', plan)
           }]
           send_command_and_collect(command_list, within: within).ok!
         end
@@ -41,7 +41,7 @@ module RSMP
             'cCI' => 'M0023',
             'cO' => 'setTimeout',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0023', 'status', status)
           }, {
             'cCI' => 'M0023',
             'cO' => 'setTimeout',
@@ -62,7 +62,7 @@ module RSMP
             'cCI' => 'M0015',
             'cO' => 'setOffset',
             'n' => 'status',
-            'v' => offset.to_s
+            'v' => command_value('M0015', 'status', offset)
           }, {
             'cCI' => 'M0015',
             'cO' => 'setOffset',
@@ -72,7 +72,7 @@ module RSMP
             'cCI' => 'M0015',
             'cO' => 'setOffset',
             'n' => 'plan',
-            'v' => plan.to_s
+            'v' => command_value('M0015', 'plan', plan)
           }]
           send_command_and_collect(command_list, within: within).ok!
         end
@@ -88,7 +88,7 @@ module RSMP
             'cCI' => 'M0002',
             'cO' => 'setPlan',
             'n' => 'status',
-            'v' => 'True'
+            'v' => command_value('M0002', 'status', true)
           }, {
             'cCI' => 'M0002',
             'cO' => 'setPlan',
@@ -98,9 +98,9 @@ module RSMP
             'cCI' => 'M0002',
             'cO' => 'setPlan',
             'n' => 'timeplan',
-            'v' => plan_nr.to_s
+            'v' => command_value('M0002', 'timeplan', plan_nr)
           }]
-          confirm_status = [{ 'sCI' => 'S0014', 'n' => 'status', 's' => plan_nr.to_s }]
+          confirm_status = [{ 'sCI' => 'S0014', 'n' => 'status', 's' => integer_value(plan_nr) }]
           send_command_and_collect(command_list, within: within).ok!
           wait_for_status("timeplan #{plan_nr}", confirm_status, timeout: within)
         end
@@ -116,7 +116,7 @@ module RSMP
             'cCI' => 'M0016',
             'cO' => 'setWeekTable',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0016', 'status', status)
           }, {
             'cCI' => 'M0016',
             'cO' => 'setWeekTable',
@@ -137,7 +137,7 @@ module RSMP
             'cCI' => 'M0017',
             'cO' => 'setTimeTable',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0017', 'status', status)
           }, {
             'cCI' => 'M0017',
             'cO' => 'setTimeTable',
@@ -158,7 +158,7 @@ module RSMP
             'cCI' => 'M0018',
             'cO' => 'setCycleTime',
             'n' => 'status',
-            'v' => cycle_time.to_s
+            'v' => command_value('M0018', 'status', cycle_time)
           }, {
             'cCI' => 'M0018',
             'cO' => 'setCycleTime',
@@ -168,7 +168,7 @@ module RSMP
             'cCI' => 'M0018',
             'cO' => 'setCycleTime',
             'n' => 'plan',
-            'v' => plan.to_s
+            'v' => command_value('M0018', 'plan', plan)
           }]
           send_command_and_collect(command_list, within:).ok!
         end
@@ -183,7 +183,7 @@ module RSMP
             'cCI' => 'M0010',
             'cO' => 'setStart',
             'n' => 'status',
-            'v' => 'True'
+            'v' => command_value('M0010', 'status', true)
           }, {
             'cCI' => 'M0010',
             'cO' => 'setStart',
@@ -203,7 +203,7 @@ module RSMP
             'cCI' => 'M0011',
             'cO' => 'setStop',
             'n' => 'status',
-            'v' => 'True'
+            'v' => command_value('M0011', 'status', true)
           }, {
             'cCI' => 'M0011',
             'cO' => 'setStop',

@@ -43,7 +43,7 @@ module RSMP
         def handle_m0006(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']
           input = arg['input'].to_i
-          status = string_to_bool arg['status']
+          status = arg['status']
           raise MessageRejected, "Input must be in the range 1-#{@inputs.size}" unless input.between?(1, @inputs.size)
 
           if status
@@ -72,6 +72,7 @@ module RSMP
         def parse_input_status(status_string)
           set = []
           clear = []
+          status_string = status_string.join(',') if status_string.is_a?(Array)
           status_string.split(';').each do |part|
             offset, set_bits, clear_bits = part.split(',').map(&:to_i)
             extract_input_bits(set_bits, offset, set)
@@ -136,8 +137,8 @@ module RSMP
         def handle_m0019(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']
           input = arg['input'].to_i
-          force = string_to_bool arg['status']
-          forced_value = string_to_bool arg['inputValue']
+          force = arg['status']
+          forced_value = arg['inputValue']
           raise MessageRejected, "Input must be in the range 1-#{@inputs.size}" unless input.between?(1, @inputs.size)
 
           if force

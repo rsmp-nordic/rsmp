@@ -174,18 +174,32 @@ module RSMP
     def encode_for(schemas)
       case type
       when 'StatusResponse', 'StatusUpdate'
-        encode_sxl_items(schemas, :statuses, 'sS', 'sCI', 'n', 's')
+        transform_sxl_items(schemas, :statuses, 'sS', 'sCI', 'n', 's', :encode_sxl_value)
       when 'CommandRequest'
-        encode_sxl_items(schemas, :commands, 'arg', 'cCI', 'n', 'v')
+        transform_sxl_items(schemas, :commands, 'arg', 'cCI', 'n', 'v', :encode_sxl_value)
       when 'CommandResponse'
-        encode_sxl_items(schemas, :commands, 'rvs', 'cCI', 'n', 'v')
+        transform_sxl_items(schemas, :commands, 'rvs', 'cCI', 'n', 'v', :encode_sxl_value)
       when 'Alarm'
-        encode_sxl_items(schemas, :alarms, 'rvs', nil, 'n', 'v', code: @attributes['aCId'])
+        transform_sxl_items(schemas, :alarms, 'rvs', nil, 'n', 'v', :encode_sxl_value, code: @attributes['aCId'])
       end
       self
     end
 
-    def encode_sxl_items(schemas, kind, list_key, code_key, name_key, value_key, code: nil)
+    def decode_for(schemas)
+      case type
+      when 'StatusResponse', 'StatusUpdate'
+        transform_sxl_items(schemas, :statuses, 'sS', 'sCI', 'n', 's', :decode_sxl_value)
+      when 'CommandRequest'
+        transform_sxl_items(schemas, :commands, 'arg', 'cCI', 'n', 'v', :decode_sxl_value)
+      when 'CommandResponse'
+        transform_sxl_items(schemas, :commands, 'rvs', 'cCI', 'n', 'v', :decode_sxl_value)
+      when 'Alarm'
+        transform_sxl_items(schemas, :alarms, 'rvs', nil, 'n', 'v', :decode_sxl_value, code: @attributes['aCId'])
+      end
+      self
+    end
+
+    def transform_sxl_items(schemas, kind, list_key, code_key, name_key, value_key, transformer, code: nil)
       resolved = RSMP::Schema.resolve_sxl(@attributes, schemas: schemas)
       return unless resolved
 
@@ -196,7 +210,7 @@ module RSMP
         next unless item_code && name && item.key?(value_key)
 
         descriptor = RSMP::Schema.sxl_argument_descriptor(type, version, kind, item_code, name)
-        item[value_key] = self.class.encode_sxl_value(item[value_key], descriptor) if descriptor
+        item[value_key] = self.class.public_send(transformer, item[value_key], descriptor) if descriptor
       end
     end
 
@@ -256,6 +270,104 @@ module RSMP
       value.each_with_object({}) do |(key, item_value), memo|
         descriptor = properties[key] || properties[key.to_sym]
         memo[key] = descriptor ? encode_sxl_value(item_value, descriptor) : item_value
+      end
+    end
+
+    def self.decode_sxl_value(value, descriptor)
+      return nil if value.nil?
+
+      type = descriptor.is_a?(Hash) ? descriptor['type'] : descriptor.to_s
+      case type
+      when 'boolean_as_string'
+        decode_sxl_boolean(value)
+      when 'integer_as_string', 'ordinal_as_string', 'unit_as_string', 'scale_as_string', 'long_as_string'
+        decode_sxl_integer(value)
+      when 'number_as_string'
+        decode_sxl_number(value)
+      when /_list(_as_string)?\z/
+        decode_sxl_list(value, type)
+      when 'array'
+        decode_sxl_array(value, descriptor)
+      when 'object'
+        decode_sxl_object(value, descriptor['properties'])
+      else
+        value
+      end
+    end
+
+    def self.decode_sxl_boolean(value)
+      case value
+      when 'True'
+        true
+      when 'False'
+        false
+      else
+        value
+      end
+    end
+
+    def self.decode_sxl_integer(value)
+      return value unless value.is_a?(String) && value.match?(/\A[+-]?\d+\z/)
+
+      value.to_i
+    end
+
+    def self.decode_sxl_number(value)
+      return value unless value.is_a?(String)
+
+      Float(value)
+    rescue ArgumentError
+      value
+    end
+
+    def self.decode_sxl_list(value, type)
+      items = value.is_a?(String) ? value.split(',') : Array(value)
+      item_descriptor = list_item_descriptor(type)
+      items.map { |item| decode_sxl_value(item, item_descriptor) }
+    end
+
+    def self.list_item_descriptor(type)
+      case type
+      when /\Aboolean_list/
+        'boolean_as_string'
+      when /\Ainteger_list/
+        'integer_as_string'
+      when /\Anumber_list/
+        'number_as_string'
+      when /\Aordinal_list/
+        'ordinal_as_string'
+      when /\Aunit_list/
+        'unit_as_string'
+      when /\Ascale_list/
+        'scale_as_string'
+      when /\Along_list/
+        'long_as_string'
+      else
+        'string'
+      end
+    end
+
+    def self.decode_sxl_array(value, descriptor)
+      return value unless value.is_a?(Array)
+
+      items = descriptor['items']
+      return value unless items.is_a?(Hash)
+
+      value.map do |item|
+        if items['type']
+          decode_sxl_value(item, items)
+        else
+          decode_sxl_object(item, items)
+        end
+      end
+    end
+
+    def self.decode_sxl_object(value, properties)
+      return value unless value.is_a?(Hash) && properties.is_a?(Hash)
+
+      value.each_with_object({}) do |(key, item_value), memo|
+        descriptor = properties[key] || properties[key.to_sym]
+        memo[key] = descriptor ? decode_sxl_value(item_value, descriptor) : item_value
       end
     end
 

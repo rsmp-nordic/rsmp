@@ -43,12 +43,18 @@ module RSMP
           security_code = security_code_for(1)
           [
             { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'securityCode', 'v' => security_code.to_s },
-            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'year', 'v' => clock.year.to_s },
-            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'month', 'v' => clock.month.to_s },
-            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'day', 'v' => clock.day.to_s },
-            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'hour', 'v' => clock.hour.to_s },
-            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'minute', 'v' => clock.min.to_s },
-            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'second', 'v' => clock.sec.to_s }
+            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'year',
+              'v' => command_value('M0104', 'year', clock.year) },
+            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'month',
+              'v' => command_value('M0104', 'month', clock.month) },
+            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'day',
+              'v' => command_value('M0104', 'day', clock.day) },
+            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'hour',
+              'v' => command_value('M0104', 'hour', clock.hour) },
+            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'minute',
+              'v' => command_value('M0104', 'minute', clock.min) },
+            { 'cCI' => 'M0104', 'cO' => 'setDate', 'n' => 'second',
+              'v' => command_value('M0104', 'second', clock.sec) }
           ]
         end
       end

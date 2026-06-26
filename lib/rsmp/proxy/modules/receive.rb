@@ -68,8 +68,10 @@ module RSMP
         def process_packet(json)
           attributes = Message.parse_attributes json
           message = Message.build attributes, json
-          message.validate(schemas) if should_validate_ingoing_message?(message)
+          validate = should_validate_ingoing_message?(message)
+          message.validate(schemas) if validate
           verify_sequence message
+          message.decode_for(schemas) if validate
           with_deferred_distribution do
             distribute message
             process_message message

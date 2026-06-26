@@ -330,6 +330,106 @@ describe RSMP::Message do
       expect(message.attributes['rvs'].first['v']).to be == 'True'
     end
 
+    it 'decodes status values using SXL argument types' do
+      message = RSMP::StatusUpdate.new(
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [
+          { 'sCI' => 'S0001', 'n' => 'basecyclecounter', 's' => '7', 'q' => 'recent' },
+          { 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '98', 'q' => 'recent' }
+        ]
+      )
+
+      message.decode_for(core: '3.3.0', tlc: '1.3.0')
+
+      expect(message.attributes['sS'].map { |item| item['s'] }).to be == [7, '98']
+    end
+
+    it 'decodes legacy list values into typed arrays' do
+      message = RSMP::StatusResponse.new(
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [
+          { 'sCI' => 'S0007', 'n' => 'status', 's' => 'True,False', 'q' => 'recent' },
+          { 'sCI' => 'S0007', 'n' => 'intersection', 's' => '0,1', 'q' => 'recent' }
+        ]
+      )
+
+      message.decode_for(core: '3.3.0', tlc: '1.3.0')
+
+      expect(message.attributes['sS'].map { |item| item['s'] }).to be == [[true, false], [0, 1]]
+    end
+
+    it 'decodes nested status values while preserving native arrays' do
+      value = [{ 'intersection' => '1', 'startup' => 'True' }]
+      message = RSMP::StatusUpdate.new(
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0005', 'n' => 'statusByIntersection', 's' => value, 'q' => 'recent' }]
+      )
+
+      message.decode_for(core: '3.3.0', tlc: '1.3.0')
+
+      expect(message.attributes['sS'].first['s']).to be == [{ 'intersection' => 1, 'startup' => true }]
+    end
+
+    it 'decodes command request and response values using SXL argument types' do
+      request = RSMP::CommandRequest.new(
+        'cId' => 'TLC001',
+        'arg' => [
+          { 'cCI' => 'M0019', 'n' => 'input', 'cO' => 'setValue', 'v' => '3' },
+          { 'cCI' => 'M0019', 'n' => 'inputValue', 'cO' => 'setValue', 'v' => 'False' }
+        ]
+      )
+      response = RSMP::CommandResponse.new(
+        'cId' => 'TLC001',
+        'cTS' => '2024-01-01T10:00:00.000Z',
+        'rvs' => [{ 'cCI' => 'M0019', 'n' => 'inputValue', 'v' => 'True', 'age' => 'recent' }]
+      )
+
+      request.decode_for(core: '3.3.0', tlc: '1.3.0')
+      response.decode_for(core: '3.3.0', tlc: '1.3.0')
+
+      expect(request.attributes['arg'].map { |item| item['v'] }).to be == [3, false]
+      expect(response.attributes['rvs'].first['v']).to be == true
+    end
+
+    it 'leaves native command values native when decoding' do
+      message = RSMP::CommandRequest.new(
+        'cId' => 'TLC001',
+        'arg' => [{ 'cCI' => 'M0024', 'n' => 'status', 'cO' => 'setValue', 'v' => true }]
+      )
+
+      message.decode_for(core: '3.3.0', tlc: '1.3.0')
+
+      expect(message.attributes['arg'].first['v']).to be == true
+    end
+
+    it 'decodes alarm rvs values using SXL argument types' do
+      message = RSMP::AlarmIssue.new(
+        'cId' => 'TLC001',
+        'aCId' => 'A0302',
+        'aTs' => '2024-01-01T10:00:00.000Z',
+        'ack' => 'notAcknowledged',
+        'sS' => 'notSuspended',
+        'aS' => 'Active',
+        'cat' => 'D',
+        'pri' => '2',
+        'rvs' => [{ 'n' => 'manual', 'v' => 'True' }]
+      )
+
+      message.decode_for(core: '3.3.0', tlc: '1.3.0')
+
+      expect(message.attributes['rvs'].first['v']).to be == true
+      expect(message.attributes['ack']).to be == 'notAcknowledged'
+    end
+
+    it 'leaves invalid legacy values unchanged when decoding' do
+      expect(RSMP::Message.decode_sxl_value('truthy', 'boolean_as_string')).to be == 'truthy'
+      expect(RSMP::Message.decode_sxl_value('12x', 'integer_as_string')).to be == '12x'
+      expect(RSMP::Message.decode_sxl_value('12x', 'number_as_string')).to be == '12x'
+    end
+
     it 'validates mType' do
       message = subject.new 'mType' => 'rSMsg', 'type' => 'Version',
                             'mId' => 'c014bd2d-5671-4a19-b37e-50deef301b82'
