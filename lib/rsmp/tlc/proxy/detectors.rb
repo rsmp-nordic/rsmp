@@ -15,7 +15,7 @@ module RSMP
             'cCI' => 'M0008',
             'cO' => 'setForceDetectorLogic',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0008', 'status', status)
           }, {
             'cCI' => 'M0008',
             'cO' => 'setForceDetectorLogic',
@@ -25,7 +25,7 @@ module RSMP
             'cCI' => 'M0008',
             'cO' => 'setForceDetectorLogic',
             'n' => 'mode',
-            'v' => mode.to_s
+            'v' => command_value('M0008', 'mode', mode)
           }]
           send_command_and_collect(command_list, component: component_id, within: within).ok!
         end
@@ -41,7 +41,7 @@ module RSMP
             'cCI' => 'M0021',
             'cO' => 'setLevel',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0021', 'status', status)
           }, {
             'cCI' => 'M0021',
             'cO' => 'setLevel',

@@ -9,14 +9,23 @@ module RSMP
     end
 
     def match_value?(item)
-      return true unless @want['v']
+      return true unless @want.key?('v')
 
-      if @want['v'].is_a? Regexp
-        return false if item['v'] !~ @want['v']
-      elsif item['v'] != @want['v']
+      want = @want['v']
+      got = item['v']
+      if want.is_a? Regexp
+        return false unless regex_match?(got, want)
+      elsif got != want
         return false
       end
       true
+    end
+
+    def regex_match?(got, want)
+      return got =~ want if got.is_a?(String)
+      return got.any? { |item| item.is_a?(String) && item =~ want } if got.is_a?(Array)
+
+      false
     end
 
     def match(item)

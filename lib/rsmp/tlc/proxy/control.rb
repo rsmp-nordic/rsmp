@@ -23,13 +23,12 @@ module RSMP
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
-          active_str = active ? 'True' : 'False'
 
           command_list = [{
             'cCI' => 'M0005',
             'cO' => 'setEmergency',
             'n' => 'status',
-            'v' => active_str
+            'v' => command_value('M0005', 'status', active)
           }, {
             'cCI' => 'M0005',
             'cO' => 'setEmergency',
@@ -39,7 +38,7 @@ module RSMP
             'cCI' => 'M0005',
             'cO' => 'setEmergency',
             'n' => 'emergencyroute',
-            'v' => route.to_s
+            'v' => command_value('M0005', 'emergencyroute', route)
           }]
 
           send_command_and_collect(command_list, within: within).ok!
@@ -56,7 +55,7 @@ module RSMP
             'cCI' => 'M0007',
             'cO' => 'setFixedTime',
             'n' => 'status',
-            'v' => status.to_s
+            'v' => command_value('M0007', 'status', status)
           }, {
             'cCI' => 'M0007',
             'cO' => 'setFixedTime',
@@ -64,8 +63,7 @@ module RSMP
             'v' => security_code.to_s
           }]
 
-          confirm_status = [{ 'sCI' => 'S0009', 'n' => 'status',
-                              's' => /^#{Regexp.escape(status.to_s)}(,#{Regexp.escape(status.to_s)})*$/ }]
+          confirm_status = [{ 'sCI' => 'S0009', 'n' => 'status', 's' => [boolean_value(status)] }]
           send_command_and_collect(command_list, within: within).ok!
           wait_for_status "fixed time #{status}", confirm_status, timeout: within
         end
@@ -81,7 +79,7 @@ module RSMP
             'cCI' => 'M0003',
             'cO' => 'setTrafficSituation',
             'n' => 'status',
-            'v' => 'True'
+            'v' => command_value('M0003', 'status', true)
           }, {
             'cCI' => 'M0003',
             'cO' => 'setTrafficSituation',
@@ -91,10 +89,10 @@ module RSMP
             'cCI' => 'M0003',
             'cO' => 'setTrafficSituation',
             'n' => 'traficsituation',
-            'v' => situation.to_s
+            'v' => command_value('M0003', 'traficsituation', situation)
           }]
 
-          confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => situation.to_s }]
+          confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => integer_value(situation) }]
           send_command_and_collect(command_list, within: within).ok!
           wait_for_status "traffic situation #{situation}", confirm_status, timeout: within
         end
@@ -110,7 +108,7 @@ module RSMP
             'cCI' => 'M0003',
             'cO' => 'setTrafficSituation',
             'n' => 'status',
-            'v' => 'False'
+            'v' => command_value('M0003', 'status', false)
           }, {
             'cCI' => 'M0003',
             'cO' => 'setTrafficSituation',
@@ -120,10 +118,10 @@ module RSMP
             'cCI' => 'M0003',
             'cO' => 'setTrafficSituation',
             'n' => 'traficsituation',
-            'v' => '1'
+            'v' => command_value('M0003', 'traficsituation', 1)
           }]
 
-          confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => '1' }]
+          confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => 1 }]
           send_command_and_collect(command_list, within: within).ok!
           wait_for_status 'traffic situation unset', confirm_status, timeout: within
         end
@@ -135,22 +133,24 @@ module RSMP
           [
             { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'status', 'v' => status.to_s },
             { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'securityCode', 'v' => security_code.to_s },
-            { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'timeout', 'v' => timeout_minutes.to_s },
-            { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'intersection', 'v' => '0' }
+            { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'timeout',
+              'v' => command_value('M0001', 'timeout', timeout_minutes) },
+            { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'intersection',
+              'v' => command_value('M0001', 'intersection', 0) }
           ]
         end
 
         def functional_position_confirm_status(status)
           case status.to_s
           when 'YellowFlash'
-            [{ 'sCI' => 'S0011', 'n' => 'status', 's' => /^True(,True)*$/ }]
+            [{ 'sCI' => 'S0011', 'n' => 'status', 's' => [true] }]
           when 'Dark'
-            [{ 'sCI' => 'S0007', 'n' => 'status', 's' => /^False(,False)*$/ }]
+            [{ 'sCI' => 'S0007', 'n' => 'status', 's' => [false] }]
           when 'NormalControl'
             [
-              { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
-              { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
-              { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
+              { 'sCI' => 'S0007', 'n' => 'status', 's' => [true] },
+              { 'sCI' => 'S0011', 'n' => 'status', 's' => [false] },
+              { 'sCI' => 'S0005', 'n' => 'status', 's' => false }
             ]
           else
             []

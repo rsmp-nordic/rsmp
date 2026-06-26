@@ -74,7 +74,7 @@ module RSMP
         def handle_m0005(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']
           route = arg['emergencyroute'].to_i
-          enable = (arg['status'] == 'True')
+          enable = arg['status']
           @last_emergency_route = route
 
           if enable

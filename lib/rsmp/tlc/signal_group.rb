@@ -56,7 +56,7 @@ module RSMP
       # Start of signal group. Orders a signal group to green
       def handle_m0010(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
-        return unless TrafficControllerSite.from_rsmp_bool? arg['status']
+        return unless arg['status']
 
         log "Start signal group #{c_id}, go to green", level: :info
       end
@@ -64,7 +64,7 @@ module RSMP
       # Stop of signal group. Orders a signal group to red
       def handle_m0011(arg, _options = {})
         @node.verify_security_code 2, arg['securityCode']
-        return unless TrafficControllerSite.from_rsmp_bool? arg['status']
+        return unless arg['status']
 
         log "Stop signal group #{c_id}, go to red", level: :info
       end

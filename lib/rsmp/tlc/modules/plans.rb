@@ -14,7 +14,7 @@ module RSMP
         # M0002 - Set current time plan
         def handle_m0002(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']
-          if TrafficControllerSite.from_rsmp_bool?(arg['status'])
+          if arg['status']
             switch_plan arg['timeplan'], source: 'forced'
           else
             switch_plan 0, source: 'startup' # TODO: use clock/calender
@@ -55,7 +55,7 @@ module RSMP
         def handle_m0014(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']
           plan = find_plan arg['plan']
-          arg['status'].split(',').each do |item|
+          status_items(arg['status']).each do |item|
             matched = /(\d+)-(\d+)/.match item
             band = matched[1].to_i
             value = matched[2].to_i
@@ -77,7 +77,7 @@ module RSMP
         # M0017 - Set time tables
         def handle_m0017(arg, _options = {})
           @node.verify_security_code 2, arg['securityCode']
-          arg['status'].split(',').each do |item|
+          status_items(arg['status']).each do |item|
             elems = item.split('-')
             nr = elems[0].to_i
             plan = elems[1].to_i
@@ -117,6 +117,10 @@ module RSMP
             log "Dynamic bands timeout set to #{timeout}min", level: :info
           end
           @dynamic_bands_timeout = timeout
+        end
+
+        def status_items(status)
+          status.is_a?(Array) ? status : status.split(',')
         end
 
         # S0014 - Current signal program

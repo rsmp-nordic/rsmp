@@ -147,18 +147,6 @@ module RSMP
         @security_codes[level] = new_code
       end
 
-      def self.to_rmsp_bool(bool)
-        if bool
-          'True'
-        else
-          'False'
-        end
-      end
-
-      def self.from_rsmp_bool?(str)
-        str == 'True'
-      end
-
       def self.make_status(value, quality = 'recent')
         [value, quality]
       end

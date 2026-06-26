@@ -2,23 +2,23 @@ describe RSMP::StatusCollector do
   let(:collect_timeout) { 0.01 }
   let(:want) do
     {
-      s5: { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' },
-      s7: { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
-      s11: { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ }
+      s5: { 'sCI' => 'S0005', 'n' => 'status', 's' => false },
+      s7: { 'sCI' => 'S0007', 'n' => 'status', 's' => [true] },
+      s11: { 'sCI' => 'S0011', 'n' => 'status', 's' => [false] }
     }
   end
   let(:ok) do
     {
-      s5: { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' },
-      s7: { 'sCI' => 'S0007', 'n' => 'status', 's' => 'True' },
-      s11: { 'sCI' => 'S0011', 'n' => 'status', 's' => 'False' }
+      s5: { 'sCI' => 'S0005', 'n' => 'status', 's' => false },
+      s7: { 'sCI' => 'S0007', 'n' => 'status', 's' => [true] },
+      s11: { 'sCI' => 'S0011', 'n' => 'status', 's' => [false] }
     }
   end
   let(:reject) do
     {
-      s5: { 'sCI' => 'S0005', 'n' => 'status', 's' => 'True' },
-      s7: { 'sCI' => 'S0007', 'n' => 'status', 's' => 'False' },
-      s11: { 'sCI' => 'S0011', 'n' => 'status', 's' => 'True' }
+      s5: { 'sCI' => 'S0005', 'n' => 'status', 's' => true },
+      s7: { 'sCI' => 'S0007', 'n' => 'status', 's' => [false] },
+      s11: { 'sCI' => 'S0011', 'n' => 'status', 's' => [true] }
     }
   end
 

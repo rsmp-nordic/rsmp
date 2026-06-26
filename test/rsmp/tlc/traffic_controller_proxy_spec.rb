@@ -92,10 +92,10 @@ describe RSMP::TLC::SupervisorInterface do
         'mId' => 'abc124',
         'cId' => 'TLC001',
         'sTs' => '2024-01-01T10:00:00.000Z',
-        'sS' => [{ 'sCI' => 'S0007', 'n' => 'status', 's' => 'True', 'q' => 'recent' }]
+        'sS' => [{ 'sCI' => 'S0007', 'n' => 'status', 's' => [true], 'q' => 'recent' }]
       )
       proxy.process_status_update(status_update)
-      expect(proxy.functional_position).to be == 'True'
+      expect(proxy.functional_position).to be == [true]
     end
 
     it 'caches yellow_flash from S0011 status updates' do
@@ -104,10 +104,10 @@ describe RSMP::TLC::SupervisorInterface do
         'mId' => 'abc125',
         'cId' => 'TLC001',
         'sTs' => '2024-01-01T10:00:00.000Z',
-        'sS' => [{ 'sCI' => 'S0011', 'n' => 'status', 's' => 'True,True', 'q' => 'recent' }]
+        'sS' => [{ 'sCI' => 'S0011', 'n' => 'status', 's' => [true, true], 'q' => 'recent' }]
       )
       proxy.process_status_update(status_update)
-      expect(proxy.yellow_flash).to be == 'True,True'
+      expect(proxy.yellow_flash).to be == [true, true]
     end
 
     it 'caches traffic_situation from S0015 status updates' do
@@ -116,10 +116,10 @@ describe RSMP::TLC::SupervisorInterface do
         'mId' => 'abc126',
         'cId' => 'TLC001',
         'sTs' => '2024-01-01T10:00:00.000Z',
-        'sS' => [{ 'sCI' => 'S0015', 'n' => 'status', 's' => '3', 'q' => 'recent' }]
+        'sS' => [{ 'sCI' => 'S0015', 'n' => 'status', 's' => 3, 'q' => 'recent' }]
       )
       proxy.process_status_update(status_update)
-      expect(proxy.traffic_situation).to be == '3'
+      expect(proxy.traffic_situation).to be == 3
     end
 
     it 'returns timeplan attributes from main component' do
@@ -292,22 +292,22 @@ describe RSMP::TLC::SupervisorInterface do
   end
 
   with 'functional_position_confirm_status' do
-    it 'returns S0011 True pattern for YellowFlash' do
+    it 'returns S0011 true status for YellowFlash' do
       result = proxy.send(:functional_position_confirm_status, 'YellowFlash')
-      expect(result).to be == [{ 'sCI' => 'S0011', 'n' => 'status', 's' => /^True(,True)*$/ }]
+      expect(result).to be == [{ 'sCI' => 'S0011', 'n' => 'status', 's' => [true] }]
     end
 
-    it 'returns S0007 False pattern for Dark' do
+    it 'returns S0007 false status for Dark' do
       result = proxy.send(:functional_position_confirm_status, 'Dark')
-      expect(result).to be == [{ 'sCI' => 'S0007', 'n' => 'status', 's' => /^False(,False)*$/ }]
+      expect(result).to be == [{ 'sCI' => 'S0007', 'n' => 'status', 's' => [false] }]
     end
 
     it 'returns S0007, S0011, S0005 for NormalControl' do
       result = proxy.send(:functional_position_confirm_status, 'NormalControl')
       expect(result).to be == [
-        { 'sCI' => 'S0007', 'n' => 'status', 's' => /^True(,True)*$/ },
-        { 'sCI' => 'S0011', 'n' => 'status', 's' => /^False(,False)*$/ },
-        { 'sCI' => 'S0005', 'n' => 'status', 's' => 'False' }
+        { 'sCI' => 'S0007', 'n' => 'status', 's' => [true] },
+        { 'sCI' => 'S0011', 'n' => 'status', 's' => [false] },
+        { 'sCI' => 'S0005', 'n' => 'status', 's' => false }
       ]
     end
 

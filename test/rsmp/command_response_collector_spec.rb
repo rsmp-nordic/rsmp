@@ -2,23 +2,23 @@ describe RSMP::CommandResponseCollector do
   let(:collect_timeout) { 0.01 }
   let(:want) do
     {
-      m5: { 'cCI' => 'M0005', 'n' => 'status', 'v' => 'False' },
-      m7: { 'cCI' => 'M0007', 'n' => 'status', 'v' => /^True(,True)*$/ },
-      m11: { 'cCI' => 'M0011', 'n' => 'status', 'v' => /^False(,False)*$/ }
+      m5: { 'cCI' => 'M0005', 'n' => 'status', 'v' => false },
+      m7: { 'cCI' => 'M0007', 'n' => 'status', 'v' => true },
+      m11: { 'cCI' => 'M0011', 'n' => 'status', 'v' => false }
     }
   end
   let(:ok) do
     {
-      m5: { 'cCI' => 'M0005', 'n' => 'status', 'v' => 'False' },
-      m7: { 'cCI' => 'M0007', 'n' => 'status', 'v' => 'True' },
-      m11: { 'cCI' => 'M0011', 'n' => 'status', 'v' => 'False' }
+      m5: { 'cCI' => 'M0005', 'n' => 'status', 'v' => false },
+      m7: { 'cCI' => 'M0007', 'n' => 'status', 'v' => true },
+      m11: { 'cCI' => 'M0011', 'n' => 'status', 'v' => false }
     }
   end
   let(:reject) do
     {
-      m5: { 'cCI' => 'M0005', 'n' => 'status', 'v' => 'True' },
-      m7: { 'cCI' => 'M0007', 'n' => 'status', 'v' => 'False' },
-      m11: { 'cCI' => 'M0011', 'n' => 'status', 'v' => 'True' }
+      m5: { 'cCI' => 'M0005', 'n' => 'status', 'v' => true },
+      m7: { 'cCI' => 'M0007', 'n' => 'status', 'v' => false },
+      m11: { 'cCI' => 'M0011', 'n' => 'status', 'v' => true }
     }
   end
 
