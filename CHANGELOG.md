@@ -692,9 +692,10 @@ Initial release.
 
 ## 0.48.0
 - implement RSMP Core 3.3.0 connection roles, allowing a site to listen and a supervisor to connect
-- update TLC 1.3.0 schemas for JSON-native values, required command arguments, and optional command arguments
 - enforce 3.3.0 command message rules, including one command code per CommandRequest/CommandResponse
+- update TLC schemas with JSON-native values and required/optional command arguments
+- add argument types to SXL indexes
+- encode/decode message values based on SXL type defintions
 - return `unknown` for unimplemented commands and statuses instead of rejecting the whole request
 - omit legacy NTS message attributes from outgoing Core 3.3.0 messages
-- replaced `CORE_VERSION` or `SXLS` environment variables with command line options `--core` and `--sxls`
-
+-  `CORE_VERSION` or `SXLS` environment variables with command line options `--core` and `--sxls`
