@@ -243,8 +243,8 @@ module RSMP
         catalogue[unprefixed] || catalogue[unprefixed.to_sym]
     end
 
-    def self.sxl_argument_descriptor(type, version, kind, code, name, options = {})
-      item = sxl_catalogue_item(type, version, kind, code, options)
+    def self.sxl_argument_descriptor(type, version, kind, code, name)
+      item = sxl_catalogue_item(type, version, kind, code)
       return unless item
 
       argument_descriptor(item['required'], name) || argument_descriptor(item['optional'], name)

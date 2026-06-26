@@ -12,12 +12,30 @@ module RSMP
         end
 
         def send_message(message, reason = nil, validate: true, force: false, buffer: true)
-          unless force || connected?
-            error = NotReady.new
-            raise error unless buffer
-
-            return buffer_message(message, error)
+          with_send_ready(message, force: force, buffer: buffer) do
+            write_message(message, validate: validate)
+            expect_acknowledgement message
+            distribute message
+            log_send message, reason
           end
+        rescue NotReady, IOError => e
+          raise e unless buffer
+
+          buffer_message message, e
+        rescue SchemaError, RSMP::Schema::Error => e
+          handle_send_schema_error(message, e)
+        end
+
+        def with_send_ready(message, force:, buffer:)
+          return yield if force || connected?
+
+          error = NotReady.new
+          raise error unless buffer
+
+          buffer_message(message, error)
+        end
+
+        def write_message(message, validate:)
           raise IOError unless @protocol
 
           message.direction = :out
@@ -25,15 +43,6 @@ module RSMP
           message.generate_json
           message.validate schemas unless validate == false
           @protocol.write_lines message.json
-          expect_acknowledgement message
-          distribute message
-          log_send message, reason
-        rescue NotReady, IOError => e
-          raise e unless buffer
-
-          buffer_message message, e
-        rescue SchemaError, RSMP::Schema::Error => e
-          handle_send_schema_error(message, e)
         end
 
         def buffer_message(message, error = nil)

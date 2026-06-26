@@ -22,15 +22,23 @@ module RSMP
 
         def command_catalogue_item(command_code)
           accepted_sxls.each do |sxl|
-            version = RSMP::Schema.sanitize_version(sxl['version'].to_s)
-            catalogue = RSMP::Schema.sxl_catalogue(sxl['name'], version, :commands)
-            prefix = RSMP::Schema.sxl_prefix(sxl['name'], version, lenient: true)
-            unprefixed = prefix && command_code.start_with?(prefix) ? command_code[prefix.length..] : command_code
-            item = catalogue[command_code] || catalogue[command_code.to_sym] ||
-                   catalogue[unprefixed] || catalogue[unprefixed.to_sym]
+            item = command_catalogue_match(sxl, command_code)
             return item if item
           end
           nil
+        end
+
+        def command_catalogue_match(sxl, command_code)
+          version = RSMP::Schema.sanitize_version(sxl['version'].to_s)
+          catalogue = RSMP::Schema.sxl_catalogue(sxl['name'], version, :commands)
+          prefix = RSMP::Schema.sxl_prefix(sxl['name'], version, lenient: true)
+          lookup_catalogue_command(catalogue, command_code, prefix)
+        end
+
+        def lookup_catalogue_command(catalogue, command_code, prefix)
+          unprefixed = prefix && command_code.start_with?(prefix) ? command_code[prefix.length..] : command_code
+          catalogue[command_code] || catalogue[command_code.to_sym] ||
+            catalogue[unprefixed] || catalogue[unprefixed.to_sym]
         end
 
         def required_command_argument_names(command_code)
@@ -65,12 +73,10 @@ module RSMP
           component = @site.find_component component_id
           commands = simplify_command_requests message.attributes['arg']
           commands.each_pair do |command_code, arg|
-            begin
-              component.handle_command command_code, arg
-            rescue UnknownCommand => e
-              log e.to_s, message: message, level: :warning
-              mark_command_unknown rvs, command_code
-            end
+            component.handle_command command_code, arg
+          rescue UnknownCommand => e
+            log e.to_s, message: message, level: :warning
+            mark_command_unknown rvs, command_code
           end
           log "Received #{message.type}", message: message, level: :log
         rescue UnknownComponent

@@ -232,7 +232,7 @@ describe RSMP::Message do
 
       message.encode_for(core: '3.3.0', tlc: '1.3.0')
 
-      expect(message.attributes['sS'].map { |item| item['s'] }).to be == ['7', '98']
+      expect(message.attributes['sS'].map { |item| item['s'] }).to be == %w[7 98]
     end
 
     it 'encodes legacy list values from scalar semantic values' do
@@ -247,7 +247,7 @@ describe RSMP::Message do
 
       message.encode_for(core: '3.3.0', tlc: '1.2.1')
 
-      expect(message.attributes['sS'].map { |item| item['s'] }).to be == ['True', '0']
+      expect(message.attributes['sS'].map { |item| item['s'] }).to be == %w[True 0]
     end
 
     it 'encodes string values from scalar semantic values' do
@@ -286,7 +286,7 @@ describe RSMP::Message do
 
       message.encode_for(core: '3.3.0', tlc: '1.3.0')
 
-      expect(message.attributes['arg'].map { |item| item['v'] }).to be == ['3', 'False']
+      expect(message.attributes['arg'].map { |item| item['v'] }).to be == %w[3 False]
     end
 
     it 'leaves native command values native' do

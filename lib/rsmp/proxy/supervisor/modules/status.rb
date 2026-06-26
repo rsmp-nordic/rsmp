@@ -3,7 +3,7 @@ module RSMP
     module Modules
       # Status request and subscription handling
       module Status
-        PrecomputedStatusValue = Struct.new(:value)
+        include StatusUpdates
 
         def rsmpify_value(value, quality)
           if %w[undefined unknown].include?(quality.to_s)
@@ -120,124 +120,6 @@ module RSMP
               by_code.delete(code) if by_name.empty?
             end
             @status_subscriptions.delete(component_id) if by_code.empty?
-          end
-        end
-
-        def fetch_last_sent_status(component, code, name)
-          @last_status_sent&.dig component, code, name
-        end
-
-        def store_last_sent_status(message)
-          component_id = message.attribute('cId')
-          @last_status_sent ||= {}
-          @last_status_sent[component_id] ||= {}
-          message.attribute('sS').each do |item|
-            sci = item['sCI']
-            n = item['n']
-            s = item['s']
-            @last_status_sent[component_id][sci] ||= {}
-            @last_status_sent[component_id][sci][n] = s
-          end
-        end
-
-        def check_on_change_update(subscription, component, code, name)
-          return [nil, false] unless subscription[:interval].zero?
-
-          current = nil
-          encoded_current = nil
-          if component
-            current, quality = *(component.get_status code, name)
-            current = rsmpify_value(current, quality)
-            encoded_current = encode_status_value(code, name, current)
-          end
-          last_sent = fetch_last_sent_status component.c_id, code, name
-          [current, encoded_current != last_sent]
-        end
-
-        def encode_status_value(code, name, value)
-          message = {
-            'type' => 'StatusUpdate',
-            'sS' => [{ 'sCI' => code, 'n' => name }]
-          }
-          type, version = RSMP::Schema.resolve_sxl(message, schemas: schemas)
-          descriptor = RSMP::Schema.sxl_argument_descriptor(type, version, :statuses, code, name)
-          descriptor ? RSMP::Message.encode_sxl_value(value, descriptor) : value
-        end
-
-        def interval_update_due?(subscription, now)
-          return true if subscription[:last_sent_at].nil?
-
-          (now - subscription[:last_sent_at]) >= subscription[:interval]
-        end
-
-        def check_status_subscription(subscription, component, code, name, now)
-          current, should_send = check_on_change_update(subscription, component, code, name)
-          should_send ||= interval_update_due?(subscription, now) if subscription[:interval].positive?
-          return [nil, false] unless should_send
-
-          subscription[:last_sent_at] = now
-          [current, true]
-        end
-
-        def status_update_timer(now)
-          update_list = {}
-
-          @status_subscriptions.each_pair do |component_id, by_code|
-            component = @site.find_component component_id
-            by_code.each_pair do |code, by_name|
-              by_name.each_pair do |name, subscription|
-                current, should_send = check_status_subscription(subscription, component, code, name, now)
-                next unless should_send
-
-                update_list[component_id] ||= {}
-                update_list[component_id][code] ||= {}
-                update_list[component_id][code][name] =
-                  subscription[:interval].zero? ? PrecomputedStatusValue.new(current) : nil
-              end
-            end
-          end
-          send_status_updates update_list
-        end
-
-        def build_status_list(component, by_code)
-          ss = []
-          by_code.each_pair do |code, names|
-            names.map do |status_name, value|
-              if value.is_a?(PrecomputedStatusValue)
-                value = value.value
-                quality = 'recent'
-              else
-                begin
-                  value, quality = component.get_status code, status_name
-                rescue UnknownStatus => e
-                  log e.to_s, level: :warning
-                  value = nil
-                  quality = 'unknown'
-                end
-              end
-              ss << { 'sCI' => code,
-                      'n' => status_name,
-                      's' => rsmpify_value(value, quality),
-                      'q' => quality }
-            end
-          end
-          ss
-        end
-
-        def send_status_updates(update_list)
-          now = clock.to_s
-          update_list.each_pair do |component_id, by_code|
-            component = @site.find_component component_id
-            ss = build_status_list(component, by_code)
-            update = StatusUpdate.new({
-                                        'cId' => component_id,
-                                        'sTs' => now,
-                                        'sS' => ss
-                                      })
-            apply_nts_message_attributes update
-            send_message update
-            store_last_sent_status update
-            component.status_updates_sent
           end
         end
       end

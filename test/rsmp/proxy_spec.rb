@@ -558,7 +558,7 @@ describe RSMP::Proxy do
       expect(proxy.rsmpify_value(3, 'recent')).to be == 3
       expect(proxy.rsmpify_value(false, 'recent')).to be == false
       expect(proxy.rsmpify_value('3', 'recent')).to be == '3'
-      expect(proxy.rsmpify_value(3, 'unknown')).to be == nil
+      expect(proxy.rsmpify_value(3, 'unknown')).to be_nil
     end
 
     it 'does not encode messages sent without validation' do
