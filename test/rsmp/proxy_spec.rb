@@ -495,6 +495,20 @@ describe RSMP::Proxy do
       expect(proxy.rsmpify_value(3, 'unknown')).to be == nil
     end
 
+    it 'does not encode messages sent without validation' do
+      proxy, protocol = build_core_3_3_supervisor_proxy
+      message = RSMP::StatusUpdate.new(
+        'cId' => 'TLC001',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0001', 'n' => 'basecyclecounter', 's' => 3, 'q' => 'recent' }]
+      )
+
+      proxy.send_message message, validate: false
+
+      sent = JSON.parse(protocol.lines.last)
+      expect(sent['sS'].first['s']).to be == 3
+    end
+
     it 'does not add legacy NTS attributes for 3.3.0 messages' do
       proxy, = build_core_3_3_supervisor_proxy
       message = RSMP::StatusRequest.new

@@ -160,12 +160,7 @@ module RSMP
       end
 
       def self.make_status(value, quality = 'recent')
-        case value
-        when true, false
-          [to_rmsp_bool(value), quality]
-        else
-          [value, quality]
-        end
+        [value, quality]
       end
 
       def do_deferred(key, _item = nil)

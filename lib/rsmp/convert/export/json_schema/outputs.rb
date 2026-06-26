@@ -167,11 +167,34 @@ module RSMP
           items.keys.sort.to_h do |key|
             arguments = items[key]['arguments'] || {}
             entry = {}
-            required = required_argument_names(items[key])
-            optional = arguments.select { |_name, argument| argument['optional'] == true }.keys.sort
+            required = typed_arguments(arguments.reject { |_name, argument| argument['optional'] == true })
+            optional = typed_arguments(arguments.select { |_name, argument| argument['optional'] == true })
             entry['required'] = required unless required.empty?
             entry['optional'] = optional unless optional.empty?
             [key, entry]
+          end
+        end
+
+        def self.typed_arguments(arguments)
+          arguments.keys.sort.to_h do |name|
+            [name, argument_type_descriptor(arguments[name])]
+          end
+        end
+
+        def self.argument_type_descriptor(argument)
+          type = argument['type']
+          case type
+          when 'array'
+            descriptor = { 'type' => type }
+            descriptor['items'] = typed_arguments(argument['items']) if argument['items'].is_a?(Hash)
+            descriptor
+          when 'object'
+            descriptor = { 'type' => type }
+            properties = argument['properties'] || argument['items']
+            descriptor['properties'] = typed_arguments(properties) if properties.is_a?(Hash)
+            descriptor
+          else
+            type
           end
         end
 

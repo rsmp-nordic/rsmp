@@ -31,7 +31,7 @@
           "properties" : {
             "v" : {
               "description" : "False: Deactivate input\nTrue: Activate input",
-              "type" : "boolean"
+              "$ref" : "../defs/definitions.json#/boolean"
             }
           }
         }
@@ -65,7 +65,7 @@
           "properties" : {
             "v" : {
               "description" : "Number of Input",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

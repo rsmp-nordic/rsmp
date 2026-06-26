@@ -144,7 +144,7 @@ module RSMP
           when 'intersection'
             TrafficControllerSite.make_status @intersection
           when 'status'
-            TrafficControllerSite.make_status TrafficControllerSite.to_rmsp_bool(@function_position == 'YellowFlash')
+            TrafficControllerSite.make_status @function_position == 'YellowFlash'
           when 'source'
             TrafficControllerSite.make_status @function_position_source
           end

@@ -37,7 +37,7 @@ module RSMP
           item = command_catalogue_item command_code
           return [] unless item
 
-          Array(item['required'])
+          RSMP::Schema.argument_names(item['required'])
         end
 
         def check_required_command_arguments(message)

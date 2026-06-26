@@ -229,7 +229,9 @@ describe RSMP::Schema do
                       },
                       statuses: {
                         'S0001' => {
-                          'required' => %w[signalgroupstatus]
+                          'required' => {
+                            'signalgroupstatus' => 'string'
+                          }
                         }
                       })
 
@@ -309,7 +311,9 @@ describe RSMP::Schema do
                     },
                     statuses: {
                       'S0001' => {
-                        'required' => ['text']
+                        'required' => {
+                          'text' => 'string'
+                        }
                       }
                     })
   end

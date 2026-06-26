@@ -52,7 +52,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of cars",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -69,7 +69,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of cars with trailers",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -86,7 +86,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of trucks",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -103,7 +103,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of trucks with trailers",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -120,7 +120,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of busses",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -137,7 +137,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of trams",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -154,7 +154,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of motor cycles",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -171,7 +171,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of bicycles",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -188,7 +188,7 @@
           "properties" : {
             "s" : {
               "description" : "Number of pedestrians",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

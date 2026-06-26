@@ -30,7 +30,7 @@
           "properties" : {
             "v" : {
               "description" : "False: No command (default)\nTrue: Order a signal group to red",
-              "type" : "boolean"
+              "$ref" : "../defs/definitions.json#/boolean"
             }
           }
         }

@@ -100,15 +100,15 @@ objects:
             description: Signal group status as text field
             pattern: "^[a-hA-G0-9N-P]*$"
           cyclecounter:
-            type: integer
+            type: integer_as_string
             description: Cycle counter
             range: "[0-999]"
           basecyclecounter:
-            type: integer
+            type: integer_as_string
             description: Base cycle counter
             range: "[0-999]"
           stage:
-            type: integer
+            type: integer_as_string
             description: Current stage (isolated)
             range: "[0-999]"
       S0002:
@@ -151,7 +151,7 @@ objects:
           During startup mode the traffic controller shows dark, red, yellow flash or using the predetermined start cycle (minimum times).
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Controller is not in start up mode
               True: Controller is currently in start up mode
@@ -162,12 +162,12 @@ objects:
           Used in situations where full priority is given in the emergency vehicle program.
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Emergency stage inactive
               True: Emergency stage active
           emergencystage:
-            type: integer
+            type: integer_as_string
             description: Number of emergency stage
             range: "[1-255]"
       S0007:
@@ -298,7 +298,7 @@ objects:
           The time plan (signal program) may change signal timings, cycle time, control strategy and much more. Typical usage is is scenario based control where change of program is used to change priority etc.
         arguments:
           status:
-            type: integer
+            type: integer_as_string
             description: Current time plan
             range: "[1-255]"
       S0015:
@@ -309,7 +309,7 @@ objects:
           Traffic situation is a concept used to divide multiple TLC's into areas and sub-areas. The traffic situation gives the possibility to change the TLC sub-area dynamically depending on the time of day and the traffic flow. Depending on the traffic situation each TLC selects the time plan dynamically.
         arguments:
           status:
-            type: integer
+            type: integer_as_string
             description: Current traffic situation
             range: "[1-255]"
       S0016:
@@ -318,7 +318,7 @@ objects:
           Can be used by the management system to check the number of detector logics configured in the controller.
         arguments:
           number:
-            type: long
+            type: long_as_string
             description: Number of detector logics
             range: "[1-65025]"
       S0017:
@@ -327,7 +327,7 @@ objects:
           Can be used for the management system to check the number of signal groups configured in the controller.
         arguments:
           number:
-            type: long
+            type: long_as_string
             description: Number of signal groups
             range: "[1-65025]"
       S0018:
@@ -336,7 +336,7 @@ objects:
           Can be used for the management system to check the number of time plans configured in the controller.
         arguments:
           number:
-            type: long
+            type: long_as_string
             description: Number of time plans (depreciated)
             range: "[1-65025]"
       S0019:
@@ -345,7 +345,7 @@ objects:
           Can be used for the management system to check the number of traffic situations configured in the controller.
         arguments:
           number:
-            type: long
+            type: long_as_string
             description: Number of traffic situations
             range: "[1-65025]"
       S0020:
@@ -550,29 +550,29 @@ objects:
           Provides diagnostic information about the current date and time set in the controller.
         arguments:
           year:
-            type: integer
+            type: integer_as_string
             description: 'Year according to format YYYY. NOTE: UTC is used'
             range: YYYY
           month:
-            type: integer
+            type: integer_as_string
             description: 'Month (01-12) according to format MM. Note: UTC is used'
             range: MM
           day:
-            type: integer
+            type: integer_as_string
             description: 'Day of month (01-31) according to format DD.  Note: UTC
               is used'
             range: DD
           hour:
-            type: integer
+            type: integer_as_string
             description: 'Hour of day (00-23) according to format DD. Note: UTC is
               used'
             range: HH
           minute:
-            type: integer
+            type: integer_as_string
             description: 'Minute (00-59) according to format MM. Note: UTC is used'
             range: MM
           second:
-            type: integer
+            type: integer_as_string
             description: 'Second (00-59) according to format SS. Note: UTC is used'
             range: SS
     commands:
@@ -614,7 +614,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Controller uses time plan according to programming
               True: Controller uses time plan according to command
@@ -622,7 +622,7 @@ objects:
             type: string
             description: Security code 2
           timeplan:
-            type: integer
+            type: integer_as_string
             description: designation of time plan
             range: "[1-255]"
         command: setPlan
@@ -634,7 +634,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Controller uses traffic situation according to own programming
               True: Controller uses traffic situation according to command
@@ -642,7 +642,7 @@ objects:
             type: string
             description: Security code 2
           traficsituation:
-            type: integer
+            type: integer_as_string
             description: designation of traficsituation
             range: "[1-255]"
         command: setTrafficSituation
@@ -653,7 +653,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: 'True: Restart controller'
           securityCode:
             type: string
@@ -667,7 +667,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Activate emergency route
               True: Deactivate emergency route
@@ -675,7 +675,7 @@ objects:
             type: string
             description: Security code 2
           emergencyroute:
-            type: integer
+            type: integer_as_string
             description: Number of emergency route
             range: "[1-255]"
         command: setEmergency
@@ -689,7 +689,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Deactivate input
               True: Activate input
@@ -697,7 +697,7 @@ objects:
             type: string
             description: Security code 2
           input:
-            type: integer
+            type: integer_as_string
             description: Number of Input
             range: "[1-255]"
         command: setInput
@@ -709,7 +709,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Deactivate fixed time control
               True: Activate fixed time control
@@ -797,7 +797,7 @@ objects:
           Requires security code 2
         arguments:
           plan:
-            type: integer
+            type: integer_as_string
             description: Plan to be changed
             range: "[0-255]"
           status:
@@ -824,11 +824,11 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: integer
+            type: integer_as_string
             description: Set offset time in seconds
             range: "[0-255]"
           plan:
-            type: integer
+            type: integer_as_string
             description: Time plan nr
             range: "[0-255]"
           securityCode:
@@ -908,11 +908,11 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: integer
+            type: integer_as_string
             description: Set cycle time in seconds
             range: "[1-255]"
           plan:
-            type: integer
+            type: integer_as_string
             description: Time plan nr
             range: "[0-255]"
           securityCode:
@@ -927,7 +927,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Force input
               True: Release input
@@ -935,11 +935,11 @@ objects:
             type: string
             description: Security code 2
           input:
-            type: integer
+            type: integer_as_string
             description: Number of Input
             range: "[1-255]"
           inputValue:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: input forced to False
               True: input forced to True
@@ -972,37 +972,37 @@ objects:
             type: string
             description: Security code 1
           year:
-            type: integer
+            type: integer_as_string
             description: |-
               Changes internal clock. Note: UTC is used
               Year according to YYYY
             range: "[YYYY]"
           month:
-            type: integer
+            type: integer_as_string
             description: |-
               Changes internal clock. Note: UTC is used
               Month according to MM (01-12)
             range: "[MM]"
           day:
-            type: integer
+            type: integer_as_string
             description: |-
               Changes internal clock. Note: UTC is used
               Day in month according to DD (01-31)
             range: "[DD]"
           hour:
-            type: integer
+            type: integer_as_string
             description: |-
               Changes internal clock. Note: UTC is used
               Hour according to HH (00-23)
             range: "[HH]"
           minute:
-            type: integer
+            type: integer_as_string
             description: |-
               Changes internal clock. Note: UTC is used
               Minute according to MM (00-59)
             range: "[MM]"
           second:
-            type: integer
+            type: integer_as_string
             description: |-
               Changes internal clock. Note: UTC is used
               Second according to SS (00-59)
@@ -1021,7 +1021,7 @@ objects:
         category: D
         arguments:
           timeplan:
-            type: integer
+            type: integer_as_string
             description: Current time plan
             range: "[designation]"
       A0101:
@@ -1082,7 +1082,7 @@ objects:
               Time stamp for the most likely time for the signal group to go to green. If the signal group is green, it is the most likely time for the next green.
               Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
           ToGConfidence:
-            type: integer
+            type: integer_as_string
             description: Confidence of the likelyToGEstimate. 0-100%
             range: "[0-100]"
           minToREstimate   :
@@ -1101,7 +1101,7 @@ objects:
               Time stamp for the most likely time for the signal group to go to red. If the signal group is red, it is the most likely time for the next red.
               Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
           ToRConfidence:
-            type: integer
+            type: integer_as_string
             description: Confidence of the likelyToREstimate. 0-100%
             range: "[0-100]"
     commands:
@@ -1113,7 +1113,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: No command (default)
               True: Order a signal group to green
@@ -1129,7 +1129,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: No command (default)
               True: Order a signal group to red
@@ -1162,7 +1162,7 @@ objects:
             description: Detector forced on/off while detector error
             values: ['on','off']
           manual:
-            type: boolean
+            type: boolean_as_string
             description: Manually controlled detector logic (True/False)
       A0302:
         description: |-
@@ -1187,7 +1187,7 @@ objects:
             description: Detector forced on/off while detector error
             values: ['on','off']
           manual:
-            type: boolean
+            type: boolean_as_string
             description: Manually controlled detector logic (True/False)
           logicerror:
             type: string
@@ -1208,7 +1208,7 @@ objects:
               XML dateTime with a resolution of 3 decimal places. All time stamps
               in UTC. E.g. 2009-10-02T14:34:34.341Z
           vehicles:
-            type: long
+            type: long_as_string
             description: Number of vehicles on a given detector logic (since last
               update)
             range: "[number]"
@@ -1224,7 +1224,7 @@ objects:
               XML dateTime with a resolution of 3 decimal places. All time stamps
               in UTC. E.g. 2009-10-02T14:34:34.341Z
           speed:
-            type: integer
+            type: integer_as_string
             description: Average speed in km/h
             range: "[speed]"
       S0203:
@@ -1239,7 +1239,7 @@ objects:
               XML dateTime with a resolution of 3 decimal places. All time stamps
               in UTC. E.g. 2009-10-02T14:34:34.341Z
           occupancy:
-            type: integer
+            type: integer_as_string
             description: Occupancy in percent (0-100%)
             range: "[0-100]"
       S0204:
@@ -1254,39 +1254,39 @@ objects:
               XML dateTime with a resolution of 3 decimal places. All time stamps
               in UTC. E.g. 2009-10-02T14:34:34.341Z
           P:
-            type: long
+            type: long_as_string
             description: Number of cars
             range: "[number]"
           PS:
-            type: long
+            type: long_as_string
             description: Number of cars with trailers
             range: "[number]"
           L:
-            type: long
+            type: long_as_string
             description: Number of trucks
             range: "[number]"
           LS:
-            type: long
+            type: long_as_string
             description: Number of trucks with trailers
             range: "[number]"
           B:
-            type: long
+            type: long_as_string
             description: Number of busses
             range: "[number]"
           SP:
-            type: long
+            type: long_as_string
             description: Number of trams
             range: "[number]"
           MC:
-            type: long
+            type: long_as_string
             description: Number of motor cycles
             range: "[number]"
           C:
-            type: long
+            type: long_as_string
             description: Number of bicycles
             range: "[number]"
           F:
-            type: long
+            type: long_as_string
             description: Number of pedestrians
             range: "[number]"
     commands:
@@ -1298,7 +1298,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Deactivate manual control of detector logic
               True: Activate manual control of detector logic
@@ -1306,7 +1306,7 @@ objects:
             type: string
             description: Security code 2
           mode:
-            type: boolean
+            type: boolean_as_string
             description: |-
               False: Deactivate detector logic
               True: Activate detector logic

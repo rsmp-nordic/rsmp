@@ -171,6 +171,94 @@ module RSMP
       raise err
     end
 
+    def encode_for(schemas)
+      case type
+      when 'StatusResponse', 'StatusUpdate'
+        encode_sxl_items(schemas, :statuses, 'sS', 'sCI', 'n', 's')
+      when 'CommandRequest'
+        encode_sxl_items(schemas, :commands, 'arg', 'cCI', 'n', 'v')
+      when 'CommandResponse'
+        encode_sxl_items(schemas, :commands, 'rvs', 'cCI', 'n', 'v')
+      when 'Alarm'
+        encode_sxl_items(schemas, :alarms, 'rvs', nil, 'n', 'v', code: @attributes['aCId'])
+      end
+      self
+    end
+
+    def encode_sxl_items(schemas, kind, list_key, code_key, name_key, value_key, code: nil)
+      resolved = RSMP::Schema.resolve_sxl(@attributes, schemas: schemas)
+      return unless resolved
+
+      type, version = resolved
+      Array(@attributes[list_key]).each do |item|
+        item_code = code || item[code_key]
+        name = item[name_key]
+        next unless item_code && name && item.key?(value_key)
+
+        descriptor = RSMP::Schema.sxl_argument_descriptor(type, version, kind, item_code, name)
+        item[value_key] = self.class.encode_sxl_value(item[value_key], descriptor) if descriptor
+      end
+    end
+
+    def self.encode_sxl_value(value, descriptor)
+      return nil if value.nil?
+
+      type = descriptor.is_a?(Hash) ? descriptor['type'] : descriptor.to_s
+      case type
+      when 'boolean_as_string'
+        encode_sxl_boolean(value)
+      when 'integer_as_string', 'ordinal_as_string', 'unit_as_string', 'scale_as_string',
+           'long_as_string', 'number_as_string'
+        value.is_a?(String) ? value : value.to_s
+      when 'string', 'base64', 'timestamp'
+        value.is_a?(String) ? value : value.to_s
+      when /_list(_as_string)?\z/
+        encode_sxl_list(value)
+      when 'array'
+        encode_sxl_array(value, descriptor)
+      when 'object'
+        encode_sxl_object(value, descriptor['properties'])
+      else
+        value
+      end
+    end
+
+    def self.encode_sxl_boolean(value)
+      case value
+      when true
+        'True'
+      when false
+        'False'
+      else
+        value
+      end
+    end
+
+    def self.encode_sxl_list(value)
+      return value if value.is_a?(String)
+      return encode_sxl_boolean(value).to_s unless value.is_a?(Array)
+
+      value.map { |item| encode_sxl_boolean(item) }.join(',')
+    end
+
+    def self.encode_sxl_array(value, descriptor)
+      return value unless value.is_a?(Array)
+
+      items = descriptor['items']
+      return value unless items.is_a?(Hash)
+
+      value.map { |item| encode_sxl_object(item, items) }
+    end
+
+    def self.encode_sxl_object(value, properties)
+      return value unless value.is_a?(Hash) && properties.is_a?(Hash)
+
+      value.each_with_object({}) do |(key, item_value), memo|
+        descriptor = properties[key] || properties[key.to_sym]
+        memo[key] = descriptor ? encode_sxl_value(item_value, descriptor) : item_value
+      end
+    end
+
     def validate_type?
       @attributes['mType'] == 'rSMsg'
     end

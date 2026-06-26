@@ -218,7 +218,44 @@ module RSMP
     # raises an error if the schema type/version is not found, or has no status catalogue
     def self.status_catalogue(type, version)
       sxl_catalogue(type, version, :statuses).transform_keys(&:to_sym).transform_values do |status|
-        (Array(status['required']) + Array(status['optional'])).sort.map(&:to_sym)
+        (argument_names(status['required']) + argument_names(status['optional'])).sort.map(&:to_sym)
+      end
+    end
+
+    def self.argument_names(arguments)
+      case arguments
+      when Hash
+        arguments.keys
+      when Array
+        arguments
+      else
+        []
+      end
+    end
+
+    def self.sxl_catalogue_item(type, version, kind, code, options = {})
+      version = sanitize_version(version.to_s) if options[:lenient]
+      catalogue = sxl_catalogue(type, version, kind)
+      prefix = sxl_prefix(type, version, options)
+      code = code.to_s
+      unprefixed = prefix && code.start_with?(prefix) ? code[prefix.length..] : code
+      catalogue[code] || catalogue[code.to_sym] ||
+        catalogue[unprefixed] || catalogue[unprefixed.to_sym]
+    end
+
+    def self.sxl_argument_descriptor(type, version, kind, code, name, options = {})
+      item = sxl_catalogue_item(type, version, kind, code, options)
+      return unless item
+
+      argument_descriptor(item['required'], name) || argument_descriptor(item['optional'], name)
+    end
+
+    def self.argument_descriptor(arguments, name)
+      return unless arguments
+
+      case arguments
+      when Hash
+        arguments[name] || arguments[name.to_sym]
       end
     end
 

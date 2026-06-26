@@ -32,7 +32,7 @@
           "properties" : {
             "v" : {
               "description" : "False: Force output\nTrue: Release output",
-              "type" : "boolean"
+              "$ref" : "../defs/definitions.json#/boolean"
             }
           }
         }
@@ -66,7 +66,7 @@
           "properties" : {
             "v" : {
               "description" : "Number of Output",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -83,7 +83,7 @@
           "properties" : {
             "v" : {
               "description" : "False: output forced to False\nTrue: output forced to True",
-              "type" : "boolean"
+              "$ref" : "../defs/definitions.json#/boolean"
             }
           }
         }

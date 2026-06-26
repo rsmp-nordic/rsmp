@@ -21,6 +21,7 @@ module RSMP
           raise IOError unless @protocol
 
           message.direction = :out
+          message.encode_for(schemas) unless validate == false
           message.generate_json
           message.validate schemas unless validate == false
           @protocol.write_lines message.json

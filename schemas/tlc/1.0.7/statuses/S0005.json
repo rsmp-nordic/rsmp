@@ -26,7 +26,7 @@
           "properties" : {
             "s" : {
               "description" : "False: Controller is not in start up mode\nTrue: Controller is currently in start up mode",
-              "type" : "boolean"
+              "$ref" : "../defs/definitions.json#/boolean"
             }
           }
         }

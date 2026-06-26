@@ -48,7 +48,7 @@ module RSMP
             TrafficControllerSite.make_status([
                                                 {
                                                   'intersection' => '1',
-                                                  'startup' => TrafficControllerSite.to_rmsp_bool(@is_starting)
+                                                  'startup' => @is_starting
                                                 }
                                               ])
           end

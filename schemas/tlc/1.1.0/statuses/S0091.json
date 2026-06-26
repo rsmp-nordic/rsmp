@@ -25,11 +25,11 @@
         "then" : {
           "properties" : {
             "s" : {
-              "type" : "integer",
+              "$ref" : "../defs/definitions.json#/integer",
               "enum" : [
-                0,
-                1,
-                2
+                "0",
+                "1",
+                "2"
               ]
             }
           }

@@ -328,10 +328,18 @@ describe RSMP::CLI do
 
         expect(result.status).to be == 0
         expect(index.dig('meta', 'name')).to be == 'tlc'
-        expect(index.dig('statuses', 'S0001', 'required')).to be(:include?, 'signalgroupstatus')
+        expect(index.dig('statuses', 'S0001', 'required', 'signalgroupstatus')).to be == 'string'
+        expect(index.dig('statuses', 'S0001', 'required', 'basecyclecounter')).to be == 'integer_as_string'
         expect(index.dig('statuses', 'S0001')).not.to be(:include?, 'optional')
         expect(index.dig('statuses', 'S0001')).not.to be(:include?, 'arguments')
-        expect(index.dig('commands', 'M0001', 'required')).to be(:include?, 'status')
+        expect(index.dig('statuses', 'S0005', 'required', 'statusByIntersection')).to be == {
+          'type' => 'array',
+          'items' => {
+            'intersection' => 'integer_as_string',
+            'startup' => 'boolean_as_string'
+          }
+        }
+        expect(index.dig('commands', 'M0001', 'required', 'status')).to be == 'string'
         expect(index.dig('commands', 'M0001')).not.to be(:include?, 'arguments')
         expect(index['alarms']).to be(:include?, 'A0001')
       end

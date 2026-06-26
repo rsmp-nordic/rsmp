@@ -31,7 +31,7 @@
           "properties" : {
             "v" : {
               "description" : "False: Activate emergency route\nTrue: Deactivate emergency route",
-              "type" : "boolean"
+              "$ref" : "../defs/definitions.json#/boolean"
             }
           }
         }
@@ -65,7 +65,7 @@
           "properties" : {
             "v" : {
               "description" : "Number of emergency route",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
