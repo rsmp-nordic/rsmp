@@ -54,7 +54,7 @@
           "properties" : {
             "v" : {
               "description" : "Security code 2",
-              "$ref" : "../defs/definitions.json#/string_list"
+              "type" : "string"
             }
           }
         }
@@ -71,7 +71,7 @@
           "properties" : {
             "v" : {
               "description" : "Time in minutes until controller automatically reverts to previous functional position.\n0=no automatic return",
-              "$ref" : "../defs/definitions.json#/integer_list"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -88,7 +88,7 @@
           "properties" : {
             "v" : {
               "description" : "Intersection number",
-              "$ref" : "../defs/definitions.json#/integer_list"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
