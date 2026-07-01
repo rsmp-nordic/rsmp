@@ -267,10 +267,10 @@
   "commands" : {
     "M0001" : {
       "required" : {
-        "intersection" : "integer_as_string",
-        "securityCode" : "string",
+        "intersection" : "integer_list",
+        "securityCode" : "string_list",
         "status" : "string",
-        "timeout" : "integer_as_string"
+        "timeout" : "integer_list"
       }
     },
     "M0002" : {

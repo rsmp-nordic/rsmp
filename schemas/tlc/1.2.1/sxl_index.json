@@ -202,8 +202,8 @@
         "status" : {
           "type" : "array",
           "items" : {
-            "d" : "integer",
-            "e" : "integer",
+            "d" : "integer_as_string",
+            "e" : "integer_as_string",
             "r" : "string",
             "s" : "string",
             "t" : "timestamp"
@@ -470,14 +470,14 @@
         "type" : "string"
       },
       "optional" : {
-        "approachId" : "integer",
-        "connectionId" : "integer",
-        "eta" : "integer",
-        "inputId" : "integer",
-        "laneInId" : "integer",
-        "laneOutId" : "integer",
-        "level" : "integer",
-        "priorityId" : "integer",
+        "approachId" : "integer_as_string",
+        "connectionId" : "integer_as_string",
+        "eta" : "integer_as_string",
+        "inputId" : "integer_as_string",
+        "laneInId" : "integer_as_string",
+        "laneOutId" : "integer_as_string",
+        "level" : "integer_as_string",
+        "priorityId" : "integer_as_string",
         "signalGroupId" : "string",
         "vehicleType" : "string"
       }

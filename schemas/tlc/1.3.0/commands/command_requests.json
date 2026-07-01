@@ -1240,22 +1240,6 @@
                       "const" : "M0022"
                     },
                     "n" : {
-                      "const" : "level"
-                    }
-                  }
-                }
-              },
-              {
-                "contains" : {
-                  "required" : [
-                    "cCI",
-                    "n"
-                  ],
-                  "properties" : {
-                    "cCI" : {
-                      "const" : "M0022"
-                    },
-                    "n" : {
                       "const" : "requestId"
                     }
                   }

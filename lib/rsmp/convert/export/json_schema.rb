@@ -43,6 +43,7 @@ module RSMP
 
         # generate the json schema from a string containing yaml
         def self.generate(sxl)
+          sxl = normalize_legacy_types(sxl) if legacy_types?(sxl)
           out = {}
           output_root out, sxl[:meta]
           output_alarms out, sxl[:alarms]
@@ -50,6 +51,34 @@ module RSMP
           output_commands out, sxl[:commands]
           output_sxl_index out, sxl
           out
+        end
+
+        def self.normalize_legacy_types(value)
+          case value
+          when Hash
+            value.each_with_object({}) do |(key, child), memo|
+              memo[key] = key == 'type' ? legacy_type(child) : normalize_legacy_types(child)
+            end
+          when Array
+            value.map { |child| normalize_legacy_types(child) }
+          else
+            value
+          end
+        end
+
+        def self.legacy_type(type)
+          case type
+          when 'boolean'
+            'boolean_as_string'
+          when 'integer'
+            'integer_as_string'
+          when 'long'
+            'long_as_string'
+          when 'number'
+            'number_as_string'
+          else
+            type
+          end
         end
 
         # convert yaml to json schema and write files to a folder

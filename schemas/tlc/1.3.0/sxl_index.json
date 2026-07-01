@@ -470,7 +470,6 @@
     },
     "M0022" : {
       "required" : {
-        "level" : "integer_as_string",
         "requestId" : "string",
         "type" : "string"
       },
@@ -481,6 +480,7 @@
         "inputId" : "integer_as_string",
         "laneInId" : "integer_as_string",
         "laneOutId" : "integer_as_string",
+        "level" : "integer_as_string",
         "priorityId" : "integer_as_string",
         "signalGroupId" : "string",
         "vehicleType" : "string"

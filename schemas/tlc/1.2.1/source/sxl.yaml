@@ -2,7 +2,7 @@
 meta:
   name: tlc
   description: Traffic Light Controllers
-  version: 1.1.0
+  version: 1.2.1
   minimum_core_version: 3.2.0
 objects:
   Traffic Light Controller:
@@ -112,12 +112,13 @@ objects:
             type: string
             description: |-
               Signal group status as text field.
-              Each character represent the state of the signal group in consecutive order.
+              Each character represent the state of the signal group in consecutive order,
+              where the leftmost character starts with signal group 1.
               Signal group status is described in detail in the corresponding section.
-              - = Signal group is undefined/does not exist
+              - : Signal group is undefined/does not exist
             pattern: "^[a-hA-G0-9N-P]*$"
           cyclecounter:
-            type: integer_as_string
+            type: integer
             description: |-
               Cycle counter.
               Used for handling of coordination between TLC's.
@@ -135,7 +136,7 @@ objects:
             min: 0
             max: 999
           basecyclecounter:
-            type: integer_as_string
+            type: integer
             description: |-
               Base cycle counter.
               Used for handling of coordination between TLC's.
@@ -144,7 +145,7 @@ objects:
             min: 0
             max: 999
           stage:
-            type: integer_as_string
+            type: integer
             description: Current stage (isolated)
             min: 0
             max: 999
@@ -157,8 +158,9 @@ objects:
           detectorlogicstatus:
             type: string
             description: |-
-              Detector logic status as text field
-              Each character represent the state of the detector logic in consecutive order.
+              Detector logic status as text field.
+              Each character represent the state of the detector logic in consecutive order,
+              where the leftmost character starts with detector logic 1.
               0 : Detector logic is not active
               1 : Detector logic is active
               - : Detector logic is undefined/does not exist
@@ -171,17 +173,9 @@ objects:
           inputstatus:
             type: string
             description: |-
-              Input status as text field
-              Each character represent the state of the input in consecutive order.
-              0 : Input is not active
-              1 : Input is active
-              - : Input is undefined/does not exist
-          extendedinputstatus:
-            type: string
-            deprecated: true
-            description: |-
-              Extended input status as text field
-              Each character represent the state of the extended input status in consecutive order.
+              Input status as text field.
+              Each character represent the state of the input in consecutive order,
+              where the leftmost character starts with input 1.
               0 : Input is not active
               1 : Input is active
               - : Input is undefined/does not exist
@@ -194,17 +188,9 @@ objects:
           outputstatus:
             type: string
             description: |-
-              Output status as text field
-              Each character represent the state of the output status in consecutive order.
-              0 : Output is not active
-              1 : Output is active
-              - : Output is undefined/does not exist
-          extendedoutputstatus:
-            type: string
-            deprecated: true
-            description: |-
-              Extended output status as text field
-              Each character represent the state of the extended output status in consecutive order.
+              Output status as text field.
+              Each character represent the state of the output status in consecutive order,
+              where the leftmost character starts with output 1.
               0 : Output is not active
               1 : Output is active
               - : Output is undefined/does not exist
@@ -215,32 +201,52 @@ objects:
           During startup mode the traffic controller shows dark, red, yellow flash or using the predetermined start cycle (minimum times).
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Controller is not in start up mode
               True: Controller is currently in start up mode
+          statusByIntersection:
+            description: |-
+              False: Intersection is not in start up mode
+              True: Intersection is currently in start up mode
+            type: array
+            items:
+              intersection:
+                type: integer
+                description: Intersection id
+                min: 0
+                max: 255
+              startup:
+                type: boolean
+                description: Start up mode
       S0006:
         description: |-
           Emergency route.
           The status is active during emergency prioritization.
-          Used in situations where full priority is given in the emergency vehicle program.
+          Used in situations where full priority is given in the emergency vehicle program
+          or for other types of priority in some cases.
+
           If no emergency route is active, status should be set to False, and emergencystage to zero.
+
+          Deprecated, use S0035 instead.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
+            deprecated: true
             description: |-
-              False: Emergency stage inactive
-              True: Emergency stage active
+              False: Emergency route inactive
+              True: Emergency route active
           emergencystage:
-            type: integer_as_string
-            description: Number of emergency stage (set to zero if no route is active)
+            type: integer
+            deprecated: true
+            description: Number of emergency route (set to zero if no route is active)
             min: 0
             max: 255
       S0007:
         description: |-
           Controller switched on.
           The controller is active and is not in dark mode.
-          Used to determine if the controller is operating, e.g. it shows red, green or yellow to the vehicles.
+          Used to determine if the there is output to the signal heads, e.g. it shows red, green or yellow to the vehicles.
           During maintenance work the controller might be using dark mode (no output to the signal heads).
           Please note that all values in this status uses comma-separated lists - one value for each intersection, e.g. "0" and "True" (one intersection) or "1,2" and "True,False" (two intersections).
         arguments:
@@ -440,7 +446,7 @@ objects:
           The time plan (signal program) may change signal timings, cycle time, control strategy and much more. Typical usage is is scenario based control where change of program is used to change priority etc.
         arguments:
           status:
-            type: integer_as_string
+            type: integer
             description: Current time plan
             min: 1
             max: 255
@@ -458,11 +464,11 @@ objects:
         description: |-
           Current traffic situation.
           The current traffic situation used in the controller.
-          Used for area-based control where a command can be sent to a master traffic light controller about which predefined traffic situation to use (1-255).
+          Used for area-based control where the M0003 command can be sent to a master traffic light controller about which predefined traffic situation to use (1-255).
           Traffic situation is a concept used to divide multiple TLC's into areas and sub-areas. The traffic situation gives the possibility to change the TLC sub-area dynamically depending on the time of day and the traffic flow. Depending on the traffic situation each TLC selects the time plan dynamically.
         arguments:
           status:
-            type: integer_as_string
+            type: integer
             description: Current traffic situation
             min: 1
             max: 255
@@ -482,7 +488,7 @@ objects:
           Can be used by the management system to check the number of detector logics configured in the controller.
         arguments:
           number:
-            type: integer_as_string
+            type: integer
             description: Number of detector logics
             min: 1
             max: 65025
@@ -492,18 +498,8 @@ objects:
           Can be used for the management system to check the number of signal groups configured in the controller.
         arguments:
           number:
-            type: integer_as_string
+            type: integer
             description: Number of signal groups
-            min: 1
-            max: 65025
-      S0018:
-        description: |-
-          Number of time plans
-          Can be used for the management system to check the number of time plans configured in the controller.
-        arguments:
-          number:
-            type: integer_as_string
-            description: Number of time plans (depreciated)
             min: 1
             max: 65025
       S0019:
@@ -512,7 +508,7 @@ objects:
           Can be used for the management system to check the number of traffic situations configured in the controller.
         arguments:
           number:
-            type: integer_as_string
+            type: integer
             description: Number of traffic situations
             min: 1
             max: 65025
@@ -532,11 +528,11 @@ objects:
           controlmode:
             type: string_list
             values:
-              startup: Startup mode
-              control: Normal control
-              standby: Standby mode
-              failure: Failure mode
-              test: Test mode
+              startup: The controller starts up, performs a power on self test and performs each :term:`start-up interval`
+              control: Normal 3-light control
+              standby: The controller is in dark or yellow flash mode (either according to programming or manually set)
+              failure: The controller has a "major fault" defined according to 3.8 i EN12675. The controller is in dark or yellow flash mode
+              test: Mode used for various tests, e.g. signal lights
       S0021:
         description: |-
           Manually set detector logic.
@@ -545,12 +541,18 @@ objects:
         arguments:
           detectorlogics:
             type: string
-            description: Manually set detector logics (1/0) as text field
+            description: |-
+              Manually set detector logic as text field.
+              Each character represent the state in consecutive order,
+              where the leftmost character starts with detector logic 1.
+              0 : Detector logic not manually set
+              1 : Detector logic manually set
+              - : Detector logic is undefined/does not exist
             pattern: "^[01]*$"
       S0022:
         description: |-
           List of time plans.
-          Provides a list of the configured time plans which is possible to use. This status was added due to status S0018 only provides the total number of time plans and not which were possible to use with M0002.
+          Provides a list of the configured time plans which is possible to use. This status was added due to status S0018 only provided the total number of time plans and not which were possible to use with M0002.
           Can be used for the management system to check the number of time plans configured in the controller.
         arguments:
           status:
@@ -675,7 +677,13 @@ objects:
         arguments:
           status:
             type: string
-            description: Forced input status as text field
+            description: |-
+              Forced input status as text field.
+              Each character represent the state in consecutive order,
+              where the leftmost character starts with input 1.
+              0 : Input not forced
+              1 : Input forced
+              - : Input undefined/does not exist
       S0030:
         description: |-
           Forced output status.
@@ -684,7 +692,13 @@ objects:
         arguments:
           status:
             type: string
-            description: Forced output status as text field
+            description: |-
+              Forced output status as text field.
+              Each character represent the state in consecutive order,
+              where the leftmost character starts with output 1.
+              0 : Output not forced
+              1 : Output forced
+              - : Output undefined/does not exist
       S0031:
         description: |-
           Trigger level sensitivity for loop detector.
@@ -759,10 +773,7 @@ objects:
                 description: ID of the priority request
               t:
                 type: timestamp
-                description: |-
-                  Timestamp, indicating when the priority last changed state.
-                  Format according to W3C XML dateTime with a resolution of 3 decimal places.
-                  All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+                description: Timestamp, indicating when the priority last changed state.
               s:
                 type: string
                 description: |-
@@ -800,17 +811,35 @@ objects:
           Used in conjunction with dynamic bands, M0014
         arguments:
           status:
-            type: integer_as_string
+            type: integer
             description: Timeout, in minutes
             min: 0
             max: 65535
+      S0035:
+        description: |-
+          Emergency route.
+          The status is active during emergency prioritization.
+          Used in situations where full priority is given in the emergency vehicle program
+          or for other types of priority in some cases.
+
+          This status is similar to S0006, but supports multiple routes
+        arguments:
+          emergencyroutes:
+            description: Active emergency routes
+            type: array
+            items:
+              id:
+                type: integer
+                description: ID of active emergency route
+                min: 1
+                max: 255
       S0091:
         description: |-
           Operator logged in/out OP-panel.
           Provides information if maintenance personnel is currently working on site.
         arguments:
           user:
-            type: integer_as_string
+            type: integer
             values:
               0: Nobody logged in
               1: Operator logged in at level 1 (read only)
@@ -821,7 +850,7 @@ objects:
           Provides information if maintenance personnel is currently working with the controller.
         arguments:
           user:
-            type: integer_as_string
+            type: integer
             values:
               0: Nobody logged in
               1: Operator logged in at level 1 (read only)
@@ -841,32 +870,32 @@ objects:
           Provides diagnostic information about the current date and time set in the controller.
         arguments:
           year:
-            type: integer_as_string
+            type: integer
             description: Year
             min: 0
             max: 9999
           month:
-            type: integer_as_string
+            type: integer
             description: Month
             min: 1
             max: 12
           day:
-            type: integer_as_string
+            type: integer
             description: Day of month
             min: 1
             max: 31
           hour:
-            type: integer_as_string
+            type: integer
             description: Hour
             min: 0
             max: 23
           minute:
-            type: integer_as_string
+            type: integer
             description: Minute
             min: 0
             max: 59
           second:
-            type: integer_as_string
+            type: integer
             description: Second
             min: 0
             max: 59
@@ -900,9 +929,7 @@ objects:
               - Data Downloaded with S0098 and hashed with SHA-2 should match this value.
           timestamp:
             type: timestamp
-            description: Time stamp of the checksum. Format according to W3C XML dateTime
-              with a resolution of 3 decimal places. All time stamps in UTC. E.g.
-              2009-10-02T14:34:34.341Z
+            description: Time stamp of the checksum
       S0098:
         description: |-
           Configuration of traffic parameters.
@@ -932,8 +959,7 @@ objects:
               - The format of the binary file is not specified and is not expected to be compatible between suppliers
           timestamp:
             type: timestamp
-            description: |-
-              Time stamp of the config. Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+            description: Time stamp of the config
           version:
             type: string
             description: |-
@@ -946,8 +972,7 @@ objects:
         arguments:
           start:
             type: timestamp
-            description: |-
-              Time stamp for start of measuring. Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+            description: Time stamp for start of measuring
           vehicles:
             type: integer_list
             description: |-
@@ -964,10 +989,7 @@ objects:
         arguments:
           start:
             type: timestamp
-            description: |-
-              Time stamp for start of measuring. Format according to W3C
-              XML dateTime with a resolution of 3 decimal places. All time stamps
-              in UTC. E.g. 2009-10-02T14:34:34.341Z
+            description: Time stamp for start of measuring
           speed:
             type: integer_list
             description: |-
@@ -984,10 +1006,7 @@ objects:
         arguments:
           start:
             type: timestamp
-            description: |-
-              Time stamp for start of measuring. Format according to W3C
-              XML dateTime with a resolution of 3 decimal places. All time stamps
-              in UTC. E.g. 2009-10-02T14:34:34.341Z
+            description: Time stamp for start of measuring
           occupancy:
             type: integer_list
             description: |-
@@ -1004,10 +1023,7 @@ objects:
         arguments:
           start:
             type: timestamp
-            description: |-
-              Time stamp for start of measuring. Format according to W3C
-              XML dateTime with a resolution of 3 decimal places. All time stamps
-              in UTC. E.g. 2009-10-02T14:34:34.341Z
+            description: Time stamp for start of measuring
           P:
             type: integer_list
             description: |-
@@ -1107,15 +1123,18 @@ objects:
             type: string
             description: Security code 2
           timeout:
-            type: integer_as_string
+            type: integer
             description: |-
               Time in minutes until controller automatically reverts to previous functional position.
               0=no automatic return
             min: 0
             max: 1440
           intersection:
-            type: integer_as_string
-            description: Intersection number
+            type: integer
+            description: |-
+              Intersection number.
+              Command only applies to specified intersection. Other intersections remains in their respective operating mode(s).
+              0: All intersections
             min: 0
             max: 255
         command: setValue
@@ -1128,7 +1147,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Controller uses time plan according to programming
               True: Controller uses time plan according to command
@@ -1136,7 +1155,7 @@ objects:
             type: string
             description: Security code 2
           timeplan:
-            type: integer_as_string
+            type: integer
             description: designation of time plan
             min: 1
             max: 255
@@ -1144,12 +1163,12 @@ objects:
       M0003:
         description: |-
           Sets traffic situation the controller uses.
-          Used for area-based control where a command can be sent to a master traffic light controller about which predefined traffic situation to use (1-255).
+          Used for area-based control where this command can be sent to a master traffic light controller about which predefined traffic situation to use (1-255).
           Traffic situation is a concept used to divide multiple TLC's into areas and sub-areas. The traffic situation gives the possibility to change the TLC sub-area dynamically depending on the time of day and the traffic flow. Depending on the traffic situation each TLC selects the time plan dynamically.
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Controller uses traffic situation according to own programming
               True: Controller uses traffic situation according to command
@@ -1157,7 +1176,7 @@ objects:
             type: string
             description: Security code 2
           traficsituation:
-            type: integer_as_string
+            type: integer
             description: designation of traficsituation
             min: 1
             max: 255
@@ -1169,10 +1188,12 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
+            deprecated: true
             description: 'True: Restart controller'
           securityCode:
             type: string
+            deprecated: true
             description: Security code 2
         command: setRestart
       M0005:
@@ -1183,7 +1204,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Deactivate emergency route
               True: Activate emergency route
@@ -1191,7 +1212,7 @@ objects:
             type: string
             description: Security code 2
           emergencyroute:
-            type: integer_as_string
+            type: integer
             description: Number of emergency route
             min: 1
             max: 255
@@ -1206,7 +1227,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Deactivate input
               True: Activate input
@@ -1214,7 +1235,7 @@ objects:
             type: string
             description: Security code 2
           input:
-            type: integer_as_string
+            type: integer
             description: Number of Input
             min: 1
             max: 255
@@ -1227,7 +1248,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Deactivate fixed time control
               True: Activate fixed time control
@@ -1328,7 +1349,7 @@ objects:
           Requires security code 2
         arguments:
           plan:
-            type: integer_as_string
+            type: integer
             description: Plan to be changed
             min: 0
             max: 255
@@ -1356,12 +1377,12 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: integer_as_string
+            type: integer
             description: Set offset time in seconds
             min: 0
             max: 255
           plan:
-            type: integer_as_string
+            type: integer
             description: Time plan nr
             min: 0
             max: 255
@@ -1442,12 +1463,12 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: integer_as_string
+            type: integer
             description: Set cycle time in seconds
             min: 1
             max: 255
           plan:
-            type: integer_as_string
+            type: integer
             description: Time plan nr
             min: 0
             max: 255
@@ -1463,7 +1484,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Release input
               True: Force input
@@ -1471,12 +1492,12 @@ objects:
             type: string
             description: Security code 2
           input:
-            type: integer_as_string
+            type: integer
             description: Number of Input
             min: 1
             max: 255
           inputValue:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: input forced to False
               True: input forced to True
@@ -1489,7 +1510,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Force output
               True: Release output
@@ -1497,12 +1518,12 @@ objects:
             type: string
             description: Security code 2
           output:
-            type: integer_as_string
+            type: integer
             description: Number of Output
             min: 1
             max: 255
           outputValue:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: output forced to False
               True: output forced to True
@@ -1666,7 +1687,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: integer_as_string
+            type: integer
             min: 0
             max: 65535
             description: Timeout, in minutes
@@ -1703,32 +1724,32 @@ objects:
             type: string
             description: Security code 1
           year:
-            type: integer_as_string
+            type: integer
             description: Year
             min: 0
             max: 9999
           month:
-            type: integer_as_string
+            type: integer
             description: Month
             min: 1
             max: 12
           day:
-            type: integer_as_string
+            type: integer
             description: Day of month
             min: 1
             max: 31
           hour:
-            type: integer_as_string
+            type: integer
             description: Hour
             min: 0
             max: 23
           minute:
-            type: integer_as_string
+            type: integer
             description: Minute
             min: 0
             max: 59
           second:
-            type: integer_as_string
+            type: integer
             description: Second
             min: 0
             max: 59
@@ -1746,7 +1767,7 @@ objects:
         category: D
         arguments:
           timeplan:
-            type: integer_as_string
+            type: integer
             description: Current time plan
             min: 1
             max: 255
@@ -1796,19 +1817,16 @@ objects:
             type: timestamp
             description: |-
               Time stamp for the minimum time for the signal group to go to green. If the signal group is green, it is the minimum time for the next green.
-              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
           maxToGEstimate:
             type: timestamp
             description: |-
               Time stamp for the maximum time for the signal group to go to green. If the signal group is green, it is the maximum time for the next green.
-              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
           likelyToGEstimate:
             type: timestamp
             description: |-
               Time stamp for the most likely time for the signal group to go to green. If the signal group is green, it is the most likely time for the next green.
-              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
           ToGConfidence:
-            type: integer_as_string
+            type: integer
             description: Confidence of the likelyToGEstimate. 0-100%
             min: 0
             max: 100
@@ -1816,19 +1834,16 @@ objects:
             type: timestamp
             description: |-
               Time stamp for the minimum time for the signal group to go to red. If the signal group is red, it is the minimum time for the next red.
-              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
           maxToREstimate:
             type: timestamp
             description: |-
               Time stamp for the maximum time for the signal group to go to red. If the signal group is red, it is the maximum time for the next red.
-              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
           likelyToREstimate:
             type: timestamp
             description: |-
               Time stamp for the most likely time for the signal group to go to red. If the signal group is red, it is the most likely time for the next red.
-              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
           ToRConfidence:
-            type: integer_as_string
+            type: integer
             description: Confidence of the likelyToREstimate. 0-100%
             min: 0
             max: 100
@@ -1842,7 +1857,7 @@ objects:
         reserved: true
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: No command (default)
               True: Order a signal group to green
@@ -1859,7 +1874,7 @@ objects:
         reserved: true
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: No command (default)
               True: Order a signal group to red
@@ -1889,9 +1904,9 @@ objects:
           errormode:
             type: string
             description: Detector forced on/off while detector error
-            values: ['on','off']
+            values: ['on','off'] # on/off must be quoted, otherwise they are converted to true/false
           manual:
-            type: boolean_as_string
+            type: boolean
             description: Manually controlled detector logic (True/False)
       A0302:
         description: |-
@@ -1913,9 +1928,9 @@ objects:
           errormode:
             type: string
             description: Detector forced on/off while detector error
-            values: ['on','off']
+            values: ['on','off'] # on/off must be quoted, otherwise they are converted to true/false
           manual:
-            type: boolean_as_string
+            type: boolean
             description: Manually controlled detector logic (True/False)
           logicerror:
             type: string
@@ -1943,9 +1958,9 @@ objects:
           errormode:
             type: string
             description: Detector forced on/off while detector error
-            values: ['on','off']
+            values: ['on','off'] # on/off must be quoted, otherwise they are converted to true/false
           manual:
-            type: boolean_as_string
+            type: boolean
             description: Manually controlled detector logic (True/False)
       A0304:
         description: |-
@@ -1967,10 +1982,9 @@ objects:
           errormode:
             type: string
             description: Detector forced on/off while detector error
-            # on/off must be quoted, otherwise they are parsed as true/false
-            values: ['on','off']
+            values: ['on','off'] # on/off must be quoted, otherwise they are converted to true/false
           manual:
-            type: boolean_as_string
+            type: boolean
             description: Manually controlled detector logic (True/False)
           logicerror:
             type: string
@@ -1987,11 +2001,9 @@ objects:
         arguments:
           starttime:
             type: timestamp
-            description: Time stamp for start of measuring. Format according to W3C
-              XML dateTime with a resolution of 3 decimal places. All time stamps
-              in UTC. E.g. 2009-10-02T14:34:34.341Z
+            description: Time stamp for start of measuring
           vehicles:
-            type: integer_as_string
+            type: integer
             description: Number of vehicles on a given detector logic (since last
               update)
             min: 0
@@ -2003,12 +2015,9 @@ objects:
         arguments:
           starttime:
             type: timestamp
-            description: |-
-              Time stamp for start of measuring. Format according to W3C
-              XML dateTime with a resolution of 3 decimal places. All time stamps
-              in UTC. E.g. 2009-10-02T14:34:34.341Z
+            description: Time stamp for start of measuring
           speed:
-            type: integer_as_string
+            type: integer
             description: Average speed in km/h
             min: 0
             max: 65535
@@ -2019,12 +2028,9 @@ objects:
         arguments:
           starttime:
             type: timestamp
-            description: |-
-              Time stamp for start of measuring. Format according to W3C
-              XML dateTime with a resolution of 3 decimal places. All time stamps
-              in UTC. E.g. 2009-10-02T14:34:34.341Z
+            description: Time stamp for start of measuring
           occupancy:
-            type: integer_as_string
+            type: integer
             description: Occupancy in percent (0-100%)
             min: 0
             max: 100
@@ -2035,52 +2041,49 @@ objects:
         arguments:
           starttime:
             type: timestamp
-            description: |-
-              Time stamp for start of measuring. Format according to W3C
-              XML dateTime with a resolution of 3 decimal places. All time stamps
-              in UTC. E.g. 2009-10-02T14:34:34.341Z
+            description: Time stamp for start of measuring
           P:
-            type: integer_as_string
+            type: integer
             description: Number of cars
             min: 0
             max: 65535
           PS:
-            type: integer_as_string
+            type: integer
             description: Number of cars with trailers
             min: 0
             max: 65535
           L:
-            type: integer_as_string
+            type: integer
             description: Number of trucks
             min: 0
             max: 65535
           LS:
-            type: integer_as_string
+            type: integer
             description: Number of trucks with trailers
             min: 0
             max: 65535
           B:
-            type: integer_as_string
+            type: integer
             description: Number of buses
             min: 0
             max: 65535
           SP:
-            type: integer_as_string
+            type: integer
             description: Number of trams
             min: 0
             max: 65535
           MC:
-            type: integer_as_string
+            type: integer
             description: Number of motor cycles
             min: 0
             max: 65535
           C:
-            type: integer_as_string
+            type: integer
             description: Number of bicycles
             min: 0
             max: 65535
           F:
-            type: integer_as_string
+            type: integer
             description: Number of pedestrians
             min: 0
             max: 65535
@@ -2093,7 +2096,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Deactivate manual control of detector logic
               True: Activate manual control of detector logic
@@ -2101,7 +2104,7 @@ objects:
             type: string
             description: Security code 2
           mode:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Deactivate detector logic
               True: Activate detector logic

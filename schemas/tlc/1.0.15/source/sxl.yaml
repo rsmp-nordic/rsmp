@@ -2,7 +2,7 @@
 meta:
   name: tlc
   description: Traffic Light Controllers
-  version: 1.0.8
+  version: 1.0.15
   minimum_core_version: 3.1.2
 objects:
   Traffic Light Controller:
@@ -88,6 +88,12 @@ objects:
           Is a "minor fault" defined according to 3.11 in EN12675.
         priority: 3
         category: D
+      A0010:
+        description: |-
+          Door open.
+          Used for open door (room or cabinet).
+        priority: 3
+        category: D
     statuses:
       S0001:
         description: |-
@@ -100,15 +106,15 @@ objects:
             description: Signal group status as text field
             pattern: "^[a-hA-G0-9N-P]*$"
           cyclecounter:
-            type: integer_as_string
+            type: integer
             description: Cycle counter
             range: "[0-999]"
           basecyclecounter:
-            type: integer_as_string
+            type: integer
             description: Base cycle counter
             range: "[0-999]"
           stage:
-            type: integer_as_string
+            type: integer
             description: Current stage (isolated)
             range: "[0-999]"
       S0002:
@@ -151,7 +157,7 @@ objects:
           During startup mode the traffic controller shows dark, red, yellow flash or using the predetermined start cycle (minimum times).
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Controller is not in start up mode
               True: Controller is currently in start up mode
@@ -162,12 +168,12 @@ objects:
           Used in situations where full priority is given in the emergency vehicle program.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Emergency stage inactive
               True: Emergency stage active
           emergencystage:
-            type: integer_as_string
+            type: integer
             description: Number of emergency stage
             range: "[1-255]"
       S0007:
@@ -298,7 +304,7 @@ objects:
           The time plan (signal program) may change signal timings, cycle time, control strategy and much more. Typical usage is is scenario based control where change of program is used to change priority etc.
         arguments:
           status:
-            type: integer_as_string
+            type: integer
             description: Current time plan
             range: "[1-255]"
       S0015:
@@ -309,7 +315,7 @@ objects:
           Traffic situation is a concept used to divide multiple TLC's into areas and sub-areas. The traffic situation gives the possibility to change the TLC sub-area dynamically depending on the time of day and the traffic flow. Depending on the traffic situation each TLC selects the time plan dynamically.
         arguments:
           status:
-            type: integer_as_string
+            type: integer
             description: Current traffic situation
             range: "[1-255]"
       S0016:
@@ -318,7 +324,7 @@ objects:
           Can be used by the management system to check the number of detector logics configured in the controller.
         arguments:
           number:
-            type: long_as_string
+            type: long
             description: Number of detector logics
             range: "[1-65025]"
       S0017:
@@ -327,7 +333,7 @@ objects:
           Can be used for the management system to check the number of signal groups configured in the controller.
         arguments:
           number:
-            type: long_as_string
+            type: long
             description: Number of signal groups
             range: "[1-65025]"
       S0018:
@@ -336,7 +342,7 @@ objects:
           Can be used for the management system to check the number of time plans configured in the controller.
         arguments:
           number:
-            type: long_as_string
+            type: long
             description: Number of time plans (depreciated)
             range: "[1-65025]"
       S0019:
@@ -345,7 +351,7 @@ objects:
           Can be used for the management system to check the number of traffic situations configured in the controller.
         arguments:
           number:
-            type: long_as_string
+            type: long
             description: Number of traffic situations
             range: "[1-65025]"
       S0020:
@@ -377,6 +383,157 @@ objects:
             type: string
             description: Manually set detector logics (1/0) as text field
             pattern: "^[01]*$"
+      S0022:
+        description: |-
+          List of time plans.
+          Provides a list of the configured time plans which is possible to use. This status was added due to status S0018 only provides the total number of time plans and not which were possible to use with M0002.
+          Can be used for the management system to check the number of time plans configured in the controller.
+        arguments:
+          status:
+            type: string
+            description: Comma separated list of configured time plans. E.g. "1,2,3,5"
+      S0023:
+        description: |-
+          Dynamic bands.
+          Provides a list of all defined dynamic bands. Dynamic bands moves start of signal groups in the cycle and changes the signal timings.
+          A typical usage of dynamic bands is scenario based control where changing of signal timings is used for optimal traffic flow.
+        arguments:
+          status:
+            type: string
+            description: |-
+              Dynamic bands.
+              Each dynamic band are written as pp-dd-ee where:
+              pp=Time plan
+              dd=Dynamic band number (from 1-10)
+              ee=Extension in seconds in this band
+              
+              Each dynamic band is separated with a comma.
+              
+              E.g.
+              pp-dd-ee,pp-dd-ee
+            pattern: "(^$)|(^(?<item>(\\d{1,2})\\-\\d{1,2}-\\d{1,2})(,\\g<item>)*$)"
+      S0024:
+        description: |-
+          Offset time.
+          Offset time is used to define an offset between intersections in coordinated control. It is based on the expected travel time between intersections.
+          Can be used by the management system to check to fine tune the coordination for optimal traffic flow.
+        arguments:
+          status:
+            type: string
+            description: |-
+              Offset table
+              Each offset time is written as pp-tt where:
+              pp=time plan
+              tt=offset time in seconds
+              
+              Each offset time is separated with a comma
+              
+              E.g.
+              pp-tt,pp-tt
+            pattern: "^(\\d{1,2}\\-\\d{1,2})(?:,(\\d{1,2}\\-\\d{1,2}))*$"
+      S0026:
+        description: |-
+          Week time table.
+          Week time table for signal programs (time plan) to use for each day during a week.
+          The week time table determine which predefined signal timings (time plan) to use during the week for optimal traffic flow.
+        arguments:
+          status:
+            type: string
+            description: |-
+              Week time table. Defines time table to use for each week day
+              Each day is written as d-t where:
+              d=day of week
+              t=time table nr
+              
+              Day of week legend:
+              0=Monday
+              1=Tuesday
+              2=Wednesday
+              3=Thursday
+              4=Friday
+              5=Saturday
+              6=Sunday
+              
+              Each segment is separated with a comma
+              E.g.
+              d-t,d-t
+      S0027:
+        description: |-
+          Time tables.
+          Time of day for when to switch signal program (time plan).
+          The signal timings (time plan) to use during time of day for optimal traffic flow.
+        arguments:
+          status:
+            type: string
+            description: |-
+              Time Table. Defines time tables.
+              Each time definition is written as t-o-h-m where:
+              t=time table nr (1-12)
+              o=function
+              h=hour - switching time
+              m=minute - switching minute
+              
+              Function legend:
+              0=no plan is selected by time table
+              1=set plan 1
+              ...
+              16= set plan 16
+              
+              hour and minute is using local time (not UTC)
+              
+              Each time definition is separated with a comma
+              
+              E.g.
+              t-o-h-m,t-o-h-m
+      S0028:
+        description: |-
+          Cycle time.
+          Cycle time (or cycle length) is the sum of all phases in a time plan (traffic program). This time is fixed when using fixed time control or coordination (except "local coordination"). When the cycle counter reaches this length it is reset back to zero.
+          Changing the cycle time can be used as part of scenario based control.
+        arguments:
+          status:
+            type: string
+            description: |-
+              Cycle time table
+              Each cycle time is written as pp-tt where:
+              pp=time plan
+              tt=cycle time in seconds
+              
+              Each cycle time is separated with a comma
+              
+              E.g.
+              pp-tt,pp-tt
+      S0029:
+        description: |-
+          Forced input status.
+          Provide status of input (1-255) regarding if they are forced or not. Can be used for all types of input where the traffic light controller must react to external control.
+          Can be used for bus priority, coordination between traffic controllers, external control systems, and much more.
+        arguments:
+          status:
+            type: string
+            description: Forced input status as text field
+      S0030:
+        description: |-
+          Forced output status.
+          Provide status of output (1-255) regarding if they are forced or not. Can be used for all types of output where the traffic light controller needs to control other equipment.
+          Can be used for bus priority, coordination between traffic controllers, external control systems, and much more.
+        arguments:
+          status:
+            type: string
+            description: Forced output status as text field
+      S0031:
+        description: |-
+          Trigger level sensitivity for loop detector.
+          The trigger level sensitivity determines at what level the loop detector should trigger. If it set too low then then traffic will not be detected as intended. If it is set too high the detector might give false positives.
+          Can be used to make sure that the detectors detect traffic as intended.
+        arguments:
+          status:
+            type: string
+            description: |-
+              Loop detector trigger level sensitivity is written as dd-ss where:
+              dd=loop detector number
+              ss=sensitivity value
+              Each loop detector is separated with a comma. E.g.dd-ss,dd-ss.
       S0091:
         description: |-
           Operator logged in/out OP-panel.
@@ -421,31 +578,238 @@ objects:
           Provides diagnostic information about the current date and time set in the controller.
         arguments:
           year:
-            type: integer_as_string
+            type: integer
             description: 'Year according to format YYYY. NOTE: UTC is used'
             range: YYYY
           month:
-            type: integer_as_string
+            type: integer
             description: 'Month (01-12) according to format MM. Note: UTC is used'
             range: MM
           day:
-            type: integer_as_string
+            type: integer
             description: 'Day of month (01-31) according to format DD.  Note: UTC
               is used'
             range: DD
           hour:
-            type: integer_as_string
+            type: integer
             description: 'Hour of day (00-23) according to format DD. Note: UTC is
               used'
             range: HH
           minute:
-            type: integer_as_string
+            type: integer
             description: 'Minute (00-59) according to format MM. Note: UTC is used'
             range: MM
           second:
-            type: integer_as_string
+            type: integer
             description: 'Second (00-59) according to format SS. Note: UTC is used'
             range: SS
+      S0097:
+        description: |-
+          Checksum of traffic parameters.
+          Can be used to check if any traffic parameter has been changed.
+          For instance, depending on controller, maintenance personnel can modify traffic parameters on site to optimize traffic flow. This status provides the ability to monitor if any traffic parameter has been changed. The traffic parameters may be downloaded with S0098.
+        arguments:
+          checksum:
+            type: string
+            description: |-
+              Checksum of the traffic parameters
+              Uses SHA-2 as hashing algorithm
+              Includes
+              - all signal programs, including program versions
+              - signal group settings
+              - time plans
+              - safety matrix
+              - intergreen times
+              - detector settings
+              
+              It should NOT include:
+              - network settings
+              - log files
+              - software
+              - other device settings that are not part of the signal program
+              
+              Note:
+              - The checksum should be calculated using the same data as used in S0098
+          timestamp:
+            type: timestamp
+            description: Time stamp of the checksum. Format according to W3C XML dateTime
+              with a resolution of 3 decimal places. All time stamps in UTC. E.g.
+              2009-10-02T14:34:34.341Z
+      S0098:
+        description: |-
+          Configuration of traffic parameters.
+          Can be used to download all traffic parameters from the controller.
+          For instance, depending on controller, maintenance personnel can modify traffic parameters on site to optimize traffic flow. This status provides the ability to downloaded them.
+        arguments:
+          config:
+            type: base64
+            description: |-
+              Traffic parameters.
+              Includes
+              - all signal programs, including program versions
+              - signal group settings
+              - time plans
+              - safety matrix
+              - intergreen times
+              - detector setting
+              
+              It should NOT include:
+              - network settings
+              - log files
+              - software
+              - other device settings that are not part of the signal program
+              
+              Note:
+              - There is no way to upload this binary file to the TLC using RSMP
+              - The format of the binary file is not specified and is not expected to be compatible between suppliers
+            range: "[binary]"
+          timestamp:
+            type: timestamp
+            description: |-
+              Time stamp of the config. Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+          version:
+            type: string
+            description: |-
+              Version information of the configuration. Contains basic information such as controller id, changes to config and other information.
+              The format is not specified in detail.
+      S0205:
+        description: |-
+          Traffic Counting: Number of vehicles.
+          This status was introduced to improve performance in case traffic counting is done on all all detectors.
+        arguments:
+          start:
+            type: timestamp
+            description: |-
+              Time stamp for start of measuring. Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+          vehicles:
+            type: string
+            description: |-
+              Number of vehicles.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+      S0206:
+        description: |-
+          Traffic Counting: Vehicle speed
+          This status was introduced to improve performance in case traffic counting is done on all all detectors.
+        arguments:
+          start:
+            type: timestamp
+            description: |-
+              Time stamp for start of measuring. Format according to W3C
+              XML dateTime with a resolution of 3 decimal places. All time stamps
+              in UTC. E.g. 2009-10-02T14:34:34.341Z
+          speed:
+            type: string
+            description: |-
+              Average speed in km/h (integer).
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+      S0207:
+        description: |-
+          Traffic Counting: Occupancy.
+          This status was introduced to improve performance in case traffic counting is done on all all detectors.
+        arguments:
+          start:
+            type: timestamp
+            description: |-
+              Time stamp for start of measuring. Format according to W3C
+              XML dateTime with a resolution of 3 decimal places. All time stamps
+              in UTC. E.g. 2009-10-02T14:34:34.341Z
+          occupancy:
+            type: string
+            description: |-
+              Occupancy in percent (%) (0-100)
+              - Value expressed as an integer with a range of 0-100.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-100,...]"
+      S0208:
+        description: |-
+          Traffic Counting: Number of vehicles of given classification.
+          This status was introduced to improve performance in case traffic counting is done on all all detectors.
+        arguments:
+          start:
+            type: timestamp
+            description: |-
+              Time stamp for start of measuring. Format according to W3C
+              XML dateTime with a resolution of 3 decimal places. All time stamps
+              in UTC. E.g. 2009-10-02T14:34:34.341Z
+          P:
+            type: string
+            description: |-
+              Number of cars.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+          PS:
+            type: string
+            description: |-
+              Number of cars with trailers.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+          L:
+            type: string
+            description: |-
+              Number of trucks.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+          LS:
+            type: string
+            description: |-
+              Number of trucks with trailers.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+          B:
+            type: string
+            description: |-
+              Number of busses.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+          SP:
+            type: string
+            description: |-
+              Number of trams.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+          MC:
+            type: string
+            description: |-
+              Number of motor cycles.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+          C:
+            type: string
+            description: |-
+              Number of bicycles.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
+          F:
+            type: string
+            description: |-
+              Number of pedestrians.
+              - Value expressed as an integer with a range of 0-65535.
+              - Contains data from all detector logics. Each detector logic is separated with a comma.
+              - The value is set to "-1" if no data could be measured (e.g. detector fault)
+            range: "[0-65535,...]"
     commands:
       M0001:
         description: |-
@@ -461,21 +825,18 @@ objects:
               YellowFlash: Enables yellow flash
               Dark: Enables dark mode
           securityCode:
-            type: string
+            type: string_list
             description: Security code 2
           timeout:
-            type: integer_as_string
+            type: integer_list
             description: |-
               Time in minutes until controller automatically reverts to previous functional position.
               0=no automatic return
             min: 0
             max: 1440
           intersection:
-            type: integer_as_string
-            description: |-
-              Intersection number.
-              Command only applies to specified intersection. Other intersections remains in their respective operating mode(s).
-              0: All intersections
+            type: integer_list
+            description: Intersection number
             min: 0
             max: 255
         command: setValue
@@ -488,7 +849,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Controller uses time plan according to programming
               True: Controller uses time plan according to command
@@ -496,7 +857,7 @@ objects:
             type: string
             description: Security code 2
           timeplan:
-            type: integer_as_string
+            type: integer
             description: designation of time plan
             range: "[1-255]"
         command: setPlan
@@ -508,7 +869,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Controller uses traffic situation according to own programming
               True: Controller uses traffic situation according to command
@@ -516,7 +877,7 @@ objects:
             type: string
             description: Security code 2
           traficsituation:
-            type: integer_as_string
+            type: integer
             description: designation of traficsituation
             range: "[1-255]"
         command: setTrafficSituation
@@ -527,7 +888,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: 'True: Restart controller'
           securityCode:
             type: string
@@ -541,7 +902,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Activate emergency route
               True: Deactivate emergency route
@@ -549,7 +910,7 @@ objects:
             type: string
             description: Security code 2
           emergencyroute:
-            type: integer_as_string
+            type: integer
             description: Number of emergency route
             range: "[1-255]"
         command: setEmergency
@@ -563,7 +924,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Deactivate input
               True: Activate input
@@ -571,7 +932,7 @@ objects:
             type: string
             description: Security code 2
           input:
-            type: integer_as_string
+            type: integer
             description: Number of Input
             range: "[1-255]"
         command: setInput
@@ -583,7 +944,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Deactivate fixed time control
               True: Activate fixed time control
@@ -663,6 +1024,136 @@ objects:
             type: string
             description: Security code 2
         command: setInput
+      M0014:
+        description: |-
+          Set dynamic bands.
+          Can be used to change between predefined signal timings. Moves the start of signal groups in the cycle.
+          This command can be used to change the split of green time during the cycle. A typical usage is scenario based control where changing of signal timings is used for optimal traffic flow.
+          Requires security code 2
+        arguments:
+          plan:
+            type: integer
+            description: Plan to be changed
+            range: "[0-255]"
+          status:
+            type: string
+            description: |-
+              Dynamic bands.
+              Each dynamic band are written as dd-ee where:
+              dd=Dynamic band number (from 1-10)
+              ee=Extension in seconds in this band
+              
+              Each dynamic band is separated with a comma.
+              
+              E.g.
+              dd-ee,dd-ee
+          securityCode:
+            type: string
+            description: Security code 2
+        command: setCommands
+      M0015:
+        description: |-
+          Set Offset time.
+          Offset time is used to define an offset between intersections in coordinated control. It is based on the expected travel time between intersections.
+          This command can be used to fine tune the coordination for optimal traffic flow.
+          Requires security code 2.
+        arguments:
+          status:
+            type: integer
+            description: Set offset time in seconds
+            range: "[0-255]"
+          plan:
+            type: integer
+            description: Time plan nr
+            range: "[0-255]"
+          securityCode:
+            type: string
+            description: Security code 2
+        command: setOffset
+      M0016:
+        description: |-
+          Set week time table.
+          Set which time table for signal programs to use for each day during a week.
+          This command changes the signal timings during the week for optimal traffic flow.
+          Requires security code 2.
+        arguments:
+          status:
+            type: string
+            description: |-
+              Week time table. Defines time table to use for each week day
+              Each segment is written as d-t where:
+              d=day of week
+              t=time table nr
+              
+              Day of week legend:
+              0=Monday
+              1=Tuesday
+              2=Wednesday
+              3=Thursday
+              4=Friday
+              5=Saturday
+              6=Sunday
+              
+              Each segment is separated with a comma
+              
+              E.g.
+              d-t,d-t
+          securityCode:
+            type: string
+            description: Security code 2
+        command: setWeekTable
+      M0017:
+        description: |-
+          Set time tables.
+          Set time of day for when to automatically switch signal program (time plan).
+          This command changes the signal timings according to time of day for optimal traffic flow.
+          Requires security code 2.
+        arguments:
+          status:
+            type: string
+            description: |-
+              Time Table. Defines time tables.
+              Each time definition is written as t-o-h-m where:
+              t=time table nr (1-12)
+              o=function
+              h=hour - switching time
+              m=minute - switching minute
+              
+              Function legend:
+              0=no plan is selected by time table
+              1=set plan 1
+              ...
+              16= set plan 16
+              
+              hour and minute is using local time (not UTC)
+              
+              Each time definition is separated with a comma.
+              
+              E.g.
+              t-o-h-m,t-o-h-m
+          securityCode:
+            type: string
+            description: Security code 2
+        command: setTimeTable
+      M0018:
+        description: |-
+          Set Cycle time.
+          Cycle time (or cycle length) is the sum of all phases in a time plan (traffic program). This time is fixed when using fixed time control or coordination (except "local coordination"). When the cycle counter reaches this length it is reset back to zero.
+          This command provides the ability to change the cycle time when using coordinated or fixed time control. It changes the timings for optimal traffic flow. Can be used with scenario based control.
+          Requires security code 2.
+        arguments:
+          status:
+            type: integer
+            description: Set cycle time in seconds
+            range: "[1-255]"
+          plan:
+            type: integer
+            description: Time plan nr
+            range: "[0-255]"
+          securityCode:
+            type: string
+            description: Security code 2
+        command: setCycleTime
       M0019:
         description: |-
           Force input.
@@ -671,7 +1162,7 @@ objects:
           Requires security code 2.
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Force input
               True: Release input
@@ -679,15 +1170,57 @@ objects:
             type: string
             description: Security code 2
           input:
-            type: integer_as_string
+            type: integer
             description: Number of Input
             range: "[1-255]"
           inputValue:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: input forced to False
               True: input forced to True
         command: setInput
+      M0020:
+        description: |-
+          Force output.
+          Force a given output (1-255) of the controllers general purpose I/O to either True of False. Can be used for all types of output where the traffic light controller needs to control other equipment.
+          Can be used for bus priority, coordination between traffic controllers, external control systems, and much more.
+          Requires security code 2.
+        arguments:
+          status:
+            type: boolean
+            description: |-
+              False: Force output
+              True: Release output
+          securityCode:
+            type: string
+            description: Security code 2
+          output:
+            type: integer
+            description: Number of Output
+            range: "[1-255]"
+          outputValue:
+            type: boolean
+            description: |-
+              False: output forced to False
+              True: output forced to True
+        command: setOutput
+      M0021:
+        description: |-
+          Set trigger level sensitivity for loop detector.
+          The trigger level sensitivity determines at what level a loop detector should trigger. If it set too low then then traffic will not be detected as intended. If it is set too high the detector might give false positives.
+          This command provides the ability to fine tune loop detectors to make sure they detect traffic as intended.
+          Requires security code 2
+        arguments:
+          status:
+            type: string
+            description: |-
+              Loop detector trigger level sensitivity is written as dd-ss where:
+              dd=loop detector number
+              ss=sensitivity value
+          securityCode:
+            type: string
+            description: Security code 2
+        command: setLevel
       M0103:
         description: |-
           Set security code.
@@ -716,37 +1249,37 @@ objects:
             type: string
             description: Security code 1
           year:
-            type: integer_as_string
+            type: integer
             description: |-
               Changes internal clock. Note: UTC is used
               Year according to YYYY
             range: "[YYYY]"
           month:
-            type: integer_as_string
+            type: integer
             description: |-
               Changes internal clock. Note: UTC is used
               Month according to MM (01-12)
             range: "[MM]"
           day:
-            type: integer_as_string
+            type: integer
             description: |-
               Changes internal clock. Note: UTC is used
               Day in month according to DD (01-31)
             range: "[DD]"
           hour:
-            type: integer_as_string
+            type: integer
             description: |-
               Changes internal clock. Note: UTC is used
               Hour according to HH (00-23)
             range: "[HH]"
           minute:
-            type: integer_as_string
+            type: integer
             description: |-
               Changes internal clock. Note: UTC is used
               Minute according to MM (00-59)
             range: "[MM]"
           second:
-            type: integer_as_string
+            type: integer
             description: |-
               Changes internal clock. Note: UTC is used
               Second according to SS (00-59)
@@ -765,7 +1298,7 @@ objects:
         category: D
         arguments:
           timeplan:
-            type: integer_as_string
+            type: integer
             description: Current time plan
             range: "[designation]"
       A0101:
@@ -805,6 +1338,49 @@ objects:
               yellow: yellow
               green: green
     statuses:
+      S0025:
+        description: |-
+          Time-of-Green / Time-of-Red.
+          Provides predicted signal timings of green and red for each signal group. Max, min and likely time to green and red.
+        arguments:
+          minToGEstimate   :
+            type: timestamp
+            description: |-
+              Time stamp for the minimum time for the signal group to go to green. If the signal group is green, it is the minimum time for the next green.
+              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+          maxToGEstimate   :
+            type: timestamp
+            description: |-
+              Time stamp for the maximum time for the signal group to go to green. If the signal group is green, it is the maximum time for the next green.
+              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+          likelyToGEstimate   :
+            type: timestamp
+            description: |-
+              Time stamp for the most likely time for the signal group to go to green. If the signal group is green, it is the most likely time for the next green.
+              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+          ToGConfidence:
+            type: integer
+            description: Confidence of the likelyToGEstimate. 0-100%
+            range: "[0-100]"
+          minToREstimate   :
+            type: timestamp
+            description: |-
+              Time stamp for the minimum time for the signal group to go to red. If the signal group is red, it is the minimum time for the next red.
+              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+          maxToREstimate:
+            type: timestamp
+            description: |-
+              Time stamp for the maximum time for the signal group to go to red. If the signal group is red, it is the maximum time for the next red.
+              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+          likelyToREstimate   :
+            type: timestamp
+            description: |-
+              Time stamp for the most likely time for the signal group to go to red. If the signal group is red, it is the most likely time for the next red.
+              Format according to W3C XML dateTime with a resolution of 3 decimal places. All time stamps in UTC. E.g. 2009-10-02T14:34:34.341Z
+          ToRConfidence:
+            type: integer
+            description: Confidence of the likelyToREstimate. 0-100%
+            range: "[0-100]"
     commands:
       M0010:
         description: |-
@@ -814,7 +1390,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: No command (default)
               True: Order a signal group to green
@@ -830,7 +1406,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: No command (default)
               True: Order a signal group to red
@@ -863,7 +1439,7 @@ objects:
             description: Detector forced on/off while detector error
             values: ['on','off']
           manual:
-            type: boolean_as_string
+            type: boolean
             description: Manually controlled detector logic (True/False)
       A0302:
         description: |-
@@ -888,7 +1464,7 @@ objects:
             description: Detector forced on/off while detector error
             values: ['on','off']
           manual:
-            type: boolean_as_string
+            type: boolean
             description: Manually controlled detector logic (True/False)
           logicerror:
             type: string
@@ -909,7 +1485,7 @@ objects:
               XML dateTime with a resolution of 3 decimal places. All time stamps
               in UTC. E.g. 2009-10-02T14:34:34.341Z
           vehicles:
-            type: long_as_string
+            type: long
             description: Number of vehicles on a given detector logic (since last
               update)
             range: "[number]"
@@ -925,7 +1501,7 @@ objects:
               XML dateTime with a resolution of 3 decimal places. All time stamps
               in UTC. E.g. 2009-10-02T14:34:34.341Z
           speed:
-            type: integer_as_string
+            type: integer
             description: Average speed in km/h
             range: "[speed]"
       S0203:
@@ -940,7 +1516,7 @@ objects:
               XML dateTime with a resolution of 3 decimal places. All time stamps
               in UTC. E.g. 2009-10-02T14:34:34.341Z
           occupancy:
-            type: integer_as_string
+            type: integer
             description: Occupancy in percent (0-100%)
             range: "[0-100]"
       S0204:
@@ -955,39 +1531,39 @@ objects:
               XML dateTime with a resolution of 3 decimal places. All time stamps
               in UTC. E.g. 2009-10-02T14:34:34.341Z
           P:
-            type: long_as_string
+            type: long
             description: Number of cars
             range: "[number]"
           PS:
-            type: long_as_string
+            type: long
             description: Number of cars with trailers
             range: "[number]"
           L:
-            type: long_as_string
+            type: long
             description: Number of trucks
             range: "[number]"
           LS:
-            type: long_as_string
+            type: long
             description: Number of trucks with trailers
             range: "[number]"
           B:
-            type: long_as_string
+            type: long
             description: Number of busses
             range: "[number]"
           SP:
-            type: long_as_string
+            type: long
             description: Number of trams
             range: "[number]"
           MC:
-            type: long_as_string
+            type: long
             description: Number of motor cycles
             range: "[number]"
           C:
-            type: long_as_string
+            type: long
             description: Number of bicycles
             range: "[number]"
           F:
-            type: long_as_string
+            type: long
             description: Number of pedestrians
             range: "[number]"
     commands:
@@ -999,7 +1575,7 @@ objects:
           Requires security code 2
         arguments:
           status:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Deactivate manual control of detector logic
               True: Activate manual control of detector logic
@@ -1007,7 +1583,7 @@ objects:
             type: string
             description: Security code 2
           mode:
-            type: boolean_as_string
+            type: boolean
             description: |-
               False: Deactivate detector logic
               True: Activate detector logic

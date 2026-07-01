@@ -549,14 +549,15 @@ describe RSMP::Proxy do
         'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda',
         'cId' => 'C1',
         'arg' => [
-          { 'cCI' => 'M0022', 'cO' => 'setValue', 'n' => 'requestId', 'v' => 'priority-1' },
-          { 'cCI' => 'M0022', 'cO' => 'setValue', 'n' => 'type', 'v' => 'new' }
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'securityCode', 'v' => '1111' },
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'timeout', 'v' => '0' },
+          { 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'intersection', 'v' => '0' }
         ]
       )
 
       expect do
         proxy.check_required_command_arguments message
-      end.to raise_exception(RSMP::MissingAttribute, message: be =~ /level/)
+      end.to raise_exception(RSMP::MissingAttribute, message: be =~ /status/)
     end
 
     it 'marks unimplemented statuses as unknown in StatusResponse' do

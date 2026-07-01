@@ -1,4 +1,10 @@
 require 'bundler/gem_tasks'
+require 'fileutils'
+require 'open3'
+require 'yaml'
+
+require_relative 'lib/rsmp/convert/import/yaml'
+require_relative 'lib/rsmp/convert/export/json_schema'
 
 task :test do
   sh 'bundle exec sus'
@@ -6,6 +12,19 @@ end
 
 CORE_VERSIONS = %w[3.1.2 3.1.3 3.1.4 3.1.5 3.2.0 3.2.1 3.2.2 3.3.0].freeze
 TLC_VERSIONS  = %w[1.0.7 1.0.8 1.0.9 1.0.10 1.0.13 1.0.14 1.0.15 1.1.0 1.2.0 1.2.1 1.3.0].freeze
+
+def git_show!(repo_path, ref)
+  output, status = Open3.capture2e('git', '-C', repo_path, 'show', ref)
+  raise "Could not read #{ref} from #{repo_path}:\n#{output}" unless status.success?
+
+  output
+end
+
+def require_minimum_core_version!(source_path)
+  yaml = YAML.load_file(source_path)
+  minimum_core_version = yaml.dig('meta', 'minimum_core_version')
+  raise "Missing meta.minimum_core_version in #{source_path}" if minimum_core_version.nil? || minimum_core_version.to_s.empty?
+end
 
 # Update vendored schemas from source repos.
 # Usage: rake schemas:update[/path/to/rsmp_core,/path/to/rsmp_sxl_traffic_lights]
@@ -32,10 +51,14 @@ namespace :schemas do
     puts "Updating TLC schemas from #{tlc_path}:"
     TLC_VERSIONS.each do |ver|
       target = "schemas/tlc/#{ver}"
+      source = File.join(target, 'source', 'sxl.yaml')
       puts "  #{ver}"
       FileUtils.rm_rf(target)
-      FileUtils.mkdir_p(target)
-      sh "git -C #{tlc_path} archive refs/heads/#{ver} -- schema/ | tar x --strip-components=1 -C #{target}"
+      FileUtils.mkdir_p(File.dirname(source))
+      File.write(source, git_show!(tlc_path, "refs/heads/#{ver}:schema/sxl.yaml"))
+      require_minimum_core_version!(source)
+      sxl = RSMP::Convert::Import::YAML.read(source)
+      RSMP::Convert::Export::JSONSchema.write(sxl, target)
     end
   end
 end

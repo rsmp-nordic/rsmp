@@ -74,7 +74,7 @@
           "properties" : {
             "v" : {
               "description" : "ID of an input, using the same numbering scheme as M0006",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -91,7 +91,7 @@
           "properties" : {
             "v" : {
               "description" : "ID of a connection, connecting an ingoing and an outgoing lane",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -108,7 +108,7 @@
           "properties" : {
             "v" : {
               "description" : "ID of an intersection approach",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -125,7 +125,7 @@
           "properties" : {
             "v" : {
               "description" : "ID of an ingoing lane",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -142,7 +142,7 @@
           "properties" : {
             "v" : {
               "description" : "ID of an outgoing lane",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -159,7 +159,7 @@
           "properties" : {
             "v" : {
               "description" : "ID of a priority",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -197,7 +197,7 @@
           "properties" : {
             "v" : {
               "description" : "0: Lowest, 14: Highest",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -214,7 +214,7 @@
           "properties" : {
             "v" : {
               "description" : "Estimated time of arrival to the intersection, in seconds",
-              "type" : "integer"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

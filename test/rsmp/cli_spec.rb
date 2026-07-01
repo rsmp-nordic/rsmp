@@ -322,7 +322,7 @@ describe RSMP::CLI do
 
     it 'generates an SXL index alongside JSON Schema files' do
       Dir.mktmpdir do |dir|
-        input = File.expand_path('../../schemas/tlc/1.3.0/sxl.yaml', __dir__)
+        input = File.expand_path('../../schemas/tlc/1.3.0/source/sxl.yaml', __dir__)
         result = invoke_cli('schema', 'generate', '--in', input, '--out', dir)
         index = JSON.parse(File.read(File.join(dir, 'sxl_index.json'), encoding: 'UTF-8'))
 
@@ -373,6 +373,25 @@ describe RSMP::CLI do
 
           expect(result.status).to be == 0
           expect(generated).to be == expected
+        end
+      end
+    end
+
+    it 'uses explicit string-wire types in the index for legacy SXL vocabulary' do
+      with_temp_config('sxl.yaml', minimal_sxl_yaml('minimum_core_version: 3.2.0')) do |input|
+        Dir.mktmpdir do |dir|
+          result = invoke_cli('schema', 'generate', '--in', input, '--out', dir)
+          index = JSON.parse(File.read(File.join(dir, 'sxl_index.json'), encoding: 'UTF-8'))
+          status = JSON.parse(File.read(File.join(dir, 'statuses', 'S0001.json'), encoding: 'UTF-8'))
+
+          expect(result.status).to be == 0
+          expect(index.dig('statuses', 'S0001', 'required', 'flag')).to be == 'boolean_as_string'
+          expect(index.dig('statuses', 'S0001', 'required', 'count')).to be == 'integer_as_string'
+          schemas_by_name = status.dig('else', 'allOf').to_h do |entry|
+            [entry.dig('if', 'properties', 'n', 'const'), entry.dig('then', 'properties', 's', '$ref')]
+          end
+          expect(schemas_by_name['count']).to be == '../defs/definitions.json#/integer'
+          expect(schemas_by_name['flag']).to be == '../defs/definitions.json#/boolean'
         end
       end
     end
@@ -536,6 +555,8 @@ describe RSMP::CLI do
               arguments:
                 flag:
                   type: boolean
+                count:
+                  type: integer
     YAML
   end
 
