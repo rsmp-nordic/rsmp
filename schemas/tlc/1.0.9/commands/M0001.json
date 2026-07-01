@@ -54,7 +54,7 @@
           "properties" : {
             "v" : {
               "description" : "Security code 2",
-              "$ref" : "../defs/definitions.json#/string_list"
+              "type" : "string"
             }
           }
         }
@@ -71,7 +71,7 @@
           "properties" : {
             "v" : {
               "description" : "Time in minutes until controller automatically reverts to previous functional position.\n0=no automatic return",
-              "$ref" : "../defs/definitions.json#/integer_list"
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }
@@ -87,8 +87,8 @@
         "then" : {
           "properties" : {
             "v" : {
-              "description" : "Intersection number",
-              "$ref" : "../defs/definitions.json#/integer_list"
+              "description" : "Intersection number.\nCommand only applies to specified intersection. Other intersections remains in their respective operating mode(s).\n0: All intersections",
+              "$ref" : "../defs/definitions.json#/integer"
             }
           }
         }

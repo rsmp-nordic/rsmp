@@ -702,3 +702,6 @@ Initial release.
 
 ## 0.48.1
 - fix command responses and collectors for `v=nil` with `age=undefined` or `age=unknown`
+
+## 0.48.2
+- fix legacy TLC M0001 schemas to use scalar command arguments
