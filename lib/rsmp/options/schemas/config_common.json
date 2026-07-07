@@ -124,6 +124,21 @@
         }
       },
       "additionalProperties": false
+    },
+    "secure": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "required": { "type": "boolean" },
+        "profile": { "const": "rsmp-secure-suite0-dev" },
+        "private_key": { "type": "string" },
+        "credential": { "type": "string" },
+        "peer_public_key": { "type": "string" },
+        "peer_credential": { "type": "string" },
+        "max_frame_size": { "type": "integer", "minimum": 1 },
+        "handshake_timeout": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
     }
   }
 }

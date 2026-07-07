@@ -77,6 +77,7 @@ describe RSMP::CLI do
     expect(result.output).to be(:include?, 'Commands:')
     expect(result.output).to be(:include?, 'config')
     expect(result.output).to be(:include?, 'schema')
+    expect(result.output).to be(:include?, 'secure')
     expect(result.output).to be(:include?, 'site')
     expect(result.output).to be(:include?, 'supervisor')
     expect(result.output).to be(:include?, 'version')
@@ -87,6 +88,35 @@ describe RSMP::CLI do
 
     expect(result.status).to be == 0
     expect(result.output).to be == "#{RSMP::VERSION}\n"
+  end
+
+  with 'secure command' do
+    it 'generates development credentials' do
+      Dir.mktmpdir('rsmp-secure-cli') do |dir|
+        result = invoke_cli('secure', 'generate', '--out', dir)
+        vector = Edhoc::Native.suite0_test_vector
+
+        expect(result.status).to be == 0
+        expect(result.output).to be(:include?, "Generated Secure RSMP development credentials in #{dir}")
+        expect(File.binread(File.join(dir, 'site-private.key'))).to be == vector.fetch(:initiator_private_key)
+        expect(File.binread(File.join(dir, 'site.pub'))).to be == vector.fetch(:initiator_public_key)
+        expect(File.binread(File.join(dir, 'site.cred'))).to be == vector.fetch(:initiator_credential)
+        expect(File.binread(File.join(dir, 'supervisor-private.key'))).to be == vector.fetch(:responder_private_key)
+        expect(File.binread(File.join(dir, 'supervisor.pub'))).to be == vector.fetch(:responder_public_key)
+        expect(File.binread(File.join(dir, 'supervisor.cred'))).to be == vector.fetch(:responder_credential)
+      end
+    end
+
+    it 'refuses to overwrite generated credentials without force' do
+      Dir.mktmpdir('rsmp-secure-cli') do |dir|
+        invoke_cli('secure', 'generate', '--out', dir)
+        result = invoke_cli('secure', 'generate', '--out', dir)
+
+        expect(result.status).to be == 1
+        expect(result.output).to be(:include?, 'Refusing to overwrite existing files')
+        expect(result.output).to be(:include?, 'Use --force to replace them.')
+      end
+    end
   end
 
   with 'site command' do

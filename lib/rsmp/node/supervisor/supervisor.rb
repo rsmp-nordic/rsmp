@@ -36,6 +36,7 @@ module RSMP
       log "Starting supervisor on port #{@supervisor_settings['port']}",
           level: :info,
           timestamp: @clock.now
+      log_secure_listener
 
       @endpoint = IO::Endpoint.tcp('0.0.0.0', @supervisor_settings['port'])
       @accept_task = Async::Task.current.async do |task|
@@ -65,6 +66,11 @@ module RSMP
       @ready_condition.signal
       @proxies.each(&:start)
       @proxies.each(&:wait)
+    end
+
+    def log_secure_listener
+      summary = RSMP::Secure.log_summary(@supervisor_settings['secure'] || @supervisor_settings.dig('default', 'secure'))
+      log summary, level: :info, timestamp: @clock.now if summary
     end
 
     def build_outbound_proxies

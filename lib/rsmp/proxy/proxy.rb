@@ -102,6 +102,23 @@ module RSMP
       super
     end
 
+    def build_transport_protocol(stream, role:, secure_settings:)
+      return RSMP::Protocol.new(stream) unless RSMP::Secure.enabled?(secure_settings)
+
+      RSMP::Secure.build_protocol(
+        stream,
+        role: role,
+        settings: secure_settings,
+        task: task,
+        log: ->(message, options = {}) { log(message, options) }
+      )
+    end
+
+    def log_secure_transport(secure_settings)
+      summary = RSMP::Secure.log_summary(secure_settings)
+      log summary, level: :info if summary
+    end
+
     # State management methods
 
     def ready?

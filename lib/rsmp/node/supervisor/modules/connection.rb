@@ -59,7 +59,7 @@ module RSMP
 
         def build_proxy_settings(socket, info)
           stream = IO::Stream::Buffered.new(socket)
-          protocol = RSMP::Protocol.new stream
+          protocol = build_accepted_protocol(stream)
           site_id = retrieve_site_id(protocol)
           site_settings = site_id_to_site_setting site_id
 
@@ -78,6 +78,23 @@ module RSMP
             site_id: site_id,
             site_settings: site_settings
           }
+        end
+
+        def build_accepted_protocol(stream)
+          secure_settings = inbound_secure_settings
+          return RSMP::Protocol.new(stream) unless RSMP::Secure.required?(secure_settings)
+
+          RSMP::Secure.build_protocol(
+            stream,
+            role: :responder,
+            settings: secure_settings,
+            task: @task,
+            log: ->(message, options = {}) { log(message, options.merge(timestamp: @clock.now)) }
+          )
+        end
+
+        def inbound_secure_settings
+          @supervisor_settings['secure'] || @supervisor_settings.dig('default', 'secure')
         end
 
         def retrieve_site_id(protocol)

@@ -1,4 +1,5 @@
 require 'thor'
+require 'fileutils'
 require_relative '../rsmp'
 require_relative 'cli/configuration'
 
@@ -44,6 +45,56 @@ module RSMP
       end
 
       exit 1 unless valid
+    end
+  end
+
+  # CLI subcommands for Secure RSMP development credentials.
+  class SecureCLI < Thor
+    namespace :secure
+    desc 'generate', 'Generate Secure RSMP development credentials'
+    method_option :out, type: :string, aliases: '-o',
+                        banner: 'Output directory',
+                        default: 'config/secure'
+    method_option :force, type: :boolean, aliases: '-f',
+                          banner: 'Overwrite existing files',
+                          default: false
+    def generate
+      require 'edhoc'
+
+      output = options[:out]
+      files = secure_development_files(Edhoc::Native.suite0_test_vector)
+      existing = files.keys.select { |name| File.exist?(File.join(output, name)) }
+      if existing.any? && !options[:force]
+        puts "Error: Refusing to overwrite existing files in #{output}: #{existing.join(', ')}"
+        puts 'Use --force to replace them.'
+        exit 1
+      end
+
+      FileUtils.mkdir_p(output)
+      files.each_pair do |name, bytes|
+        path = File.join(output, name)
+        File.binwrite(path, bytes)
+        File.chmod(0o600, path)
+      end
+
+      puts "Generated Secure RSMP development credentials in #{output}"
+      puts 'These files are for local prototype testing only.'
+    rescue LoadError => e
+      puts "Error: Cannot load edhoc gem: #{e.message}"
+      exit 1
+    end
+
+    private
+
+    def secure_development_files(vector)
+      {
+        'site-private.key' => vector.fetch(:initiator_private_key),
+        'site.pub' => vector.fetch(:initiator_public_key),
+        'site.cred' => vector.fetch(:initiator_credential),
+        'supervisor-private.key' => vector.fetch(:responder_private_key),
+        'supervisor.pub' => vector.fetch(:responder_public_key),
+        'supervisor.cred' => vector.fetch(:responder_credential)
+      }
     end
   end
 
@@ -101,6 +152,7 @@ module RSMP
 
     register SchemaCLI, 'schema', 'schema COMMAND', 'SXL schema commands'
     register ConfigCLI, 'config', 'config COMMAND', 'Configuration commands'
+    register SecureCLI, 'secure', 'secure COMMAND', 'Secure RSMP development commands'
 
     private
 

@@ -2,6 +2,13 @@ port: 12111
 default:
   sxls:
     tlc: '1.2.1'
+  secure:
+    required: true
+    profile: rsmp-secure-suite0-dev
+    private_key: config/secure/supervisor-private.key
+    credential: config/secure/supervisor.cred
+    peer_public_key: config/secure/site.pub
+    peer_credential: config/secure/site.cred
   intervals:
     timer: 0.1
     watchdog: 0.1

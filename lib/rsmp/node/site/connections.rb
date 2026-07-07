@@ -13,6 +13,7 @@ module RSMP
       ip = @site_settings['ip'] || '0.0.0.0'
       port = @site_settings['port']
       log "Starting #{site_type_name} listener on #{ip}:#{port}", level: :info, timestamp: @clock.now
+      log_secure_listener @site_settings['secure']
       @endpoint = IO::Endpoint.tcp(ip, port)
       @accept_task = Async::Task.current.async do |task|
         task.annotate 'site accept loop'
@@ -54,6 +55,11 @@ module RSMP
 
     private
 
+    def log_secure_listener(secure_settings)
+      summary = RSMP::Secure.log_summary(secure_settings)
+      log summary, level: :info, timestamp: @clock.now if summary
+    end
+
     def supervisor_proxy_options(supervisor_settings)
       {
         site: self,
@@ -69,11 +75,24 @@ module RSMP
 
     def accepted_supervisor_options(socket, remote_ip, remote_port)
       stream = IO::Stream::Buffered.new(socket)
+      protocol = build_accepted_protocol(stream, @site_settings['secure'])
       supervisor_proxy_options('ip' => remote_ip, 'port' => remote_port).merge(
         socket: socket,
         stream: stream,
-        protocol: RSMP::Protocol.new(stream),
+        protocol: protocol,
         info: { ip: remote_ip, port: remote_port, hostname: remote_ip, now: Clock.now }
+      )
+    end
+
+    def build_accepted_protocol(stream, secure_settings)
+      return RSMP::Protocol.new(stream) unless RSMP::Secure.required?(secure_settings)
+
+      RSMP::Secure.build_protocol(
+        stream,
+        role: :responder,
+        settings: secure_settings,
+        task: @task,
+        log: ->(message, options = {}) { log(message, options.merge(timestamp: @clock.now)) }
       )
     end
   end
