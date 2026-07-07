@@ -22,6 +22,7 @@
     "timeouts": { "$ref": "config_common.json#/$defs/timeouts" },
     "send_after_connect": { "type": "boolean" },
     "message_buffer": { "$ref": "config_common.json#/$defs/message_buffer" },
+    "secure": { "$ref": "config_common.json#/$defs/secure" },
     "components": { "$ref": "config_common.json#/$defs/components" },
     "security_codes": { "$ref": "config_common.json#/$defs/security_codes" },
     "startup_sequence": { "type": "string" },

@@ -1,8 +1,14 @@
 PATH
+  remote: ../edhoc_gem
+  specs:
+    edhoc (0.1.0)
+
+PATH
   remote: .
   specs:
     rsmp (0.54.1)
       async (~> 2.45)
+      cbor (~> 0.5)
       colorize (~> 1.1)
       io-endpoint (~> 0.17)
       io-stream (~> 0.13)
@@ -20,6 +26,7 @@ GEM
       fiber-annotation
       io-event (~> 1.21)
     bigdecimal (4.1.2)
+    cbor (0.5.10.3)
     colorize (1.1.0)
     console (1.37.0)
       fiber-annotation
@@ -94,6 +101,7 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 4.0)
+  edhoc!
   rake (~> 13.2)
   rsmp!
   rubocop

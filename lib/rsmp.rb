@@ -33,6 +33,7 @@ require_relative 'rsmp/convert/export/json_schema'
 
 require_relative 'rsmp/status_list'
 require_relative 'rsmp/command_list'
+require_relative 'rsmp/secure'
 require_relative 'rsmp/log/logging'
 require_relative 'rsmp/log/archive'
 require_relative 'rsmp/log/filtering'

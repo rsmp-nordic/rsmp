@@ -4,6 +4,8 @@ source 'https://rubygems.org'
 
 gemspec
 
+gem 'edhoc', path: '../edhoc_gem'
+
 group :development do
   gem 'bundler', '~> 4.0'
   gem 'rake', '~> 13.2'

@@ -73,6 +73,7 @@ module RSMP
     def connect
       log "Connecting to supervisor at #{@ip}:#{@port}", level: :info
       begin_session
+      log_secure_transport @site_settings['secure']
       self.state = :connecting
       opened = connect_tcp
       return opened if opened.failure?
@@ -100,7 +101,7 @@ module RSMP
       task.sleep delay if delay
 
       @stream = IO::Stream::Buffered.new(@socket)
-      @protocol = RSMP::Protocol.new(@stream) # rsmp messages are json terminated with a form-feed
+      @protocol = build_transport_protocol(@stream, role: :initiator, secure_settings: @site_settings['secure'])
       Result.success(self)
     rescue Errno::ECONNREFUSED => e # rescue to avoid log output
       log 'Connection refused', level: :warning

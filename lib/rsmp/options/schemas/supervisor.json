@@ -14,6 +14,7 @@
     },
     "site_id": { "type": "string" },
     "max_sites": { "type": "integer" },
+    "secure": { "$ref": "config_common.json#/$defs/secure" },
     "default": { "$ref": "supervisor_site.json" },
     "sites": {
       "type": "object",
