@@ -165,6 +165,24 @@ describe RSMP::Secure do
         responder.decrypt_frame(frame)
       end.to raise_exception(RSMP::Secure::AuthenticationError)
     end
+
+    it 'encrypts rekey control frames with distinct frame type authentication' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder)
+
+      frame = initiator.encrypt_control('kind' => 'rekey_request', 'next_epoch' => 1)
+
+      expect(responder.decrypt_control_frame(frame)).to be == {
+        'kind' => 'rekey_request',
+        'next_epoch' => 1
+      }
+
+      data_like = frame.merge('type' => 'data')
+      expect do
+        RSMP::Secure::Channel.new(secret, role: :responder).decrypt_frame(data_like)
+      end.to raise_exception(RSMP::Secure::AuthenticationError)
+    end
   end
 
   with RSMP::Secure::Protocol do
@@ -207,6 +225,58 @@ describe RSMP::Secure do
         site.write_lines(JSON.generate(version))
 
         expect(JSON.parse(supervisor.read_line)).to be == version
+      ensure
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'renews traffic keys using encrypted EDHOC rekey control frames' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        site = nil
+        supervisor = nil
+
+        initiator_task = Async::Task.current.async do
+          site = RSMP::Secure.build_protocol(
+            IO::Stream::Buffered.new(site_io),
+            role: :initiator,
+            settings: site_settings
+          )
+        end
+        responder_task = Async::Task.current.async do
+          supervisor = RSMP::Secure.build_protocol(
+            IO::Stream::Buffered.new(supervisor_io),
+            role: :responder,
+            settings: supervisor_settings
+          )
+        end
+        initiator_task.wait
+        responder_task.wait
+
+        pre_rekey = {
+          'mType' => 'rSMsg',
+          'type' => 'Watchdog',
+          'mId' => '36f85650-ee72-42b1-a097-0f4f48183ef5',
+          'wTs' => '2026-07-07T13:15:00.000Z'
+        }
+        site.write_lines(JSON.generate(pre_rekey))
+        expect(JSON.parse(supervisor.read_line)).to be == pre_rekey
+
+        site_rekey = Async::Task.current.async { site.rekey! }
+        supervisor_rekey = Async::Task.current.async { supervisor.rekey! }
+        expect(site_rekey.wait).to be == true
+        expect(supervisor_rekey.wait).to be == true
+        expect(site.channel.epoch).to be == 1
+        expect(supervisor.channel.epoch).to be == 1
+
+        post_rekey = pre_rekey.merge(
+          'mId' => 'c6a0ec38-45a7-4339-a51c-4499deff1682',
+          'wTs' => '2026-07-07T13:16:00.000Z'
+        )
+        site.write_lines(JSON.generate(post_rekey))
+        expect(JSON.parse(supervisor.read_line)).to be == post_rekey
       ensure
         site_io&.close
         supervisor_io&.close

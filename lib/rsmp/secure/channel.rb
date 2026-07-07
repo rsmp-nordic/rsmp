@@ -12,14 +12,14 @@ module RSMP
       EXPORTER_SECRET_BYTES = 32
       TAG_BYTES = 16
 
-      attr_reader :role, :session_id
+      attr_reader :role, :session_id, :epoch
 
-      def initialize(exporter_secret, role:)
+      def initialize(exporter_secret, role:, epoch: 0, session_id: nil)
         @role = role.to_sym
-        @epoch = 0
+        @epoch = epoch
         @send_idx = 0
         @recv_idx = 0
-        @session_id = expand(exporter_secret, 'session id', SESSION_ID_BYTES)
+        @session_id = session_id || expand(exporter_secret, 'session id', SESSION_ID_BYTES)
 
         @send_direction = initiator? ? 'i2r' : 'r2i'
         @recv_direction = initiator? ? 'r2i' : 'i2r'
@@ -37,22 +37,48 @@ module RSMP
           'epoch' => @epoch,
           'idx' => @send_idx,
           'ct' => encrypt(plaintext, @send_key, nonce(@send_nonce_prefix, @send_idx),
-                          aad(@send_direction, @send_idx))
+                          aad('data', @send_direction, @send_idx))
+        }
+      end
+
+      def encrypt_control(attributes)
+        @send_idx += 1
+        {
+          'v' => VERSION,
+          'type' => 'rekey',
+          'epoch' => @epoch,
+          'idx' => @send_idx,
+          'ct' => encrypt(Cbor.encode(attributes), @send_key, nonce(@send_nonce_prefix, @send_idx),
+                          aad('rekey', @send_direction, @send_idx))
         }
       end
 
       def decrypt_frame(frame)
         validate_data_frame(frame)
-        idx = Integer(frame.fetch('idx'))
-        expected = @recv_idx + 1
-        raise ReplayError, "Expected secure data index #{expected}, got #{idx}" unless idx == expected
+        decrypt_validated_frame(frame, 'data')
+      end
 
-        plaintext = decrypt(frame.fetch('ct'), @recv_key, nonce(@recv_nonce_prefix, idx), aad(@recv_direction, idx))
-        @recv_idx = idx
-        plaintext
+      def decrypt_control_frame(frame)
+        validate_control_frame(frame)
+        Cbor.decode(decrypt_validated_frame(frame, 'rekey'))
+      end
+
+      def next_epoch
+        (@epoch + 1) % 256
       end
 
       private
+
+      def decrypt_validated_frame(frame, frame_type)
+        idx = Integer(frame.fetch('idx'))
+        expected = @recv_idx + 1
+        raise ReplayError, "Expected secure frame index #{expected}, got #{idx}" unless idx == expected
+
+        plaintext = decrypt(frame.fetch('ct'), @recv_key, nonce(@recv_nonce_prefix, idx),
+                            aad(frame_type, @recv_direction, idx))
+        @recv_idx = idx
+        plaintext
+      end
 
       def initiator?
         role == :initiator
@@ -72,11 +98,11 @@ module RSMP
         prefix + [idx].pack('N')
       end
 
-      def aad(direction, idx)
+      def aad(frame_type, direction, idx)
         Cbor.encode(
           'v' => VERSION,
           'profile' => PROFILE,
-          'type' => 'data',
+          'type' => frame_type,
           'session' => session_id,
           'direction' => direction,
           'epoch' => @epoch,
@@ -114,6 +140,14 @@ module RSMP
         raise FrameError, 'Secure frame must be a map' unless frame.is_a?(Hash)
         raise FrameError, "Unexpected secure frame version #{frame['v'].inspect}" unless frame['v'] == VERSION
         raise FrameError, "Unexpected secure frame type #{frame['type'].inspect}" unless frame['type'] == 'data'
+        raise FrameError, "Unexpected secure epoch #{frame['epoch'].inspect}" unless frame['epoch'] == @epoch
+        raise FrameError, 'Secure frame ciphertext is missing' unless frame['ct'].is_a?(String)
+      end
+
+      def validate_control_frame(frame)
+        raise FrameError, 'Secure frame must be a map' unless frame.is_a?(Hash)
+        raise FrameError, "Unexpected secure frame version #{frame['v'].inspect}" unless frame['v'] == VERSION
+        raise FrameError, "Unexpected secure frame type #{frame['type'].inspect}" unless frame['type'] == 'rekey'
         raise FrameError, "Unexpected secure epoch #{frame['epoch'].inspect}" unless frame['epoch'] == @epoch
         raise FrameError, 'Secure frame ciphertext is missing' unless frame['ct'].is_a?(String)
       end
