@@ -9,6 +9,9 @@ default:
     credential: config/secure/supervisor.cred
     peer_public_key: config/secure/site.pub
     peer_credential: config/secure/site.cred
+    rekey_after_messages: 100
+    rekey_after_seconds: 10
+    min_rekey_interval: 5
   intervals:
     timer: 0.1
     watchdog: 0.1

@@ -9,6 +9,9 @@ secure:
   credential: config/secure/site.cred
   peer_public_key: config/secure/supervisor.pub
   peer_credential: config/secure/supervisor.cred
+  rekey_after_messages: 100
+  rekey_after_seconds: 10
+  min_rekey_interval: 5
 sxls:
   tlc: '1.2.1'
 components:
@@ -65,4 +68,5 @@ log:
   level: false
   debug: true
   json: true
+  watchdogs: false
 live_output: tmp/tlc.state
