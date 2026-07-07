@@ -28,10 +28,28 @@ module RSMP
           handshake_responder(session)
         end
 
-        @channel = Channel.new(session.export_prk(0, Channel::EXPORTER_SECRET_BYTES), role: role)
+        @channel = build_channel(session, epoch: 0)
         true
       rescue Edhoc::Error => e
         raise HandshakeError, "EDHOC handshake failed: #{e.message}"
+      end
+
+      def rekey!
+        require 'edhoc'
+        ensure_ready!
+
+        session = build_edhoc_session
+        next_epoch = @channel.next_epoch
+
+        if initiator?
+          rekey_initiator(session, next_epoch)
+        else
+          rekey_responder(session, next_epoch)
+        end
+
+        true
+      rescue Edhoc::Error => e
+        raise HandshakeError, "EDHOC rekey failed: #{e.message}"
       end
 
       def read_line
@@ -99,6 +117,24 @@ module RSMP
         session.process_message3(read_edhoc(3))
       end
 
+      def rekey_initiator(session, next_epoch)
+        write_rekey('rekey_msg1', next_epoch, session.compose_message1)
+        session.process_message2(read_rekey('rekey_msg2', next_epoch).fetch('edhoc'))
+        write_rekey('rekey_msg3', next_epoch, session.compose_message3)
+        next_channel = build_channel(session, epoch: next_epoch, session_id: @channel.session_id)
+        write_rekey('rekey_commit', next_epoch)
+        @channel = next_channel
+      end
+
+      def rekey_responder(session, next_epoch)
+        session.process_message1(read_rekey('rekey_msg1', next_epoch).fetch('edhoc'))
+        write_rekey('rekey_msg2', next_epoch, session.compose_message2)
+        session.process_message3(read_rekey('rekey_msg3', next_epoch).fetch('edhoc'))
+        next_channel = build_channel(session, epoch: next_epoch, session_id: @channel.session_id)
+        read_rekey('rekey_commit', next_epoch)
+        @channel = next_channel
+      end
+
       def read_data_line
         ensure_ready!
         attributes = Cbor.decode(@channel.decrypt_frame(@frame_io.read))
@@ -121,6 +157,35 @@ module RSMP
         frame.fetch('edhoc')
       end
 
+      def write_rekey(kind, next_epoch, edhoc = nil)
+        attributes = {
+          'kind' => kind,
+          'next_epoch' => next_epoch
+        }
+        attributes['edhoc'] = edhoc if edhoc
+        @frame_io.write(@channel.encrypt_control(attributes))
+      end
+
+      def read_rekey(kind, next_epoch)
+        attributes = @channel.decrypt_control_frame(@frame_io.read)
+        validate_rekey_message(attributes, kind, next_epoch)
+        attributes
+      end
+
+      def validate_rekey_message(attributes, kind, next_epoch)
+        raise FrameError, 'Secure rekey message must be a map' unless attributes.is_a?(Hash)
+        raise FrameError, "Expected #{kind}, got #{attributes['kind'].inspect}" unless attributes['kind'] == kind
+        unless attributes['next_epoch'] == next_epoch
+          raise FrameError, "Expected rekey epoch #{next_epoch}, got #{attributes['next_epoch'].inspect}"
+        end
+
+        if kind.start_with?('rekey_msg')
+          raise FrameError, 'EDHOC rekey message is missing' unless attributes['edhoc'].is_a?(String)
+        elsif attributes.key?('edhoc')
+          raise FrameError, "#{kind} must not carry EDHOC bytes"
+        end
+      end
+
       def validate_edhoc_frame(frame, number)
         raise FrameError, 'Secure frame must be a map' unless frame.is_a?(Hash)
         raise FrameError, "Expected EDHOC frame #{number}, got #{frame['msg'].inspect}" unless frame['msg'] == number
@@ -135,6 +200,15 @@ module RSMP
         raise ConfigurationError, "secure.#{key} file not found: #{path}" unless File.file?(path)
 
         File.binread(path)
+      end
+
+      def build_channel(session, epoch:, session_id: nil)
+        Channel.new(
+          session.export_prk(0, Channel::EXPORTER_SECRET_BYTES),
+          role: role,
+          epoch: epoch,
+          session_id: session_id
+        )
       end
 
       def validate_settings!
