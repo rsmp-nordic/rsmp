@@ -86,8 +86,10 @@ module RSMP
     end
 
     def close_stream
+      @protocol&.close if @protocol.respond_to?(:close)
       @stream&.close
     ensure
+      @protocol = nil
       @stream = nil
     end
 

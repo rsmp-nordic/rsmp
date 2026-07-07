@@ -136,7 +136,10 @@
         "peer_public_key": { "type": "string" },
         "peer_credential": { "type": "string" },
         "max_frame_size": { "type": "integer", "minimum": 1 },
-        "handshake_timeout": { "type": "number", "exclusiveMinimum": 0 }
+        "handshake_timeout": { "type": "number", "exclusiveMinimum": 0 },
+        "rekey_after_messages": { "type": ["integer", "null"], "minimum": 1 },
+        "rekey_after_seconds": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "min_rekey_interval": { "type": ["number", "null"], "minimum": 0 }
       },
       "additionalProperties": false
     }
