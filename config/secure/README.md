@@ -29,6 +29,12 @@ Ed25519 key and self-signed development credential using the id as the file
 prefix. They are suitable for local prototype testing only. Do not use these
 keys or credentials for deployment.
 
+The default implemented Secure RSMP profile is currently `rsmp-secure-suite0-dev`.
+`rsmp-secure-suite4-dev` is also implemented for testing EDHOC cipher suite 4
+with these development credential files. The planned normative profile is
+`rsmp-secure-v1`, which will use EDHOC cipher suite 4 and a CBOR/COSE key bundle
+instead of these development credential files.
+
 The sample configs use:
 
 - `RN+SI0001.private.key`, `RN+SI0001.pub`, `RN+SI0001.cred` for the sample site side.

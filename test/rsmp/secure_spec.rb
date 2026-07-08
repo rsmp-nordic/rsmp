@@ -163,6 +163,16 @@ describe RSMP::Secure do
     expect(RSMP::Secure.log_summary('enabled' => true)).to be == 'Secure profile rsmp-secure-suite0-dev'
     expect(RSMP::Secure.log_summary('required' => true)).to be == 'Secure profile rsmp-secure-suite0-dev'
     expect(RSMP::Secure.log_summary(nil)).to be_nil
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-suite0-dev').fetch(:status)).to be == :implemented
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-suite4-dev').fetch(:status)).to be == :implemented
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-suite4-dev').fetch(:edhoc_cipher_suite)).to be == 4
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-suite4-dev').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:status)).to be == :planned
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_cipher_suite)).to be == 4
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
+    expect(RSMP::Secure.implemented_profile?('rsmp-secure-suite0-dev')).to be == true
+    expect(RSMP::Secure.implemented_profile?('rsmp-secure-suite4-dev')).to be == true
+    expect(RSMP::Secure.implemented_profile?('rsmp-secure-v1')).to be == false
     expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator)).to be == 'Secure handshake complete (initiator, epoch 0)'
     expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator, peer_id: 'RN+SI0002')).to be == 'Secure handshake with peer RN+SI0002 complete (initiator, epoch 0)'
     expect(RSMP::Secure.rekey_started_summary({ 'enabled' => true }, role: :initiator, epoch: 1)).to be == 'Secure rekey started (initiator, epoch 1)'
@@ -170,6 +180,13 @@ describe RSMP::Secure do
     expect(RSMP::Secure.settings({})['rekey_after_messages']).to be == 1_000_000
     expect(RSMP::Secure.settings({})['rekey_after_seconds']).to be == 7_200
     expect(RSMP::Secure.settings({})['min_rekey_interval']).to be == 60
+  end
+
+  it 'rejects planned secure profiles with a clear error' do
+    expect do
+      RSMP::Secure.validate_profile_name!('rsmp-secure-v1')
+    end.to raise_exception(RSMP::ConfigurationError,
+                           message: be == 'Secure profile "rsmp-secure-v1" is planned but not implemented')
   end
 
   it 'merges site endpoint secure settings with the local site identity' do
@@ -540,6 +557,17 @@ describe RSMP::Secure do
       }
     end
 
+    it 'binds the secure profile into traffic keys and AAD' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, profile: 'rsmp-secure-test')
+      frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
+
+      expect do
+        responder.decrypt_frame(frame)
+      end.to raise_exception(RSMP::Secure::AuthenticationError)
+    end
+
     it 'rejects replayed data indices' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
       initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
@@ -690,6 +718,40 @@ describe RSMP::Secure do
         site.write_lines(JSON.generate(version))
 
         expect(JSON.parse(supervisor.read_line)).to be == version
+      ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'runs EDHOC suite 4 and exchanges encrypted RSMP messages' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_settings['profile'] = RSMP::Secure::SUITE4_PROFILE
+        supervisor_settings['profile'] = RSMP::Secure::SUITE4_PROFILE
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator, settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder, settings: supervisor_settings)
+        end
+        site = initiator_task.wait
+        supervisor = responder_task.wait
+
+        watchdog = {
+          'mType' => 'rSMsg',
+          'type' => 'Watchdog',
+          'wTs' => '2026-07-08T08:00:00.000Z',
+          'mId' => '6c492f94-3eab-4da9-8cb6-10ac31a25afa'
+        }
+        site.write_lines(JSON.generate(watchdog))
+
+        expect(JSON.parse(supervisor.read_line)).to be == watchdog
+        expect(site.channel.profile).to be == RSMP::Secure::SUITE4_PROFILE
+        expect(supervisor.channel.profile).to be == RSMP::Secure::SUITE4_PROFILE
       ensure
         site&.close
         supervisor&.close

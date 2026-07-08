@@ -95,9 +95,7 @@ module RSMP
       private
 
       def validate_profile!(secure_settings)
-        return if secure_settings['profile'] == PROFILE
-
-        raise RSMP::ConfigurationError, "Unsupported secure profile #{secure_settings['profile'].inspect}"
+        Secure.validate_profile_name!(secure_settings['profile'])
       end
 
       def validate_local_identity_file!(secure_settings, key)
