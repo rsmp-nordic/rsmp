@@ -13,7 +13,7 @@ module RSMP
 
       EDHOC_CONNECTION_ID_BYTES = 4
 
-      attr_reader :settings, :role, :matched_peer_id
+      attr_reader :settings, :role, :matched_peer_id, :local_id
 
       def initialize(stream, role:, settings:, log: nil, parent: nil)
         @settings = Secure.settings(settings)
@@ -21,6 +21,8 @@ module RSMP
         @log = log
         @parent = parent
         validate_settings!
+        @credentials = ProfileCredentials.new(@settings)
+        @local_id = @credentials.local_id
         @frame_io = FrameIO.new(stream, max_frame_size: @settings['max_frame_size'])
         @peek_line = nil
         @channel = nil
@@ -39,8 +41,8 @@ module RSMP
           handshake_responder(session)
         end
 
-        @channel = build_channel(session, epoch: 0)
         @matched_peer_id = session.matched_peer_id
+        @channel = build_channel(session, epoch: 0)
         start_transport
         true
       rescue Edhoc::Error => e
@@ -113,14 +115,13 @@ module RSMP
       end
 
       def build_edhoc_session
-        credentials = ProfileCredentials.new(@settings)
-        private_key = credentials.private_key
+        private_key = @credentials.private_key
         Secure.edhoc_session_class(@settings['profile']).new(
           role: role,
           private_key: private_key,
-          peers: credentials.peer_entries,
+          peers: @credentials.peer_entries,
           connection_id: SecureRandom.random_bytes(EDHOC_CONNECTION_ID_BYTES),
-          **credentials.local_session_options(private_key)
+          **@credentials.local_session_options(private_key)
         )
       end
 
@@ -184,7 +185,17 @@ module RSMP
           role: role,
           epoch: epoch,
           session_id: session_id,
-          profile: @settings['profile']
+          rsmp_context: rsmp_context
+        )
+      end
+
+      def rsmp_context
+        initiator_id = initiator? ? local_id : matched_peer_id
+        responder_id = initiator? ? matched_peer_id : local_id
+        Channel.rsmp_context(
+          profile: @settings['profile'],
+          initiator_id: initiator_id,
+          responder_id: responder_id
         )
       end
 

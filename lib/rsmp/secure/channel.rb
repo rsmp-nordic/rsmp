@@ -11,23 +11,36 @@ module RSMP
       SESSION_ID_BYTES = 16
       EXPORTER_SECRET_BYTES = 32
       TAG_BYTES = 16
+      CONNECTION_ID = 'single-rsmp-connection'.freeze
 
-      attr_reader :role, :session_id, :epoch, :profile
+      attr_reader :role, :session_id, :epoch, :profile, :rsmp_context
 
-      def initialize(exporter_secret, role:, epoch: 0, session_id: nil, profile: PROFILE)
+      def self.rsmp_context(profile:, initiator_id: nil, responder_id: nil)
+        context = {
+          'context' => 'rsmp-secure-v1',
+          'profile' => context_text(profile),
+          'connection' => {
+            'socket' => CONNECTION_ID
+          }
+        }
+        context['initiator'] = context_text(initiator_id) if initiator_id
+        context['responder'] = context_text(responder_id) if responder_id
+        Cbor.encode(context)
+      end
+
+      def self.context_text(value)
+        text = value.to_s
+        text = text.dup.force_encoding(Encoding::UTF_8) if text.encoding == Encoding::BINARY
+        text
+      end
+      private_class_method :context_text
+
+      def initialize(exporter_secret, role:, epoch: 0, session_id: nil, rsmp_context: nil)
         @role = role.to_sym
         @epoch = epoch
-        @profile = profile
-        @send_idx = 0
-        @recv_idx = 0
-        @session_id = session_id || expand(exporter_secret, 'session id', SESSION_ID_BYTES)
-
-        @send_direction = initiator? ? 'i2r' : 'r2i'
-        @recv_direction = initiator? ? 'r2i' : 'i2r'
-        @send_key = expand(exporter_secret, "#{@send_direction} key", KEY_BYTES)
-        @recv_key = expand(exporter_secret, "#{@recv_direction} key", KEY_BYTES)
-        @send_nonce_prefix = expand(exporter_secret, "#{@send_direction} nonce", NONCE_PREFIX_BYTES)
-        @recv_nonce_prefix = expand(exporter_secret, "#{@recv_direction} nonce", NONCE_PREFIX_BYTES)
+        configure_context(rsmp_context)
+        reset_indices
+        derive_traffic_secrets(exporter_secret, session_id)
       end
 
       def encrypt_payload(plaintext)
@@ -70,6 +83,31 @@ module RSMP
 
       private
 
+      def configure_context(context)
+        @rsmp_context = normalize_context(context || self.class.rsmp_context(profile: PROFILE))
+        @profile = Cbor.decode(@rsmp_context).fetch('profile')
+      end
+
+      def reset_indices
+        @send_idx = 0
+        @recv_idx = 0
+      end
+
+      def derive_traffic_secrets(exporter_secret, session_id)
+        @traffic_secret = expand_context(exporter_secret, 'traffic secret', EXPORTER_SECRET_BYTES)
+        @session_id = session_id || expand(@traffic_secret, 'session id', SESSION_ID_BYTES)
+        derive_directional_keys
+      end
+
+      def derive_directional_keys
+        @send_direction = initiator? ? 'i2r' : 'r2i'
+        @recv_direction = initiator? ? 'r2i' : 'i2r'
+        @send_key = expand(@traffic_secret, "#{@send_direction} key", KEY_BYTES)
+        @recv_key = expand(@traffic_secret, "#{@recv_direction} key", KEY_BYTES)
+        @send_nonce_prefix = expand(@traffic_secret, "#{@send_direction} nonce", NONCE_PREFIX_BYTES)
+        @recv_nonce_prefix = expand(@traffic_secret, "#{@recv_direction} nonce", NONCE_PREFIX_BYTES)
+      end
+
       def decrypt_validated_frame(frame, frame_type)
         idx = Integer(frame.fetch('idx'))
         expected = @recv_idx + 1
@@ -85,11 +123,34 @@ module RSMP
         role == :initiator
       end
 
+      def normalize_context(context)
+        return context if context.is_a?(String)
+
+        Cbor.encode(context)
+      end
+
+      def expand_context(secret, label, length)
+        OpenSSL::KDF.hkdf(
+          secret,
+          salt: '',
+          info: Cbor.encode(
+            'context' => 'rsmp-secure-v1 hkdf',
+            'label' => label,
+            'rsmp_context' => @rsmp_context
+          ),
+          length: length,
+          hash: 'SHA256'
+        )
+      end
+
       def expand(secret, label, length)
         OpenSSL::KDF.hkdf(
           secret,
           salt: '',
-          info: "#{@profile} #{label}",
+          info: Cbor.encode(
+            'context' => 'rsmp-secure-v1 hkdf',
+            'label' => label
+          ),
           length: length,
           hash: 'SHA256'
         )
@@ -101,13 +162,13 @@ module RSMP
 
       def aad(frame_type, direction, idx)
         Cbor.encode(
-          'v' => VERSION,
-          'profile' => @profile,
-          'type' => frame_type,
-          'session' => session_id,
-          'direction' => direction,
+          'context' => 'rsmp-secure-data-v1',
+          'connection' => CONNECTION_ID,
           'epoch' => @epoch,
-          'idx' => idx
+          'idx' => idx,
+          'sender' => direction,
+          'session' => session_id,
+          'type' => frame_type
         )
       end
 
