@@ -148,8 +148,14 @@ See [configuration](documentation/configuration.md) for connection-role examples
 
 ### Secure RSMP
 
-Secure RSMP can be enabled in YAML with a `secure` section. The current prototype profile is
-`rsmp-secure-suite0-dev`, using EDHOC for the handshake and encrypted CBOR frames for RSMP messages.
+Secure RSMP can be enabled in YAML with a `secure` section. The default implemented profile is
+`rsmp-secure-suite0-dev`, using EDHOC method 0 / cipher suite 0 for the handshake and encrypted CBOR
+frames for RSMP messages. `rsmp-secure-suite4-dev` is also implemented for development testing with
+EDHOC cipher suite 4 and ChaCha20-Poly1305.
+
+The proposal's intended normative profile is `rsmp-secure-v1`, based on EDHOC method 0 / cipher
+suite 4 and ChaCha20-Poly1305. That profile is known to the implementation but deliberately rejected
+until the final credential format and normative profile details are implemented.
 
 Generate local development credentials with:
 

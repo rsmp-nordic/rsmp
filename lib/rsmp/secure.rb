@@ -2,6 +2,50 @@ module RSMP
   # Secure RSMP prototype support.
   module Secure
     PROFILE = 'rsmp-secure-suite0-dev'.freeze
+    SUITE4_PROFILE = 'rsmp-secure-suite4-dev'.freeze
+    V1_PROFILE = 'rsmp-secure-v1'.freeze
+    PROFILES = {
+      PROFILE => {
+        status: :implemented,
+        edhoc_method: 0,
+        edhoc_cipher_suite: 0,
+        ecdh: 'X25519',
+        signature: 'Ed25519/EdDSA',
+        hash: 'SHA-256',
+        edhoc_aead: 'AES-CCM-16-64-128',
+        data_aead: 'ChaCha20-Poly1305',
+        encoding: 'CBOR',
+        deterministic_cbor: false,
+        credential_format: 'X.509 DER development credential'
+      }.freeze,
+      SUITE4_PROFILE => {
+        status: :implemented,
+        edhoc_method: 0,
+        edhoc_cipher_suite: 4,
+        ecdh: 'X25519',
+        signature: 'Ed25519/EdDSA',
+        hash: 'SHA-256',
+        edhoc_aead: 'ChaCha20-Poly1305',
+        data_aead: 'ChaCha20-Poly1305',
+        encoding: 'CBOR',
+        deterministic_cbor: true,
+        credential_format: 'X.509 DER development credential'
+      }.freeze,
+      V1_PROFILE => {
+        status: :planned,
+        edhoc_method: 0,
+        edhoc_cipher_suite: 4,
+        ecdh: 'X25519',
+        signature: 'Ed25519/EdDSA',
+        hash: 'SHA-256',
+        edhoc_aead: 'ChaCha20-Poly1305',
+        data_aead: 'ChaCha20-Poly1305',
+        encoding: 'deterministic CBOR',
+        deterministic_cbor: true,
+        credential_format: 'CBOR/COSE key bundle'
+      }.freeze
+    }.freeze
+    IMPLEMENTED_PROFILES = PROFILES.select { |_name, metadata| metadata[:status] == :implemented }.keys.freeze
     VERSION = 1
     DEFAULT_MAX_FRAME_SIZE = 65_536
     DEFAULT_HANDSHAKE_TIMEOUT = 2
@@ -39,6 +83,39 @@ module RSMP
 
       def profile(raw)
         settings(raw)['profile']
+      end
+
+      def profile_metadata(name)
+        PROFILES[name]
+      end
+
+      def implemented_profile?(name)
+        IMPLEMENTED_PROFILES.include?(name)
+      end
+
+      def profile_status(name)
+        profile_metadata(name)&.fetch(:status)
+      end
+
+      def validate_profile_name!(name)
+        if implemented_profile?(name)
+          true
+        elsif profile_status(name) == :planned
+          raise RSMP::ConfigurationError, "Secure profile #{name.inspect} is planned but not implemented"
+        else
+          raise RSMP::ConfigurationError, "Unsupported secure profile #{name.inspect}"
+        end
+      end
+
+      def edhoc_session_class(name)
+        case name
+        when PROFILE
+          Edhoc::Suite0Session
+        when SUITE4_PROFILE
+          Edhoc::Suite4Session
+        else
+          raise ConfigurationError, "Unsupported secure profile #{name.inspect}"
+        end
       end
 
       def mode?(raw)

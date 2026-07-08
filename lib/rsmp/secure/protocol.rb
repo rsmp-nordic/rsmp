@@ -113,7 +113,7 @@ module RSMP
       end
 
       def build_edhoc_session
-        Edhoc::Suite0Session.new(
+        Secure.edhoc_session_class(@settings['profile']).new(
           role: role,
           private_key: read_file('private_key'),
           credential: read_file('credential'),
@@ -170,7 +170,9 @@ module RSMP
         raise FrameError, 'Secure frame must be a map' unless frame.is_a?(Hash)
         raise FrameError, "Expected EDHOC frame #{number}, got #{frame['msg'].inspect}" unless frame['msg'] == number
         raise FrameError, "Expected EDHOC frame, got #{frame['type'].inspect}" unless frame['type'] == 'edhoc'
-        raise FrameError, "Unsupported secure profile #{frame['profile'].inspect}" unless frame['profile'] == PROFILE
+        unless frame['profile'] == @settings['profile']
+          raise FrameError, "Unexpected secure profile #{frame['profile'].inspect}"
+        end
         raise FrameError, 'EDHOC message is missing' unless frame['edhoc'].is_a?(String)
       end
 
@@ -215,7 +217,8 @@ module RSMP
           session.export_prk(0, Channel::EXPORTER_SECRET_BYTES),
           role: role,
           epoch: epoch,
-          session_id: session_id
+          session_id: session_id,
+          profile: @settings['profile']
         )
       end
 
@@ -224,9 +227,7 @@ module RSMP
       end
 
       def validate_settings!
-        unless @settings['profile'] == PROFILE
-          raise ConfigurationError, "Unsupported secure profile #{@settings['profile'].inspect}"
-        end
+        Secure.validate_profile_name!(@settings['profile'])
 
         %w[private_key credential].each do |key|
           raise ConfigurationError, "secure.#{key} is required" unless @settings[key]

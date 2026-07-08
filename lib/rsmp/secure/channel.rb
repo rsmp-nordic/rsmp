@@ -12,11 +12,12 @@ module RSMP
       EXPORTER_SECRET_BYTES = 32
       TAG_BYTES = 16
 
-      attr_reader :role, :session_id, :epoch
+      attr_reader :role, :session_id, :epoch, :profile
 
-      def initialize(exporter_secret, role:, epoch: 0, session_id: nil)
+      def initialize(exporter_secret, role:, epoch: 0, session_id: nil, profile: PROFILE)
         @role = role.to_sym
         @epoch = epoch
+        @profile = profile
         @send_idx = 0
         @recv_idx = 0
         @session_id = session_id || expand(exporter_secret, 'session id', SESSION_ID_BYTES)
@@ -88,7 +89,7 @@ module RSMP
         OpenSSL::KDF.hkdf(
           secret,
           salt: '',
-          info: "#{PROFILE} #{label}",
+          info: "#{@profile} #{label}",
           length: length,
           hash: 'SHA256'
         )
@@ -101,7 +102,7 @@ module RSMP
       def aad(frame_type, direction, idx)
         Cbor.encode(
           'v' => VERSION,
-          'profile' => PROFILE,
+          'profile' => @profile,
           'type' => frame_type,
           'session' => session_id,
           'direction' => direction,

@@ -144,7 +144,15 @@ This reversed setup is used when the site listens and the supervision system ini
 
 ## Secure RSMP
 
-Secure RSMP is configured in YAML with a `secure` section. It is currently a development prototype using the profile `rsmp-secure-suite0-dev`.
+Secure RSMP is configured in YAML with a `secure` section. The default implemented profile is `rsmp-secure-suite0-dev`.
+
+Profile status:
+
+| Profile | Status | Handshake | Data AEAD | Notes |
+| --- | --- | --- | --- | --- |
+| `rsmp-secure-suite0-dev` | Implemented development profile | EDHOC method 0, cipher suite 0 | ChaCha20-Poly1305 | Uses X.509 DER development credentials. Suitable for prototype and test tooling only. |
+| `rsmp-secure-suite4-dev` | Implemented development profile | EDHOC method 0, cipher suite 4 | ChaCha20-Poly1305 | Uses the intended EDHOC cipher suite with the current development credential files. Suitable for prototype and test tooling only. |
+| `rsmp-secure-v1` | Planned normative profile | EDHOC method 0, cipher suite 4 | ChaCha20-Poly1305 | Intended Secure RSMP profile from the proposal. The implementation rejects it until the final credential format and normative profile details are implemented. |
 
 The secure layer is independent of the RSMP site/supervisor role:
 
