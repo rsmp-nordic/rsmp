@@ -42,85 +42,80 @@ describe RSMP::Secure do
   def generated_secure_identity(id)
     key = OpenSSL::PKey.generate_key('ED25519')
 
+    secure_identity_hash(id, key.raw_private_key + key.raw_public_key, key.raw_public_key)
+  end
+
+  def secure_identity_hash(id, private_key, public_key)
     {
-      private_key: key.raw_private_key + key.raw_public_key,
-      public_key: key.raw_public_key,
-      credential: generated_secure_certificate(id, key).to_der
+      private_key: private_key,
+      public_key: public_key,
+      credential: secure_credential(id, private_key: private_key, public_key: public_key)
     }
   end
 
-  def generated_secure_certificate(id, key)
-    certificate = OpenSSL::X509::Certificate.new
-    certificate.version = 2
-    certificate.serial = 1
-    certificate.subject = OpenSSL::X509::Name.new([['CN', id, OpenSSL::ASN1::UTF8STRING]])
-    certificate.issuer = certificate.subject
-    certificate.public_key = key
-    certificate.not_before = Time.now - 60
-    certificate.not_after = Time.now + 3600
-    certificate.sign(key, nil)
-    certificate
+  def vector_secure_identity(vector, id, role)
+    secure_identity_hash(
+      id,
+      vector.fetch(:"#{role}_private_key"),
+      vector.fetch(:"#{role}_public_key")
+    )
   end
 
-  def secure_settings(dir, profile: RSMP::Secure::PROFILE)
+  def secure_settings(dir)
     vector = Edhoc::Native.suite0_test_vector
-    [site_secure_settings(dir, vector, profile), supervisor_secure_settings(dir, vector, profile)]
+    [site_secure_settings(dir, vector), supervisor_secure_settings(dir, vector)]
   end
 
-  def site_secure_settings(dir, vector, profile)
+  def site_secure_settings(dir, vector)
     {
       'private_key' => write_secure_file(dir, 'site-private.key', vector.fetch(:initiator_private_key)),
-      'credential' => write_secure_file(dir, 'site.cred', vector_secure_credential(vector, :initiator, 'RN+SI0001', profile)),
-      'peers' => [supervisor_secure_peer(dir, vector, profile)],
-      'profile' => profile,
+      'credential' => write_secure_file(dir, 'site.cred', vector_secure_credential(vector, :initiator, 'RN+SI0001')),
+      'peers' => [supervisor_secure_peer(dir, vector)],
+      'profile' => RSMP::Secure::PROFILE,
       'handshake_timeout' => 1
     }
   end
 
-  def supervisor_secure_settings(dir, vector, profile)
+  def supervisor_secure_settings(dir, vector)
     {
       'private_key' => write_secure_file(dir, 'supervisor-private.key', vector.fetch(:responder_private_key)),
       'credential' => write_secure_file(dir, 'supervisor-local.cred',
-                                        vector_secure_credential(vector, :responder, 'supervisor', profile)),
-      'peers' => [site_secure_peer(dir, vector, profile)],
-      'profile' => profile,
+                                        vector_secure_credential(vector, :responder, 'supervisor')),
+      'peers' => [site_secure_peer(dir, vector)],
+      'profile' => RSMP::Secure::PROFILE,
       'handshake_timeout' => 1
     }
   end
 
-  def supervisor_secure_peer(dir, vector, profile)
+  def supervisor_secure_peer(dir, vector)
     {
       'id' => 'supervisor',
       'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key)),
       'credential' => write_secure_file(dir, 'supervisor.cred',
-                                        vector_secure_credential(vector, :responder, 'supervisor', profile))
+                                        vector_secure_credential(vector, :responder, 'supervisor'))
     }
   end
 
-  def site_secure_peer(dir, vector, profile)
+  def site_secure_peer(dir, vector)
     {
       'id' => 'RN+SI0001',
       'public_key' => write_secure_file(dir, 'site.pub', vector.fetch(:initiator_public_key)),
       'credential' => write_secure_file(dir, 'site-peer.cred',
-                                        vector_secure_credential(vector, :initiator, 'RN+SI0001', profile))
+                                        vector_secure_credential(vector, :initiator, 'RN+SI0001'))
     }
   end
 
-  def vector_secure_credential(vector, role, id, profile)
+  def vector_secure_credential(vector, role, id)
     secure_credential(
       id,
-      profile: profile,
       private_key: vector.fetch(:"#{role}_private_key"),
-      public_key: vector.fetch(:"#{role}_public_key"),
-      edhoc_credential: vector.fetch(:"#{role}_credential")
+      public_key: vector.fetch(:"#{role}_public_key")
     )
   end
 
-  def secure_credential(id, profile:, private_key:, public_key:, edhoc_credential:)
-    return edhoc_credential unless RSMP::Secure.credential_bundle_profile?(profile)
-
+  def secure_credential(id, private_key:, public_key:)
     RSMP::Secure::CredentialBundle.create(id: id,
-                                          profile: profile,
+                                          profile: RSMP::Secure::PROFILE,
                                           private_key: private_key,
                                           public_key: public_key)
   end
@@ -140,6 +135,14 @@ describe RSMP::Secure do
     }
   end
 
+  def persisted_secure_identity(dir, name, identity)
+    secure_identity(dir, name, identity.fetch(:private_key), identity.fetch(:credential))
+  end
+
+  def persisted_secure_peer(dir, name, identity)
+    secure_peer(dir, name, identity.fetch(:public_key), identity.fetch(:credential))
+  end
+
   def public_peer_settings(peer)
     {
       'id' => peer['id'],
@@ -150,41 +153,33 @@ describe RSMP::Secure do
 
   def multi_site_secure_settings(dir)
     vector = Edhoc::Native.suite0_test_vector
-    site_private = vector.fetch(:initiator_private_key)
-    site_public = vector.fetch(:initiator_public_key)
-    site_credential = vector.fetch(:initiator_credential)
-    supervisor_private = vector.fetch(:responder_private_key)
-    supervisor_public = vector.fetch(:responder_public_key)
-    supervisor_credential = vector.fetch(:responder_credential)
-    site2_credential = site_credential.b + 'site2'.b
+    supervisor = vector_secure_identity(vector, 'supervisor', :responder)
+    site1 = vector_secure_identity(vector, 'RN+SI0001', :initiator)
+    site2 = generated_secure_identity('RN+SI0002')
 
     {
-      supervisor: secure_identity(dir, 'supervisor', supervisor_private, supervisor_credential),
-      site1: secure_identity(dir, 'site1', site_private, site_credential),
-      site2: secure_identity(dir, 'site2', site_private, site2_credential),
-      supervisor_peer: secure_peer(dir, 'supervisor', supervisor_public, supervisor_credential),
-      site1_peer: secure_peer(dir, 'site1', site_public, site_credential),
-      site2_peer: secure_peer(dir, 'site2', site_public, site2_credential)
+      supervisor: persisted_secure_identity(dir, 'supervisor', supervisor),
+      site1: persisted_secure_identity(dir, 'site1', site1),
+      site2: persisted_secure_identity(dir, 'site2', site2),
+      supervisor_peer: persisted_secure_peer(dir, 'supervisor', supervisor),
+      site1_peer: persisted_secure_peer(dir, 'site1', site1),
+      site2_peer: persisted_secure_peer(dir, 'site2', site2)
     }
   end
 
   def multi_supervisor_secure_settings(dir)
     vector = Edhoc::Native.suite0_test_vector
-    site_private = vector.fetch(:initiator_private_key)
-    site_public = vector.fetch(:initiator_public_key)
-    site_credential = vector.fetch(:initiator_credential)
-    supervisor_private = vector.fetch(:responder_private_key)
-    supervisor_public = vector.fetch(:responder_public_key)
-    supervisor_credential = vector.fetch(:responder_credential)
-    supervisor2_credential = supervisor_credential.b + 'supervisor2'.b
+    site = vector_secure_identity(vector, 'RN+SI0001', :initiator)
+    supervisor1 = vector_secure_identity(vector, 'supervisor1', :responder)
+    supervisor2 = generated_secure_identity('supervisor2')
 
     {
-      site: secure_identity(dir, 'site', site_private, site_credential),
-      supervisor1: secure_identity(dir, 'supervisor1', supervisor_private, supervisor_credential),
-      supervisor2: secure_identity(dir, 'supervisor2', supervisor_private, supervisor2_credential),
-      site_peer: secure_peer(dir, 'site', site_public, site_credential),
-      supervisor1_peer: secure_peer(dir, 'supervisor1', supervisor_public, supervisor_credential),
-      supervisor2_peer: secure_peer(dir, 'supervisor2', supervisor_public, supervisor2_credential)
+      site: persisted_secure_identity(dir, 'site', site),
+      supervisor1: persisted_secure_identity(dir, 'supervisor1', supervisor1),
+      supervisor2: persisted_secure_identity(dir, 'supervisor2', supervisor2),
+      site_peer: persisted_secure_peer(dir, 'site', site),
+      supervisor1_peer: persisted_secure_peer(dir, 'supervisor1', supervisor1),
+      supervisor2_peer: persisted_secure_peer(dir, 'supervisor2', supervisor2)
     }
   end
 
@@ -198,18 +193,13 @@ describe RSMP::Secure do
   end
 
   it 'describes enabled secure settings for logs' do
-    expect(RSMP::Secure.log_summary('enabled' => true)).to be == 'Secure profile rsmp-secure-suite0-dev'
-    expect(RSMP::Secure.log_summary('required' => true)).to be == 'Secure profile rsmp-secure-suite0-dev'
+    expect(RSMP::Secure.log_summary('enabled' => true)).to be == 'Secure profile rsmp-secure-v1'
+    expect(RSMP::Secure.log_summary('required' => true)).to be == 'Secure profile rsmp-secure-v1'
     expect(RSMP::Secure.log_summary(nil)).to be_nil
-    expect(RSMP::Secure.profile_metadata('rsmp-secure-suite0-dev').fetch(:status)).to be == :implemented
-    expect(RSMP::Secure.profile_metadata('rsmp-secure-suite4-dev').fetch(:status)).to be == :implemented
-    expect(RSMP::Secure.profile_metadata('rsmp-secure-suite4-dev').fetch(:edhoc_cipher_suite)).to be == 4
-    expect(RSMP::Secure.profile_metadata('rsmp-secure-suite4-dev').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:status)).to be == :implemented
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_cipher_suite)).to be == 4
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
-    expect(RSMP::Secure.implemented_profile?('rsmp-secure-suite0-dev')).to be == true
-    expect(RSMP::Secure.implemented_profile?('rsmp-secure-suite4-dev')).to be == true
+    expect(RSMP::Secure.implemented_profile?('rsmp-secure-test-dev')).to be == false
     expect(RSMP::Secure.implemented_profile?('rsmp-secure-v1')).to be == true
     expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator)).to be == 'Secure handshake complete (initiator, epoch 0)'
     expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator, peer_id: 'RN+SI0002')).to be == 'Secure handshake with peer RN+SI0002 complete (initiator, epoch 0)'
@@ -707,7 +697,7 @@ describe RSMP::Secure do
       end
     end
 
-    it 'reports the credential id when EDHOC rejects an unknown credential' do
+    it 'reports when EDHOC rejects an unknown credential' do
       Dir.mktmpdir do |dir|
         vector = Edhoc::Native.suite0_test_vector
         unknown_site = generated_secure_identity('RN+SI0002')
@@ -717,17 +707,20 @@ describe RSMP::Secure do
           'peers' => [{
             'id' => 'supervisor',
             'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key)),
-            'credential' => write_secure_file(dir, 'supervisor.cred', vector.fetch(:responder_credential))
+            'credential' => write_secure_file(dir, 'supervisor.cred',
+                                              vector_secure_credential(vector, :responder, 'supervisor'))
           }],
           'handshake_timeout' => 1
         }
         supervisor_settings = {
           'private_key' => write_secure_file(dir, 'supervisor-private.key', vector.fetch(:responder_private_key)),
-          'credential' => write_secure_file(dir, 'supervisor.cred', vector.fetch(:responder_credential)),
+          'credential' => write_secure_file(dir, 'supervisor.cred',
+                                            vector_secure_credential(vector, :responder, 'supervisor')),
           'peers' => [{
             'id' => 'RN+SI0001',
             'public_key' => write_secure_file(dir, 'site.pub', vector.fetch(:initiator_public_key)),
-            'credential' => write_secure_file(dir, 'site.cred', vector.fetch(:initiator_credential))
+            'credential' => write_secure_file(dir, 'site.cred',
+                                              vector_secure_credential(vector, :initiator, 'RN+SI0001'))
           }],
           'handshake_timeout' => 1
         }
@@ -748,7 +741,7 @@ describe RSMP::Secure do
           responder_task.wait
         end.to raise_exception(
           RSMP::HandshakeError,
-          message: be == 'EDHOC handshake failed: peer credential RN+SI0002 not trusted'
+          message: be(:include?, 'EDHOC handshake failed: peer credential is not trusted')
         )
       ensure
         initiator_task&.stop
@@ -805,43 +798,9 @@ describe RSMP::Secure do
       end
     end
 
-    it 'runs EDHOC suite 4 and exchanges encrypted RSMP messages' do
-      Dir.mktmpdir do |dir|
-        site_settings, supervisor_settings = secure_settings(dir)
-        site_settings['profile'] = RSMP::Secure::SUITE4_PROFILE
-        supervisor_settings['profile'] = RSMP::Secure::SUITE4_PROFILE
-        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
-        initiator_task = Async::Task.current.async do
-          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator, settings: site_settings)
-        end
-        responder_task = Async::Task.current.async do
-          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder, settings: supervisor_settings)
-        end
-        site = initiator_task.wait
-        supervisor = responder_task.wait
-
-        watchdog = {
-          'mType' => 'rSMsg',
-          'type' => 'Watchdog',
-          'wTs' => '2026-07-08T08:00:00.000Z',
-          'mId' => '6c492f94-3eab-4da9-8cb6-10ac31a25afa'
-        }
-        site.write_lines(JSON.generate(watchdog))
-
-        expect(JSON.parse(supervisor.read_line)).to be == watchdog
-        expect(site.channel.profile).to be == RSMP::Secure::SUITE4_PROFILE
-        expect(supervisor.channel.profile).to be == RSMP::Secure::SUITE4_PROFILE
-      ensure
-        site&.close
-        supervisor&.close
-        site_io&.close
-        supervisor_io&.close
-      end
-    end
-
     it 'runs the v1 profile with CBOR credential bundles and exchanges encrypted RSMP messages' do
       Dir.mktmpdir do |dir|
-        site_settings, supervisor_settings = secure_settings(dir, profile: RSMP::Secure::V1_PROFILE)
+        site_settings, supervisor_settings = secure_settings(dir)
         site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
         initiator_task = Async::Task.current.async do
           RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator, settings: site_settings)
