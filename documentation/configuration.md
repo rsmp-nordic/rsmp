@@ -142,6 +142,144 @@ sites:
 
 This reversed setup is used when the site listens and the supervision system initiates the connection.
 
+## Secure RSMP
+
+Secure RSMP is configured in YAML with a `secure` section. It is currently a development prototype using the profile `rsmp-secure-suite0-dev`.
+
+The secure layer is independent of the RSMP site/supervisor role:
+
+- `connection_role` decides which TCP side connects and therefore which EDHOC role is used.
+- RSMP site/supervisor identity is still checked through the normal RSMP `Version` exchange.
+- The first encrypted RSMP message is still the normal `Version` message.
+
+Use `secure.enabled: true` on an outgoing side to initiate secure connections. Use `secure.required: true` on a listening side to reject non-secure inbound connections.
+
+Secure paths are resolved relative to the YAML config file, not the current working directory. If paths are omitted, Secure RSMP uses conventions:
+
+- A site with `site_id: RN+SI0001` uses `secure/RN+SI0001.private.key` and `secure/RN+SI0001.cred`.
+- A supervisor uses `secure/supervisor.private.key` and `secure/supervisor.cred`.
+- A site endpoint with `secure.id: supervisor` trusts `secure/supervisor.pub` and `secure/supervisor.cred`.
+- A supervisor with `secure.required: true` trusts every configured site by convention, e.g. `sites.RN+SI0001` uses `secure/RN+SI0001.pub` and `secure/RN+SI0001.cred`.
+
+The endpoint `secure.id` is the peer id and conventional file prefix. For example, `id: supervisor-a` means the peer public key is `secure/supervisor-a.pub` and the peer credential is `secure/supervisor-a.cred` unless explicit paths are provided.
+
+`private_key` is the local private signing key. `credential` is the local public credential presented during EDHOC. Peer entries use `public_key` and `credential` to define the trusted remote identity.
+
+Example site connecting securely to a supervisor:
+
+```yaml
+site_id: RN+SI0001
+supervisors:
+  - ip: 127.0.0.1
+    port: 12111
+    secure:
+      id: supervisor
+secure:
+  enabled: true
+  profile: rsmp-secure-suite0-dev
+sxls:
+  tlc: "1.3.0"
+```
+
+With the example above, the site uses `secure/RN+SI0001.private.key` and `secure/RN+SI0001.cred`, and trusts the supervisor through `secure/supervisor.pub` and `secure/supervisor.cred`.
+
+Example supervisor accepting secure sites:
+
+```yaml
+port: 12111
+secure:
+  required: true
+  profile: rsmp-secure-suite0-dev
+default:
+  sxls:
+    tlc: "1.3.0"
+sites:
+  RN+SI0001:
+    sxls:
+      tlc: "1.3.0"
+  RN+SI0002:
+    sxls:
+      tlc: "1.3.0"
+```
+
+Because `secure.required` is true, both configured sites are trusted by convention. No `secure: {}` marker is needed under each site.
+
+Use explicit paths when the file names do not follow the conventions:
+
+```yaml
+sites:
+  RN+SI0001:
+    sxls:
+      tlc: "1.3.0"
+    secure:
+      public_key: secure/custom-site.pub
+      credential: secure/custom-site.cred
+```
+
+A site can also listen for supervisor connections. In that case `secure.required` is on the site, and trusted supervisors stay in the existing `supervisors` list:
+
+```yaml
+site_id: RN+SI0001
+connection_role: server
+port: 12111
+secure:
+  required: true
+supervisors:
+  - ip: 127.0.0.1
+    port: 12111
+    secure:
+      id: supervisor-a
+  - ip: 127.0.0.1
+    port: 12112
+    secure:
+      id: supervisor-b
+```
+
+A supervisor can also connect out to listening sites. In that case `secure.enabled` is on the supervisor, and each site entry opts into secure peer resolution:
+
+```yaml
+connection_role: client
+secure:
+  enabled: true
+sites:
+  RN+SI0001:
+    sxls:
+      tlc: "1.3.0"
+    secure: {}
+    supervisors:
+      - ip: 127.0.0.1
+        port: 12111
+  RN+SI0002:
+    sxls:
+      tlc: "1.3.0"
+    secure: {}
+    supervisors:
+      - ip: 127.0.0.1
+        port: 12112
+```
+
+Here the supervisor uses its conventional local identity, and each site peer uses the site id as the file prefix. The `secure: {}` marker is used because the supervisor is initiating outbound secure connections; `secure.required` only implies all configured site peers for inbound supervisor listeners.
+
+The secure layer supports automatic rekeying. Rekeying keeps the same profile and credentials, but derives fresh traffic keys and increments the epoch. Rekey triggers can be configured with:
+
+```yaml
+secure:
+  rekey_after_messages: 1000000
+  rekey_after_seconds: 7200
+  min_rekey_interval: 60
+```
+
+Set `rekey_after_messages` or `rekey_after_seconds` to `null` to disable that trigger. `min_rekey_interval` prevents repeated rekeys if several triggers become due at the same time.
+
+Generate development credentials with:
+
+```console
+$ rsmp secure generate
+$ rsmp secure generate --id RN+SI0002
+```
+
+The generated files are for local prototype testing only. See `config/secure/README.md` for details.
+
 ## Supervisor settings
 
 The following lists the top-level supervisor settings and the keys available for per-site configuration under `sites`.
@@ -154,6 +292,7 @@ Top-level supervisor settings
 - `ips`: string or array - `'all'` or a list of allowed IP addresses.
 - `site_id`: string - optional site identifier for the supervisor itself.
 - `max_sites`: integer - limit concurrent connected sites.
+- `secure`: object - Secure RSMP settings. Use `required: true` for secure inbound listeners or `enabled: true` for supervisor-initiated outbound connections.
 - `default`: object - default settings applied to sites that don't have a specific `sites` entry. Contains keys:
   - `sxls`: object - default SXL versions for default sites, for example `{ "tlc": "1.3.0" }`.
   - `core_version`: string for the accepted RSMP Core version.
@@ -176,6 +315,7 @@ Common per-site keys
 - `type` (string): optional human-readable type identifier.
 - `site_id` (string): explicit site identifier (if different from the mapping key).
 - `supervisors` (array): list of supervisor endpoints (objects with `ip` and `port`). Useful for reverse mappings or local-site configs.
+- `secure` (object): Secure RSMP peer settings for this site. Use `public_key` and `credential` for explicit trusted peer files, or omit them to use `secure/<site_id>.pub` and `secure/<site_id>.cred` by convention.
 - `components` (object): component definitions (same structure as site `components`), used by the supervisor-side proxies to set up component proxies.
 - `intervals` (object): per-site timer settings - `timer`, `watchdog`, `reconnect`, `after_connect` (numbers, seconds).
 - `timeouts` (object): per-site timeouts - `connect`, `watchdog`, `acknowledgement` (numbers, seconds).
@@ -192,7 +332,8 @@ The following lists the top-level site settings.
 - `connection_role` (string): `client` to connect to supervisors, or `server` to listen for supervisor connections (default: `client`).
 - `ip` (string): bind address when `connection_role` is `server` (default: `0.0.0.0`).
 - `port` (integer|string): listen port when `connection_role` is `server`. If omitted, it defaults to the first configured supervisor port.
-- `supervisors` (array): supervisor endpoints used when `connection_role` is `client`.
+- `supervisors` (array): supervisor endpoints used when `connection_role` is `client`. Each endpoint may include `secure` peer settings with `id`, `public_key`, and `credential`.
+- `secure` (object): Secure RSMP local settings. Use `enabled: true` for outgoing secure connections or `required: true` for secure inbound listeners.
 - `sxls` (object): SXL versions used by the site, keyed by SXL name.
 - `core_version` (string): RSMP Core version to use.
 - `intervals` (object): timer settings - `timer`, `watchdog`, `reconnect`.

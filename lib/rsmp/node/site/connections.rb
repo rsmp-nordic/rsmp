@@ -65,6 +65,7 @@ module RSMP
         site: self,
         task: @task,
         settings: @site_settings,
+        supervisor_settings: supervisor_settings,
         ip: supervisor_settings['ip'],
         port: supervisor_settings['port'],
         logger: @logger,
@@ -75,7 +76,7 @@ module RSMP
 
     def accepted_supervisor_options(socket, remote_ip, remote_port)
       stream = IO::Stream::Buffered.new(socket)
-      protocol = build_accepted_protocol(stream, @site_settings['secure'])
+      protocol = build_accepted_protocol(stream, RSMP::Secure.site_inbound_settings(@site_settings))
       supervisor_proxy_options('ip' => remote_ip, 'port' => remote_port).merge(
         socket: socket,
         stream: stream,

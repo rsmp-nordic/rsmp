@@ -10,6 +10,7 @@ $ rsmp help site
 $ rsmp help supervisor
 $ rsmp help config check
 $ rsmp help schema generate
+$ rsmp help secure generate
 ```
 
 ## Quick Examples
@@ -64,6 +65,13 @@ Generate JSON Schema files from an SXL YAML file:
 
 ```console
 $ rsmp schema generate --in schemas/tlc/1.3.0/sxl.yaml --out /tmp/tlc-schema
+```
+
+Generate local Secure RSMP development credentials:
+
+```console
+$ rsmp secure generate
+$ rsmp secure generate --id RN+SI0002
 ```
 
 ## Configuration Files
@@ -209,6 +217,33 @@ Options:
 The command writes the generated status, command, alarm, root schema, definitions, and `sxl_index.json` files to the output directory.
 
 If the input file is missing, the command prints an error and exits with status `1`.
+
+### `rsmp secure generate`
+
+Generates Secure RSMP development credentials for local prototype testing.
+
+```console
+$ rsmp secure generate
+```
+
+By default, this writes the sample site and supervisor credential files to `config/secure`:
+
+- `RN+SI0001.private.key`, `RN+SI0001.pub`, `RN+SI0001.cred`
+- `supervisor.private.key`, `supervisor.pub`, `supervisor.cred`
+
+Generate one additional fresh identity with a custom id:
+
+```console
+$ rsmp secure generate --id RN+SI0002
+```
+
+Options:
+
+- `--out PATH`, `-o PATH`: output directory. Defaults to `config/secure`.
+- `--id ID`: generate one fresh identity using this file prefix.
+- `--force`, `-f`: overwrite existing files.
+
+The generated credentials are intended for local development only.
 
 ### `rsmp version`
 

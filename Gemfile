@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'edhoc', path: '../edhoc_gem'
+gem 'edhoc', path: '../ruby-edhoc'
 
 group :development do
   gem 'bundler', '~> 4.0'

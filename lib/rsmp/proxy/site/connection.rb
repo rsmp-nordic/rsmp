@@ -47,7 +47,7 @@ module RSMP
 
     def connect
       log "Connecting to site #{@site_id} at #{@ip}:#{@port}", level: :info
-      log_secure_transport @site_settings['secure']
+      log_secure_transport secure_settings
       self.state = :connecting
       open_socket
       self.state = :connected
@@ -65,7 +65,11 @@ module RSMP
       task.with_timeout(timeout) { @socket = endpoint.connect }
       @stream = IO::Stream::Buffered.new(@socket)
       @logger.unmute @ip, @port
-      @protocol = build_transport_protocol(@stream, role: :initiator, secure_settings: @site_settings['secure'])
+      @protocol = build_transport_protocol(@stream, role: :initiator, secure_settings: secure_settings)
+    end
+
+    def secure_settings
+      RSMP::Secure.supervisor_site_settings(@settings, @site_settings, site_id: @site_id)
     end
 
     def reconnect_delay?

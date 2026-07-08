@@ -1,4 +1,5 @@
 require 'rsmp/cli'
+require 'openssl'
 require 'stringio'
 require 'tmpdir'
 
@@ -98,12 +99,42 @@ describe RSMP::CLI do
 
         expect(result.status).to be == 0
         expect(result.output).to be(:include?, "Generated Secure RSMP development credentials in #{dir}")
-        expect(File.binread(File.join(dir, 'site-private.key'))).to be == vector.fetch(:initiator_private_key)
-        expect(File.binread(File.join(dir, 'site.pub'))).to be == vector.fetch(:initiator_public_key)
-        expect(File.binread(File.join(dir, 'site.cred'))).to be == vector.fetch(:initiator_credential)
-        expect(File.binread(File.join(dir, 'supervisor-private.key'))).to be == vector.fetch(:responder_private_key)
+        expect(File.binread(File.join(dir, 'RN+SI0001.private.key'))).to be == vector.fetch(:initiator_private_key)
+        expect(File.binread(File.join(dir, 'RN+SI0001.pub'))).to be == vector.fetch(:initiator_public_key)
+        expect(File.binread(File.join(dir, 'RN+SI0001.cred'))).to be == vector.fetch(:initiator_credential)
+        expect(File.binread(File.join(dir, 'supervisor.private.key'))).to be == vector.fetch(:responder_private_key)
         expect(File.binread(File.join(dir, 'supervisor.pub'))).to be == vector.fetch(:responder_public_key)
         expect(File.binread(File.join(dir, 'supervisor.cred'))).to be == vector.fetch(:responder_credential)
+      end
+    end
+
+    it 'generates a fresh identity with a custom id' do
+      Dir.mktmpdir('rsmp-secure-cli') do |dir|
+        result = invoke_cli('secure', 'generate', '--out', dir, '--id', 'RN+SI0002')
+        vector = Edhoc::Native.suite0_test_vector
+        private_key = File.binread(File.join(dir, 'RN+SI0002.private.key'))
+        public_key = File.binread(File.join(dir, 'RN+SI0002.pub'))
+        credential = File.binread(File.join(dir, 'RN+SI0002.cred'))
+        certificate = OpenSSL::X509::Certificate.new(credential)
+
+        expect(result.status).to be == 0
+        expect(result.output).to be(:include?, "Generated Secure RSMP development credentials in #{dir}")
+        expect(private_key.bytesize).to be == 64
+        expect(public_key.bytesize).to be == 32
+        expect(private_key.byteslice(32, 32)).to be == public_key
+        expect(public_key).to be == certificate.public_key.raw_public_key
+        expect(certificate.subject.to_a).to be(:include?, ['CN', 'RN+SI0002', 12])
+        expect(public_key).not.to be == vector.fetch(:initiator_public_key)
+        expect(File.exist?(File.join(dir, 'supervisor.pub'))).to be == false
+      end
+    end
+
+    it 'rejects custom identity ids that include path separators' do
+      Dir.mktmpdir('rsmp-secure-cli') do |dir|
+        result = invoke_cli('secure', 'generate', '--out', dir, '--id', '../RN+SI0002')
+
+        expect(result.status).to be == 1
+        expect(result.output).to be(:include?, '--id must be a non-empty filename prefix')
       end
     end
 

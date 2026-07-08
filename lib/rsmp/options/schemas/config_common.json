@@ -6,7 +6,8 @@
       "type": "object",
       "properties": {
         "ip": { "type": "string" },
-        "port": { "type": ["integer", "string"] }
+        "port": { "type": ["integer", "string"] },
+        "secure": { "$ref": "#/$defs/secure" }
       },
       "required": ["ip", "port"],
       "additionalProperties": false
@@ -131,10 +132,11 @@
         "enabled": { "type": "boolean" },
         "required": { "type": "boolean" },
         "profile": { "const": "rsmp-secure-suite0-dev" },
+        "id": { "type": "string" },
+        "supervisor_id": { "type": "string" },
         "private_key": { "type": "string" },
+        "public_key": { "type": "string" },
         "credential": { "type": "string" },
-        "peer_public_key": { "type": "string" },
-        "peer_credential": { "type": "string" },
         "max_frame_size": { "type": "integer", "minimum": 1 },
         "handshake_timeout": { "type": "number", "exclusiveMinimum": 0 },
         "rekey_after_messages": { "type": ["integer", "null"], "minimum": 1 },

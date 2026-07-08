@@ -23,7 +23,7 @@ module RSMP
           with_rekeying do
             session = build_edhoc_session
             next_epoch = @channel.next_epoch
-            log_secure(Secure.rekey_started_summary(settings, role: role, epoch: next_epoch))
+            log_secure(Secure.rekey_started_summary(settings, role: role, epoch: next_epoch, peer_id: @peer_id))
             rekey_initiator(session, next_epoch)
           end
         rescue Edhoc::Error => e
@@ -57,7 +57,7 @@ module RSMP
         def start_rekey_responder(session, first_message)
           next_epoch = first_message.fetch('next_epoch')
           validate_rekey_message(first_message, 'rekey_msg1', next_epoch)
-          log_secure(Secure.rekey_started_summary(settings, role: role, epoch: next_epoch))
+          log_secure(Secure.rekey_started_summary(settings, role: role, epoch: next_epoch, peer_id: @peer_id))
           session.process_message1(first_message.fetch('edhoc'))
           write_rekey('rekey_msg2', next_epoch, session.compose_message2)
           next_epoch
@@ -136,7 +136,7 @@ module RSMP
           @epoch_started_at = monotonic_now
           @last_rekey_at = @epoch_started_at
           @data_sent_in_epoch = 0
-          log_e2e_up
+          log_e2ee_up
         end
 
         def maybe_rekey!

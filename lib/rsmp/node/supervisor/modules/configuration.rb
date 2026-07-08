@@ -8,7 +8,14 @@ module RSMP
           options = RSMP::Supervisor::Options.new(supervisor_settings || {})
           @supervisor_settings = options.to_h
           @core_version = @supervisor_settings.dig('default', 'core_version')
+          check_secure_local_identity
           check_site_sxls
+        end
+
+        def check_secure_local_identity
+          secure_settings = RSMP::Secure.supervisor_inbound_settings(@supervisor_settings)
+          RSMP::Secure.validate_local_identity!(secure_settings)
+          RSMP::Secure.validate_peer_files!(secure_settings)
         end
 
         def denormalize_supervisor_sxls(settings)

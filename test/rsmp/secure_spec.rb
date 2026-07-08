@@ -1,6 +1,8 @@
 require 'stringio'
 require 'timecop'
 require 'tmpdir'
+require 'fileutils'
+require 'openssl'
 require 'edhoc'
 
 describe RSMP::Secure do
@@ -37,23 +39,115 @@ describe RSMP::Secure do
     path
   end
 
+  def generated_secure_identity(id)
+    key = OpenSSL::PKey.generate_key('ED25519')
+
+    {
+      private_key: key.raw_private_key + key.raw_public_key,
+      public_key: key.raw_public_key,
+      credential: generated_secure_certificate(id, key).to_der
+    }
+  end
+
+  def generated_secure_certificate(id, key)
+    certificate = OpenSSL::X509::Certificate.new
+    certificate.version = 2
+    certificate.serial = 1
+    certificate.subject = OpenSSL::X509::Name.new([['CN', id, OpenSSL::ASN1::UTF8STRING]])
+    certificate.issuer = certificate.subject
+    certificate.public_key = key
+    certificate.not_before = Time.now - 60
+    certificate.not_after = Time.now + 3600
+    certificate.sign(key, nil)
+    certificate
+  end
+
   def secure_settings(dir)
     vector = Edhoc::Native.suite0_test_vector
     site = {
       'private_key' => write_secure_file(dir, 'site-private.key', vector.fetch(:initiator_private_key)),
       'credential' => write_secure_file(dir, 'site.cred', vector.fetch(:initiator_credential)),
-      'peer_public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key)),
-      'peer_credential' => write_secure_file(dir, 'supervisor.cred', vector.fetch(:responder_credential)),
+      'peers' => [{
+        'id' => 'supervisor',
+        'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key)),
+        'credential' => write_secure_file(dir, 'supervisor.cred', vector.fetch(:responder_credential))
+      }],
       'handshake_timeout' => 1
     }
     supervisor = {
       'private_key' => write_secure_file(dir, 'supervisor-private.key', vector.fetch(:responder_private_key)),
       'credential' => write_secure_file(dir, 'supervisor.cred', vector.fetch(:responder_credential)),
-      'peer_public_key' => write_secure_file(dir, 'site.pub', vector.fetch(:initiator_public_key)),
-      'peer_credential' => write_secure_file(dir, 'site.cred', vector.fetch(:initiator_credential)),
+      'peers' => [{
+        'id' => 'RN+SI0001',
+        'public_key' => write_secure_file(dir, 'site.pub', vector.fetch(:initiator_public_key)),
+        'credential' => write_secure_file(dir, 'site.cred', vector.fetch(:initiator_credential))
+      }],
       'handshake_timeout' => 1
     }
     [site, supervisor]
+  end
+
+  def secure_identity(dir, name, private_key, credential)
+    {
+      'private_key' => write_secure_file(dir, "#{name}-private.key", private_key),
+      'credential' => write_secure_file(dir, "#{name}.cred", credential),
+      'handshake_timeout' => 1
+    }
+  end
+
+  def secure_peer(dir, name, public_key, credential)
+    {
+      'public_key' => write_secure_file(dir, "#{name}.pub", public_key),
+      'credential' => write_secure_file(dir, "#{name}-peer.cred", credential)
+    }
+  end
+
+  def public_peer_settings(peer)
+    {
+      'id' => peer['id'],
+      'public_key' => peer['public_key'],
+      'credential' => peer['credential']
+    }
+  end
+
+  def multi_site_secure_settings(dir)
+    vector = Edhoc::Native.suite0_test_vector
+    site_private = vector.fetch(:initiator_private_key)
+    site_public = vector.fetch(:initiator_public_key)
+    site_credential = vector.fetch(:initiator_credential)
+    supervisor_private = vector.fetch(:responder_private_key)
+    supervisor_public = vector.fetch(:responder_public_key)
+    supervisor_credential = vector.fetch(:responder_credential)
+    site2_credential = site_credential.b + 'site2'.b
+
+    {
+      supervisor: secure_identity(dir, 'supervisor', supervisor_private, supervisor_credential),
+      site1: secure_identity(dir, 'site1', site_private, site_credential),
+      site2: secure_identity(dir, 'site2', site_private, site2_credential),
+      supervisor_peer: secure_peer(dir, 'supervisor', supervisor_public, supervisor_credential),
+      site1_peer: secure_peer(dir, 'site1', site_public, site_credential),
+      site2_peer: secure_peer(dir, 'site2', site_public, site2_credential)
+    }
+  end
+
+  def multi_supervisor_secure_settings(dir)
+    vector = Edhoc::Native.suite0_test_vector
+    site_private = vector.fetch(:initiator_private_key)
+    site_public = vector.fetch(:initiator_public_key)
+    site_credential = vector.fetch(:initiator_credential)
+    supervisor_private = vector.fetch(:responder_private_key)
+    supervisor_public = vector.fetch(:responder_public_key)
+    supervisor_credential = vector.fetch(:responder_credential)
+    supervisor2_credential = supervisor_credential.b + 'supervisor2'.b
+
+    {
+      site: secure_identity(dir, 'site', site_private, site_credential),
+      supervisor1: secure_identity(dir, 'supervisor1', supervisor_private, supervisor_credential),
+      supervisor2: secure_identity(dir, 'supervisor2', supervisor_private, supervisor2_credential),
+      site_peer: secure_peer(dir, 'site', site_public, site_credential),
+      supervisor1_peer: secure_peer(dir, 'supervisor1', supervisor_public, supervisor_credential),
+      supervisor2_peer: secure_peer(dir, 'supervisor2', supervisor_public, supervisor2_credential)
+    }
   end
 
   def with_mocked_process_clock
@@ -66,14 +160,305 @@ describe RSMP::Secure do
   end
 
   it 'describes enabled secure settings for logs' do
-    expect(RSMP::Secure.log_summary('enabled' => true)).to be == 'Secure RSMP enabled using profile rsmp-secure-suite0-dev'
-    expect(RSMP::Secure.log_summary('required' => true)).to be == 'Secure RSMP enabled using profile rsmp-secure-suite0-dev'
+    expect(RSMP::Secure.log_summary('enabled' => true)).to be == 'Secure profile rsmp-secure-suite0-dev'
+    expect(RSMP::Secure.log_summary('required' => true)).to be == 'Secure profile rsmp-secure-suite0-dev'
     expect(RSMP::Secure.log_summary(nil)).to be_nil
-    expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator)).to be == 'Secure RSMP E2E handshake complete using profile rsmp-secure-suite0-dev (initiator, epoch 0)'
-    expect(RSMP::Secure.rekey_started_summary({ 'enabled' => true }, role: :initiator, epoch: 1)).to be == 'Secure RSMP E2E rekey started using profile rsmp-secure-suite0-dev (initiator, epoch 1)'
+    expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator)).to be == 'Secure handshake complete (initiator, epoch 0)'
+    expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator, peer_id: 'RN+SI0002')).to be == 'Secure handshake with peer RN+SI0002 complete (initiator, epoch 0)'
+    expect(RSMP::Secure.rekey_started_summary({ 'enabled' => true }, role: :initiator, epoch: 1)).to be == 'Secure rekey started (initiator, epoch 1)'
+    expect(RSMP::Secure.rekey_started_summary({ 'enabled' => true }, role: :initiator, epoch: 1, peer_id: 'RN+SI0002')).to be == 'Secure rekey with peer RN+SI0002 started (initiator, epoch 1)'
     expect(RSMP::Secure.settings({})['rekey_after_messages']).to be == 1_000_000
     expect(RSMP::Secure.settings({})['rekey_after_seconds']).to be == 7_200
     expect(RSMP::Secure.settings({})['min_rekey_interval']).to be == 60
+  end
+
+  it 'merges site endpoint secure settings with the local site identity' do
+    local = {
+      'enabled' => true,
+      'private_key' => 'site-private.key',
+      'credential' => 'site.cred'
+    }
+    endpoint = {
+      'secure' => {
+        'id' => 'supervisor-a',
+        'public_key' => 'supervisor.pub',
+        'credential' => 'supervisor.cred'
+      }
+    }
+
+    merged = RSMP::Secure.site_peer_settings({ 'secure' => local }, endpoint)
+
+    expect(merged['private_key']).to be == 'site-private.key'
+    expect(merged['credential']).to be == 'site.cred'
+    expect(merged['peers']).to be == [{
+      'id' => 'supervisor-a',
+      'public_key' => 'supervisor.pub',
+      'credential' => 'supervisor.cred',
+      'supervisor_id' => nil
+    }]
+  end
+
+  it 'defaults site local identity paths from the active site id' do
+    merged = RSMP::Secure.site_peer_settings(
+      {
+        'site_id' => 'RN+SI0002',
+        'secure' => {
+          'enabled' => true
+        }
+      },
+      {
+        'secure' => {
+          'id' => 'supervisor'
+        }
+      }
+    )
+
+    expect(merged['private_key']).to be == 'secure/RN+SI0002.private.key'
+    expect(merged['credential']).to be == 'secure/RN+SI0002.cred'
+    expect(merged['peers']).to be == [{
+      'id' => 'supervisor',
+      'public_key' => 'secure/supervisor.pub',
+      'credential' => 'secure/supervisor.cred',
+      'supervisor_id' => nil
+    }]
+  end
+
+  it 'defaults supervisor local identity and site peer paths by convention' do
+    settings = RSMP::Secure.supervisor_inbound_settings(
+      'secure' => {
+        'required' => true
+      },
+      'sites' => {
+        'RN+SI0001' => {
+          'sxls' => {}
+        },
+        'RN+SI0002' => {
+          'sxls' => {}
+        }
+      }
+    )
+
+    expect(settings['private_key']).to be == 'secure/supervisor.private.key'
+    expect(settings['credential']).to be == 'secure/supervisor.cred'
+    expect(settings['peers']).to be == [
+      {
+        'id' => 'RN+SI0001',
+        'public_key' => 'secure/RN+SI0001.pub',
+        'credential' => 'secure/RN+SI0001.cred',
+        'site_id' => 'RN+SI0001'
+      },
+      {
+        'id' => 'RN+SI0002',
+        'public_key' => 'secure/RN+SI0002.pub',
+        'credential' => 'secure/RN+SI0002.cred',
+        'site_id' => 'RN+SI0002'
+      }
+    ]
+  end
+
+  it 'does not imply supervisor site peers when secure is not required' do
+    settings = RSMP::Secure.supervisor_inbound_settings(
+      'secure' => {
+        'enabled' => true
+      },
+      'sites' => {
+        'RN+SI0001' => {
+          'sxls' => {}
+        },
+        'RN+SI0002' => {
+          'sxls' => {},
+          'secure' => {}
+        }
+      }
+    )
+
+    expect(settings['peers']).to be == [{
+      'id' => 'RN+SI0002',
+      'public_key' => 'secure/RN+SI0002.pub',
+      'credential' => 'secure/RN+SI0002.cred',
+      'site_id' => 'RN+SI0002'
+    }]
+  end
+
+  it 'defaults supervisor outbound peer paths from the configured site id' do
+    settings = RSMP::Secure.supervisor_site_settings(
+      {
+        'secure' => {
+          'enabled' => true
+        }
+      },
+      {
+        'secure' => {}
+      },
+      site_id: 'RN+SI0002'
+    )
+
+    expect(settings['private_key']).to be == 'secure/supervisor.private.key'
+    expect(settings['credential']).to be == 'secure/supervisor.cred'
+    expect(settings['peers']).to be == [{
+      'id' => 'RN+SI0002',
+      'public_key' => 'secure/RN+SI0002.pub',
+      'credential' => 'secure/RN+SI0002.cred',
+      'supervisor_id' => nil
+    }]
+  end
+
+  it 'fails site startup early when the local secure identity files are missing' do
+    Dir.mktmpdir do |dir|
+      expect do
+        RSMP::Site.new(
+          site_settings: {
+            RSMP::Secure::CONFIG_DIR_KEY => dir,
+            'site_id' => 'RN+SI0003',
+            'sxls' => {},
+            'secure' => {
+              'enabled' => true
+            }
+          },
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == "secure.private_key file not found: #{File.join(dir, 'secure/RN+SI0003.private.key')}"
+      )
+    end
+  end
+
+  it 'fails supervisor startup early when the local secure identity files are missing' do
+    Dir.mktmpdir do |dir|
+      expect do
+        RSMP::Supervisor.new(
+          supervisor_settings: {
+            RSMP::Secure::CONFIG_DIR_KEY => dir,
+            'secure' => {
+              'required' => true
+            },
+            'default' => {
+              'sxls' => {}
+            },
+            'sites' => {}
+          },
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == "secure.private_key file not found: #{File.join(dir, 'secure/supervisor.private.key')}"
+      )
+    end
+  end
+
+  it 'fails supervisor startup early when an implied secure peer file is missing' do
+    Dir.mktmpdir do |dir|
+      secure_dir = File.join(dir, 'secure')
+      vector = Edhoc::Native.suite0_test_vector
+      FileUtils.mkdir_p(secure_dir)
+      File.binwrite(File.join(secure_dir, 'supervisor.private.key'), vector.fetch(:responder_private_key))
+      File.binwrite(File.join(secure_dir, 'supervisor.cred'), vector.fetch(:responder_credential))
+      File.binwrite(File.join(secure_dir, 'RN+SI0001.cred'), vector.fetch(:initiator_credential))
+
+      expect do
+        RSMP::Supervisor.new(
+          supervisor_settings: {
+            RSMP::Secure::CONFIG_DIR_KEY => dir,
+            'secure' => {
+              'required' => true
+            },
+            'default' => {
+              'sxls' => {}
+            },
+            'sites' => {
+              'RN+SI0001' => {
+                'sxls' => {}
+              }
+            }
+          },
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == "secure peer RN+SI0001 public_key file not found: #{File.join(dir, 'secure/RN+SI0001.pub')}"
+      )
+    end
+  end
+
+  it 'does not use top-level public peer credentials as a shortcut' do
+    merged = RSMP::Secure.site_peer_settings(
+      {
+        'secure' => {
+          'enabled' => true,
+          'private_key' => 'site-private.key',
+          'credential' => 'site.cred',
+          'public_key' => 'legacy-supervisor.pub'
+        }
+      },
+      {}
+    )
+
+    expect(merged['public_key']).to be_nil
+    expect(merged['peers']).to be_nil
+  end
+
+  it 'builds supervisor inbound secure peers from configured sites' do
+    settings = RSMP::Secure.supervisor_inbound_settings(
+      'secure' => {
+        'required' => true,
+        'private_key' => 'supervisor-private.key',
+        'credential' => 'supervisor.cred'
+      },
+      'sites' => {
+        'RN+SI0001' => {
+          'secure' => {
+            'public_key' => 'site1.pub',
+            'credential' => 'site1.cred'
+          }
+        },
+        'RN+SI0002' => {
+          'secure' => {
+            'public_key' => 'site2.pub',
+            'credential' => 'site2.cred'
+          }
+        }
+      }
+    )
+
+    expect(settings['peers'].map { |peer| peer['id'] }).to be == %w[RN+SI0001 RN+SI0002]
+  end
+
+  it 'resolves secure file paths relative to the config file directory' do
+    Dir.mktmpdir do |dir|
+      vector = Edhoc::Native.suite0_test_vector
+      config_dir = File.join(dir, 'config')
+      secure_dir = File.join(config_dir, 'secure')
+      FileUtils.mkdir_p(secure_dir)
+
+      File.binwrite(File.join(secure_dir, 'RN+SI0001.private.key'), vector.fetch(:initiator_private_key))
+      File.binwrite(File.join(secure_dir, 'RN+SI0001.cred'), vector.fetch(:initiator_credential))
+      File.binwrite(File.join(secure_dir, 'supervisor.pub'), vector.fetch(:responder_public_key))
+      File.binwrite(File.join(secure_dir, 'supervisor.cred'), vector.fetch(:responder_credential))
+
+      config_path = File.join(config_dir, 'site.yaml')
+      File.write(config_path, <<~YAML)
+        site_id: RN+SI0001
+        sxls: {}
+        supervisors:
+          - ip: 127.0.0.1
+            port: 12111
+            secure:
+              id: supervisor
+              public_key: secure/supervisor.pub
+              credential: secure/supervisor.cred
+        secure:
+          enabled: true
+          private_key: secure/RN+SI0001.private.key
+          credential: secure/RN+SI0001.cred
+      YAML
+
+      settings = RSMP::Site::Options.load_file(config_path).to_h
+      secure_settings = RSMP::Secure.site_peer_settings(settings, settings['supervisors'].first)
+      protocol = RSMP::Secure::Protocol.new(SecureMemoryStream.new, role: :initiator, settings: secure_settings)
+
+      expect(protocol.settings[RSMP::Secure::CONFIG_DIR_KEY]).to be == config_dir
+    end
   end
 
   with 'CBOR encoding' do
@@ -200,6 +585,72 @@ describe RSMP::Secure do
   end
 
   with RSMP::Secure::Protocol do
+    it 'rejects direct top-level public peer credentials without a resolved peer list' do
+      Dir.mktmpdir do |dir|
+        vector = Edhoc::Native.suite0_test_vector
+        settings = {
+          'private_key' => write_secure_file(dir, 'site-private.key', vector.fetch(:initiator_private_key)),
+          'credential' => write_secure_file(dir, 'site.cred', vector.fetch(:initiator_credential)),
+          'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key))
+        }
+
+        expect do
+          RSMP::Secure::Protocol.new(SecureMemoryStream.new, role: :initiator, settings: settings)
+        end.to raise_exception(RSMP::Secure::ConfigurationError)
+      end
+    end
+
+    it 'reports the credential id when EDHOC rejects an unknown credential' do
+      Dir.mktmpdir do |dir|
+        vector = Edhoc::Native.suite0_test_vector
+        unknown_site = generated_secure_identity('RN+SI0002')
+        site_settings = {
+          'private_key' => write_secure_file(dir, 'site-private.key', unknown_site.fetch(:private_key)),
+          'credential' => write_secure_file(dir, 'unknown-site.cred', unknown_site.fetch(:credential)),
+          'peers' => [{
+            'id' => 'supervisor',
+            'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key)),
+            'credential' => write_secure_file(dir, 'supervisor.cred', vector.fetch(:responder_credential))
+          }],
+          'handshake_timeout' => 1
+        }
+        supervisor_settings = {
+          'private_key' => write_secure_file(dir, 'supervisor-private.key', vector.fetch(:responder_private_key)),
+          'credential' => write_secure_file(dir, 'supervisor.cred', vector.fetch(:responder_credential)),
+          'peers' => [{
+            'id' => 'RN+SI0001',
+            'public_key' => write_secure_file(dir, 'site.pub', vector.fetch(:initiator_public_key)),
+            'credential' => write_secure_file(dir, 'site.cred', vector.fetch(:initiator_credential))
+          }],
+          'handshake_timeout' => 1
+        }
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator, settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(
+            IO::Stream::Buffered.new(supervisor_io),
+            role: :responder,
+            settings: supervisor_settings
+          )
+        end
+
+        expect do
+          responder_task.wait
+        end.to raise_exception(
+          RSMP::HandshakeError,
+          message: be == 'EDHOC handshake failed: peer credential RN+SI0002 not trusted'
+        )
+      ensure
+        initiator_task&.stop
+        responder_task&.stop
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
     it 'runs EDHOC and exchanges encrypted RSMP messages' do
       Dir.mktmpdir do |dir|
         site_settings, supervisor_settings = secure_settings(dir)
@@ -225,8 +676,8 @@ describe RSMP::Secure do
         site = initiator_task.wait
         supervisor = responder_task.wait
 
-        expect(site_logs).to be == [['Secure RSMP E2E handshake complete using profile rsmp-secure-suite0-dev (initiator, epoch 0)', { level: :info }]]
-        expect(supervisor_logs).to be == [['Secure RSMP E2E handshake complete using profile rsmp-secure-suite0-dev (responder, epoch 0)', { level: :info }]]
+        expect(site_logs).to be == [['Secure handshake with peer supervisor complete (initiator, epoch 0)', { level: :info }]]
+        expect(supervisor_logs).to be == [['Secure handshake with peer RN+SI0001 complete (responder, epoch 0)', { level: :info }]]
 
         version = {
           'mType' => 'rSMsg',
@@ -555,14 +1006,14 @@ describe RSMP::Secure do
         expect(site.channel.epoch).to be == 1
         expect(supervisor.channel.epoch).to be == 1
         expect(site_logs).to be == [
-          ['Secure RSMP E2E handshake complete using profile rsmp-secure-suite0-dev (initiator, epoch 0)', { level: :info }],
-          ['Secure RSMP E2E rekey started using profile rsmp-secure-suite0-dev (initiator, epoch 1)', { level: :info }],
-          ['Secure RSMP E2E handshake complete using profile rsmp-secure-suite0-dev (initiator, epoch 1)', { level: :info }]
+          ['Secure handshake with peer supervisor complete (initiator, epoch 0)', { level: :info }],
+          ['Secure rekey with peer supervisor started (initiator, epoch 1)', { level: :info }],
+          ['Secure handshake with peer supervisor complete (initiator, epoch 1)', { level: :info }]
         ]
         expect(supervisor_logs).to be == [
-          ['Secure RSMP E2E handshake complete using profile rsmp-secure-suite0-dev (responder, epoch 0)', { level: :info }],
-          ['Secure RSMP E2E rekey started using profile rsmp-secure-suite0-dev (responder, epoch 1)', { level: :info }],
-          ['Secure RSMP E2E handshake complete using profile rsmp-secure-suite0-dev (responder, epoch 1)', { level: :info }]
+          ['Secure handshake with peer RN+SI0001 complete (responder, epoch 0)', { level: :info }],
+          ['Secure rekey with peer RN+SI0001 started (responder, epoch 1)', { level: :info }],
+          ['Secure handshake with peer RN+SI0001 complete (responder, epoch 1)', { level: :info }]
         ]
       ensure
         site&.close
@@ -630,8 +1081,8 @@ describe RSMP::Secure do
         expect(received.map { |message| message.fetch('mId') }.sort).to be == [second['mId'], third['mId']].sort
         expect(site.channel.epoch).to be == 1
         expect(supervisor.channel.epoch).to be == 1
-        expect(site_logs.count { |entry| entry.first.include?('rekey started') }).to be == 1
-        expect(site_logs).to be(:include?, ['Secure RSMP E2E rekey started using profile rsmp-secure-suite0-dev (initiator, epoch 1)', { level: :info }])
+        expect(site_logs.count { |entry| entry.first.include?('rekey') && entry.first.include?('started') }).to be == 1
+        expect(site_logs).to be(:include?, ['Secure rekey with peer supervisor started (initiator, epoch 1)', { level: :info }])
       ensure
         site&.close
         supervisor&.close
@@ -755,8 +1206,8 @@ describe RSMP::Secure do
 
           expect(site.channel.epoch).to be == 1
           expect(supervisor.channel.epoch).to be == 1
-          expect(site_logs.count { |entry| entry.first.include?('rekey started') }).to be == 1
-          expect(site_logs).to be(:include?, ['Secure RSMP E2E rekey started using profile rsmp-secure-suite0-dev (initiator, epoch 1)', { level: :info }])
+          expect(site_logs.count { |entry| entry.first.include?('rekey') && entry.first.include?('started') }).to be == 1
+          expect(site_logs).to be(:include?, ['Secure rekey with peer supervisor started (initiator, epoch 1)', { level: :info }])
         ensure
           site&.close
           supervisor&.close
@@ -812,6 +1263,8 @@ describe RSMP::Secure do
   it 'connects a site and supervisor through Secure RSMP' do
     Dir.mktmpdir do |dir|
       site_secure, supervisor_secure = secure_settings(dir)
+      site_peer = site_secure.fetch('peers').first
+      supervisor_peer = supervisor_secure.fetch('peers').first
       port = 13_113
       site_log = StringIO.new
       site_logger = RSMP::Logger.new('stream' => site_log, 'style' => false)
@@ -821,8 +1274,8 @@ describe RSMP::Secure do
           'site_id' => 'RN+SI0001',
           'core_version' => '3.3.0',
           'sxls' => {},
-          'supervisors' => [{ 'ip' => '127.0.0.1', 'port' => port }],
-          'secure' => site_secure.merge('enabled' => true)
+          'supervisors' => [{ 'ip' => '127.0.0.1', 'port' => port, 'secure' => public_peer_settings(site_peer) }],
+          'secure' => site_secure.except('peers').merge('enabled' => true)
         },
         logger: site_logger,
         log_settings: { 'active' => false }
@@ -830,10 +1283,16 @@ describe RSMP::Secure do
       supervisor = RSMP::Supervisor.new(
         supervisor_settings: {
           'port' => port,
+          'secure' => supervisor_secure.except('peers').merge('required' => true),
           'default' => {
             'core_version' => '3.3.0',
-            'sxls' => {},
-            'secure' => supervisor_secure.merge('required' => true)
+            'sxls' => {}
+          },
+          'sites' => {
+            'RN+SI0001' => {
+              'sxls' => {},
+              'secure' => public_peer_settings(supervisor_peer)
+            }
           }
         },
         log_settings: { 'active' => false }
@@ -854,7 +1313,172 @@ describe RSMP::Secure do
         expect(supervisor_proxy.state).to be == :ready
         expect(site_proxy.schemas).to be == { core: '3.3.0' }
         expect(supervisor_proxy.schemas).to be == { core: '3.3.0' }
-        expect(site_log.string).to be(:include?, 'Secure RSMP E2E handshake complete using profile rsmp-secure-suite0-dev (initiator, epoch 0)')
+        expect(site_log.string).to be(:include?, 'Secure handshake with peer supervisor complete (initiator, epoch 0)')
+      end
+    end
+  end
+
+  it 'connects two secure sites to one secure supervisor listener with different credentials' do
+    Dir.mktmpdir do |dir|
+      secure = multi_site_secure_settings(dir)
+      port = 13_114
+      site1 = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'RN+SI0001',
+          'core_version' => '3.3.0',
+          'sxls' => {},
+          'supervisors' => [
+            {
+              'ip' => '127.0.0.1',
+              'port' => port,
+              'secure' => secure.fetch(:supervisor_peer)
+            }
+          ],
+          'secure' => secure.fetch(:site1).merge('enabled' => true)
+        },
+        log_settings: { 'active' => false }
+      )
+      site2 = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'RN+SI0002',
+          'core_version' => '3.3.0',
+          'sxls' => {},
+          'supervisors' => [
+            {
+              'ip' => '127.0.0.1',
+              'port' => port,
+              'secure' => secure.fetch(:supervisor_peer)
+            }
+          ],
+          'secure' => secure.fetch(:site2).merge('enabled' => true)
+        },
+        log_settings: { 'active' => false }
+      )
+      supervisor = RSMP::Supervisor.new(
+        supervisor_settings: {
+          'port' => port,
+          'secure' => secure.fetch(:supervisor).merge('required' => true),
+          'default' => {
+            'core_version' => '3.3.0',
+            'sxls' => {}
+          },
+          'sites' => {
+            'RN+SI0001' => {
+              'sxls' => {},
+              'secure' => secure.fetch(:site1_peer)
+            },
+            'RN+SI0002' => {
+              'sxls' => {},
+              'secure' => secure.fetch(:site2_peer)
+            }
+          }
+        },
+        log_settings: { 'active' => false }
+      )
+
+      with_async_context(context: lambda {
+        supervisor.start
+        supervisor.ready_condition.wait
+        site1.start
+        site2.start
+      }) do
+        site1_proxy = supervisor.wait_for_site('RN+SI0001', timeout: 3)
+        site2_proxy = supervisor.wait_for_site('RN+SI0002', timeout: 3)
+        supervisor1 = site1.wait_for_supervisor('127.0.0.1', timeout: 3)
+        supervisor2 = site2.wait_for_supervisor('127.0.0.1', timeout: 3)
+
+        site1_proxy.wait_for_state(:ready, timeout: 3)
+        site2_proxy.wait_for_state(:ready, timeout: 3)
+        supervisor1.wait_for_state(:ready, timeout: 3)
+        supervisor2.wait_for_state(:ready, timeout: 3)
+
+        expect(site1_proxy.state).to be == :ready
+        expect(site2_proxy.state).to be == :ready
+      end
+    end
+  end
+
+  it 'connects one secure site to two secure supervisor listeners with different credentials' do
+    Dir.mktmpdir do |dir|
+      secure = multi_supervisor_secure_settings(dir)
+      port1 = 13_115
+      port2 = 13_116
+      supervisor1 = RSMP::Supervisor.new(
+        supervisor_settings: {
+          'port' => port1,
+          'secure' => secure.fetch(:supervisor1).merge('required' => true),
+          'default' => {
+            'core_version' => '3.3.0',
+            'sxls' => {}
+          },
+          'sites' => {
+            'RN+SI0001' => {
+              'sxls' => {},
+              'secure' => secure.fetch(:site_peer)
+            }
+          }
+        },
+        log_settings: { 'active' => false }
+      )
+      supervisor2 = RSMP::Supervisor.new(
+        supervisor_settings: {
+          'port' => port2,
+          'secure' => secure.fetch(:supervisor2).merge('required' => true),
+          'default' => {
+            'core_version' => '3.3.0',
+            'sxls' => {}
+          },
+          'sites' => {
+            'RN+SI0001' => {
+              'sxls' => {},
+              'secure' => secure.fetch(:site_peer)
+            }
+          }
+        },
+        log_settings: { 'active' => false }
+      )
+      site = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'RN+SI0001',
+          'core_version' => '3.3.0',
+          'sxls' => {},
+          'supervisors' => [
+            {
+              'ip' => '127.0.0.1',
+              'port' => port1,
+              'secure' => secure.fetch(:supervisor1_peer)
+            },
+            {
+              'ip' => '127.0.0.1',
+              'port' => port2,
+              'secure' => secure.fetch(:supervisor2_peer)
+            }
+          ],
+          'secure' => secure.fetch(:site).merge('enabled' => true)
+        },
+        log_settings: { 'active' => false }
+      )
+
+      with_async_context(context: lambda {
+        supervisor1.start
+        supervisor1.ready_condition.wait
+        supervisor2.start
+        supervisor2.ready_condition.wait
+        site.start
+      }) do
+        site1_proxy = supervisor1.wait_for_site('RN+SI0001', timeout: 3)
+        site2_proxy = supervisor2.wait_for_site('RN+SI0001', timeout: 3)
+        supervisor1_proxy = site.wait_for_supervisor('127.0.0.1', port: port1, timeout: 3)
+        supervisor2_proxy = site.wait_for_supervisor('127.0.0.1', port: port2, timeout: 3)
+        site1_proxy.wait_for_state(:ready, timeout: 3)
+        site2_proxy.wait_for_state(:ready, timeout: 3)
+        supervisor1_proxy.wait_for_state(:ready, timeout: 3)
+        supervisor2_proxy.wait_for_state(:ready, timeout: 3)
+
+        expect(site1_proxy.state).to be == :ready
+        expect(site2_proxy.state).to be == :ready
+        expect(supervisor1_proxy.state).to be == :ready
+        expect(supervisor2_proxy.state).to be == :ready
       end
     end
   end

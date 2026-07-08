@@ -61,6 +61,7 @@ module RSMP
           stream = IO::Stream::Buffered.new(socket)
           protocol = build_accepted_protocol(stream)
           site_id = retrieve_site_id(protocol)
+          validate_secure_site_identity(protocol, site_id)
           site_settings = site_id_to_site_setting site_id
 
           {
@@ -94,12 +95,21 @@ module RSMP
         end
 
         def inbound_secure_settings
-          @supervisor_settings['secure'] || @supervisor_settings.dig('default', 'secure')
+          RSMP::Secure.supervisor_inbound_settings(@supervisor_settings)
         end
 
         def retrieve_site_id(protocol)
           version_message = peek_version_message protocol
           version_message.attribute('siteId').first['sId']
+        end
+
+        def validate_secure_site_identity(protocol, site_id)
+          return unless protocol.respond_to?(:matched_peer_id)
+          return unless protocol.matched_peer_id
+          return if protocol.matched_peer_id == site_id
+
+          raise HandshakeError,
+                "Secure credential #{protocol.matched_peer_id.inspect} is not authorized for site #{site_id.inspect}"
         end
 
         def setup_proxy(proxy, settings, id)

@@ -1,10 +1,14 @@
 require 'yaml'
 require 'pathname'
+require_relative 'error_formatting'
 
 module RSMP
   # Base class for configuration options.
   class Options
+    include OptionsErrorFormatting
+
     SCHEMAS_PATH = File.expand_path('schemas', __dir__)
+    INTERNAL_KEYS = ['__config_dir'].freeze
 
     attr_reader :data, :log_settings, :source
 
@@ -32,9 +36,12 @@ module RSMP
       @source = source
       @log_settings = normalize(log_settings || {})
       validate_log_settings! if validate
-      config = normalize_config(options || {})
+      raw_options = options || {}
+      internal_settings = internal_settings(raw_options)
+      internal_settings['__config_dir'] ||= File.dirname(File.expand_path(source)) if source
+      config = normalize_config(public_settings(raw_options))
       validate!(config) if validate
-      @data = normalize(apply_defaults(config))
+      @data = normalize(apply_defaults(config)).merge(internal_settings)
     end
 
     def defaults = {}
@@ -104,6 +111,21 @@ module RSMP
       end
     end
 
+    def internal_settings(options)
+      return {} unless options.is_a?(Hash)
+
+      options.each_with_object({}) do |(key, value), settings|
+        normalized_key = key.to_s
+        settings[normalized_key] = value if INTERNAL_KEYS.include?(normalized_key)
+      end
+    end
+
+    def public_settings(options)
+      return options unless options.is_a?(Hash)
+
+      options.reject { |key, _value| INTERNAL_KEYS.include?(key.to_s) }
+    end
+
     def normalize_sxls(value)
       case value
       when Hash
@@ -150,97 +172,6 @@ module RSMP
       else
         { 'name' => name, 'version' => details.to_s }
       end
-    end
-
-    def format_error(error)
-      pointer = error_pointer(error)
-      details = error_details(error)
-      type_hint = error_type_hint(error)
-      schema_suffix = schema_pointer_suffix(error)
-
-      "#{pointer}: #{details}#{type_hint}#{schema_suffix}"
-    end
-
-    def error_pointer(error)
-      pointer = error['data_pointer'] || error['instanceLocation'] || error['dataPath']
-      pointer = pointer.to_s
-      pointer.empty? ? '/' : pointer
-    end
-
-    def error_details(error)
-      details = error['message'] || error['error']
-      details ||= begin
-        type = error['type'] || error['keyword']
-        extra = error['details']
-        [type, extra].compact.join(' ')
-      end
-      details.to_s
-    end
-
-    def error_type_hint(error)
-      expected = expected_type(error['schema'])
-      actual = describe_type(error['data'])
-      return '' unless expected && actual
-
-      " (expected #{expected}, got #{actual})"
-    end
-
-    def schema_pointer_suffix(error)
-      schema_pointer = error['schema_pointer'] || error['schemaLocation'] || error['keywordLocation']
-      schema_pointer = schema_pointer.to_s
-      schema_pointer.empty? ? '' : " (schema #{schema_pointer})"
-    end
-
-    def expected_type(schema)
-      return unless schema.is_a?(Hash)
-
-      type = schema['type']
-      return format_type(type) if type
-
-      types = []
-      %w[oneOf anyOf].each do |key|
-        next unless schema[key].is_a?(Array)
-
-        types.concat(schema[key].map { |item| item['type'] }.compact)
-      end
-
-      format_type(types) if types.any?
-    end
-
-    def format_type(type)
-      case type
-      when Array
-        type.join(' or ')
-      when nil
-        nil
-      else
-        type.to_s
-      end
-    end
-
-    def describe_type(value)
-      case value
-      when NilClass
-        'null'
-      when String
-        'string'
-      when Integer
-        'integer'
-      when Float
-        'number'
-      when TrueClass, FalseClass
-        'boolean'
-      when Array
-        'array'
-      when Hash
-        'object'
-      else
-        value.class.name
-      end
-    end
-
-    def source_suffix
-      source ? " (#{source})" : ''
     end
   end
 end

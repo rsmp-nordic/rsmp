@@ -8,6 +8,12 @@ module RSMP
     DEFAULT_REKEY_AFTER_MESSAGES = 1_000_000
     DEFAULT_REKEY_AFTER_SECONDS = 7_200
     DEFAULT_MIN_REKEY_INTERVAL = 60
+    CONFIG_DIR_KEY = '__config_dir'.freeze
+    PEER_SETTING_KEYS = %w[id public_key supervisor_id].freeze
+    DEFAULT_SUPERVISOR_ID = 'supervisor'.freeze
+
+    require_relative 'secure/configuration'
+    extend Configuration
 
     autoload :Cbor, 'rsmp/secure/cbor'
     autoload :FrameIO, 'rsmp/secure/frame_io'
@@ -22,18 +28,6 @@ module RSMP
     class ReplayError < Error; end
 
     class << self
-      def settings(raw)
-        raw = stringify_keys(raw || {})
-        {
-          'profile' => PROFILE,
-          'max_frame_size' => DEFAULT_MAX_FRAME_SIZE,
-          'handshake_timeout' => DEFAULT_HANDSHAKE_TIMEOUT,
-          'rekey_after_messages' => DEFAULT_REKEY_AFTER_MESSAGES,
-          'rekey_after_seconds' => DEFAULT_REKEY_AFTER_SECONDS,
-          'min_rekey_interval' => DEFAULT_MIN_REKEY_INTERVAL
-        }.merge(raw)
-      end
-
       def enabled?(raw)
         settings = raw || {}
         settings['enabled'] == true || settings['required'] == true
@@ -54,15 +48,17 @@ module RSMP
       def log_summary(raw)
         return unless mode?(raw)
 
-        "Secure RSMP enabled using profile #{profile(raw)}"
+        "Secure profile #{profile(raw)}"
       end
 
-      def handshake_complete_summary(raw, role:, epoch: 0)
-        "Secure RSMP E2E handshake complete using profile #{profile(raw)} (#{role}, epoch #{epoch})"
+      def handshake_complete_summary(_raw, role:, epoch: 0, peer_id: nil)
+        peer = peer_id ? " with peer #{peer_id}" : ''
+        "Secure handshake#{peer} complete (#{role}, epoch #{epoch})"
       end
 
-      def rekey_started_summary(raw, role:, epoch:)
-        "Secure RSMP E2E rekey started using profile #{profile(raw)} (#{role}, epoch #{epoch})"
+      def rekey_started_summary(_raw, role:, epoch:, peer_id: nil)
+        peer = peer_id ? " with peer #{peer_id}" : ''
+        "Secure rekey#{peer} started (#{role}, epoch #{epoch})"
       end
 
       def build_protocol(stream, role:, settings:, task: nil, log: nil)
@@ -75,21 +71,8 @@ module RSMP
         else
           protocol.handshake!
         end
-        protocol.log_e2e_up
+        protocol.log_e2ee_up
         protocol
-      end
-
-      private
-
-      def stringify_keys(value)
-        case value
-        when Hash
-          value.each_with_object({}) { |(key, val), memo| memo[key.to_s] = stringify_keys(val) }
-        when Array
-          value.map { |item| stringify_keys(item) }
-        else
-          value
-        end
       end
     end
   end

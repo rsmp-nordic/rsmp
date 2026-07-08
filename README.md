@@ -146,6 +146,21 @@ sxls:
 
 See [configuration](documentation/configuration.md) for connection-role examples and other YAML settings.
 
+### Secure RSMP
+
+Secure RSMP can be enabled in YAML with a `secure` section. The current prototype profile is
+`rsmp-secure-suite0-dev`, using EDHOC for the handshake and encrypted CBOR frames for RSMP messages.
+
+Generate local development credentials with:
+
+```console
+$ rsmp secure generate
+```
+
+The sample configs in `config/tlc.yaml` and `config/supervisor.yaml` use conventional credential paths
+under `config/secure/`. See [configuration](documentation/configuration.md#secure-rsmp) and
+[`config/secure/README.md`](config/secure/README.md) for the secure YAML shape and key file conventions.
+
 ## Command-line tool
 Tools for easily running RSMP supervisors and sites. The binary is called ```rsmp```.
 

@@ -58,24 +58,21 @@ module RSMP
     method_option :force, type: :boolean, aliases: '-f',
                           banner: 'Overwrite existing files',
                           default: false
+    method_option :id, type: :string,
+                       banner: 'Generate one fresh identity using this file prefix'
     def generate
       require 'edhoc'
+      require 'openssl'
+      require 'securerandom'
 
       output = options[:out]
-      files = secure_development_files(Edhoc::Native.suite0_test_vector)
-      existing = files.keys.select { |name| File.exist?(File.join(output, name)) }
-      if existing.any? && !options[:force]
-        puts "Error: Refusing to overwrite existing files in #{output}: #{existing.join(', ')}"
-        puts 'Use --force to replace them.'
-        exit 1
-      end
-
-      FileUtils.mkdir_p(output)
-      files.each_pair do |name, bytes|
-        path = File.join(output, name)
-        File.binwrite(path, bytes)
-        File.chmod(0o600, path)
-      end
+      files = if options[:id]
+                secure_identity_files(options[:id])
+              else
+                secure_development_files(Edhoc::Native.suite0_test_vector)
+              end
+      check_secure_development_files(output, files)
+      write_secure_development_files(output, files)
 
       puts "Generated Secure RSMP development credentials in #{output}"
       puts 'These files are for local prototype testing only.'
@@ -86,15 +83,76 @@ module RSMP
 
     private
 
+    def check_secure_development_files(output, files)
+      existing = files.keys.select { |name| File.exist?(File.join(output, name)) }
+      return if existing.empty? || options[:force]
+
+      puts "Error: Refusing to overwrite existing files in #{output}: #{existing.join(', ')}"
+      puts 'Use --force to replace them.'
+      exit 1
+    end
+
+    def write_secure_development_files(output, files)
+      FileUtils.mkdir_p(output)
+      files.each_pair do |name, bytes|
+        path = File.join(output, name)
+        File.binwrite(path, bytes)
+        File.chmod(0o600, path)
+      end
+    end
+
     def secure_development_files(vector)
       {
-        'site-private.key' => vector.fetch(:initiator_private_key),
-        'site.pub' => vector.fetch(:initiator_public_key),
-        'site.cred' => vector.fetch(:initiator_credential),
-        'supervisor-private.key' => vector.fetch(:responder_private_key),
+        'RN+SI0001.private.key' => vector.fetch(:initiator_private_key),
+        'RN+SI0001.pub' => vector.fetch(:initiator_public_key),
+        'RN+SI0001.cred' => vector.fetch(:initiator_credential),
+        'supervisor.private.key' => vector.fetch(:responder_private_key),
         'supervisor.pub' => vector.fetch(:responder_public_key),
         'supervisor.cred' => vector.fetch(:responder_credential)
       }
+    end
+
+    def secure_identity_files(id)
+      validate_secure_identity_id(id)
+      key = OpenSSL::PKey.generate_key('ED25519')
+
+      {
+        "#{id}.private.key" => key.raw_private_key + key.raw_public_key,
+        "#{id}.pub" => key.raw_public_key,
+        "#{id}.cred" => build_secure_identity_certificate(id, key).to_der
+      }
+    end
+
+    def validate_secure_identity_id(id)
+      return unless id.empty? || id.include?('/') || id.include?('\\')
+
+      puts 'Error: --id must be a non-empty filename prefix without path separators'
+      exit 1
+    end
+
+    def build_secure_identity_certificate(id, key)
+      certificate = OpenSSL::X509::Certificate.new
+      certificate.version = 2
+      certificate.serial = secure_identity_serial
+      certificate.subject = secure_identity_subject(id)
+      certificate.issuer = certificate.subject
+      certificate.public_key = key
+      apply_secure_identity_validity(certificate)
+      certificate.sign(key, nil)
+      certificate
+    end
+
+    def secure_identity_serial
+      SecureRandom.random_number(1..((2**63) - 1))
+    end
+
+    def secure_identity_subject(id)
+      OpenSSL::X509::Name.new([['CN', id, OpenSSL::ASN1::UTF8STRING]])
+    end
+
+    def apply_secure_identity_validity(certificate)
+      certificate.not_before = Time.now - 60
+      certificate.not_after = Time.now + (10 * 365 * 24 * 60 * 60)
     end
   end
 

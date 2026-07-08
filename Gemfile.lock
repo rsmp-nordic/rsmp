@@ -1,5 +1,5 @@
 PATH
-  remote: ../edhoc_gem
+  remote: ../ruby-edhoc
   specs:
     edhoc (0.1.0)
 
