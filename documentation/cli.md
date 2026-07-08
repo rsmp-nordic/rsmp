@@ -241,6 +241,7 @@ Options:
 
 - `--out PATH`, `-o PATH`: output directory. Defaults to `config/secure`.
 - `--id ID`: generate one fresh identity using this file prefix.
+- `--profile PROFILE`: credential profile. Use `rsmp-secure-v1` to generate signed CBOR credential bundles.
 - `--force`, `-f`: overwrite existing files.
 
 The generated credentials are intended for local development only.

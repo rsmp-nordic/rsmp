@@ -129,6 +129,28 @@ describe RSMP::CLI do
       end
     end
 
+    it 'generates v1 credential bundles' do
+      Dir.mktmpdir('rsmp-secure-cli') do |dir|
+        result = invoke_cli('secure', 'generate', '--out', dir, '--id', 'RN+SI0002',
+                            '--profile', RSMP::Secure::V1_PROFILE)
+        private_key = File.binread(File.join(dir, 'RN+SI0002.private.key'))
+        public_key = File.binread(File.join(dir, 'RN+SI0002.pub'))
+        credential = File.binread(File.join(dir, 'RN+SI0002.cred'))
+        bundle = RSMP::Secure::CredentialBundle.decode(credential, expected_profile: RSMP::Secure::V1_PROFILE)
+
+        expect(result.status).to be == 0
+        expect(RSMP::Secure::CredentialBundle.id(bundle)).to be == 'RN+SI0002'
+        expect(RSMP::Secure::CredentialBundle.public_key(bundle)).to be == public_key
+        expect(RSMP::Secure::CredentialBundle.kid(bundle).bytesize).to be == 16
+        expect(private_key.byteslice(32, 32)).to be == public_key
+        expect(RSMP::Secure::CredentialBundle.edhoc_credential(bundle)).to be == RSMP::Secure::CredentialBundle.ccs_credential(
+          'RN+SI0002',
+          public_key,
+          RSMP::Secure::CredentialBundle.kid(bundle)
+        )
+      end
+    end
+
     it 'rejects custom identity ids that include path separators' do
       Dir.mktmpdir('rsmp-secure-cli') do |dir|
         result = invoke_cli('secure', 'generate', '--out', dir, '--id', '../RN+SI0002')

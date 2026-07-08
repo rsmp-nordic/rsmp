@@ -60,17 +60,17 @@ module RSMP
                           default: false
     method_option :id, type: :string,
                        banner: 'Generate one fresh identity using this file prefix'
+    method_option :profile, type: :string,
+                            banner: 'Secure profile for generated credentials',
+                            enum: [RSMP::Secure::PROFILE, RSMP::Secure::SUITE4_PROFILE, RSMP::Secure::V1_PROFILE],
+                            default: RSMP::Secure::PROFILE
     def generate
       require 'edhoc'
       require 'openssl'
       require 'securerandom'
 
       output = options[:out]
-      files = if options[:id]
-                secure_identity_files(options[:id])
-              else
-                secure_development_files(Edhoc::Native.suite0_test_vector)
-              end
+      files = secure_generated_files
       check_secure_development_files(output, files)
       write_secure_development_files(output, files)
 
@@ -82,6 +82,14 @@ module RSMP
     end
 
     private
+
+    def secure_generated_files
+      if options[:id]
+        secure_identity_files(options[:id], profile: options[:profile])
+      else
+        secure_development_files(Edhoc::Native.suite0_test_vector, profile: options[:profile])
+      end
+    end
 
     def check_secure_development_files(output, files)
       existing = files.keys.select { |name| File.exist?(File.join(output, name)) }
@@ -101,26 +109,50 @@ module RSMP
       end
     end
 
-    def secure_development_files(vector)
+    def secure_development_files(vector, profile:)
       {
         'RN+SI0001.private.key' => vector.fetch(:initiator_private_key),
         'RN+SI0001.pub' => vector.fetch(:initiator_public_key),
-        'RN+SI0001.cred' => vector.fetch(:initiator_credential),
+        'RN+SI0001.cred' => secure_credential('RN+SI0001',
+                                              profile: profile,
+                                              private_key: vector.fetch(:initiator_private_key),
+                                              public_key: vector.fetch(:initiator_public_key),
+                                              edhoc_credential: vector.fetch(:initiator_credential)),
         'supervisor.private.key' => vector.fetch(:responder_private_key),
         'supervisor.pub' => vector.fetch(:responder_public_key),
-        'supervisor.cred' => vector.fetch(:responder_credential)
+        'supervisor.cred' => secure_credential('supervisor',
+                                               profile: profile,
+                                               private_key: vector.fetch(:responder_private_key),
+                                               public_key: vector.fetch(:responder_public_key),
+                                               edhoc_credential: vector.fetch(:responder_credential))
       }
     end
 
-    def secure_identity_files(id)
+    def secure_identity_files(id, profile:)
       validate_secure_identity_id(id)
       key = OpenSSL::PKey.generate_key('ED25519')
+      private_key = key.raw_private_key + key.raw_public_key
+      public_key = key.raw_public_key
+      edhoc_credential = build_secure_identity_certificate(id, key).to_der
 
       {
-        "#{id}.private.key" => key.raw_private_key + key.raw_public_key,
-        "#{id}.pub" => key.raw_public_key,
-        "#{id}.cred" => build_secure_identity_certificate(id, key).to_der
+        "#{id}.private.key" => private_key,
+        "#{id}.pub" => public_key,
+        "#{id}.cred" => secure_credential(id,
+                                          profile: profile,
+                                          private_key: private_key,
+                                          public_key: public_key,
+                                          edhoc_credential: edhoc_credential)
       }
+    end
+
+    def secure_credential(id, profile:, private_key:, public_key:, edhoc_credential:)
+      return edhoc_credential unless RSMP::Secure.credential_bundle_profile?(profile)
+
+      RSMP::Secure::CredentialBundle.create(id: id,
+                                            profile: profile,
+                                            private_key: private_key,
+                                            public_key: public_key)
     end
 
     def validate_secure_identity_id(id)

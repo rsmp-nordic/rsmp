@@ -32,7 +32,7 @@ module RSMP
         credential_format: 'X.509 DER development credential'
       }.freeze,
       V1_PROFILE => {
-        status: :planned,
+        status: :implemented,
         edhoc_method: 0,
         edhoc_cipher_suite: 4,
         ecdh: 'X25519',
@@ -42,7 +42,7 @@ module RSMP
         data_aead: 'ChaCha20-Poly1305',
         encoding: 'deterministic CBOR',
         deterministic_cbor: true,
-        credential_format: 'CBOR/COSE key bundle'
+        credential_format: 'Signed CBOR bundle with EDHOC KID/CCS credential'
       }.freeze
     }.freeze
     IMPLEMENTED_PROFILES = PROFILES.select { |_name, metadata| metadata[:status] == :implemented }.keys.freeze
@@ -60,7 +60,9 @@ module RSMP
     extend Configuration
 
     autoload :Cbor, 'rsmp/secure/cbor'
+    autoload :CredentialBundle, 'rsmp/secure/credential_bundle'
     autoload :FrameIO, 'rsmp/secure/frame_io'
+    autoload :ProfileCredentials, 'rsmp/secure/profile_credentials'
     autoload :Channel, 'rsmp/secure/channel'
     autoload :Transport, 'rsmp/secure/transport'
     autoload :Protocol, 'rsmp/secure/protocol'
@@ -111,11 +113,15 @@ module RSMP
         case name
         when PROFILE
           Edhoc::Suite0Session
-        when SUITE4_PROFILE
+        when SUITE4_PROFILE, V1_PROFILE
           Edhoc::Suite4Session
         else
           raise ConfigurationError, "Unsupported secure profile #{name.inspect}"
         end
+      end
+
+      def credential_bundle_profile?(name)
+        name == V1_PROFILE
       end
 
       def mode?(raw)

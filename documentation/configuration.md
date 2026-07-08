@@ -152,7 +152,7 @@ Profile status:
 | --- | --- | --- | --- | --- |
 | `rsmp-secure-suite0-dev` | Implemented development profile | EDHOC method 0, cipher suite 0 | ChaCha20-Poly1305 | Uses X.509 DER development credentials. Suitable for prototype and test tooling only. |
 | `rsmp-secure-suite4-dev` | Implemented development profile | EDHOC method 0, cipher suite 4 | ChaCha20-Poly1305 | Uses the intended EDHOC cipher suite with the current development credential files. Suitable for prototype and test tooling only. |
-| `rsmp-secure-v1` | Planned normative profile | EDHOC method 0, cipher suite 4 | ChaCha20-Poly1305 | Intended Secure RSMP profile from the proposal. The implementation rejects it until the final credential format and normative profile details are implemented. |
+| `rsmp-secure-v1` | Implemented profile | EDHOC method 0, cipher suite 4 | ChaCha20-Poly1305 | Uses deterministic CBOR frames, signed CBOR credential bundles, and EDHOC KID/CBOR credential transport. |
 
 The secure layer is independent of the RSMP site/supervisor role:
 
@@ -171,7 +171,7 @@ Secure paths are resolved relative to the YAML config file, not the current work
 
 The endpoint `secure.id` is the peer id and conventional file prefix. For example, `id: supervisor-a` means the peer public key is `secure/supervisor-a.pub` and the peer credential is `secure/supervisor-a.cred` unless explicit paths are provided.
 
-`private_key` is the local private signing key. `credential` is the local public credential presented during EDHOC. Peer entries use `public_key` and `credential` to define the trusted remote identity.
+`private_key` is the local private signing key. `credential` is the local public credential. For `rsmp-secure-suite0-dev` and `rsmp-secure-suite4-dev`, the credential file is raw X.509 DER presented during EDHOC. For `rsmp-secure-v1`, the credential file is a deterministic-CBOR bundle containing a COSE_Key-style public key, a KID, a CCS-style CBOR EDHOC credential, profile metadata, and an Ed25519 signature over the bundle metadata. Peer entries use `public_key` and `credential` to define the trusted remote identity; in v1, the public key file must match the key embedded in the credential bundle, and EDHOC authenticates the peer by KID before using the configured CBOR credential.
 
 Example site connecting securely to a supervisor:
 
@@ -184,7 +184,7 @@ supervisors:
       id: supervisor
 secure:
   enabled: true
-  profile: rsmp-secure-suite0-dev
+  profile: rsmp-secure-v1
 sxls:
   tlc: "1.3.0"
 ```
@@ -197,7 +197,7 @@ Example supervisor accepting secure sites:
 port: 12111
 secure:
   required: true
-  profile: rsmp-secure-suite0-dev
+  profile: rsmp-secure-v1
 default:
   sxls:
     tlc: "1.3.0"

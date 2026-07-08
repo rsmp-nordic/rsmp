@@ -31,9 +31,14 @@ keys or credentials for deployment.
 
 The default implemented Secure RSMP profile is currently `rsmp-secure-suite0-dev`.
 `rsmp-secure-suite4-dev` is also implemented for testing EDHOC cipher suite 4
-with these development credential files. The planned normative profile is
-`rsmp-secure-v1`, which will use EDHOC cipher suite 4 and a CBOR/COSE key bundle
-instead of these development credential files.
+with raw X.509 DER development credential files. `rsmp-secure-v1` is implemented
+with EDHOC cipher suite 4, signed deterministic-CBOR credential bundles, and
+EDHOC KID/CBOR credential transport.
+Generate v1 bundles with:
+
+```sh
+bundle exec rsmp secure generate --profile rsmp-secure-v1
+```
 
 The sample configs use:
 
