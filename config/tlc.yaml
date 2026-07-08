@@ -2,13 +2,11 @@ site_id: RN+SI0001
 supervisors:
   - ip: 127.0.0.1
     port: 12111
+    secure:
+      id: supervisor
 secure:
   enabled: true
   profile: rsmp-secure-suite0-dev
-  private_key: config/secure/site-private.key
-  credential: config/secure/site.cred
-  peer_public_key: config/secure/supervisor.pub
-  peer_credential: config/secure/supervisor.cred
   rekey_after_messages: 100
   rekey_after_seconds: 10
   min_rekey_interval: 5

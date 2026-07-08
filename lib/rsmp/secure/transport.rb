@@ -15,6 +15,7 @@ module RSMP
         :role,
         :settings,
         :channel,
+        :peer_id,
         :session_builder,
         :channel_builder,
         :log,
@@ -76,8 +77,8 @@ module RSMP
         @channel = nil
       end
 
-      def log_e2e_up
-        log_secure(Secure.handshake_complete_summary(settings, role: role, epoch: @channel.epoch))
+      def log_e2ee_up
+        log_secure(Secure.handshake_complete_summary(settings, role: role, epoch: @channel.epoch, peer_id: @peer_id))
       end
 
       private
@@ -87,6 +88,7 @@ module RSMP
         @role = config.role.to_sym
         @settings = config.settings
         @channel = config.channel
+        @peer_id = config.peer_id
         @session_builder = config.session_builder
         @channel_builder = config.channel_builder
         @log = config.log

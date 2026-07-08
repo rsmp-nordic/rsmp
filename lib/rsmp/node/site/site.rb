@@ -57,7 +57,12 @@ module RSMP
 
       check_sxls
       check_core_versions
+      check_secure_local_identity
       setup_components @site_settings['components']
+    end
+
+    def check_secure_local_identity
+      RSMP::Secure.validate_local_identity!(RSMP::Secure.site_local_settings(@site_settings))
     end
 
     def denormalize_sxls(settings)
@@ -217,27 +222,36 @@ module RSMP
       super
     end
 
-    def wait_for_supervisor(ip, timeout:)
-      supervisor = find_supervisor ip
+    def wait_for_supervisor(ip, timeout:, port: nil)
+      supervisor = find_supervisor ip, port: port
       return Result.success(supervisor) if supervisor
 
-      wait_for_condition(@proxies_condition, timeout: timeout) { find_supervisor ip }
+      wait_for_condition(@proxies_condition, timeout: timeout) { find_supervisor ip, port: port }
         .map { |proxy| proxy }
     end
 
-    def wait_for_supervisor!(ip, timeout:)
-      result = wait_for_supervisor(ip, timeout: timeout)
+    def wait_for_supervisor!(ip, timeout:, port: nil)
+      result = wait_for_supervisor(ip, timeout: timeout, port: port)
       return result.value! if result.success?
 
-      failure = result.failure.with(message: "Supervisor '#{ip}' did not connect within #{timeout}s")
+      failure = result.failure.with(
+        message: "Supervisor '#{supervisor_endpoint(ip, port)}' did not connect within #{timeout}s"
+      )
       Result.failure(failure: failure).value!
     end
 
-    def find_supervisor(ip)
+    def find_supervisor(ip, port: nil)
       @proxies.each do |supervisor|
-        return supervisor if ip == :any || supervisor.ip == ip
+        next unless ip == :any || supervisor.ip == ip
+        next if port && supervisor.port != port
+
+        return supervisor
       end
       nil
+    end
+
+    def supervisor_endpoint(ip, port)
+      port ? "#{ip}:#{port}" : ip
     end
 
     def build_component(id:, type:, settings:)

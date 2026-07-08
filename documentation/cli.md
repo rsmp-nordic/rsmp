@@ -13,6 +13,7 @@ $ rsmp config help check
 $ rsmp schema help generate
 $ rsmp sxl help resolve
 $ rsmp sxl help verify
+$ rsmp secure help generate
 ```
 
 ## Quick Examples
@@ -79,6 +80,13 @@ Verify the resulting manifest against the same sources:
 
 ```console
 $ rsmp sxl verify manifest.yaml --source ../sxl-catalog
+```
+
+Generate local Secure RSMP development credentials:
+
+```console
+$ rsmp secure generate
+$ rsmp secure generate --id RN+SI0002
 ```
 
 ## Configuration Files
@@ -297,6 +305,33 @@ or message-code conflicts. A valid manifest prints `OK`; a failure prints an err
 Because the manifest format records only exact resolved versions and does not distinguish roots from dependencies,
 verification checks validity but cannot determine whether the manifest still selects the newest versions in a changed
 source catalogue. Run `sxl resolve` again to refresh version selection.
+
+### `rsmp secure generate`
+
+Generates Secure RSMP development credentials for local prototype testing.
+
+```console
+$ rsmp secure generate
+```
+
+By default, this writes the sample site and supervisor credential files to `config/secure`:
+
+- `RN+SI0001.private.key`, `RN+SI0001.pub`, `RN+SI0001.cred`
+- `supervisor.private.key`, `supervisor.pub`, `supervisor.cred`
+
+Generate one additional fresh identity with a custom id:
+
+```console
+$ rsmp secure generate --id RN+SI0002
+```
+
+Options:
+
+- `--out PATH`, `-o PATH`: output directory. Defaults to `config/secure`.
+- `--id ID`: generate one fresh identity using this file prefix.
+- `--force`, `-f`: overwrite existing files.
+
+The generated credentials are intended for local development only.
 
 ### `rsmp version`
 

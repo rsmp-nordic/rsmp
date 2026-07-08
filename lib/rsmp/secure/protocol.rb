@@ -2,15 +2,18 @@ require 'securerandom'
 
 require_relative 'channel'
 require_relative 'frame_io'
+require_relative 'protocol_errors'
 require_relative 'transport'
 
 module RSMP
   module Secure
     # Secure RSMP protocol wrapper with EDHOC handshake and encrypted CBOR payloads.
     class Protocol
+      include ProtocolErrors
+
       EDHOC_CONNECTION_ID_BYTES = 4
 
-      attr_reader :settings, :role
+      attr_reader :settings, :role, :matched_peer_id
 
       def initialize(stream, role:, settings:, log: nil, parent: nil)
         @settings = Secure.settings(settings)
@@ -22,6 +25,7 @@ module RSMP
         @peek_line = nil
         @channel = nil
         @transport = nil
+        @matched_peer_id = nil
       end
 
       def handshake!
@@ -36,10 +40,11 @@ module RSMP
         end
 
         @channel = build_channel(session, epoch: 0)
+        @matched_peer_id = session.matched_peer_id
         start_transport
         true
       rescue Edhoc::Error => e
-        raise HandshakeError, "EDHOC handshake failed: #{e.message}"
+        raise HandshakeError, handshake_error_message(e)
       ensure
         release_edhoc_session(session) if session
       end
@@ -82,9 +87,9 @@ module RSMP
         @frame_io.write(frame)
       end
 
-      def log_e2e_up
+      def log_e2ee_up
         ensure_ready!
-        @transport.log_e2e_up
+        @transport.log_e2ee_up
       end
 
       def channel
@@ -112,8 +117,7 @@ module RSMP
           role: role,
           private_key: read_file('private_key'),
           credential: read_file('credential'),
-          peer_public_key: read_file('peer_public_key'),
-          peer_credential: read_file('peer_credential'),
+          peers: peer_entries,
           connection_id: SecureRandom.random_bytes(EDHOC_CONNECTION_ID_BYTES)
         )
       end
@@ -124,6 +128,7 @@ module RSMP
                                      role: role,
                                      settings: settings,
                                      channel: @channel,
+                                     peer_id: @matched_peer_id,
                                      session_builder: -> { build_edhoc_session },
                                      channel_builder: lambda { |edhoc_session, epoch:, session_id:|
                                        build_channel(edhoc_session, epoch: epoch, session_id: session_id)
@@ -172,9 +177,37 @@ module RSMP
       def read_file(key)
         path = @settings[key]
         raise ConfigurationError, "secure.#{key} is required" unless path
+
+        read_path(path, key)
+      end
+
+      def read_path(path, key)
+        path = expand_config_path(path)
         raise ConfigurationError, "secure.#{key} file not found: #{path}" unless File.file?(path)
 
         File.binread(path)
+      end
+
+      def expand_config_path(path)
+        Secure.expand_config_path(path, @settings)
+      end
+
+      def peer_entries
+        @settings['peers'].map do |peer|
+          {
+            id: peer['id'],
+            public_key: read_path(peer_public_key_path(peer), "peers.#{peer['id']}.public_key"),
+            credential: read_path(peer_credential_path(peer), "peers.#{peer['id']}.credential")
+          }
+        end
+      end
+
+      def peer_public_key_path(peer)
+        peer['public_key']
+      end
+
+      def peer_credential_path(peer)
+        peer['credential']
       end
 
       def build_channel(session, epoch:, session_id: nil)
@@ -195,8 +228,22 @@ module RSMP
           raise ConfigurationError, "Unsupported secure profile #{@settings['profile'].inspect}"
         end
 
-        %w[private_key credential peer_public_key peer_credential].each do |key|
+        %w[private_key credential].each do |key|
           raise ConfigurationError, "secure.#{key} is required" unless @settings[key]
+        end
+
+        validate_peer_settings!
+      end
+
+      def validate_peer_settings!
+        unless @settings['peers']
+          raise ConfigurationError, 'secure peer credentials must be configured on the RSMP peer entry'
+        end
+        raise ConfigurationError, 'secure.peers must not be empty' if @settings['peers'].empty?
+
+        @settings['peers'].each do |peer|
+          raise ConfigurationError, 'secure peer public key is required' unless peer_public_key_path(peer)
+          raise ConfigurationError, 'secure peer credential is required' unless peer_credential_path(peer)
         end
       end
     end

@@ -1,20 +1,23 @@
 port: 12111
+secure:
+  required: true
+  profile: rsmp-secure-suite0-dev
+  rekey_after_messages: 100
+  rekey_after_seconds: 10
+  min_rekey_interval: 5
 default:
   sxls:
     tlc: '1.2.1'
-  secure:
-    required: true
-    profile: rsmp-secure-suite0-dev
-    private_key: config/secure/supervisor-private.key
-    credential: config/secure/supervisor.cred
-    peer_public_key: config/secure/site.pub
-    peer_credential: config/secure/site.cred
-    rekey_after_messages: 100
-    rekey_after_seconds: 10
-    min_rekey_interval: 5
   intervals:
     timer: 0.1
     watchdog: 0.1
   timeouts:
     watchdog: 0.2
     acknowledgement: 0.2
+sites:
+  RN+SI0001:
+    sxls:
+      tlc: '1.2.1'
+  RN+SI0002:
+    sxls:
+      tlc: '1.2.1'
