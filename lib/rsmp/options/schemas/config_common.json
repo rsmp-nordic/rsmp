@@ -131,7 +131,7 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "required": { "type": "boolean" },
-        "profile": { "enum": ["rsmp-secure-suite0-dev", "rsmp-secure-suite4-dev", "rsmp-secure-v1"] },
+        "profile": { "enum": ["rsmp-secure-v1"] },
         "id": { "type": "string" },
         "supervisor_id": { "type": "string" },
         "private_key": { "type": "string" },

@@ -67,7 +67,7 @@ Generate JSON Schema files from an SXL YAML file:
 $ rsmp schema generate --in schemas/tlc/1.3.0/sxl.yaml --out /tmp/tlc-schema
 ```
 
-Generate local Secure RSMP development credentials:
+Generate local Secure RSMP v1 credentials:
 
 ```console
 $ rsmp secure generate
@@ -220,7 +220,7 @@ If the input file is missing, the command prints an error and exits with status 
 
 ### `rsmp secure generate`
 
-Generates Secure RSMP development credentials for local prototype testing.
+Generates Secure RSMP v1 credentials.
 
 ```console
 $ rsmp secure generate
@@ -241,7 +241,6 @@ Options:
 
 - `--out PATH`, `-o PATH`: output directory. Defaults to `config/secure`.
 - `--id ID`: generate one fresh identity using this file prefix.
-- `--profile PROFILE`: credential profile. Use `rsmp-secure-v1` to generate signed CBOR credential bundles.
 - `--force`, `-f`: overwrite existing files.
 
 The generated credentials are intended for local development only.

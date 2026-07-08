@@ -12,8 +12,6 @@ module RSMP
 
       def local_session_options(private_key)
         credential = read_file('credential')
-        return { credential: credential } unless Secure.credential_bundle_profile?(@settings['profile'])
-
         bundle = CredentialBundle.decode(credential, expected_profile: @settings['profile'])
         validate_private_key_bundle!(private_key, bundle)
         {
@@ -40,15 +38,7 @@ module RSMP
       def peer_credential(peer)
         credential = read_path(peer['credential'], "peers.#{peer['id']}.credential")
         public_key = read_path(peer['public_key'], "peers.#{peer['id']}.public_key")
-        unless Secure.credential_bundle_profile?(@settings['profile'])
-          return raw_peer_credential(public_key, credential)
-        end
-
         bundled_peer_credential(public_key, credential)
-      end
-
-      def raw_peer_credential(public_key, credential)
-        { public_key: public_key, edhoc_credential: credential }
       end
 
       def bundled_peer_credential(public_key, credential)

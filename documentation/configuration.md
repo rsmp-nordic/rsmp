@@ -144,14 +144,12 @@ This reversed setup is used when the site listens and the supervision system ini
 
 ## Secure RSMP
 
-Secure RSMP is configured in YAML with a `secure` section. The default implemented profile is `rsmp-secure-suite0-dev`.
+Secure RSMP is configured in YAML with a `secure` section. The implemented profile is `rsmp-secure-v1`.
 
 Profile status:
 
 | Profile | Status | Handshake | Data AEAD | Notes |
 | --- | --- | --- | --- | --- |
-| `rsmp-secure-suite0-dev` | Implemented development profile | EDHOC method 0, cipher suite 0 | ChaCha20-Poly1305 | Uses X.509 DER development credentials. Suitable for prototype and test tooling only. |
-| `rsmp-secure-suite4-dev` | Implemented development profile | EDHOC method 0, cipher suite 4 | ChaCha20-Poly1305 | Uses the intended EDHOC cipher suite with the current development credential files. Suitable for prototype and test tooling only. |
 | `rsmp-secure-v1` | Implemented profile | EDHOC method 0, cipher suite 4 | ChaCha20-Poly1305 | Uses deterministic CBOR frames, signed CBOR credential bundles, and EDHOC KID/CBOR credential transport. |
 
 The secure layer is independent of the RSMP site/supervisor role:
@@ -171,7 +169,7 @@ Secure paths are resolved relative to the YAML config file, not the current work
 
 The endpoint `secure.id` is the peer id and conventional file prefix. For example, `id: supervisor-a` means the peer public key is `secure/supervisor-a.pub` and the peer credential is `secure/supervisor-a.cred` unless explicit paths are provided.
 
-`private_key` is the local private signing key. `credential` is the local public credential. For `rsmp-secure-suite0-dev` and `rsmp-secure-suite4-dev`, the credential file is raw X.509 DER presented during EDHOC. For `rsmp-secure-v1`, the credential file is a deterministic-CBOR bundle containing a COSE_Key-style public key, a KID, a CCS-style CBOR EDHOC credential, profile metadata, and an Ed25519 signature over the bundle metadata. Peer entries use `public_key` and `credential` to define the trusted remote identity; in v1, the public key file must match the key embedded in the credential bundle, and EDHOC authenticates the peer by KID before using the configured CBOR credential.
+`private_key` is the local private signing key. `credential` is the local public credential bundle. The credential file is a deterministic-CBOR bundle containing a COSE_Key-style public key, a KID, a CCS-style CBOR EDHOC credential, profile metadata, and an Ed25519 signature over the bundle metadata. Peer entries use `public_key` and `credential` to define the trusted remote identity; the public key file must match the key embedded in the credential bundle, and EDHOC authenticates the peer by KID before using the configured CBOR credential.
 
 Example site connecting securely to a supervisor:
 
@@ -279,14 +277,14 @@ secure:
 
 Set `rekey_after_messages` or `rekey_after_seconds` to `null` to disable that trigger. `min_rekey_interval` prevents repeated rekeys if several triggers become due at the same time.
 
-Generate development credentials with:
+Generate local Secure RSMP v1 credentials with:
 
 ```console
 $ rsmp secure generate
 $ rsmp secure generate --id RN+SI0002
 ```
 
-The generated files are for local prototype testing only. See `config/secure/README.md` for details.
+The generated files use the same v1 credential format as secure mode. See `config/secure/README.md` for details.
 
 ## Supervisor settings
 

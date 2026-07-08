@@ -48,10 +48,10 @@ module RSMP
     end
   end
 
-  # CLI subcommands for Secure RSMP development credentials.
+  # CLI subcommands for Secure RSMP credentials.
   class SecureCLI < Thor
     namespace :secure
-    desc 'generate', 'Generate Secure RSMP development credentials'
+    desc 'generate', 'Generate Secure RSMP credentials'
     method_option :out, type: :string, aliases: '-o',
                         banner: 'Output directory',
                         default: 'config/secure'
@@ -60,21 +60,16 @@ module RSMP
                           default: false
     method_option :id, type: :string,
                        banner: 'Generate one fresh identity using this file prefix'
-    method_option :profile, type: :string,
-                            banner: 'Secure profile for generated credentials',
-                            enum: [RSMP::Secure::PROFILE, RSMP::Secure::SUITE4_PROFILE, RSMP::Secure::V1_PROFILE],
-                            default: RSMP::Secure::PROFILE
     def generate
       require 'edhoc'
       require 'openssl'
-      require 'securerandom'
 
       output = options[:out]
       files = secure_generated_files
       check_secure_development_files(output, files)
       write_secure_development_files(output, files)
 
-      puts "Generated Secure RSMP development credentials in #{output}"
+      puts "Generated Secure RSMP credentials in #{output}"
       puts 'These files are for local prototype testing only.'
     rescue LoadError => e
       puts "Error: Cannot load edhoc gem: #{e.message}"
@@ -85,9 +80,9 @@ module RSMP
 
     def secure_generated_files
       if options[:id]
-        secure_identity_files(options[:id], profile: options[:profile])
+        secure_identity_files(options[:id])
       else
-        secure_development_files(Edhoc::Native.suite0_test_vector, profile: options[:profile])
+        secure_development_files(Edhoc::Native.suite0_test_vector)
       end
     end
 
@@ -109,48 +104,39 @@ module RSMP
       end
     end
 
-    def secure_development_files(vector, profile:)
+    def secure_development_files(vector)
       {
         'RN+SI0001.private.key' => vector.fetch(:initiator_private_key),
         'RN+SI0001.pub' => vector.fetch(:initiator_public_key),
         'RN+SI0001.cred' => secure_credential('RN+SI0001',
-                                              profile: profile,
                                               private_key: vector.fetch(:initiator_private_key),
-                                              public_key: vector.fetch(:initiator_public_key),
-                                              edhoc_credential: vector.fetch(:initiator_credential)),
+                                              public_key: vector.fetch(:initiator_public_key)),
         'supervisor.private.key' => vector.fetch(:responder_private_key),
         'supervisor.pub' => vector.fetch(:responder_public_key),
         'supervisor.cred' => secure_credential('supervisor',
-                                               profile: profile,
                                                private_key: vector.fetch(:responder_private_key),
-                                               public_key: vector.fetch(:responder_public_key),
-                                               edhoc_credential: vector.fetch(:responder_credential))
+                                               public_key: vector.fetch(:responder_public_key))
       }
     end
 
-    def secure_identity_files(id, profile:)
+    def secure_identity_files(id)
       validate_secure_identity_id(id)
       key = OpenSSL::PKey.generate_key('ED25519')
       private_key = key.raw_private_key + key.raw_public_key
       public_key = key.raw_public_key
-      edhoc_credential = build_secure_identity_certificate(id, key).to_der
 
       {
         "#{id}.private.key" => private_key,
         "#{id}.pub" => public_key,
         "#{id}.cred" => secure_credential(id,
-                                          profile: profile,
                                           private_key: private_key,
-                                          public_key: public_key,
-                                          edhoc_credential: edhoc_credential)
+                                          public_key: public_key)
       }
     end
 
-    def secure_credential(id, profile:, private_key:, public_key:, edhoc_credential:)
-      return edhoc_credential unless RSMP::Secure.credential_bundle_profile?(profile)
-
+    def secure_credential(id, private_key:, public_key:)
       RSMP::Secure::CredentialBundle.create(id: id,
-                                            profile: profile,
+                                            profile: RSMP::Secure::PROFILE,
                                             private_key: private_key,
                                             public_key: public_key)
     end
@@ -160,31 +146,6 @@ module RSMP
 
       puts 'Error: --id must be a non-empty filename prefix without path separators'
       exit 1
-    end
-
-    def build_secure_identity_certificate(id, key)
-      certificate = OpenSSL::X509::Certificate.new
-      certificate.version = 2
-      certificate.serial = secure_identity_serial
-      certificate.subject = secure_identity_subject(id)
-      certificate.issuer = certificate.subject
-      certificate.public_key = key
-      apply_secure_identity_validity(certificate)
-      certificate.sign(key, nil)
-      certificate
-    end
-
-    def secure_identity_serial
-      SecureRandom.random_number(1..((2**63) - 1))
-    end
-
-    def secure_identity_subject(id)
-      OpenSSL::X509::Name.new([['CN', id, OpenSSL::ASN1::UTF8STRING]])
-    end
-
-    def apply_secure_identity_validity(certificate)
-      certificate.not_before = Time.now - 60
-      certificate.not_after = Time.now + (10 * 365 * 24 * 60 * 60)
     end
   end
 
