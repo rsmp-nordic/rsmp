@@ -113,12 +113,14 @@ module RSMP
       end
 
       def build_edhoc_session
+        credentials = ProfileCredentials.new(@settings)
+        private_key = credentials.private_key
         Secure.edhoc_session_class(@settings['profile']).new(
           role: role,
-          private_key: read_file('private_key'),
-          credential: read_file('credential'),
-          peers: peer_entries,
-          connection_id: SecureRandom.random_bytes(EDHOC_CONNECTION_ID_BYTES)
+          private_key: private_key,
+          peers: credentials.peer_entries,
+          connection_id: SecureRandom.random_bytes(EDHOC_CONNECTION_ID_BYTES),
+          **credentials.local_session_options(private_key)
         )
       end
 
@@ -176,42 +178,6 @@ module RSMP
         raise FrameError, 'EDHOC message is missing' unless frame['edhoc'].is_a?(String)
       end
 
-      def read_file(key)
-        path = @settings[key]
-        raise ConfigurationError, "secure.#{key} is required" unless path
-
-        read_path(path, key)
-      end
-
-      def read_path(path, key)
-        path = expand_config_path(path)
-        raise ConfigurationError, "secure.#{key} file not found: #{path}" unless File.file?(path)
-
-        File.binread(path)
-      end
-
-      def expand_config_path(path)
-        Secure.expand_config_path(path, @settings)
-      end
-
-      def peer_entries
-        @settings['peers'].map do |peer|
-          {
-            id: peer['id'],
-            public_key: read_path(peer_public_key_path(peer), "peers.#{peer['id']}.public_key"),
-            credential: read_path(peer_credential_path(peer), "peers.#{peer['id']}.credential")
-          }
-        end
-      end
-
-      def peer_public_key_path(peer)
-        peer['public_key']
-      end
-
-      def peer_credential_path(peer)
-        peer['credential']
-      end
-
       def build_channel(session, epoch:, session_id: nil)
         Channel.new(
           session.export_prk(0, Channel::EXPORTER_SECRET_BYTES),
@@ -243,8 +209,8 @@ module RSMP
         raise ConfigurationError, 'secure.peers must not be empty' if @settings['peers'].empty?
 
         @settings['peers'].each do |peer|
-          raise ConfigurationError, 'secure peer public key is required' unless peer_public_key_path(peer)
-          raise ConfigurationError, 'secure peer credential is required' unless peer_credential_path(peer)
+          raise ConfigurationError, 'secure peer public key is required' unless peer['public_key']
+          raise ConfigurationError, 'secure peer credential is required' unless peer['credential']
         end
       end
     end

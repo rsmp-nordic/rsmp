@@ -62,29 +62,67 @@ describe RSMP::Secure do
     certificate
   end
 
-  def secure_settings(dir)
+  def secure_settings(dir, profile: RSMP::Secure::PROFILE)
     vector = Edhoc::Native.suite0_test_vector
-    site = {
+    [site_secure_settings(dir, vector, profile), supervisor_secure_settings(dir, vector, profile)]
+  end
+
+  def site_secure_settings(dir, vector, profile)
+    {
       'private_key' => write_secure_file(dir, 'site-private.key', vector.fetch(:initiator_private_key)),
-      'credential' => write_secure_file(dir, 'site.cred', vector.fetch(:initiator_credential)),
-      'peers' => [{
-        'id' => 'supervisor',
-        'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key)),
-        'credential' => write_secure_file(dir, 'supervisor.cred', vector.fetch(:responder_credential))
-      }],
+      'credential' => write_secure_file(dir, 'site.cred', vector_secure_credential(vector, :initiator, 'RN+SI0001', profile)),
+      'peers' => [supervisor_secure_peer(dir, vector, profile)],
+      'profile' => profile,
       'handshake_timeout' => 1
     }
-    supervisor = {
+  end
+
+  def supervisor_secure_settings(dir, vector, profile)
+    {
       'private_key' => write_secure_file(dir, 'supervisor-private.key', vector.fetch(:responder_private_key)),
-      'credential' => write_secure_file(dir, 'supervisor.cred', vector.fetch(:responder_credential)),
-      'peers' => [{
-        'id' => 'RN+SI0001',
-        'public_key' => write_secure_file(dir, 'site.pub', vector.fetch(:initiator_public_key)),
-        'credential' => write_secure_file(dir, 'site.cred', vector.fetch(:initiator_credential))
-      }],
+      'credential' => write_secure_file(dir, 'supervisor-local.cred',
+                                        vector_secure_credential(vector, :responder, 'supervisor', profile)),
+      'peers' => [site_secure_peer(dir, vector, profile)],
+      'profile' => profile,
       'handshake_timeout' => 1
     }
-    [site, supervisor]
+  end
+
+  def supervisor_secure_peer(dir, vector, profile)
+    {
+      'id' => 'supervisor',
+      'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key)),
+      'credential' => write_secure_file(dir, 'supervisor.cred',
+                                        vector_secure_credential(vector, :responder, 'supervisor', profile))
+    }
+  end
+
+  def site_secure_peer(dir, vector, profile)
+    {
+      'id' => 'RN+SI0001',
+      'public_key' => write_secure_file(dir, 'site.pub', vector.fetch(:initiator_public_key)),
+      'credential' => write_secure_file(dir, 'site-peer.cred',
+                                        vector_secure_credential(vector, :initiator, 'RN+SI0001', profile))
+    }
+  end
+
+  def vector_secure_credential(vector, role, id, profile)
+    secure_credential(
+      id,
+      profile: profile,
+      private_key: vector.fetch(:"#{role}_private_key"),
+      public_key: vector.fetch(:"#{role}_public_key"),
+      edhoc_credential: vector.fetch(:"#{role}_credential")
+    )
+  end
+
+  def secure_credential(id, profile:, private_key:, public_key:, edhoc_credential:)
+    return edhoc_credential unless RSMP::Secure.credential_bundle_profile?(profile)
+
+    RSMP::Secure::CredentialBundle.create(id: id,
+                                          profile: profile,
+                                          private_key: private_key,
+                                          public_key: public_key)
   end
 
   def secure_identity(dir, name, private_key, credential)
@@ -167,12 +205,12 @@ describe RSMP::Secure do
     expect(RSMP::Secure.profile_metadata('rsmp-secure-suite4-dev').fetch(:status)).to be == :implemented
     expect(RSMP::Secure.profile_metadata('rsmp-secure-suite4-dev').fetch(:edhoc_cipher_suite)).to be == 4
     expect(RSMP::Secure.profile_metadata('rsmp-secure-suite4-dev').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
-    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:status)).to be == :planned
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:status)).to be == :implemented
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_cipher_suite)).to be == 4
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
     expect(RSMP::Secure.implemented_profile?('rsmp-secure-suite0-dev')).to be == true
     expect(RSMP::Secure.implemented_profile?('rsmp-secure-suite4-dev')).to be == true
-    expect(RSMP::Secure.implemented_profile?('rsmp-secure-v1')).to be == false
+    expect(RSMP::Secure.implemented_profile?('rsmp-secure-v1')).to be == true
     expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator)).to be == 'Secure handshake complete (initiator, epoch 0)'
     expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator, peer_id: 'RN+SI0002')).to be == 'Secure handshake with peer RN+SI0002 complete (initiator, epoch 0)'
     expect(RSMP::Secure.rekey_started_summary({ 'enabled' => true }, role: :initiator, epoch: 1)).to be == 'Secure rekey started (initiator, epoch 1)'
@@ -182,11 +220,11 @@ describe RSMP::Secure do
     expect(RSMP::Secure.settings({})['min_rekey_interval']).to be == 60
   end
 
-  it 'rejects planned secure profiles with a clear error' do
+  it 'rejects unsupported secure profiles with a clear error' do
     expect do
-      RSMP::Secure.validate_profile_name!('rsmp-secure-v1')
+      RSMP::Secure.validate_profile_name!('rsmp-secure-unknown')
     end.to raise_exception(RSMP::ConfigurationError,
-                           message: be == 'Secure profile "rsmp-secure-v1" is planned but not implemented')
+                           message: be == 'Unsupported secure profile "rsmp-secure-unknown"')
   end
 
   it 'merges site endpoint secure settings with the local site identity' do
@@ -503,6 +541,47 @@ describe RSMP::Secure do
     end
   end
 
+  with RSMP::Secure::CredentialBundle do
+    it 'encodes and verifies a deterministic v1 credential bundle' do
+      vector = Edhoc::Native.suite0_test_vector
+      encoded = RSMP::Secure::CredentialBundle.create(
+        id: 'RN+SI0001',
+        profile: RSMP::Secure::V1_PROFILE,
+        private_key: vector.fetch(:initiator_private_key),
+        public_key: vector.fetch(:initiator_public_key)
+      )
+      bundle = RSMP::Secure::CredentialBundle.decode(encoded, expected_profile: RSMP::Secure::V1_PROFILE)
+
+      expect(RSMP::Secure::CredentialBundle.id(bundle)).to be == 'RN+SI0001'
+      expect(RSMP::Secure::CredentialBundle.public_key(bundle)).to be == vector.fetch(:initiator_public_key)
+      expect(RSMP::Secure::CredentialBundle.kid(bundle).bytesize).to be == 16
+      expect(RSMP::Secure::CredentialBundle.edhoc_credential(bundle)).to be == RSMP::Secure::CredentialBundle.ccs_credential(
+        'RN+SI0001',
+        vector.fetch(:initiator_public_key),
+        RSMP::Secure::CredentialBundle.kid(bundle)
+      )
+      expect(RSMP::Secure::CredentialBundle.encode(bundle)).to be == encoded
+    end
+
+    it 'rejects tampered v1 credential bundles' do
+      vector = Edhoc::Native.suite0_test_vector
+      encoded = RSMP::Secure::CredentialBundle.create(
+        id: 'RN+SI0001',
+        profile: RSMP::Secure::V1_PROFILE,
+        private_key: vector.fetch(:initiator_private_key),
+        public_key: vector.fetch(:initiator_public_key)
+      )
+      bundle = RSMP::Secure::CredentialBundle.decode(encoded, expected_profile: RSMP::Secure::V1_PROFILE)
+      tampered = bundle.merge('id' => 'RN+SI9999')
+
+      expect do
+        RSMP::Secure::CredentialBundle.decode(RSMP::Secure::CredentialBundle.encode(tampered),
+                                              expected_profile: RSMP::Secure::V1_PROFILE)
+      end.to raise_exception(RSMP::Secure::ConfigurationError,
+                             message: be == 'credential bundle "RN+SI9999" signature is invalid')
+    end
+  end
+
   with RSMP::Secure::FrameIO do
     it 'writes and reads a length-prefixed CBOR frame' do
       write_stream = SecureMemoryStream.new
@@ -752,6 +831,38 @@ describe RSMP::Secure do
         expect(JSON.parse(supervisor.read_line)).to be == watchdog
         expect(site.channel.profile).to be == RSMP::Secure::SUITE4_PROFILE
         expect(supervisor.channel.profile).to be == RSMP::Secure::SUITE4_PROFILE
+      ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'runs the v1 profile with CBOR credential bundles and exchanges encrypted RSMP messages' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir, profile: RSMP::Secure::V1_PROFILE)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator, settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder, settings: supervisor_settings)
+        end
+        site = initiator_task.wait
+        supervisor = responder_task.wait
+
+        watchdog = {
+          'mType' => 'rSMsg',
+          'type' => 'Watchdog',
+          'wTs' => '2026-07-08T08:10:00.000Z',
+          'mId' => '69d0035d-00da-4407-b47a-f9fd540b5e83'
+        }
+        site.write_lines(JSON.generate(watchdog))
+
+        expect(JSON.parse(supervisor.read_line)).to be == watchdog
+        expect(site.channel.profile).to be == RSMP::Secure::V1_PROFILE
+        expect(supervisor.channel.profile).to be == RSMP::Secure::V1_PROFILE
       ensure
         site&.close
         supervisor&.close
