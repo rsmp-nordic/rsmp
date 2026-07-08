@@ -398,8 +398,10 @@ describe RSMP::Secure do
       vector = Edhoc::Native.suite0_test_vector
       FileUtils.mkdir_p(secure_dir)
       File.binwrite(File.join(secure_dir, 'supervisor.private.key'), vector.fetch(:responder_private_key))
-      File.binwrite(File.join(secure_dir, 'supervisor.cred'), vector.fetch(:responder_credential))
-      File.binwrite(File.join(secure_dir, 'RN+SI0001.cred'), vector.fetch(:initiator_credential))
+      File.binwrite(File.join(secure_dir, 'supervisor.cred'),
+                    vector_secure_credential(vector, :responder, 'supervisor'))
+      File.binwrite(File.join(secure_dir, 'RN+SI0001.cred'),
+                    vector_secure_credential(vector, :initiator, 'RN+SI0001'))
 
       expect do
         RSMP::Supervisor.new(
@@ -477,9 +479,11 @@ describe RSMP::Secure do
       FileUtils.mkdir_p(secure_dir)
 
       File.binwrite(File.join(secure_dir, 'RN+SI0001.private.key'), vector.fetch(:initiator_private_key))
-      File.binwrite(File.join(secure_dir, 'RN+SI0001.cred'), vector.fetch(:initiator_credential))
+      File.binwrite(File.join(secure_dir, 'RN+SI0001.cred'),
+                    vector_secure_credential(vector, :initiator, 'RN+SI0001'))
       File.binwrite(File.join(secure_dir, 'supervisor.pub'), vector.fetch(:responder_public_key))
-      File.binwrite(File.join(secure_dir, 'supervisor.cred'), vector.fetch(:responder_credential))
+      File.binwrite(File.join(secure_dir, 'supervisor.cred'),
+                    vector_secure_credential(vector, :responder, 'supervisor'))
 
       config_path = File.join(config_dir, 'site.yaml')
       File.write(config_path, <<~YAML)
@@ -628,13 +632,72 @@ describe RSMP::Secure do
 
     it 'binds the secure profile into traffic keys and AAD' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
-      initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
-      responder = RSMP::Secure::Channel.new(secret, role: :responder, profile: 'rsmp-secure-test')
+      context = RSMP::Secure::Channel.rsmp_context(
+        profile: RSMP::Secure::PROFILE,
+        initiator_id: 'RN+SI0001',
+        responder_id: 'supervisor'
+      )
+      other_context = RSMP::Secure::Channel.rsmp_context(
+        profile: 'rsmp-secure-test',
+        initiator_id: 'RN+SI0001',
+        responder_id: 'supervisor'
+      )
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: context)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: other_context)
       frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
 
       expect do
         responder.decrypt_frame(frame)
       end.to raise_exception(RSMP::Secure::AuthenticationError)
+    end
+
+    it 'builds the implemented RSMP exporter context' do
+      context = RSMP::Secure::Channel.rsmp_context(
+        profile: RSMP::Secure::PROFILE,
+        initiator_id: 'RN+SI0001',
+        responder_id: 'supervisor'
+      )
+
+      expect(RSMP::Secure::Cbor.decode(context)).to be == {
+        'connection' => {
+          'socket' => 'single-rsmp-connection'
+        },
+        'context' => 'rsmp-secure-v1',
+        'initiator' => 'RN+SI0001',
+        'profile' => RSMP::Secure::PROFILE,
+        'responder' => 'supervisor'
+      }
+    end
+
+    it 'encodes exporter context identities as text even when EDHOC returns binary strings' do
+      text_context = RSMP::Secure::Channel.rsmp_context(
+        profile: RSMP::Secure::PROFILE,
+        initiator_id: 'RN+SI0001',
+        responder_id: 'supervisor'
+      )
+      binary_context = RSMP::Secure::Channel.rsmp_context(
+        profile: RSMP::Secure::PROFILE.b,
+        initiator_id: 'RN+SI0001'.b,
+        responder_id: 'supervisor'.b
+      )
+
+      expect(binary_context).to be == text_context
+    end
+
+    it 'binds the implemented secure data AAD shape' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
+      aad = initiator.send(:aad, 'data', 'i2r', 1)
+
+      expect(RSMP::Secure::Cbor.decode(aad)).to be == {
+        'connection' => 'single-rsmp-connection',
+        'context' => 'rsmp-secure-data-v1',
+        'epoch' => 0,
+        'idx' => 1,
+        'sender' => 'i2r',
+        'session' => initiator.session_id,
+        'type' => 'data'
+      }
     end
 
     it 'rejects replayed data indices' do
@@ -667,10 +730,11 @@ describe RSMP::Secure do
       initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
       responder = RSMP::Secure::Channel.new(secret, role: :responder)
 
-      frame = initiator.encrypt_control('kind' => 'rekey_request', 'next_epoch' => 1)
+      frame = initiator.encrypt_control('kind' => 'rekey_msg1', 'next_epoch' => 1, 'edhoc' => 'msg1'.b)
 
       expect(responder.decrypt_control_frame(frame)).to be == {
-        'kind' => 'rekey_request',
+        'edhoc' => 'msg1'.b,
+        'kind' => 'rekey_msg1',
         'next_epoch' => 1
       }
 
@@ -687,7 +751,8 @@ describe RSMP::Secure do
         vector = Edhoc::Native.suite0_test_vector
         settings = {
           'private_key' => write_secure_file(dir, 'site-private.key', vector.fetch(:initiator_private_key)),
-          'credential' => write_secure_file(dir, 'site.cred', vector.fetch(:initiator_credential)),
+          'credential' => write_secure_file(dir, 'site.cred',
+                                            vector_secure_credential(vector, :initiator, 'RN+SI0001')),
           'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key))
         }
 

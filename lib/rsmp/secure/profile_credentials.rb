@@ -10,6 +10,12 @@ module RSMP
         read_file('private_key')
       end
 
+      def local_id
+        credential = read_file('credential')
+        bundle = CredentialBundle.decode(credential, expected_profile: @settings['profile'])
+        CredentialBundle.id(bundle)
+      end
+
       def local_session_options(private_key)
         credential = read_file('credential')
         bundle = CredentialBundle.decode(credential, expected_profile: @settings['profile'])
@@ -25,7 +31,7 @@ module RSMP
         @settings['peers'].map do |peer|
           credential = peer_credential(peer)
           {
-            id: peer['id'],
+            id: credential.fetch(:id),
             public_key: credential.fetch(:public_key),
             credential: credential.fetch(:edhoc_credential),
             kid: credential[:kid]
@@ -47,6 +53,7 @@ module RSMP
         validate_peer_bundle!(public_key, bundle, bundle_public_key)
 
         {
+          id: CredentialBundle.id(bundle),
           public_key: bundle_public_key,
           edhoc_credential: CredentialBundle.edhoc_credential(bundle),
           kid: CredentialBundle.kid(bundle)
