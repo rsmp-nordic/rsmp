@@ -701,6 +701,71 @@ describe RSMP::Secure do
       end
     end
 
+    it 'performs one automatic rekey when message count and key lifetime are both due' do
+      with_mocked_process_clock do
+        Dir.mktmpdir do |dir|
+          site_settings, supervisor_settings = secure_settings(dir)
+          site_settings = site_settings.merge(
+            'rekey_after_messages' => 1,
+            'rekey_after_seconds' => 10,
+            'min_rekey_interval' => 0
+          )
+          site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+          site = nil
+          supervisor = nil
+          site_logs = []
+
+          initiator_task = Async::Task.current.async do
+            site = RSMP::Secure.build_protocol(
+              IO::Stream::Buffered.new(site_io),
+              role: :initiator,
+              settings: site_settings,
+              log: ->(message, options = {}) { site_logs << [message, options] }
+            )
+          end
+          responder_task = Async::Task.current.async do
+            supervisor = RSMP::Secure.build_protocol(
+              IO::Stream::Buffered.new(supervisor_io),
+              role: :responder,
+              settings: supervisor_settings
+            )
+          end
+          initiator_task.wait
+          responder_task.wait
+
+          first = {
+            'mType' => 'rSMsg',
+            'type' => 'Watchdog',
+            'mId' => '1e7445aa-083a-4e7f-981b-3680a3780fe8',
+            'wTs' => '2026-07-07T14:40:00.000Z'
+          }
+          second = first.merge(
+            'mId' => 'a4d4708d-7084-4a50-8887-7e0cf7707d75',
+            'wTs' => '2026-07-07T14:41:00.000Z'
+          )
+
+          site.write_lines(JSON.generate(first))
+          expect(JSON.parse(supervisor.read_line)).to be == first
+
+          Timecop.travel(11) do
+            writer = Async::Task.current.async { site.write_lines(JSON.generate(second)) }
+            expect(JSON.parse(supervisor.read_line)).to be == second
+            writer.wait
+          end
+
+          expect(site.channel.epoch).to be == 1
+          expect(supervisor.channel.epoch).to be == 1
+          expect(site_logs.count { |entry| entry.first.include?('rekey started') }).to be == 1
+          expect(site_logs).to be(:include?, ['Secure RSMP E2E rekey started using profile rsmp-secure-suite0-dev (initiator, epoch 1)', { level: :info }])
+        ensure
+          site&.close
+          supervisor&.close
+          site_io&.close
+          supervisor_io&.close
+        end
+      end
+    end
+
     it 'holds new-epoch data until an in-progress responder rekey installs the new channel' do
       old_secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
       new_secret = 'n' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
