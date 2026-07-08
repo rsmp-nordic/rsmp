@@ -24,10 +24,14 @@ Secure RSMP fills in conventional file paths when they are omitted:
 - A site supervisor endpoint with `secure.id: supervisor` trusts `secure/supervisor.pub` and `secure/supervisor.cred`.
 
 These files are generated as `rsmp-secure-v1` credentials. Without `--id`, the
-command uses stable sample keys from the local `edhoc` gem test vector. With
+command uses stable sample keys from the local `edhoc` gem test vector and is
+intended only for repeatable local examples. With
 `--id`, the command generates a fresh Ed25519 key and signed deterministic-CBOR
-credential bundle using the id as the file prefix. They are suitable for local
-prototype testing only. Do not use these keys or credentials for deployment.
+credential bundle using the id as the file prefix.
+
+Generated credentials use the same v1 format as secure mode. Before deployment,
+protect private keys and run the generated public keys and credential bundles
+through your commissioning, backup, rotation, and trust-approval process.
 
 Generate v1 bundles with:
 

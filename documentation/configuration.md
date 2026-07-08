@@ -171,6 +171,11 @@ The endpoint `secure.id` is the peer id and conventional file prefix. For exampl
 
 `private_key` is the local private signing key. `credential` is the local public credential bundle. The credential file is a deterministic-CBOR bundle containing a COSE_Key-style public key, a KID, a CCS-style CBOR EDHOC credential, profile metadata, and an Ed25519 signature over the bundle metadata. Peer entries use `public_key` and `credential` to define the trusted remote identity; the public key file must match the key embedded in the credential bundle, and EDHOC authenticates the peer by KID before using the configured CBOR credential.
 
+CDDL schemas for Secure RSMP v1 CBOR structures are available in `schemas/secure/`.
+They document the implemented frame, credential, exporter-context, HKDF-info, and AAD shapes,
+and the development test suite validates representative generated CBOR structures against them.
+The Ruby runtime does not load them for validation.
+
 Example site connecting securely to a supervisor:
 
 ```yaml

@@ -66,11 +66,12 @@ module RSMP
 
       output = options[:out]
       files = secure_generated_files
-      check_secure_development_files(output, files)
-      write_secure_development_files(output, files)
+      check_secure_generated_files(output, files)
+      write_secure_generated_files(output, files)
 
       puts "Generated Secure RSMP credentials in #{output}"
-      puts 'These files are for local prototype testing only.'
+      puts 'Review and protect private keys before deployment.'
+      puts 'Use your commissioning, backup, rotation, and trust-approval process for production.'
     rescue LoadError => e
       puts "Error: Cannot load edhoc gem: #{e.message}"
       exit 1
@@ -82,11 +83,11 @@ module RSMP
       if options[:id]
         secure_identity_files(options[:id])
       else
-        secure_development_files(Edhoc::Native.suite0_test_vector)
+        secure_sample_files(Edhoc::Native.suite0_test_vector)
       end
     end
 
-    def check_secure_development_files(output, files)
+    def check_secure_generated_files(output, files)
       existing = files.keys.select { |name| File.exist?(File.join(output, name)) }
       return if existing.empty? || options[:force]
 
@@ -95,7 +96,7 @@ module RSMP
       exit 1
     end
 
-    def write_secure_development_files(output, files)
+    def write_secure_generated_files(output, files)
       FileUtils.mkdir_p(output)
       files.each_pair do |name, bytes|
         path = File.join(output, name)
@@ -104,7 +105,7 @@ module RSMP
       end
     end
 
-    def secure_development_files(vector)
+    def secure_sample_files(vector)
       {
         'RN+SI0001.private.key' => vector.fetch(:initiator_private_key),
         'RN+SI0001.pub' => vector.fetch(:initiator_public_key),

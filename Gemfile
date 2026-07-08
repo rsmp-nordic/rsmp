@@ -7,7 +7,10 @@ gemspec
 gem 'edhoc', path: '../ruby-edhoc'
 
 group :development do
+  gem 'base64', '~> 0.3'
   gem 'bundler', '~> 4.0'
+  gem 'cddl', '~> 0.12'
+  gem 'pstore', '~> 0.2'
   gem 'rake', '~> 13.2'
   gem 'rubocop'
   gem 'rubocop-rake', require: false

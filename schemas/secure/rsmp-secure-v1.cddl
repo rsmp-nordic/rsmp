@@ -1,0 +1,151 @@
+; Secure RSMP v1 CDDL schema.
+;
+; This file describes the implemented CBOR structures for rsmp-secure-v1.
+; It is currently a documentation/conformance artifact, not a runtime validator.
+;
+; CDDL captures the structural shape. Implementations still need semantic checks:
+; deterministic CBOR encoding, unique map keys, signature validation, EDHOC
+; transcript validation, credential authorization, replay rejection, and checks
+; that the EDHOC credential and COSE key carry the same public key and kid.
+
+secure-message = edhoc-frame / data-frame / rekey-frame
+
+profile = "rsmp-secure-v1"
+secure-version = 1
+connection-id = "single-rsmp-connection"
+direction = "i2r" / "r2i"
+
+; ---------------------------------------------------------------------------
+; Secure frames
+; ---------------------------------------------------------------------------
+
+edhoc-frame = {
+  "v": secure-version,
+  "type": "edhoc",
+  "profile": profile,
+  "msg": 1 / 2 / 3 / 4,
+  "edhoc": bstr
+}
+
+data-frame = {
+  "v": secure-version,
+  "type": "data",
+  "epoch": uint,
+  "idx": uint,
+  "ct": bstr
+}
+
+rekey-frame = {
+  "v": secure-version,
+  "type": "rekey",
+  "epoch": uint,
+  "idx": uint,
+  "ct": bstr
+}
+
+; Plaintext inside a decrypted rekey-frame.
+rekey-plaintext = {
+  "kind": "rekey_msg1" / "rekey_msg2" / "rekey_msg3" / "rekey_commit",
+  "next_epoch": uint,
+  ? "edhoc": bstr
+}
+
+; ---------------------------------------------------------------------------
+; Credential bundles
+; ---------------------------------------------------------------------------
+
+credential-bundle = {
+  "v": secure-version,
+  "type": "rsmp-secure-credential",
+  "profile": profile,
+  "id": tstr,
+  "kid": kid,
+  "cose_key": cose-key-ed25519,
+  "edhoc_credential_format": "ccs-cbor",
+  "edhoc_credential": bstr .cbor ccs-credential,
+  "signature_algorithm": "Ed25519",
+  "signature": ed25519-signature
+}
+
+kid = bstr .size 16
+public-key-ed25519 = bstr .size 32
+ed25519-signature = bstr .size 64
+
+; COSE_Key labels:
+;   1  kty
+;   2  kid
+;   3  alg
+;  -1  crv
+;  -2  x
+;
+; Values:
+;   kty OKP     = 1
+;   alg EdDSA   = -8
+;   crv Ed25519 = 6
+cose-key-ed25519 = {
+  1: 1,
+  2: kid,
+  3: -8,
+  -1: 6,
+  -2: public-key-ed25519
+}
+
+; CCS/CWT-style credential carried as CBOR bytes in the credential bundle.
+; CWT claim labels:
+;   2  sub
+;   8  cnf
+;   1  COSE_Key inside cnf
+ccs-credential = {
+  2: tstr,
+  8: {
+    1: cose-key-ed25519
+  }
+}
+
+; ---------------------------------------------------------------------------
+; Exporter context and HKDF info
+; ---------------------------------------------------------------------------
+
+rsmp-context = {
+  "context": "rsmp-secure-v1",
+  "profile": profile,
+  "connection": {
+    "socket": connection-id
+  },
+  ? "initiator": tstr,
+  ? "responder": tstr
+}
+
+hkdf-info = hkdf-context-info / hkdf-label-info
+
+hkdf-context-info = {
+  "context": "rsmp-secure-v1 hkdf",
+  "label": "traffic secret",
+  "rsmp_context": bstr .cbor rsmp-context
+}
+
+hkdf-label-info = {
+  "context": "rsmp-secure-v1 hkdf",
+  "label": hkdf-label
+}
+
+hkdf-label =
+  "session id" /
+  "i2r key" /
+  "r2i key" /
+  "i2r nonce" /
+  "r2i nonce"
+
+; ---------------------------------------------------------------------------
+; AEAD additional authenticated data
+; ---------------------------------------------------------------------------
+
+secure-aad = {
+  "context": "rsmp-secure-data-v1",
+  "connection": connection-id,
+  "epoch": uint,
+  "idx": uint,
+  "sender": direction,
+  "session": bstr .size 16,
+  "type": "data" / "rekey"
+}

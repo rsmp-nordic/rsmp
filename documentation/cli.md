@@ -243,7 +243,10 @@ Options:
 - `--id ID`: generate one fresh identity using this file prefix.
 - `--force`, `-f`: overwrite existing files.
 
-The generated credentials are intended for local development only.
+Without `--id`, the command writes stable sample credentials for repeatable local examples.
+With `--id`, it writes a fresh Ed25519 private key, public key, and signed v1 credential bundle.
+Before deployment, protect private keys and run generated credentials through your commissioning,
+backup, rotation, and trust-approval process.
 
 ### `rsmp version`
 

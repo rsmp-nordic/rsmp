@@ -103,6 +103,8 @@ describe RSMP::CLI do
 
         expect(result.status).to be == 0
         expect(result.output).to be(:include?, "Generated Secure RSMP credentials in #{dir}")
+        expect(result.output).to be(:include?, 'Review and protect private keys before deployment.')
+        expect(result.output).to be(:include?, 'Use your commissioning, backup, rotation, and trust-approval process for production.')
         expect(File.binread(File.join(dir, 'RN+SI0001.private.key'))).to be == vector.fetch(:initiator_private_key)
         expect(File.binread(File.join(dir, 'RN+SI0001.pub'))).to be == vector.fetch(:initiator_public_key)
         expect(RSMP::Secure::CredentialBundle.public_key(site_bundle)).to be == vector.fetch(:initiator_public_key)
