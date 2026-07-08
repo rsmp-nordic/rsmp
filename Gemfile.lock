@@ -1,5 +1,7 @@
-PATH
-  remote: ../ruby-edhoc
+GIT
+  remote: https://github.com/emiltin/ruby-edhoc.git
+  revision: 1d8b70711dade809514a4d2432ce7505b4c336db
+  branch: suite4
   specs:
     edhoc (0.1.0)
 
@@ -23,7 +25,7 @@ GEM
     abnc (0.1.1)
     abnftt (0.2.11)
     ast (2.4.3)
-    async (2.41.0)
+    async (2.42.0)
       console (~> 1.29)
       fiber-annotation
       io-event (~> 1.11)
