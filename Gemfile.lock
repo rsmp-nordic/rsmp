@@ -1,7 +1,9 @@
-PATH
-  remote: ../ruby-edhoc
+GIT
+  remote: https://github.com/emiltin/ruby-edhoc.git
+  revision: 1d8b70711dade809514a4d2432ce7505b4c336db
+  branch: suite4
   specs:
-    edhoc (1.0.1)
+    edhoc (0.1.0)
 
 PATH
   remote: .

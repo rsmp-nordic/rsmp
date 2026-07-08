@@ -6,36 +6,49 @@ require 'cddl'
 require 'openssl'
 require 'rsmp'
 
-describe 'Secure RSMP CDDL schemas' do
-  def secure_cddl_schema
-    @secure_cddl_schema ||= File.read(File.expand_path('../../schemas/secure/rsmp-secure-v1.cddl', __dir__))
-  end
+module SecureCddlSpecSupport
+  SCHEMA = File.read(File.expand_path('../../schemas/secure/rsmp-secure-v1.cddl', __dir__)).freeze
 
-  def secure_cddl_parser(root)
-    @secure_cddl_parsers ||= {}
-    @secure_cddl_parsers[root] ||= with_cddl_warnings_silenced do
-      CDDL::Parser.new("root = #{root}\n#{secure_cddl_schema}")
+  module_function
+
+  def parser
+    @parser ||= with_warnings_silenced do
+      CDDL::Parser.new(SCHEMA).tap(&:rules)
     end
   end
 
-  def assert_cddl(root, cbor_bytes)
-    assert_cddl_value(root, CBOR.decode(cbor_bytes.b))
+  def rule(root)
+    rules[root] ||= parser.send(:rule_lookup, root, false)
   end
 
-  def assert_cddl_value(root, value)
-    parser = secure_cddl_parser(root)
+  def validate(root, value)
+    parser.instance_variable_set(:@recursion, 0)
 
-    return true if with_cddl_warnings_silenced { parser.validate(value, false) }
-
-    raise "CDDL validation failed for #{root}: #{parser.validate_diag.inspect}"
+    with_warnings_silenced { parser.validate1a(value, rule(root)) }
   end
 
-  def with_cddl_warnings_silenced
+  def rules
+    @rules ||= {}
+  end
+
+  def with_warnings_silenced
     previous_verbose = $VERBOSE
     $VERBOSE = nil
     yield
   ensure
     $VERBOSE = previous_verbose
+  end
+end
+
+describe 'Secure RSMP CDDL schemas' do
+  def assert_cddl(root, cbor_bytes)
+    assert_cddl_value(root, CBOR.decode(cbor_bytes.b))
+  end
+
+  def assert_cddl_value(root, value)
+    return true if SecureCddlSpecSupport.validate(root, value)
+
+    raise "CDDL validation failed for #{root}: #{SecureCddlSpecSupport.parser.validate_diag.inspect}"
   end
 
   def secure_credential(id)
