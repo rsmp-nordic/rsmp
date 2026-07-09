@@ -54,6 +54,7 @@ module RSMP
     # close connection, but keep our main task running so we can reconnect
     def close
       log 'Closing connection', level: :warning
+      log_traffic_stats
       close_stream
       close_socket
       stop_reader
@@ -175,6 +176,7 @@ module RSMP
       @socket = options[:socket]
       @stream = options[:stream]
       @protocol = options[:protocol]
+      @traffic_stats_logged = false
       @ip = options[:ip]
       @port = options[:port]
       @connection_info = options[:info]
@@ -199,6 +201,16 @@ module RSMP
 
     def log(str, options = {})
       super(str, options.merge(ip: @ip, port: @port, site_id: @site_id))
+    end
+
+    def log_traffic_stats
+      return if @traffic_stats_logged
+
+      stats = @protocol&.traffic_stats
+      return unless stats && !stats.empty?
+
+      log stats.summary, level: :info
+      @traffic_stats_logged = true
     end
 
     def schemas

@@ -1,9 +1,14 @@
+require_relative '../traffic_stats'
+
 module RSMP
   # Simple protocol wrapper for reading/writing RSMP framed messages.
   class Protocol
+    attr_reader :traffic_stats
+
     def initialize(stream)
       @stream = stream
       @peeked = nil
+      @traffic_stats = TrafficStats.new
     end
 
     def read_line
@@ -22,7 +27,9 @@ module RSMP
     end
 
     def write_lines(data)
-      @stream.write(data + RSMP::Proxy::WRAPPING_DELIMITER)
+      packet = data + RSMP::Proxy::WRAPPING_DELIMITER
+      @stream.write(packet)
+      @traffic_stats.record_write(packet.bytesize)
       @stream.flush unless @stream.closed?
     end
 
@@ -32,6 +39,7 @@ module RSMP
       line = @stream.gets(RSMP::Proxy::WRAPPING_DELIMITER)
       return nil unless line
 
+      @traffic_stats.record_read(line.bytesize)
       line.chomp(RSMP::Proxy::WRAPPING_DELIMITER)
     end
   end

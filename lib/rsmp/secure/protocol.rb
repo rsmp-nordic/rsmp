@@ -47,6 +47,8 @@ module RSMP
         true
       rescue Edhoc::Error => e
         raise HandshakeError, handshake_error_message(e)
+      rescue FrameError => e
+        raise HandshakeError, handshake_frame_error_message(e)
       ensure
         release_edhoc_session(session) if session
       end
@@ -96,6 +98,10 @@ module RSMP
 
       def channel
         @transport&.channel || @channel
+      end
+
+      def traffic_stats
+        @frame_io.traffic_stats
       end
 
       private
@@ -177,6 +183,11 @@ module RSMP
           raise FrameError, "Unexpected secure profile #{frame['profile'].inspect}"
         end
         raise FrameError, 'EDHOC message is missing' unless frame['edhoc'].is_a?(String)
+      end
+
+      def handshake_frame_error_message(error)
+        'Secure RSMP handshake failed: expected a secure CBOR frame, got invalid data ' \
+          "(#{error.message}). Check that both peers use the same secure or legacy mode."
       end
 
       def build_channel(session, epoch:, session_id: nil)
