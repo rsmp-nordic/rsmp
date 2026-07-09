@@ -4,6 +4,29 @@ module RSMP
       # State management helpers
       # Utility methods for waiting on state changes
       module State
+        def ready?
+          @state == :ready
+        end
+
+        def connected?
+          @state == :connected || @state == :ready
+        end
+
+        def disconnected?
+          @state == :disconnected
+        end
+
+        def state=(state)
+          return if state == @state
+
+          @state = state
+          state_changed
+        end
+
+        def state_changed
+          @state_condition.signal @state
+        end
+
         def wait_for_state(state, timeout:)
           states = [state].flatten
           return true if states.include?(@state)

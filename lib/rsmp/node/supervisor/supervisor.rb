@@ -69,7 +69,8 @@ module RSMP
     end
 
     def log_secure_listener
-      summary = RSMP::Secure.log_summary(@supervisor_settings['secure'] || @supervisor_settings.dig('default', 'secure'))
+      summary = RSMP::Secure.log_summary(@supervisor_settings['secure'] || @supervisor_settings.dig('default',
+                                                                                                    'secure'))
       log summary, level: :info, timestamp: @clock.now if summary
     end
 

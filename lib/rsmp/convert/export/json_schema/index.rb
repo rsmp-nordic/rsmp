@@ -6,8 +6,10 @@ module RSMP
         def self.output_sxl_index(out, sxl)
           out['sxl_index.json'] = output_json({
                                                 'meta' => sxl[:meta],
-                                                'statuses' => index_items(sxl[:statuses], legacy_types: legacy_types?(sxl)),
-                                                'commands' => index_items(sxl[:commands], legacy_types: legacy_types?(sxl)),
+                                                'statuses' => index_items(sxl[:statuses],
+                                                                          legacy_types: legacy_types?(sxl)),
+                                                'commands' => index_items(sxl[:commands],
+                                                                          legacy_types: legacy_types?(sxl)),
                                                 'alarms' => index_items(sxl[:alarms], legacy_types: legacy_types?(sxl))
                                               })
         end
@@ -69,7 +71,10 @@ module RSMP
 
         def self.argument_array_descriptor(argument, legacy_types:)
           descriptor = { 'type' => argument['type'] }
-          descriptor['items'] = typed_arguments(argument['items'], legacy_types: legacy_types) if argument['items'].is_a?(Hash)
+          if argument['items'].is_a?(Hash)
+            descriptor['items'] =
+              typed_arguments(argument['items'], legacy_types: legacy_types)
+          end
           descriptor
         end
 

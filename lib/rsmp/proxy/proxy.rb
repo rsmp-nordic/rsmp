@@ -122,34 +122,6 @@ module RSMP
       log summary, level: :info if summary
     end
 
-    # State management methods
-
-    def ready?
-      @state == :ready
-    end
-
-    def connected?
-      @state == :connected || @state == :ready
-    end
-
-    def disconnected?
-      @state == :disconnected
-    end
-
-    # change our state
-    def state=(state)
-      return if state == @state
-
-      @state = state
-      state_changed
-    end
-
-    # the state changed
-    # override to to things like notifications
-    def state_changed
-      @state_condition.signal @state
-    end
-
     def clear
       @awaiting_acknowledgement = {}
       @latest_watchdog_received = nil
