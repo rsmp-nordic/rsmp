@@ -33,6 +33,7 @@ module RSMP
 
           @session_closed = true
           log 'Closing connection', level: :warning
+          log_traffic_stats
           close_stream
           close_socket
           stop_reader

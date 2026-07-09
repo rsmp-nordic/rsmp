@@ -1,9 +1,9 @@
 require 'cbor'
+require 'edhoc'
 
 ENV['CDDL_UNUSED_OK'] ||= '1'
 
 require 'cddl'
-require 'openssl'
 require 'rsmp'
 
 module SecureCddlSpecSupport
@@ -52,12 +52,12 @@ describe 'Secure RSMP CDDL schemas' do
   end
 
   def secure_credential(id)
-    key = OpenSSL::PKey.generate_key('ED25519')
+    vector = Edhoc::Native.suite0_test_vector
 
     RSMP::Secure::CredentialBundle.create(id: id,
                                           profile: RSMP::Secure::PROFILE,
-                                          private_key: key.raw_private_key + key.raw_public_key,
-                                          public_key: key.raw_public_key)
+                                          private_key: vector.fetch(:initiator_private_key),
+                                          public_key: vector.fetch(:initiator_public_key))
   end
 
   it 'validates generated credential bundles and embedded credential structures' do

@@ -579,15 +579,21 @@ describe RSMP::Secure do
   with RSMP::Secure::FrameIO do
     it 'writes and reads a length-prefixed CBOR frame' do
       write_stream = SecureMemoryStream.new
-      RSMP::Secure::FrameIO.new(write_stream, max_frame_size: 100).write(
+      writer = RSMP::Secure::FrameIO.new(write_stream, max_frame_size: 100)
+      writer.write(
         'v' => 1,
         'type' => 'data',
         'ct' => 'abc'.b
       )
 
-      frame = RSMP::Secure::FrameIO.new(SecureMemoryStream.new(write_stream.written), max_frame_size: 100).read
+      reader = RSMP::Secure::FrameIO.new(SecureMemoryStream.new(write_stream.written), max_frame_size: 100)
+      frame = reader.read
 
       expect(frame).to be == { 'ct' => 'abc'.b, 'type' => 'data', 'v' => 1 }
+      expect(writer.traffic_stats.written_bytes).to be == write_stream.written.bytesize
+      expect(writer.traffic_stats.written_frames).to be == 1
+      expect(reader.traffic_stats.read_bytes).to be == write_stream.written.bytesize
+      expect(reader.traffic_stats.read_frames).to be == 1
     end
 
     it 'rejects oversized frames' do
@@ -813,6 +819,26 @@ describe RSMP::Secure do
         responder_task&.stop
         site_io&.close
         supervisor_io&.close
+      end
+    end
+
+    it 'reports legacy JSON sent to a secure responder as a handshake error' do
+      Dir.mktmpdir do |dir|
+        vector = Edhoc::Native.suite0_test_vector
+        settings = supervisor_secure_settings(dir, vector)
+        legacy_packet = %({"mType":"rSMsg","type":"Version"}\f)
+        protocol = RSMP::Secure::Protocol.new(
+          SecureMemoryStream.new(legacy_packet),
+          role: :responder,
+          settings: settings
+        )
+
+        expect do
+          protocol.handshake!
+        end.to raise_exception(
+          RSMP::HandshakeError,
+          message: be(:include?, 'expected a secure CBOR frame')
+        )
       end
     end
 
