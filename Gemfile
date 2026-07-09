@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'edhoc', github: 'emiltin/ruby-edhoc', branch: 'suite4'
+gem 'edhoc', github: 'emiltin/ruby-edhoc'
 
 group :development do
   gem 'base64', '~> 0.3'
