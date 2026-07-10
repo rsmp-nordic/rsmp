@@ -12,7 +12,6 @@ module RSMP
       EDHOC_CREDENTIAL_FORMAT = 'ccs-cbor'.freeze
       COSE_KEY_TYPE_OKP = 1
       COSE_KEY_ID = 2
-      COSE_ALGORITHM_EDDSA = -8
       COSE_CURVE_ED25519 = 6
       CWT_SUBJECT = 2
       CWT_CONFIRMATION = 8
@@ -106,7 +105,6 @@ module RSMP
       def cose_key(public_key, kid: nil)
         key = {
           1 => COSE_KEY_TYPE_OKP,
-          3 => COSE_ALGORITHM_EDDSA,
           -1 => COSE_CURVE_ED25519,
           -2 => public_key
         }
@@ -168,8 +166,8 @@ module RSMP
       end
 
       def validate_cose_key_algorithm!(cose_key)
-        unless cose_key[3] == COSE_ALGORITHM_EDDSA
-          raise ConfigurationError, 'credential bundle COSE_Key alg must be EdDSA'
+        if cose_key.key?(3)
+          raise ConfigurationError, 'credential bundle COSE_Key alg must be omitted; EDHOC suite 4 selects EdDSA'
         end
 
         return if cose_key[-1] == COSE_CURVE_ED25519

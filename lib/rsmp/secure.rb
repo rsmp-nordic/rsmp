@@ -10,6 +10,7 @@ module RSMP
         edhoc_cipher_suite: 4,
         ecdh: 'X25519',
         signature: 'Ed25519/EdDSA',
+        credential_signature_algorithm: -19,
         hash: 'SHA-256',
         edhoc_aead: 'ChaCha20-Poly1305',
         data_aead: 'ChaCha20-Poly1305',

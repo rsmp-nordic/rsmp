@@ -70,3 +70,9 @@ deterministic-CBOR credential map. The protected algorithm header and RFC 9052
 proves possession of the embedded key and protects the bundle payload; peer
 trust still comes from matching that key to the separately configured public
 key and authorizing its credential id locally.
+
+The credential COSE_Sign1 protected header uses the fully specified Ed25519
+algorithm `-19` from RFC 9864. The embedded COSE_Key omits its optional `alg`
+parameter: Secure RSMP uses that key for the `-19` credential envelope, while
+RFC 9528 EDHOC cipher suite 4 still fixes its signature algorithm to the older
+generic EdDSA identifier `-8`.
