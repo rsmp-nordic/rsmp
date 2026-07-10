@@ -207,6 +207,8 @@ describe RSMP::Secure do
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:status)).to be == :implemented
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_cipher_suite)).to be == 4
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:data_protection)).to be == 'COSE_Encrypt0'
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:cose_algorithm)).to be == 24
     expect(RSMP::Secure.implemented_profile?('rsmp-secure-test-dev')).to be == false
     expect(RSMP::Secure.implemented_profile?('rsmp-secure-v1')).to be == true
     expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator)).to be == 'Secure handshake complete (initiator, epoch 0)'
@@ -644,6 +646,43 @@ describe RSMP::Secure do
       }
     end
 
+    it 'encodes data as untagged COSE_Encrypt0 with a protected algorithm and Partial IV' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
+      protected_headers, unprotected_headers, ciphertext = frame.fetch('enc')
+      decoded_frame = RSMP::Secure::Cbor.decode(RSMP::Secure::Cbor.encode(frame))
+
+      expect(frame.keys.sort).to be == %w[enc epoch type v]
+      expect(RSMP::Secure::Cbor.decode(protected_headers)).to be == { 1 => 24 }
+      expect(unprotected_headers).to be == { 6 => "\x01".b }
+      expect(ciphertext.bytesize).to be > RSMP::Secure::CoseEncrypt0::TAG_BYTES
+      expect(decoded_frame.fetch('enc').fetch(1)).to be == { 6 => "\x01".b }
+    end
+
+    it 'matches the Secure RSMP v1 COSE_Encrypt0 frame vector' do
+      exporter_secret = (0...RSMP::Secure::Channel::EXPORTER_SECRET_BYTES).to_a.pack('C*')
+      channel = RSMP::Secure::Channel.new(exporter_secret, role: :initiator,
+                                                           rsmp_context: secure_channel_context)
+      frame = channel.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
+      expected = 'a461760163656e638344a1011818a106410155226e57cab36897a36ff57752ee50718bc552376c5f' \
+                 '647479706564646174616565706f636800'
+
+      expect(RSMP::Secure::Cbor.encode(frame).unpack1('H*')).to be == expected
+    end
+
+    it 'uses minimal COSE Partial IVs and the RFC 9052 Context IV construction' do
+      cose = RSMP::Secure::CoseEncrypt0
+
+      expect(cose.encode_partial_iv(1)).to be == "\x01".b
+      expect(cose.encode_partial_iv(255)).to be == "\xff".b
+      expect(cose.encode_partial_iv(256)).to be == "\x01\x00".b
+      expect(cose.nonce("\xaa".b * 8, "\x01".b)).to be == ("\xaa".b * 8) + "\x00\x00\x00\x01".b
+      expect do
+        cose.encode_partial_iv(1 << 32)
+      end.to raise_exception(RSMP::Secure::FrameError)
+    end
+
     it 'binds the secure profile into traffic keys and AAD' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
       context = RSMP::Secure::Channel.rsmp_context(
@@ -781,11 +820,32 @@ describe RSMP::Secure do
       initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
       responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
       frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
-      frame['ct'] = frame.fetch('ct').dup.tap { |ct| ct.setbyte(ct.bytesize - 1, ct.getbyte(ct.bytesize - 1) ^ 0x01) }
+      frame['enc'] = frame.fetch('enc').dup
+      frame['enc'][2] = frame['enc'].fetch(2).dup.tap do |ciphertext|
+        ciphertext.setbyte(ciphertext.bytesize - 1, ciphertext.getbyte(ciphertext.bytesize - 1) ^ 0x01)
+      end
 
       expect do
         responder.decrypt_frame(frame)
       end.to raise_exception(RSMP::Secure::AuthenticationError)
+    end
+
+    it 'rejects COSE_Encrypt0 with the wrong algorithm or a non-minimal Partial IV' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
+      frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
+      wrong_algorithm = frame.merge('enc' => frame.fetch('enc').dup)
+      wrong_algorithm['enc'][0] = RSMP::Secure::Cbor.encode(1 => 10)
+      non_minimal_index = frame.merge('enc' => frame.fetch('enc').dup)
+      non_minimal_index['enc'][1] = { 6 => "\x00\x01".b }
+
+      expect do
+        responder.decrypt_frame(wrong_algorithm)
+      end.to raise_exception(RSMP::Secure::FrameError)
+      expect do
+        responder.decrypt_frame(non_minimal_index)
+      end.to raise_exception(RSMP::Secure::FrameError)
     end
 
     it 'encrypts rekey control frames with distinct frame type authentication' do
@@ -1269,7 +1329,10 @@ describe RSMP::Secure do
             'wTs' => '2026-07-07T14:25:00.000Z'
           )
         )
-        frame['ct'] = frame.fetch('ct').dup.tap { |ct| ct.setbyte(ct.bytesize - 1, ct.getbyte(ct.bytesize - 1) ^ 0x01) }
+        frame['enc'] = frame.fetch('enc').dup
+        frame['enc'][2] = frame['enc'].fetch(2).dup.tap do |ciphertext|
+          ciphertext.setbyte(ciphertext.bytesize - 1, ciphertext.getbyte(ciphertext.bytesize - 1) ^ 0x01)
+        end
         supervisor.write_frame(frame)
 
         read_error = nil

@@ -150,7 +150,7 @@ Profile status:
 
 | Profile | Status | Handshake | Data AEAD | Notes |
 | --- | --- | --- | --- | --- |
-| `rsmp-secure-v1` | Implemented profile | EDHOC method 0, cipher suite 4 | ChaCha20-Poly1305 | Uses deterministic CBOR frames, signed CBOR credential bundles, and EDHOC KID/CBOR credential transport. |
+| `rsmp-secure-v1` | Implemented profile | EDHOC method 0, cipher suite 4 | COSE_Encrypt0 with ChaCha20-Poly1305 | Uses deterministic CBOR frames, COSE Partial IV sequence numbers, signed CBOR credential bundles, and EDHOC KID/CBOR credential transport. |
 
 The secure layer is independent of the RSMP site/supervisor role:
 
@@ -172,6 +172,8 @@ The endpoint `secure.id` is the peer id and conventional file prefix. For exampl
 `private_key` is the local private signing key. `credential` is the local public credential bundle. The credential file is a deterministic-CBOR bundle containing a COSE_Key-style public key, a KID, a CCS-style CBOR EDHOC credential, profile metadata, and an Ed25519 signature over the bundle metadata. Peer entries use `public_key` and `credential` to define the trusted remote identity; the public key file must match the key embedded in the credential bundle, and EDHOC authenticates the peer by KID before using the configured CBOR credential.
 
 The two authenticated credential-bundle ids are mandatory inputs to the Secure RSMP exporter context, ordered by EDHOC initiator and responder role. The RSMP Core version and any optional login authorization are learned later from encrypted RSMP messages and checked against local configuration; they are not sent as plaintext handshake hints.
+
+Encrypted RSMP data and rekey-control frames use untagged `COSE_Encrypt0` with protected algorithm `24` (ChaCha20/Poly1305). The COSE Partial IV carries the per-epoch message index, while the outer frame carries the epoch and frame type used for key selection and dispatch.
 
 CDDL schemas for Secure RSMP v1 CBOR structures are available in `schemas/secure/`.
 They document the implemented frame, credential, exporter-context, HKDF-info, and AAD shapes,
