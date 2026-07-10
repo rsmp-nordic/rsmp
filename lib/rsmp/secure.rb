@@ -126,7 +126,7 @@ module RSMP
         else
           protocol.handshake!
         end
-        protocol.log_e2ee_up
+        protocol.log_secure_channel_up
         protocol
       end
     end
