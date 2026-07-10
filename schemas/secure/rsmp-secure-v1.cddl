@@ -44,10 +44,17 @@ rekey-frame = {
 }
 
 ; Plaintext inside a decrypted rekey-frame.
-rekey-plaintext = {
-  "kind": "rekey_msg1" / "rekey_msg2" / "rekey_msg3" / "rekey_commit",
+rekey-plaintext = rekey-edhoc-plaintext / rekey-ack-plaintext
+
+rekey-edhoc-plaintext = {
+  "kind": "rekey_msg1" / "rekey_msg2" / "rekey_msg3",
   "next_epoch": uint,
-  ? "edhoc": bstr
+  "edhoc": bstr
+}
+
+rekey-ack-plaintext = {
+  "kind": "rekey_ack",
+  "next_epoch": uint
 }
 
 ; ---------------------------------------------------------------------------

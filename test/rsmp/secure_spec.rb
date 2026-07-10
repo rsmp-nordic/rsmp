@@ -1024,6 +1024,8 @@ describe RSMP::Secure do
         expect(supervisor.channel.epoch).to be == 1
         expect(site.channel.session_id).to be == session_id
         expect(supervisor.channel.session_id).to be == session_id
+        expect(site.channel.instance_variable_get(:@recv_idx)).to be == 1
+        expect(supervisor.channel.instance_variable_get(:@send_idx)).to be == 1
 
         post_rekey = pre_rekey.merge(
           'mId' => 'c6a0ec38-45a7-4339-a51c-4499deff1682',
@@ -1032,6 +1034,65 @@ describe RSMP::Secure do
         site.write_lines(JSON.generate(post_rekey))
         expect(JSON.parse(supervisor.read_line)).to be == post_rekey
       ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'waits for the responder acknowledgement before installing the new channel' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        site = nil
+        supervisor = nil
+        rekey_task = nil
+        acknowledgement_release = Async::Queue.new
+        acknowledgement_released = false
+
+        initiator_task = Async::Task.current.async do
+          site = RSMP::Secure.build_protocol(
+            IO::Stream::Buffered.new(site_io),
+            role: :initiator,
+            settings: site_settings
+          )
+        end
+        responder_task = Async::Task.current.async do
+          supervisor = RSMP::Secure.build_protocol(
+            IO::Stream::Buffered.new(supervisor_io),
+            role: :responder,
+            settings: supervisor_settings
+          )
+        end
+        initiator_task.wait
+        responder_task.wait
+
+        acknowledgement_attempted = Async::Queue.new
+        frame_io = supervisor.instance_variable_get(:@frame_io)
+        original_write = frame_io.method(:write)
+        frame_io.define_singleton_method(:write) do |frame|
+          if frame['type'] == 'rekey' && frame['epoch'] == 1
+            acknowledgement_attempted.enqueue(true)
+            acknowledgement_release.dequeue
+          end
+          original_write.call(frame)
+        end
+
+        rekey_task = Async::Task.current.async { site.rekey! }
+        acknowledgement_attempted.dequeue
+
+        expect(rekey_task).not.to be(:complete?)
+        expect(site.channel.epoch).to be == 0
+        expect(supervisor.channel.epoch).to be == 1
+
+        acknowledgement_release.enqueue(true)
+        acknowledgement_released = true
+        expect(rekey_task.wait).to be == true
+        expect(site.channel.epoch).to be == 1
+      ensure
+        acknowledgement_release&.enqueue(true) unless acknowledgement_released
+        rekey_task&.stop
         site&.close
         supervisor&.close
         site_io&.close
@@ -1547,6 +1608,40 @@ describe RSMP::Secure do
       expect(JSON.parse(transport.read_line)).to be == message
     ensure
       reader&.stop
+      transport&.close
+    end
+
+    it 'rejects a responder acknowledgement encrypted under the old epoch keys' do
+      old_secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      new_secret = 'n' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      old_channel = RSMP::Secure::Channel.new(old_secret, role: :initiator,
+                                                          rsmp_context: secure_channel_context)
+      old_peer_channel = RSMP::Secure::Channel.new(old_secret, role: :responder,
+                                                               rsmp_context: secure_channel_context)
+      pending_channel = RSMP::Secure::Channel.new(new_secret, role: :initiator, epoch: 1,
+                                                              session_id: old_channel.session_id,
+                                                              rsmp_context: secure_channel_context)
+      transport = RSMP::Secure::Transport.new(
+        RSMP::Secure::Transport::Config.new(
+          frame_io: nil,
+          role: :initiator,
+          settings: RSMP::Secure.settings({}),
+          channel: old_channel,
+          session_builder: nil,
+          channel_builder: nil,
+          log: nil,
+          parent: Async::Task.current
+        )
+      )
+      transport.instance_variable_set(:@pending_rekey_channel, pending_channel)
+      forged_ack = old_peer_channel.encrypt_control('kind' => 'rekey_ack', 'next_epoch' => 1)
+
+      transport.send(:process_rekey_frame, forged_ack)
+      error = transport.instance_variable_get(:@error)
+
+      expect(error).to be_a(RSMP::Secure::FrameError)
+      expect(error.message).to be == 'rekey_ack must be authenticated with the pending new epoch keys'
+    ensure
       transport&.close
     end
   end

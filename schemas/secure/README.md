@@ -41,6 +41,13 @@ strings. RSMP Core version and optional login authorization are established
 later inside encrypted RSMP messages; they are not plaintext EDHOC-frame hints
 or pre-handshake exporter-context fields.
 
+Rekey completes with a responder `rekey_ack` encrypted under the new epoch
+keys after the responder authenticates EDHOC message 3. The initiator prepares
+its pending channel before sending message 3, then authenticates the
+acknowledgement before installing that channel locally. Successful rekey thus
+confirms both state installation and possession of the newly derived traffic
+keys without a separate commit message.
+
 CDDL describes structure and CBOR types. Implementations must still perform
 semantic checks such as deterministic-CBOR validation, signature verification,
 credential authorization, EDHOC transcript validation, replay rejection, and
