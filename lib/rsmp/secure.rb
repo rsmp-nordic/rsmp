@@ -17,7 +17,7 @@ module RSMP
         cose_algorithm: 24,
         encoding: 'deterministic CBOR',
         deterministic_cbor: true,
-        credential_format: 'Signed CBOR bundle with EDHOC KID/CCS credential'
+        credential_format: 'COSE_Sign1 CBOR bundle with EDHOC KID/CCS credential'
       }.freeze
     }.freeze
     IMPLEMENTED_PROFILES = PROFILES.select { |_name, metadata| metadata[:status] == :implemented }.keys.freeze
@@ -36,6 +36,7 @@ module RSMP
 
     autoload :Cbor, 'rsmp/secure/cbor'
     autoload :CoseEncrypt0, 'rsmp/secure/cose_encrypt0'
+    autoload :CoseSign1, 'rsmp/secure/cose_sign1'
     autoload :CredentialBundle, 'rsmp/secure/credential_bundle'
     autoload :FrameIO, 'rsmp/secure/frame_io'
     autoload :ProfileCredentials, 'rsmp/secure/profile_credentials'

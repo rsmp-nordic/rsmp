@@ -1,6 +1,7 @@
 require 'cbor'
 require 'digest'
 require 'openssl'
+require_relative 'cose_sign1'
 
 module RSMP
   module Secure
@@ -9,7 +10,6 @@ module RSMP
       TYPE = 'rsmp-secure-credential'.freeze
       VERSION = 1
       EDHOC_CREDENTIAL_FORMAT = 'ccs-cbor'.freeze
-      SIGNATURE_ALGORITHM = 'Ed25519'.freeze
       COSE_KEY_TYPE_OKP = 1
       COSE_KEY_ID = 2
       COSE_ALGORITHM_EDDSA = -8
@@ -22,27 +22,30 @@ module RSMP
       module_function
 
       def create(id:, profile:, private_key:, public_key:)
-        payload = unsigned_bundle(id: id,
-                                  profile: profile,
-                                  public_key: public_key)
-        encode(payload.merge('signature' => sign(private_key, payload)))
+        payload = encode(unsigned_bundle(id: id,
+                                         profile: profile,
+                                         public_key: public_key))
+        encode(CoseSign1.sign(payload, private_key: private_key))
       end
 
-      def decode(bytes, expected_profile:)
-        value = CBOR.decode(bytes)
-        raise ConfigurationError, 'credential bundle is not deterministic CBOR' unless encode(value) == bytes
+      def decode(bytes, expected_profile:, trusted_public_key: nil)
+        cose_sign1 = Cbor.decode(bytes)
+        payload = CoseSign1.payload(cose_sign1)
+        bundle = Cbor.decode(payload)
 
-        validate_bundle!(value, expected_profile)
-        verify_signature!(value)
-        value
-      rescue CBOR::MalformedFormatError, OpenSSL::PKey::PKeyError, ArgumentError => e
+        validate_bundle!(bundle, expected_profile)
+        verify_signature!(cose_sign1, bundle, trusted_public_key || public_key(bundle))
+        validate_edhoc_credential!(bundle)
+        bundle
+      rescue CBOR::MalformedFormatError, OpenSSL::PKey::PKeyError, ArgumentError, FrameError => e
         raise ConfigurationError, "invalid credential bundle: #{e.message}"
       end
 
       def bundle?(bytes)
-        value = CBOR.decode(bytes)
+        cose_sign1 = Cbor.decode(bytes)
+        value = Cbor.decode(CoseSign1.payload(cose_sign1))
         value.is_a?(Hash) && value['type'] == TYPE
-      rescue CBOR::MalformedFormatError, ArgumentError
+      rescue CBOR::MalformedFormatError, ArgumentError, FrameError
         false
       end
 
@@ -67,20 +70,10 @@ module RSMP
         CBOR.encode(normalize(value))
       end
 
-      def sign(private_key, payload)
-        signing_key(private_key).sign(nil, encode(payload))
-      end
-
-      def verify_signature!(bundle)
-        payload = bundle.except('signature')
-        verifier = OpenSSL::PKey.new_raw_public_key(SIGNATURE_ALGORITHM, public_key(bundle))
-        return if verifier.verify(nil, bundle.fetch('signature'), encode(payload))
+      def verify_signature!(cose_sign1, bundle, verification_key)
+        return if CoseSign1.verify(cose_sign1, public_key: verification_key)
 
         raise ConfigurationError, "credential bundle #{id(bundle).inspect} signature is invalid"
-      end
-
-      def signing_key(private_key)
-        OpenSSL::PKey.new_raw_private_key(SIGNATURE_ALGORITHM, private_key.byteslice(0, 32))
       end
 
       def unsigned_bundle(id:, profile:, public_key:)
@@ -93,8 +86,7 @@ module RSMP
           'kid' => kid,
           'cose_key' => cose_key(public_key, kid: kid),
           'edhoc_credential_format' => EDHOC_CREDENTIAL_FORMAT,
-          'edhoc_credential' => ccs_credential(id, public_key, kid),
-          'signature_algorithm' => SIGNATURE_ALGORITHM
+          'edhoc_credential' => ccs_credential(id, public_key, kid)
         }
       end
 
@@ -125,10 +117,7 @@ module RSMP
       def validate_bundle!(bundle, expected_profile)
         validate_bundle_header!(bundle, expected_profile)
         validate_cose_key!(bundle['cose_key'])
-        validate_signature_fields!(bundle)
-        verify_signature!(bundle)
         validate_bundle_body!(bundle)
-        validate_edhoc_credential!(bundle)
       end
 
       def validate_bundle_header!(bundle, expected_profile)
@@ -167,14 +156,6 @@ module RSMP
         return if bundle['kid'].is_a?(String) && bundle['kid'].bytesize.between?(1, 32)
 
         raise ConfigurationError, 'credential bundle kid must be 1..32 bytes'
-      end
-
-      def validate_signature_fields!(bundle)
-        unless bundle['signature_algorithm'] == SIGNATURE_ALGORITHM
-          raise ConfigurationError, "unsupported signature algorithm #{bundle['signature_algorithm'].inspect}"
-        end
-
-        raise ConfigurationError, 'credential bundle signature is required' unless bundle['signature'].is_a?(String)
       end
 
       def validate_cose_key!(cose_key)

@@ -48,7 +48,11 @@ module RSMP
       end
 
       def bundled_peer_credential(public_key, credential)
-        bundle = CredentialBundle.decode(credential, expected_profile: @settings['profile'])
+        bundle = CredentialBundle.decode(
+          credential,
+          expected_profile: @settings['profile'],
+          trusted_public_key: public_key
+        )
         bundle_public_key = CredentialBundle.public_key(bundle)
         validate_peer_bundle!(public_key, bundle, bundle_public_key)
 

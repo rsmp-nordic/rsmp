@@ -70,9 +70,11 @@ describe 'Secure RSMP CDDL schemas' do
 
   it 'validates generated credential bundles and embedded credential structures' do
     credential = secure_credential('RN+SI0001')
-    bundle = CBOR.decode(credential)
+    cose_sign1 = CBOR.decode(credential)
+    bundle = CBOR.decode(cose_sign1.fetch(2))
 
     expect(assert_cddl('credential-bundle', credential)).to be == true
+    expect(assert_cddl('credential-sig-structure', RSMP::Secure::CoseSign1.sig_structure(cose_sign1.fetch(2)))).to be == true
     expect(assert_cddl_value('cose-key-ed25519', bundle.fetch('cose_key'))).to be == true
     expect(assert_cddl('ccs-credential', bundle.fetch('edhoc_credential'))).to be == true
   end
