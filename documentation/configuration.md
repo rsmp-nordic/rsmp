@@ -158,6 +158,8 @@ The secure layer is independent of the RSMP site/supervisor role:
 - RSMP site/supervisor identity is still checked through the normal RSMP `Version` exchange.
 - The first encrypted RSMP message is still the normal `Version` message.
 
+The security boundary is the pair of credential-authenticated endpoints that terminate the EDHOC/COSE session. TCP proxies, VPN gateways, and similar intermediaries can remain outside that boundary when they forward Secure RSMP frames unchanged. A gateway that decrypts, translates, inspects plaintext, or re-encrypts frames terminates the secure channel and is an explicit trusted endpoint; protection across that gateway requires a separate Secure RSMP session on each side.
+
 Use `secure.enabled: true` on an outgoing side to initiate secure connections. Use `secure.required: true` on a listening side to reject non-secure inbound connections.
 
 Mode selection is fail closed and is not negotiated in band. An outgoing endpoint with `secure.enabled: true` attempts Secure RSMP on every connection and never retries a failed secure handshake as legacy RSMP. A listener with `secure.required: true` interprets every accepted connection as Secure RSMP and closes legacy or malformed input. `secure.enabled: true` without `secure.required: true` is rejected on a listening endpoint because it would otherwise leave the listener in legacy mode.

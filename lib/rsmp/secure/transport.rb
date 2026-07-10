@@ -77,7 +77,7 @@ module RSMP
         @channel = nil
       end
 
-      def log_e2ee_up
+      def log_secure_channel_up
         log_secure(Secure.handshake_complete_summary(settings, role: role, epoch: @channel.epoch, peer_id: @peer_id))
       end
 

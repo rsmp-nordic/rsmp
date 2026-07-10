@@ -3,6 +3,11 @@
 This directory contains CDDL schemas for the implemented Secure RSMP v1 CBOR
 structures.
 
+The protected path ends at the credential-authenticated peers that terminate
+the EDHOC/COSE session. Intermediaries preserve application-layer protection
+only when they forward the secure frames unchanged; translation or plaintext
+inspection makes the intermediary an explicit secure-channel endpoint.
+
 The schemas are documentation and conformance artifacts. The development test
 suite uses the `cddl` gem to validate representative generated CBOR structures
 against them. The Ruby runtime does not load or validate against them; it uses

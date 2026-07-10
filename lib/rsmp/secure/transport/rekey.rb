@@ -156,7 +156,7 @@ module RSMP
           @epoch_started_at = monotonic_now
           @last_rekey_at = @epoch_started_at
           @data_sent_in_epoch = 0
-          log_e2ee_up
+          log_secure_channel_up
         end
 
         def maybe_rekey!

@@ -91,9 +91,9 @@ module RSMP
         @frame_io.write(frame)
       end
 
-      def log_e2ee_up
+      def log_secure_channel_up
         ensure_ready!
-        @transport.log_e2ee_up
+        @transport.log_secure_channel_up
       end
 
       def channel
