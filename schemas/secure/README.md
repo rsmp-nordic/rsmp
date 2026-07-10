@@ -22,12 +22,19 @@ The main schema is:
 It describes:
 
 - Secure RSMP `edhoc`, `data`, and `rekey` frames.
+- Untagged RFC 9052 `COSE_Encrypt0` objects used by encrypted frames.
 - Encrypted rekey plaintext.
 - Signed Secure RSMP credential bundles.
 - COSE Key shape used by Ed25519 credentials.
 - CCS-style EDHOC credential bytes.
 - RSMP exporter context and HKDF info maps.
-- AEAD AAD maps for `data` and `rekey` frames.
+- COSE external AAD maps and the resulting RFC 9052 `Enc_structure`.
+
+Encrypted `data` and `rekey` frames carry an untagged `COSE_Encrypt0` object.
+Its protected header contains only algorithm `24` (ChaCha20/Poly1305), and its
+unprotected header contains the minimal one-to-four-byte Partial IV used as the
+per-epoch frame index. The outer frame supplies the epoch and frame family;
+the RSMP session binding is supplied as COSE external AAD.
 
 Secure RSMP derives traffic material with full HKDF-SHA-256 (Extract followed
 by Expand), an empty salt, and the deterministic-CBOR `hkdf-info` map as the

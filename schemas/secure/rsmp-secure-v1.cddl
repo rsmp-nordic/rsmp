@@ -31,16 +31,29 @@ data-frame = {
   "v": secure-version,
   "type": "data",
   "epoch": uint,
-  "idx": uint,
-  "ct": bstr
+  "enc": cose-encrypt0
 }
 
 rekey-frame = {
   "v": secure-version,
   "type": "rekey",
   "epoch": uint,
-  "idx": uint,
-  "ct": bstr
+  "enc": cose-encrypt0
+}
+
+; Untagged RFC 9052 COSE_Encrypt0. The containing "enc" field identifies the
+; COSE message type. The protected algorithm is ChaCha20/Poly1305 (24), and the
+; unprotected Partial IV carries the minimal big-endian 32-bit frame index.
+cose-encrypt0 = [
+  protected: bstr .cbor cose-encrypt0-protected,
+  unprotected: {
+    6: bstr .size (1..4)
+  },
+  ciphertext: bstr
+]
+
+cose-encrypt0-protected = {
+  1: 24
 }
 
 ; Plaintext inside a decrypted rekey-frame.
@@ -148,7 +161,7 @@ hkdf-label =
   "r2i nonce"
 
 ; ---------------------------------------------------------------------------
-; AEAD additional authenticated data
+; COSE external AAD and the RFC 9052 Enc_structure used as AEAD AAD
 ; ---------------------------------------------------------------------------
 
 secure-aad = {
@@ -160,3 +173,9 @@ secure-aad = {
   "session": bstr .size 16,
   "type": "data" / "rekey"
 }
+
+cose-enc-structure = [
+  context: "Encrypt0",
+  protected: bstr .cbor cose-encrypt0-protected,
+  external_aad: bstr .cbor secure-aad
+]

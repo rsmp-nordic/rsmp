@@ -13,6 +13,8 @@ module RSMP
         hash: 'SHA-256',
         edhoc_aead: 'ChaCha20-Poly1305',
         data_aead: 'ChaCha20-Poly1305',
+        data_protection: 'COSE_Encrypt0',
+        cose_algorithm: 24,
         encoding: 'deterministic CBOR',
         deterministic_cbor: true,
         credential_format: 'Signed CBOR bundle with EDHOC KID/CCS credential'
@@ -33,6 +35,7 @@ module RSMP
     extend Configuration
 
     autoload :Cbor, 'rsmp/secure/cbor'
+    autoload :CoseEncrypt0, 'rsmp/secure/cose_encrypt0'
     autoload :CredentialBundle, 'rsmp/secure/credential_bundle'
     autoload :FrameIO, 'rsmp/secure/frame_io'
     autoload :ProfileCredentials, 'rsmp/secure/profile_credentials'

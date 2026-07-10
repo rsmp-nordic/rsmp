@@ -22,14 +22,24 @@ module RSMP
       def normalize(value)
         case value
         when Hash
-          value.keys.sort_by { |key| CBOR.encode(key.to_s) }.to_h do |key|
-            [key.to_s, normalize(value[key])]
+          pairs = value.map do |key, item|
+            [normalize_key(key), normalize(item)]
           end
+          pairs.sort_by { |key, _item| deterministic_key_order(key) }.to_h
         when Array
           value.map { |item| normalize(item) }
         else
           value
         end
+      end
+
+      def normalize_key(key)
+        key.is_a?(Integer) ? key : key.to_s
+      end
+
+      def deterministic_key_order(key)
+        encoded = CBOR.encode(key)
+        [encoded.bytesize, encoded]
       end
     end
   end

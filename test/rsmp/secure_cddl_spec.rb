@@ -96,6 +96,7 @@ describe 'Secure RSMP CDDL schemas' do
     expect(assert_cddl_value('edhoc-frame', edhoc_frame)).to be == true
     expect(assert_cddl_value('secure-message', data_frame)).to be == true
     expect(assert_cddl_value('data-frame', data_frame)).to be == true
+    expect(assert_cddl_value('cose-encrypt0', data_frame.fetch('enc'))).to be == true
     expect(assert_cddl_value('secure-message', rekey_frame)).to be == true
     expect(assert_cddl_value('rekey-frame', rekey_frame)).to be == true
     expect(assert_cddl('rekey-plaintext', RSMP::Secure::Cbor.encode(rekey_plaintext))).to be == true
@@ -124,6 +125,8 @@ describe 'Secure RSMP CDDL schemas' do
                                     ))).to be == true
     expect(assert_cddl('secure-aad', channel.send(:aad, 'data', 'i2r', 1))).to be == true
     expect(assert_cddl('secure-aad', channel.send(:aad, 'rekey', 'i2r', 2))).to be == true
+    enc_structure = RSMP::Secure::CoseEncrypt0.enc_structure(channel.send(:aad, 'data', 'i2r', 1))
+    expect(assert_cddl('cose-enc-structure', enc_structure)).to be == true
   end
 
   it 'rejects exporter contexts without either authenticated identity' do

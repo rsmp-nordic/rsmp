@@ -1,5 +1,6 @@
 require 'openssl'
 require_relative 'cbor'
+require_relative 'cose_encrypt0'
 
 module RSMP
   module Secure
@@ -76,7 +77,7 @@ module RSMP
       NONCE_BYTES = 12
       SESSION_ID_BYTES = 16
       EXPORTER_SECRET_BYTES = 32
-      TAG_BYTES = 16
+      TAG_BYTES = CoseEncrypt0::TAG_BYTES
       CONNECTION_ID = ChannelContext::CONNECTION_ID
       HKDF_HASH = 'SHA256'.freeze
       HKDF_SALT = ''.b.freeze
@@ -97,27 +98,11 @@ module RSMP
       end
 
       def encrypt_payload(plaintext)
-        @send_idx += 1
-        {
-          'v' => VERSION,
-          'type' => 'data',
-          'epoch' => @epoch,
-          'idx' => @send_idx,
-          'ct' => encrypt(plaintext, @send_key, nonce(@send_nonce_prefix, @send_idx),
-                          aad('data', @send_direction, @send_idx))
-        }
+        encrypt_frame('data', plaintext)
       end
 
       def encrypt_control(attributes)
-        @send_idx += 1
-        {
-          'v' => VERSION,
-          'type' => 'rekey',
-          'epoch' => @epoch,
-          'idx' => @send_idx,
-          'ct' => encrypt(Cbor.encode(attributes), @send_key, nonce(@send_nonce_prefix, @send_idx),
-                          aad('rekey', @send_direction, @send_idx))
-        }
+        encrypt_frame('rekey', Cbor.encode(attributes))
       end
 
       def decrypt_frame(frame)
@@ -145,6 +130,22 @@ module RSMP
         @recv_idx = 0
       end
 
+      def encrypt_frame(frame_type, plaintext)
+        @send_idx += 1
+        {
+          'v' => VERSION,
+          'type' => frame_type,
+          'epoch' => @epoch,
+          'enc' => CoseEncrypt0.encrypt(
+            plaintext,
+            key: @send_key,
+            nonce_prefix: @send_nonce_prefix,
+            sequence: @send_idx,
+            external_aad: aad(frame_type, @send_direction, @send_idx)
+          )
+        }
+      end
+
       def derive_traffic_secrets(exporter_secret, session_id)
         @traffic_secret = derive_traffic_secret(exporter_secret)
         @session_id = session_id || derive_labeled_secret(@traffic_secret, 'session id', SESSION_ID_BYTES)
@@ -161,12 +162,17 @@ module RSMP
       end
 
       def decrypt_validated_frame(frame, frame_type)
-        idx = Integer(frame.fetch('idx'))
+        encrypted = frame.fetch('enc')
+        idx = CoseEncrypt0.sequence(encrypted)
         expected = @recv_idx + 1
         raise ReplayError, "Expected secure frame index #{expected}, got #{idx}" unless idx == expected
 
-        plaintext = decrypt(frame.fetch('ct'), @recv_key, nonce(@recv_nonce_prefix, idx),
-                            aad(frame_type, @recv_direction, idx))
+        plaintext = CoseEncrypt0.decrypt(
+          encrypted,
+          key: @recv_key,
+          nonce_prefix: @recv_nonce_prefix,
+          external_aad: aad(frame_type, @recv_direction, idx)
+        )
         @recv_idx = idx
         plaintext
       end
@@ -208,10 +214,6 @@ module RSMP
         )
       end
 
-      def nonce(prefix, idx)
-        prefix + [idx].pack('N')
-      end
-
       def aad(frame_type, direction, idx)
         Cbor.encode(
           'context' => 'rsmp-secure-data-v1',
@@ -224,38 +226,12 @@ module RSMP
         )
       end
 
-      def encrypt(plaintext, key, nonce, aad)
-        cipher = OpenSSL::Cipher.new('chacha20-poly1305')
-        cipher.encrypt
-        cipher.key = key
-        cipher.iv = nonce
-        cipher.auth_data = aad
-        ciphertext = cipher.update(plaintext) + cipher.final
-        ciphertext + cipher.auth_tag
-      end
-
-      def decrypt(ciphertext_with_tag, key, nonce, aad)
-        raise AuthenticationError, 'Ciphertext is too short' if ciphertext_with_tag.bytesize < TAG_BYTES
-
-        ciphertext = ciphertext_with_tag.byteslice(0, ciphertext_with_tag.bytesize - TAG_BYTES)
-        tag = ciphertext_with_tag.byteslice(-TAG_BYTES, TAG_BYTES)
-        cipher = OpenSSL::Cipher.new('chacha20-poly1305')
-        cipher.decrypt
-        cipher.key = key
-        cipher.iv = nonce
-        cipher.auth_tag = tag
-        cipher.auth_data = aad
-        cipher.update(ciphertext) + cipher.final
-      rescue OpenSSL::Cipher::CipherError
-        raise AuthenticationError, 'Secure RSMP authentication failed'
-      end
-
       def validate_data_frame(frame)
         raise FrameError, 'Secure frame must be a map' unless frame.is_a?(Hash)
         raise FrameError, "Unexpected secure frame version #{frame['v'].inspect}" unless frame['v'] == VERSION
         raise FrameError, "Unexpected secure frame type #{frame['type'].inspect}" unless frame['type'] == 'data'
         raise FrameError, "Unexpected secure epoch #{frame['epoch'].inspect}" unless frame['epoch'] == @epoch
-        raise FrameError, 'Secure frame ciphertext is missing' unless frame['ct'].is_a?(String)
+        raise FrameError, 'Secure frame COSE_Encrypt0 object is missing' unless frame['enc'].is_a?(Array)
       end
 
       def validate_control_frame(frame)
@@ -263,7 +239,7 @@ module RSMP
         raise FrameError, "Unexpected secure frame version #{frame['v'].inspect}" unless frame['v'] == VERSION
         raise FrameError, "Unexpected secure frame type #{frame['type'].inspect}" unless frame['type'] == 'rekey'
         raise FrameError, "Unexpected secure epoch #{frame['epoch'].inspect}" unless frame['epoch'] == @epoch
-        raise FrameError, 'Secure frame ciphertext is missing' unless frame['ct'].is_a?(String)
+        raise FrameError, 'Secure frame COSE_Encrypt0 object is missing' unless frame['enc'].is_a?(Array)
       end
     end
   end
