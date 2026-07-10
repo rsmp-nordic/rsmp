@@ -12,6 +12,9 @@ module RSMP
       EXPORTER_SECRET_BYTES = 32
       TAG_BYTES = 16
       CONNECTION_ID = 'single-rsmp-connection'.freeze
+      HKDF_HASH = 'SHA256'.freeze
+      HKDF_SALT = ''.b.freeze
+      HKDF_CONTEXT = 'rsmp-secure-v1 hkdf'.freeze
 
       attr_reader :role, :session_id, :epoch, :profile, :rsmp_context
 
@@ -94,18 +97,18 @@ module RSMP
       end
 
       def derive_traffic_secrets(exporter_secret, session_id)
-        @traffic_secret = expand_context(exporter_secret, 'traffic secret', EXPORTER_SECRET_BYTES)
-        @session_id = session_id || expand(@traffic_secret, 'session id', SESSION_ID_BYTES)
+        @traffic_secret = derive_traffic_secret(exporter_secret)
+        @session_id = session_id || derive_labeled_secret(@traffic_secret, 'session id', SESSION_ID_BYTES)
         derive_directional_keys
       end
 
       def derive_directional_keys
         @send_direction = initiator? ? 'i2r' : 'r2i'
         @recv_direction = initiator? ? 'r2i' : 'i2r'
-        @send_key = expand(@traffic_secret, "#{@send_direction} key", KEY_BYTES)
-        @recv_key = expand(@traffic_secret, "#{@recv_direction} key", KEY_BYTES)
-        @send_nonce_prefix = expand(@traffic_secret, "#{@send_direction} nonce", NONCE_PREFIX_BYTES)
-        @recv_nonce_prefix = expand(@traffic_secret, "#{@recv_direction} nonce", NONCE_PREFIX_BYTES)
+        @send_key = derive_labeled_secret(@traffic_secret, "#{@send_direction} key", KEY_BYTES)
+        @recv_key = derive_labeled_secret(@traffic_secret, "#{@recv_direction} key", KEY_BYTES)
+        @send_nonce_prefix = derive_labeled_secret(@traffic_secret, "#{@send_direction} nonce", NONCE_PREFIX_BYTES)
+        @recv_nonce_prefix = derive_labeled_secret(@traffic_secret, "#{@recv_direction} nonce", NONCE_PREFIX_BYTES)
       end
 
       def decrypt_validated_frame(frame, frame_type)
@@ -129,30 +132,36 @@ module RSMP
         Cbor.encode(context)
       end
 
-      def expand_context(secret, label, length)
-        OpenSSL::KDF.hkdf(
-          secret,
-          salt: '',
-          info: Cbor.encode(
-            'context' => 'rsmp-secure-v1 hkdf',
-            'label' => label,
+      def derive_traffic_secret(exporter_secret)
+        hkdf(
+          exporter_secret,
+          Cbor.encode(
+            'context' => HKDF_CONTEXT,
+            'label' => 'traffic secret',
             'rsmp_context' => @rsmp_context
           ),
-          length: length,
-          hash: 'SHA256'
+          EXPORTER_SECRET_BYTES
         )
       end
 
-      def expand(secret, label, length)
-        OpenSSL::KDF.hkdf(
+      def derive_labeled_secret(secret, label, length)
+        hkdf(
           secret,
-          salt: '',
-          info: Cbor.encode(
-            'context' => 'rsmp-secure-v1 hkdf',
+          Cbor.encode(
+            'context' => HKDF_CONTEXT,
             'label' => label
           ),
+          length
+        )
+      end
+
+      def hkdf(secret, info, length)
+        OpenSSL::KDF.hkdf(
+          secret,
+          salt: HKDF_SALT,
+          info: info,
           length: length,
-          hash: 'SHA256'
+          hash: HKDF_HASH
         )
       end
 

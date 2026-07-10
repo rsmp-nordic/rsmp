@@ -104,6 +104,10 @@ ccs-credential = {
 
 ; ---------------------------------------------------------------------------
 ; Exporter context and HKDF info
+; Each derivation uses full HKDF-SHA-256 (Extract then Expand) with an empty
+; salt. The deterministic-CBOR map is used as the exact HKDF info byte string.
+; The session id is derived during the initial handshake and remains stable
+; across traffic-key renewal on the same Secure RSMP connection.
 ; ---------------------------------------------------------------------------
 
 rsmp-context = {
