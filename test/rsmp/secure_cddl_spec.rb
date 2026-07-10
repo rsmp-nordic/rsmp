@@ -82,6 +82,7 @@ describe 'Secure RSMP CDDL schemas' do
     channel = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
     data_frame = channel.encrypt_payload(RSMP::Secure::Cbor.encode('mType' => 'rSMsg', 'type' => 'Watchdog'))
     rekey_plaintext = { 'kind' => 'rekey_msg1', 'next_epoch' => 1, 'edhoc' => 'msg1'.b }
+    rekey_ack_plaintext = { 'kind' => 'rekey_ack', 'next_epoch' => 1 }
     rekey_frame = channel.encrypt_control(rekey_plaintext)
     edhoc_frame = {
       'v' => RSMP::Secure::VERSION,
@@ -98,6 +99,11 @@ describe 'Secure RSMP CDDL schemas' do
     expect(assert_cddl_value('secure-message', rekey_frame)).to be == true
     expect(assert_cddl_value('rekey-frame', rekey_frame)).to be == true
     expect(assert_cddl('rekey-plaintext', RSMP::Secure::Cbor.encode(rekey_plaintext))).to be == true
+    expect(assert_cddl('rekey-plaintext', RSMP::Secure::Cbor.encode(rekey_ack_plaintext))).to be == true
+    invalid_ack = rekey_ack_plaintext.merge('edhoc' => 'unexpected'.b)
+    expect(SecureCddlSpecSupport.validate('rekey-plaintext', invalid_ack).nil?).to be == true
+    obsolete_commit = { 'kind' => 'rekey_commit', 'next_epoch' => 1 }
+    expect(SecureCddlSpecSupport.validate('rekey-plaintext', obsolete_commit).nil?).to be == true
   end
 
   it 'validates exporter context, HKDF info, and AEAD AAD structures' do

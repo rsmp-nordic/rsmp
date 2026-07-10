@@ -6,7 +6,9 @@ module RSMP
         private
 
         def process_rekey_frame(frame)
-          attributes = @channel.decrypt_control_frame(frame)
+          receive_channel = rekey_receive_channel(frame)
+          attributes = receive_channel.decrypt_control_frame(frame)
+          validate_rekey_ack_channel(attributes, receive_channel)
           if !initiator? && attributes['kind'] == 'rekey_msg1'
             start_responder_rekey(attributes)
           else
@@ -35,10 +37,14 @@ module RSMP
         def rekey_initiator(session, next_epoch)
           write_rekey('rekey_msg1', next_epoch, session.compose_message1)
           session.process_message2(read_rekey_response('rekey_msg2', next_epoch).fetch('edhoc'))
-          write_rekey('rekey_msg3', next_epoch, session.compose_message3)
+          message3 = session.compose_message3
           next_channel = build_channel(session, epoch: next_epoch, session_id: @channel.session_id)
-          write_rekey('rekey_commit', next_epoch)
+          @pending_rekey_channel = next_channel
+          write_rekey('rekey_msg3', next_epoch, message3)
+          read_rekey_response('rekey_ack', next_epoch)
           install_channel(next_channel)
+        ensure
+          @pending_rekey_channel = nil
         end
 
         def rekey_responder(first_message)
@@ -66,8 +72,8 @@ module RSMP
         def finish_rekey_responder(session, next_epoch)
           session.process_message3(read_rekey_response('rekey_msg3', next_epoch).fetch('edhoc'))
           next_channel = build_channel(session, epoch: next_epoch, session_id: @channel.session_id)
-          read_rekey_response('rekey_commit', next_epoch)
           install_channel(next_channel)
+          write_rekey('rekey_ack', next_epoch)
         end
 
         def start_responder_rekey(first_message)
@@ -105,6 +111,20 @@ module RSMP
           }
           attributes['edhoc'] = edhoc if edhoc
           write_frame(@channel.encrypt_control(attributes))
+        end
+
+        def rekey_receive_channel(frame)
+          pending = @pending_rekey_channel
+          return pending if pending && frame['epoch'] == pending.epoch
+
+          @channel
+        end
+
+        def validate_rekey_ack_channel(attributes, receive_channel)
+          return unless attributes['kind'] == 'rekey_ack'
+          return if receive_channel.equal?(@pending_rekey_channel)
+
+          raise FrameError, 'rekey_ack must be authenticated with the pending new epoch keys'
         end
 
         def read_rekey_response(kind, next_epoch)

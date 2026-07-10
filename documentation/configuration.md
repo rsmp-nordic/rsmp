@@ -284,6 +284,8 @@ secure:
 
 Set `rekey_after_messages` or `rekey_after_seconds` to `null` to disable that trigger. `min_rekey_interval` prevents repeated rekeys if several triggers become due at the same time.
 
+The responder confirms each completed rekey with an encrypted acknowledgement under the new epoch keys. The initiator does not install the new channel or resume normal writes until that acknowledgement is authenticated.
+
 Secure RSMP derives the traffic secret, directional keys, nonce prefixes, and
 initial session id using full HKDF-SHA-256 (Extract followed by Expand). Each
 derivation uses an empty salt and a deterministic-CBOR map as the exact HKDF

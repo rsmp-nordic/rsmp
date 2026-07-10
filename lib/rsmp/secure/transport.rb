@@ -109,6 +109,7 @@ module RSMP
         @last_rekey_at = nil
         @data_sent_in_epoch = 0
         @rekeying = false
+        @pending_rekey_channel = nil
         @rekey_done = Async::Notification.new
       end
 
