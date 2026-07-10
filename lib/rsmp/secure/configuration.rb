@@ -29,7 +29,8 @@ module RSMP
         settings_with_config_dir(
           site_settings,
           site_settings['secure'],
-          local_id: local_identity_id(site_settings)
+          local_id: local_identity_id(site_settings),
+          credential_id: local_identity_id(site_settings)
         )
       end
 
@@ -42,7 +43,8 @@ module RSMP
         settings_with_config_dir(
           supervisor_settings,
           secure_settings,
-          local_id: local_identity_id(supervisor_settings, fallback: DEFAULT_SUPERVISOR_ID)
+          local_id: local_identity_id(supervisor_settings, fallback: DEFAULT_SUPERVISOR_ID),
+          credential_id: secure_settings && secure_settings['id']
         )
       end
 
@@ -92,6 +94,21 @@ module RSMP
         end
       end
 
+      def validate_credentials!(secure_settings)
+        secure_settings = settings(secure_settings)
+        return unless mode?(secure_settings)
+
+        validate_local_identity!(secure_settings)
+        peers = secure_settings['peers']
+        raise RSMP::ConfigurationError, 'secure peer credentials must be configured on the RSMP peer entry' unless peers
+        raise RSMP::ConfigurationError, 'secure.peers must not be empty' if peers.empty?
+
+        validate_peer_files!(secure_settings)
+        ProfileCredentials.new(secure_settings).validate!
+      rescue RSMP::Secure::ConfigurationError => e
+        raise RSMP::ConfigurationError, e.message
+      end
+
       def expand_config_path(path, secure_settings)
         return path if Pathname.new(path).absolute?
 
@@ -129,9 +146,12 @@ module RSMP
         settings(local).except(*PEER_SETTING_KEYS)
       end
 
-      def settings_with_config_dir(settings, secure_settings = settings['secure'], local_id: nil)
+      def settings_with_config_dir(settings, secure_settings = settings['secure'], local_id: nil, credential_id: nil)
         secure_settings = stringify_keys(secure_settings || {})
         secure_settings = default_local_identity_paths(secure_settings, local_id)
+        if credential_id && mode?(secure_settings)
+          secure_settings = secure_settings.merge(LOCAL_ID_KEY => credential_id)
+        end
         config_dir = settings[CONFIG_DIR_KEY]
         return secure_settings unless config_dir
 
@@ -156,6 +176,7 @@ module RSMP
           peers << secure_peer(
             secure,
             secure['id'] || "#{supervisor['ip']}:#{supervisor['port']}",
+            credential_id: secure['id'],
             supervisor_id: secure['supervisor_id']
           )
         end
@@ -170,16 +191,18 @@ module RSMP
           secure = default_peer_paths(secure, site_id)
           next unless peer_configured?(secure)
 
-          peers << secure_peer(secure, site_id, site_id: site_id)
+          peers << secure_peer(secure, site_id, credential_id: site_id, site_id: site_id)
         end
       end
 
-      def secure_peer(secure, peer_id, extra)
-        {
+      def secure_peer(secure, peer_id, credential_id: peer_id, **extra)
+        peer = {
           'id' => peer_id,
           'public_key' => secure['public_key'],
           'credential' => secure['credential']
         }.merge(stringify_keys(extra))
+        peer[PEER_ID_KEY] = credential_id if credential_id
+        peer
       end
 
       def peer_configured?(secure)

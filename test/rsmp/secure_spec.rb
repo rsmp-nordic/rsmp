@@ -159,6 +159,36 @@ describe RSMP::Secure do
     }
   end
 
+  def secure_site_node_settings(local, peer)
+    {
+      'site_id' => 'RN+SI0001',
+      'sxls' => {},
+      'supervisors' => [
+        {
+          'ip' => '127.0.0.1',
+          'port' => 12_111,
+          'secure' => public_peer_settings(peer)
+        }
+      ],
+      'secure' => local.except('peers').merge('enabled' => true)
+    }
+  end
+
+  def secure_supervisor_node_settings(local, peer)
+    {
+      'secure' => local.except('peers').merge('required' => true),
+      'default' => {
+        'sxls' => {}
+      },
+      'sites' => {
+        'RN+SI0001' => {
+          'sxls' => {},
+          'secure' => public_peer_settings(peer)
+        }
+      }
+    }
+  end
+
   def multi_site_secure_settings(dir)
     vector = Edhoc::Native.suite0_test_vector
     supervisor = vector_secure_identity(vector, 'supervisor', :responder)
@@ -266,7 +296,8 @@ describe RSMP::Secure do
       'id' => 'supervisor-a',
       'public_key' => 'supervisor.pub',
       'credential' => 'supervisor.cred',
-      'supervisor_id' => nil
+      'supervisor_id' => nil,
+      RSMP::Secure::PEER_ID_KEY => 'supervisor-a'
     }]
   end
 
@@ -291,7 +322,8 @@ describe RSMP::Secure do
       'id' => 'supervisor',
       'public_key' => 'secure/supervisor.pub',
       'credential' => 'secure/supervisor.cred',
-      'supervisor_id' => nil
+      'supervisor_id' => nil,
+      RSMP::Secure::PEER_ID_KEY => 'supervisor'
     }]
   end
 
@@ -317,13 +349,15 @@ describe RSMP::Secure do
         'id' => 'RN+SI0001',
         'public_key' => 'secure/RN+SI0001.pub',
         'credential' => 'secure/RN+SI0001.cred',
-        'site_id' => 'RN+SI0001'
+        'site_id' => 'RN+SI0001',
+        RSMP::Secure::PEER_ID_KEY => 'RN+SI0001'
       },
       {
         'id' => 'RN+SI0002',
         'public_key' => 'secure/RN+SI0002.pub',
         'credential' => 'secure/RN+SI0002.cred',
-        'site_id' => 'RN+SI0002'
+        'site_id' => 'RN+SI0002',
+        RSMP::Secure::PEER_ID_KEY => 'RN+SI0002'
       }
     ]
   end
@@ -348,7 +382,8 @@ describe RSMP::Secure do
       'id' => 'RN+SI0002',
       'public_key' => 'secure/RN+SI0002.pub',
       'credential' => 'secure/RN+SI0002.cred',
-      'site_id' => 'RN+SI0002'
+      'site_id' => 'RN+SI0002',
+      RSMP::Secure::PEER_ID_KEY => 'RN+SI0002'
     }]
   end
 
@@ -371,7 +406,8 @@ describe RSMP::Secure do
       'id' => 'RN+SI0002',
       'public_key' => 'secure/RN+SI0002.pub',
       'credential' => 'secure/RN+SI0002.cred',
-      'supervisor_id' => nil
+      'supervisor_id' => nil,
+      RSMP::Secure::PEER_ID_KEY => 'RN+SI0002'
     }]
   end
 
@@ -451,6 +487,141 @@ describe RSMP::Secure do
       end.to raise_exception(
         RSMP::ConfigurationError,
         message: be == "secure peer RN+SI0001 public_key file not found: #{File.join(dir, 'secure/RN+SI0001.pub')}"
+      )
+    end
+  end
+
+  it 'fails startup before listening when a peer credential is not COSE_Sign1' do
+    Dir.mktmpdir do |dir|
+      _site_secure, supervisor_secure = secure_settings(dir)
+      site_peer = supervisor_secure.fetch('peers').first
+      File.binwrite(site_peer.fetch('credential'), RSMP::Secure::Cbor.encode('v' => 1))
+
+      expect do
+        RSMP::Supervisor.new(
+          supervisor_settings: secure_supervisor_node_settings(supervisor_secure, site_peer),
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == 'invalid credential bundle: Secure credential must be an untagged COSE_Sign1 array'
+      )
+    end
+  end
+
+  it 'fails site startup when the private key has the wrong length' do
+    Dir.mktmpdir do |dir|
+      site_secure, = secure_settings(dir)
+      supervisor_peer = site_secure.fetch('peers').first
+      private_key = File.binread(site_secure.fetch('private_key'))
+      File.binwrite(site_secure.fetch('private_key'), private_key.byteslice(0, 32))
+
+      expect do
+        RSMP::Site.new(
+          site_settings: secure_site_node_settings(site_secure, supervisor_peer),
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == 'secure.private_key must contain a 64-byte Ed25519 private key'
+      )
+    end
+  end
+
+  it 'fails site startup when the private key public half does not match its private seed' do
+    Dir.mktmpdir do |dir|
+      site_secure, = secure_settings(dir)
+      supervisor_peer = site_secure.fetch('peers').first
+      private_key = File.binread(site_secure.fetch('private_key')).dup
+      private_key.setbyte(0, private_key.getbyte(0) ^ 0x01)
+      File.binwrite(site_secure.fetch('private_key'), private_key)
+
+      expect do
+        RSMP::Site.new(
+          site_settings: secure_site_node_settings(site_secure, supervisor_peer),
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == 'secure.private_key public key does not match its private seed'
+      )
+    end
+  end
+
+  it 'fails supervisor startup when a peer public key has the wrong length' do
+    Dir.mktmpdir do |dir|
+      _site_secure, supervisor_secure = secure_settings(dir)
+      site_peer = supervisor_secure.fetch('peers').first
+      public_key = File.binread(site_peer.fetch('public_key'))
+      File.binwrite(site_peer.fetch('public_key'), public_key.byteslice(0, 31))
+
+      expect do
+        RSMP::Supervisor.new(
+          supervisor_settings: secure_supervisor_node_settings(supervisor_secure, site_peer),
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == 'secure peer RN+SI0001 public_key must contain a 32-byte Ed25519 public key'
+      )
+    end
+  end
+
+  it 'fails site startup when the private key does not match the local credential' do
+    Dir.mktmpdir do |dir|
+      site_secure, = secure_settings(dir)
+      supervisor_peer = site_secure.fetch('peers').first
+      attacker = generated_secure_identity('attacker')
+      File.binwrite(site_secure.fetch('private_key'), attacker.fetch(:private_key))
+
+      expect do
+        RSMP::Site.new(
+          site_settings: secure_site_node_settings(site_secure, supervisor_peer),
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == 'credential bundle "RN+SI0001" does not match private key'
+      )
+    end
+  end
+
+  it 'fails site startup when the local credential id does not match the site id' do
+    Dir.mktmpdir do |dir|
+      site_secure, = secure_settings(dir)
+      supervisor_peer = site_secure.fetch('peers').first
+      vector = Edhoc::Native.suite0_test_vector
+      File.binwrite(site_secure.fetch('credential'),
+                    vector_secure_credential(vector, :initiator, 'RN+SI9999'))
+
+      expect do
+        RSMP::Site.new(
+          site_settings: secure_site_node_settings(site_secure, supervisor_peer),
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == 'credential bundle "RN+SI9999" does not match local id "RN+SI0001"'
+      )
+    end
+  end
+
+  it 'fails supervisor startup when a peer credential id does not match its configured site' do
+    Dir.mktmpdir do |dir|
+      _site_secure, supervisor_secure = secure_settings(dir)
+      site_peer = supervisor_secure.fetch('peers').first
+      vector = Edhoc::Native.suite0_test_vector
+      File.binwrite(site_peer.fetch('credential'),
+                    vector_secure_credential(vector, :initiator, 'RN+SI9999'))
+
+      expect do
+        RSMP::Supervisor.new(
+          supervisor_settings: secure_supervisor_node_settings(supervisor_secure, site_peer),
+          log_settings: { 'active' => false }
+        )
+      end.to raise_exception(
+        RSMP::ConfigurationError,
+        message: be == 'credential bundle "RN+SI9999" does not match peer id "RN+SI0001"'
       )
     end
   end
