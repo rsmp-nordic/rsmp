@@ -129,8 +129,8 @@
     "secure": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "required": { "type": "boolean" },
+        "enabled": { "type": "boolean", "description": "Use Secure RSMP for outbound connections; a failed secure handshake never falls back to legacy RSMP." },
+        "required": { "type": "boolean", "description": "Require Secure RSMP on inbound listeners and reject legacy RSMP on that endpoint." },
         "profile": { "enum": ["rsmp-secure-v1"] },
         "id": { "type": "string" },
         "supervisor_id": { "type": "string" },

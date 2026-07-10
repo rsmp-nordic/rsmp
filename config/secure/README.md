@@ -23,6 +23,11 @@ Secure RSMP fills in conventional file paths when they are omitted:
 - A secure-required supervisor trusts each configured site by convention, e.g. `sites.RN+SI0001` uses `secure/RN+SI0001.pub` and `secure/RN+SI0001.cred`.
 - A site supervisor endpoint with `secure.id: supervisor` trusts `secure/supervisor.pub` and `secure/supervisor.cred`.
 
+Use `secure.enabled: true` only for the endpoint that opens the TCP connection,
+and `secure.required: true` for the endpoint that listens. Secure handshake
+failure never causes an automatic retry using legacy RSMP. A listening endpoint
+configured only with `secure.enabled: true` is rejected as ambiguous.
+
 These files are generated as `rsmp-secure-v1` credentials. Without `--id`, the
 command uses stable sample keys from the local `edhoc` gem test vector and is
 intended only for repeatable local examples. With

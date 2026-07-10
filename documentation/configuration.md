@@ -160,6 +160,8 @@ The secure layer is independent of the RSMP site/supervisor role:
 
 Use `secure.enabled: true` on an outgoing side to initiate secure connections. Use `secure.required: true` on a listening side to reject non-secure inbound connections.
 
+Mode selection is fail closed and is not negotiated in band. An outgoing endpoint with `secure.enabled: true` attempts Secure RSMP on every connection and never retries a failed secure handshake as legacy RSMP. A listener with `secure.required: true` interprets every accepted connection as Secure RSMP and closes legacy or malformed input. `secure.enabled: true` without `secure.required: true` is rejected on a listening endpoint because it would otherwise leave the listener in legacy mode.
+
 Secure paths are resolved relative to the YAML config file, not the current working directory. If paths are omitted, Secure RSMP uses conventions:
 
 - A site with `site_id: RN+SI0001` uses `secure/RN+SI0001.private.key` and `secure/RN+SI0001.cred`.

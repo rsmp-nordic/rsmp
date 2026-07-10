@@ -59,6 +59,10 @@ module RSMP
     end
 
     def check_secure_local_identity
+      RSMP::Secure.validate_transport_mode!(
+        @site_settings['secure'],
+        connection_role: @site_settings['connection_role']
+      )
       RSMP::Secure.validate_local_identity!(RSMP::Secure.site_local_settings(@site_settings))
     end
 

@@ -72,6 +72,15 @@ module RSMP
         validate_local_identity_file!(secure_settings, 'credential')
       end
 
+      def validate_transport_mode!(secure_settings, connection_role:)
+        secure_settings = stringify_keys(secure_settings || {})
+        return true unless connection_role.to_s == 'server'
+        return true unless secure_settings['enabled'] == true && secure_settings['required'] != true
+
+        raise RSMP::ConfigurationError,
+              'secure.enabled does not secure an inbound listener; use secure.required: true'
+      end
+
       def validate_peer_files!(secure_settings)
         secure_settings = settings(secure_settings)
         return unless mode?(secure_settings)

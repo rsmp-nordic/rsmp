@@ -227,6 +227,22 @@ describe RSMP::Secure do
                            message: be == 'Unsupported secure profile "rsmp-secure-unknown"')
   end
 
+  it 'rejects enabled-only security on a listening endpoint' do
+    expect do
+      RSMP::Secure.validate_transport_mode!({ 'enabled' => true }, connection_role: 'server')
+    end.to raise_exception(
+      RSMP::ConfigurationError,
+      message: be == 'secure.enabled does not secure an inbound listener; use secure.required: true'
+    )
+
+    expect(
+      RSMP::Secure.validate_transport_mode!({ 'required' => true }, connection_role: 'server')
+    ).to be == true
+    expect(
+      RSMP::Secure.validate_transport_mode!({ 'enabled' => true }, connection_role: 'client')
+    ).to be == true
+  end
+
   it 'merges site endpoint secure settings with the local site identity' do
     local = {
       'enabled' => true,

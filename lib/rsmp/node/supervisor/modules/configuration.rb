@@ -13,6 +13,10 @@ module RSMP
         end
 
         def check_secure_local_identity
+          RSMP::Secure.validate_transport_mode!(
+            @supervisor_settings['secure'],
+            connection_role: @supervisor_settings['connection_role']
+          )
           secure_settings = RSMP::Secure.supervisor_inbound_settings(@supervisor_settings)
           RSMP::Secure.validate_local_identity!(secure_settings)
           RSMP::Secure.validate_peer_files!(secure_settings)
