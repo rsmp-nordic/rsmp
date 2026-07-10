@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/emiltin/ruby-edhoc.git
-  revision: 4ec0f34abf98d897e66be78d2bc39e6fdc4e5ee1
+  revision: 691616f5e825152ba3628b5dbd68eb37cb904827
   specs:
     edhoc (0.1.0)
 
