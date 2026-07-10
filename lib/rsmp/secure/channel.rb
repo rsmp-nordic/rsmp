@@ -3,6 +3,72 @@ require_relative 'cbor'
 
 module RSMP
   module Secure
+    # Builds and validates the deterministic application context bound into keys.
+    module ChannelContext
+      CONNECTION_ID = 'single-rsmp-connection'.freeze
+      REQUIRED_KEYS = %w[connection context initiator profile responder].freeze
+
+      module_function
+
+      def encode(profile:, initiator_id:, responder_id:)
+        Cbor.encode(
+          'context' => 'rsmp-secure-v1',
+          'profile' => context_text(profile, 'profile'),
+          'initiator' => context_text(initiator_id, 'initiator identity'),
+          'responder' => context_text(responder_id, 'responder identity'),
+          'connection' => { 'socket' => CONNECTION_ID }
+        )
+      end
+
+      def normalize(context)
+        raise ConfigurationError, 'Secure RSMP exporter context is required' unless context
+
+        bytes = context.is_a?(Hash) ? Cbor.encode(context) : context
+        unless bytes.is_a?(String)
+          raise ConfigurationError, 'Secure RSMP exporter context must be deterministic CBOR bytes or a map'
+        end
+
+        decoded = Cbor.decode(bytes)
+        validate(decoded)
+        [bytes, decoded.fetch('profile')]
+      rescue FrameError => e
+        raise ConfigurationError, "Invalid Secure RSMP exporter context: #{e.message}"
+      end
+
+      def context_text(value, name)
+        raise ConfigurationError, "Secure RSMP #{name} must be a UTF-8 text string" unless value.is_a?(String)
+
+        text = value.dup.force_encoding(Encoding::UTF_8)
+        unless text.valid_encoding? && !text.empty?
+          raise ConfigurationError, "Secure RSMP #{name} must be a non-empty UTF-8 text string"
+        end
+
+        text
+      end
+
+      def validate(context)
+        valid_shape = context.is_a?(Hash) && context.keys.sort == REQUIRED_KEYS
+        unless valid_shape
+          raise ConfigurationError, 'Secure RSMP exporter context must contain exactly the v1 context fields'
+        end
+        unless context.fetch('context') == 'rsmp-secure-v1'
+          raise ConfigurationError, 'Secure RSMP exporter context has an unexpected context identifier'
+        end
+        unless context.fetch('connection') == { 'socket' => CONNECTION_ID }
+          raise ConfigurationError, 'Secure RSMP exporter context has an unexpected connection binding'
+        end
+
+        validate_text(context.fetch('profile'), 'profile')
+        validate_text(context.fetch('initiator'), 'initiator identity')
+        validate_text(context.fetch('responder'), 'responder identity')
+      end
+
+      def validate_text(value, name)
+        valid = value.is_a?(String) && value.encoding == Encoding::UTF_8 && value.valid_encoding? && !value.empty?
+        raise ConfigurationError, "Secure RSMP #{name} must be a non-empty CBOR text string" unless valid
+      end
+    end
+
     # Encrypts and decrypts Secure RSMP data frames using EDHOC exporter material.
     class Channel
       KEY_BYTES = 32
@@ -11,32 +77,16 @@ module RSMP
       SESSION_ID_BYTES = 16
       EXPORTER_SECRET_BYTES = 32
       TAG_BYTES = 16
-      CONNECTION_ID = 'single-rsmp-connection'.freeze
+      CONNECTION_ID = ChannelContext::CONNECTION_ID
       HKDF_HASH = 'SHA256'.freeze
       HKDF_SALT = ''.b.freeze
       HKDF_CONTEXT = 'rsmp-secure-v1 hkdf'.freeze
 
       attr_reader :role, :session_id, :epoch, :profile, :rsmp_context
 
-      def self.rsmp_context(profile:, initiator_id: nil, responder_id: nil)
-        context = {
-          'context' => 'rsmp-secure-v1',
-          'profile' => context_text(profile),
-          'connection' => {
-            'socket' => CONNECTION_ID
-          }
-        }
-        context['initiator'] = context_text(initiator_id) if initiator_id
-        context['responder'] = context_text(responder_id) if responder_id
-        Cbor.encode(context)
+      def self.rsmp_context(profile:, initiator_id:, responder_id:)
+        ChannelContext.encode(profile: profile, initiator_id: initiator_id, responder_id: responder_id)
       end
-
-      def self.context_text(value)
-        text = value.to_s
-        text = text.dup.force_encoding(Encoding::UTF_8) if text.encoding == Encoding::BINARY
-        text
-      end
-      private_class_method :context_text
 
       def initialize(exporter_secret, role:, epoch: 0, session_id: nil, rsmp_context: nil)
         @role = role.to_sym
@@ -87,8 +137,7 @@ module RSMP
       private
 
       def configure_context(context)
-        @rsmp_context = normalize_context(context || self.class.rsmp_context(profile: PROFILE))
-        @profile = Cbor.decode(@rsmp_context).fetch('profile')
+        @rsmp_context, @profile = ChannelContext.normalize(context)
       end
 
       def reset_indices
@@ -124,12 +173,6 @@ module RSMP
 
       def initiator?
         role == :initiator
-      end
-
-      def normalize_context(context)
-        return context if context.is_a?(String)
-
-        Cbor.encode(context)
       end
 
       def derive_traffic_secret(exporter_secret)
