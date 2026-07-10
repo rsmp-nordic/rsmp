@@ -209,6 +209,7 @@ describe RSMP::Secure do
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:data_protection)).to be == 'COSE_Encrypt0'
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:cose_algorithm)).to be == 24
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:credential_signature_algorithm)).to be == -19
     expect(RSMP::Secure.implemented_profile?('rsmp-secure-test-dev')).to be == false
     expect(RSMP::Secure.implemented_profile?('rsmp-secure-v1')).to be == true
     expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator)).to be == 'Secure handshake complete (initiator, epoch 0)'
@@ -582,9 +583,10 @@ describe RSMP::Secure do
         vector.fetch(:initiator_public_key),
         RSMP::Secure::CredentialBundle.kid(bundle)
       )
-      expect(RSMP::Secure::Cbor.decode(protected_headers)).to be == { 1 => -8 }
+      expect(RSMP::Secure::Cbor.decode(protected_headers)).to be == { 1 => -19 }
       expect(unprotected_headers).to be == {}
       expect(RSMP::Secure::Cbor.decode(payload)).to be == bundle
+      expect(bundle.fetch('cose_key')).not.to be(:key?, 3)
       expect(signature.bytesize).to be == 64
       expect(RSMP::Secure::CredentialBundle.encode(bundle)).to be == payload
     end
@@ -607,6 +609,28 @@ describe RSMP::Secure do
                                               expected_profile: RSMP::Secure::V1_PROFILE)
       end.to raise_exception(RSMP::Secure::ConfigurationError,
                              message: be == 'credential bundle "RN+SI9999" signature is invalid')
+    end
+
+    it 'rejects the deprecated polymorphic EdDSA credential algorithm' do
+      vector = Edhoc::Native.suite0_test_vector
+      encoded = RSMP::Secure::CredentialBundle.create(
+        id: 'RN+SI0001',
+        profile: RSMP::Secure::V1_PROFILE,
+        private_key: vector.fetch(:initiator_private_key),
+        public_key: vector.fetch(:initiator_public_key)
+      )
+      cose_sign1 = RSMP::Secure::Cbor.decode(encoded)
+      cose_sign1[0] = RSMP::Secure::Cbor.encode(1 => -8)
+
+      expect do
+        RSMP::Secure::CredentialBundle.decode(
+          RSMP::Secure::Cbor.encode(cose_sign1),
+          expected_profile: RSMP::Secure::V1_PROFILE
+        )
+      end.to raise_exception(
+        RSMP::Secure::ConfigurationError,
+        message: be(:include?, 'must protect algorithm Ed25519 (-19)')
+      )
     end
 
     it 'verifies peer credentials with the configured trust key' do

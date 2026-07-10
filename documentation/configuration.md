@@ -175,6 +175,8 @@ The endpoint `secure.id` is the peer id and conventional file prefix. For exampl
 
 The COSE_Sign1 signature protects the bundle payload and proves possession of its embedded key, but a self-signed bundle is not a trust anchor. Trust comes from the separately configured peer `public_key`; authorization comes from the local mapping of the authenticated credential id to the allowed RSMP peer or site.
 
+The credential COSE_Sign1 protected header uses RFC 9864's fully specified Ed25519 algorithm `-19`. Its embedded COSE_Key omits the optional `alg` parameter because the key is also used by RFC 9528 EDHOC cipher suite 4, which still selects the generic EdDSA algorithm `-8` as part of the fixed suite.
+
 The two authenticated credential-bundle ids are mandatory inputs to the Secure RSMP exporter context, ordered by EDHOC initiator and responder role. The RSMP Core version and any optional login authorization are learned later from encrypted RSMP messages and checked against local configuration; they are not sent as plaintext handshake hints.
 
 Encrypted RSMP data and rekey-control frames use untagged `COSE_Encrypt0` with protected algorithm `24` (ChaCha20/Poly1305). The COSE Partial IV carries the per-epoch message index, while the outer frame carries the epoch and frame type used for key selection and dispatch.

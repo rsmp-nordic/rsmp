@@ -77,7 +77,7 @@ rekey-ack-plaintext = {
 ; ---------------------------------------------------------------------------
 
 ; Untagged RFC 9052 COSE_Sign1. The credential file context identifies the
-; COSE message type. The protected algorithm is EdDSA (-8), and external AAD
+; COSE message type. The protected algorithm is Ed25519 (-19), and external AAD
 ; is the empty byte string.
 credential-bundle = [
   protected: bstr .cbor credential-sign1-protected,
@@ -87,7 +87,7 @@ credential-bundle = [
 ]
 
 credential-sign1-protected = {
-  1: -8
+  1: -19
 }
 
 credential-payload = {
@@ -115,18 +115,19 @@ ed25519-signature = bstr .size 64
 ; COSE_Key labels:
 ;   1  kty
 ;   2  kid
-;   3  alg
 ;  -1  crv
 ;  -2  x
 ;
 ; Values:
 ;   kty OKP     = 1
-;   alg EdDSA   = -8
 ;   crv Ed25519 = 6
+;
+; The alg key parameter is omitted because the same key is used by the
+; COSE_Sign1 Ed25519 (-19) envelope and RFC 9528 EDHOC suite 4, whose fixed
+; signature algorithm remains EdDSA (-8).
 cose-key-ed25519 = {
   1: 1,
   2: kid,
-  3: -8,
   -1: 6,
   -2: public-key-ed25519
 }

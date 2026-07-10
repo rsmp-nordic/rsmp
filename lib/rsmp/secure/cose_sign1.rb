@@ -6,10 +6,10 @@ module RSMP
     # Minimal RFC 9052 COSE_Sign1 profile for Secure RSMP credentials.
     module CoseSign1
       ALGORITHM_LABEL = 1
-      EDDSA = -8
+      ED25519 = -19
       SIGNATURE_BYTES = 64
       KEY_TYPE = 'Ed25519'.freeze
-      PROTECTED_HEADERS = Cbor.encode(ALGORITHM_LABEL => EDDSA).freeze
+      PROTECTED_HEADERS = Cbor.encode(ALGORITHM_LABEL => ED25519).freeze
       EXTERNAL_AAD = ''.b.freeze
 
       module_function
@@ -61,8 +61,8 @@ module RSMP
         unless protected_headers.is_a?(String) && protected_headers.encoding == Encoding::BINARY
           raise FrameError, 'Credential COSE_Sign1 protected headers must be a byte string'
         end
-        unless Cbor.decode(protected_headers) == { ALGORITHM_LABEL => EDDSA }
-          raise FrameError, 'Credential COSE_Sign1 must protect algorithm EdDSA (-8)'
+        unless Cbor.decode(protected_headers) == { ALGORITHM_LABEL => ED25519 }
+          raise FrameError, 'Credential COSE_Sign1 must protect algorithm Ed25519 (-19)'
         end
       rescue FrameError => e
         raise e if e.message.start_with?('Credential COSE_Sign1')
