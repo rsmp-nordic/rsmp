@@ -29,6 +29,12 @@ It describes:
 - RSMP exporter context and HKDF info maps.
 - AEAD AAD maps for `data` and `rekey` frames.
 
+Secure RSMP derives traffic material with full HKDF-SHA-256 (Extract followed
+by Expand), an empty salt, and the deterministic-CBOR `hkdf-info` map as the
+exact `info` byte string. The session id is derived during the initial
+handshake and remains stable when traffic keys are renewed on the same
+connection.
+
 CDDL describes structure and CBOR types. Implementations must still perform
 semantic checks such as deterministic-CBOR validation, signature verification,
 credential authorization, EDHOC transcript validation, replay rejection, and

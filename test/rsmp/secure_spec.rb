@@ -675,6 +675,26 @@ describe RSMP::Secure do
       }
     end
 
+    it 'matches the Secure RSMP v1 HKDF-SHA-256 key schedule vector' do
+      exporter_secret = (0...RSMP::Secure::Channel::EXPORTER_SECRET_BYTES).to_a.pack('C*')
+      context = RSMP::Secure::Channel.rsmp_context(
+        profile: RSMP::Secure::PROFILE,
+        initiator_id: 'RN+SI0001',
+        responder_id: 'supervisor'
+      )
+      channel = RSMP::Secure::Channel.new(exporter_secret, role: :initiator, rsmp_context: context)
+      traffic_secret = 'fba533cce9ad914357386290334a2f577a9848b91d2545c44c7b46f5fa06ba97'
+      i2r_key = '438e9532ddc32f0ed178b4630dbf2997a3acaa57be909117f845e11b3551ff4d'
+      r2i_key = '641bb113a1fd043d7aa266d25a75f7dede88221cc5e5b90df119a2ed5d0bca37'
+
+      expect(channel.instance_variable_get(:@traffic_secret).unpack1('H*')).to be == traffic_secret
+      expect(channel.session_id.unpack1('H*')).to be == 'a2053e954f583bd8bd340a2e67629ff5'
+      expect(channel.instance_variable_get(:@send_key).unpack1('H*')).to be == i2r_key
+      expect(channel.instance_variable_get(:@recv_key).unpack1('H*')).to be == r2i_key
+      expect(channel.instance_variable_get(:@send_nonce_prefix).unpack1('H*')).to be == '8bb798819d9ec4a8'
+      expect(channel.instance_variable_get(:@recv_nonce_prefix).unpack1('H*')).to be == '9df78ed6937d1eab'
+    end
+
     it 'encodes exporter context identities as text even when EDHOC returns binary strings' do
       text_context = RSMP::Secure::Channel.rsmp_context(
         profile: RSMP::Secure::PROFILE,
@@ -958,9 +978,14 @@ describe RSMP::Secure do
         site.write_lines(JSON.generate(pre_rekey))
         expect(JSON.parse(supervisor.read_line)).to be == pre_rekey
 
+        session_id = site.channel.session_id
+        expect(supervisor.channel.session_id).to be == session_id
+
         expect(site.rekey!).to be == true
         expect(site.channel.epoch).to be == 1
         expect(supervisor.channel.epoch).to be == 1
+        expect(site.channel.session_id).to be == session_id
+        expect(supervisor.channel.session_id).to be == session_id
 
         post_rekey = pre_rekey.merge(
           'mId' => 'c6a0ec38-45a7-4339-a51c-4499deff1682',

@@ -282,6 +282,13 @@ secure:
 
 Set `rekey_after_messages` or `rekey_after_seconds` to `null` to disable that trigger. `min_rekey_interval` prevents repeated rekeys if several triggers become due at the same time.
 
+Secure RSMP derives the traffic secret, directional keys, nonce prefixes, and
+initial session id using full HKDF-SHA-256 (Extract followed by Expand). Each
+derivation uses an empty salt and a deterministic-CBOR map as the exact HKDF
+`info` value. Rekeying derives fresh traffic keys and nonce prefixes from the
+new EDHOC exporter material, while retaining the session id for the lifetime of
+the Secure RSMP connection.
+
 Generate local Secure RSMP v1 credentials with:
 
 ```console
