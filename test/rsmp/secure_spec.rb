@@ -683,6 +683,32 @@ describe RSMP::Secure do
       end.to raise_exception(RSMP::Secure::FrameError)
     end
 
+    it 'fails closed instead of wrapping an exhausted frame index' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
+      maximum = RSMP::Secure::Channel::MAX_SEQUENCE
+      initiator.instance_variable_set(:@send_idx, maximum - 1)
+      responder.instance_variable_set(:@recv_idx, maximum - 1)
+
+      last_frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
+      expect(RSMP::Secure::CoseEncrypt0.sequence(last_frame.fetch('enc'))).to be == maximum
+      expect(RSMP::Secure::Cbor.decode(responder.decrypt_frame(last_frame))).to be == { 'ok' => true }
+
+      expect do
+        initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => false))
+      end.to raise_exception(
+        RSMP::Secure::FrameError,
+        message: be == "Secure frame index exhausted at #{maximum}; rekey or reconnect"
+      )
+      expect do
+        responder.decrypt_frame(last_frame)
+      end.to raise_exception(
+        RSMP::Secure::FrameError,
+        message: be == "Secure frame index exhausted at #{maximum}; rekey or reconnect"
+      )
+    end
+
     it 'binds the secure profile into traffic keys and AAD' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
       context = RSMP::Secure::Channel.rsmp_context(
