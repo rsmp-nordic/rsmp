@@ -54,16 +54,17 @@ module RSMP
 
       check_sxls
       check_core_versions
-      check_secure_local_identity
+      check_secure_credentials
       setup_components @site_settings['components']
     end
 
-    def check_secure_local_identity
+    def check_secure_credentials
+      secure_settings = RSMP::Secure.site_inbound_settings(@site_settings)
       RSMP::Secure.validate_transport_mode!(
-        @site_settings['secure'],
+        secure_settings,
         connection_role: @site_settings['connection_role']
       )
-      RSMP::Secure.validate_local_identity!(RSMP::Secure.site_local_settings(@site_settings))
+      RSMP::Secure.validate_credentials!(secure_settings)
     end
 
     def denormalize_sxls(settings)

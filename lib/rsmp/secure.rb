@@ -29,6 +29,8 @@ module RSMP
     DEFAULT_REKEY_AFTER_SECONDS = 7_200
     DEFAULT_MIN_REKEY_INTERVAL = 60
     CONFIG_DIR_KEY = '__config_dir'.freeze
+    LOCAL_ID_KEY = '__local_id'.freeze
+    PEER_ID_KEY = '__credential_id'.freeze
     PEER_SETTING_KEYS = %w[id public_key supervisor_id].freeze
     DEFAULT_SUPERVISOR_ID = 'supervisor'.freeze
 
