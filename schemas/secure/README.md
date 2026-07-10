@@ -24,7 +24,7 @@ It describes:
 - Secure RSMP `edhoc`, `data`, and `rekey` frames.
 - Untagged RFC 9052 `COSE_Encrypt0` objects used by encrypted frames.
 - Encrypted rekey plaintext.
-- Signed Secure RSMP credential bundles.
+- RFC 9052 COSE_Sign1 Secure RSMP credential bundles.
 - COSE Key shape used by Ed25519 credentials.
 - CCS-style EDHOC credential bytes.
 - RSMP exporter context and HKDF info maps.
@@ -63,3 +63,10 @@ CDDL describes structure and CBOR types. Implementations must still perform
 semantic checks such as deterministic-CBOR validation, signature verification,
 credential authorization, EDHOC transcript validation, replay rejection, and
 matching the EDHOC credential to the COSE key.
+
+Credential files are untagged COSE_Sign1 objects whose payload is the
+deterministic-CBOR credential map. The protected algorithm header and RFC 9052
+`Sig_structure` replace the prototype's custom signature fields. The signature
+proves possession of the embedded key and protects the bundle payload; peer
+trust still comes from matching that key to the separately configured public
+key and authorizing its credential id locally.

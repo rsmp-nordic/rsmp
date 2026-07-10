@@ -76,7 +76,21 @@ rekey-ack-plaintext = {
 ; Credential bundles
 ; ---------------------------------------------------------------------------
 
-credential-bundle = {
+; Untagged RFC 9052 COSE_Sign1. The credential file context identifies the
+; COSE message type. The protected algorithm is EdDSA (-8), and external AAD
+; is the empty byte string.
+credential-bundle = [
+  protected: bstr .cbor credential-sign1-protected,
+  unprotected: {},
+  payload: bstr .cbor credential-payload,
+  signature: ed25519-signature
+]
+
+credential-sign1-protected = {
+  1: -8
+}
+
+credential-payload = {
   "v": secure-version,
   "type": "rsmp-secure-credential",
   "profile": profile,
@@ -84,10 +98,15 @@ credential-bundle = {
   "kid": kid,
   "cose_key": cose-key-ed25519,
   "edhoc_credential_format": "ccs-cbor",
-  "edhoc_credential": bstr .cbor ccs-credential,
-  "signature_algorithm": "Ed25519",
-  "signature": ed25519-signature
+  "edhoc_credential": bstr .cbor ccs-credential
 }
+
+credential-sig-structure = [
+  context: "Signature1",
+  protected: bstr .cbor credential-sign1-protected,
+  external_aad: h'',
+  payload: bstr .cbor credential-payload
+]
 
 kid = bstr .size 16
 public-key-ed25519 = bstr .size 32

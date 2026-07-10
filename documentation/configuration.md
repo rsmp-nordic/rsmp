@@ -171,7 +171,9 @@ Secure paths are resolved relative to the YAML config file, not the current work
 
 The endpoint `secure.id` is the peer id and conventional file prefix. For example, `id: supervisor-a` means the peer public key is `secure/supervisor-a.pub` and the peer credential is `secure/supervisor-a.cred` unless explicit paths are provided.
 
-`private_key` is the local private signing key. `credential` is the local public credential bundle. The credential file is a deterministic-CBOR bundle containing a COSE_Key-style public key, a KID, a CCS-style CBOR EDHOC credential, profile metadata, and an Ed25519 signature over the bundle metadata. Peer entries use `public_key` and `credential` to define the trusted remote identity; the public key file must match the key embedded in the credential bundle, and EDHOC authenticates the peer by KID before using the configured CBOR credential.
+`private_key` is the local private signing key. `credential` is the local public credential bundle. The credential file is an untagged COSE_Sign1 object whose deterministic-CBOR payload contains a COSE_Key-style public key, a KID, a CCS-style CBOR EDHOC credential, and profile metadata. Peer entries use `public_key` and `credential` to define the trusted remote identity; the public key file must match the key embedded in the credential bundle, and EDHOC authenticates the peer by KID before using the configured CBOR credential.
+
+The COSE_Sign1 signature protects the bundle payload and proves possession of its embedded key, but a self-signed bundle is not a trust anchor. Trust comes from the separately configured peer `public_key`; authorization comes from the local mapping of the authenticated credential id to the allowed RSMP peer or site.
 
 The two authenticated credential-bundle ids are mandatory inputs to the Secure RSMP exporter context, ordered by EDHOC initiator and responder role. The RSMP Core version and any optional login authorization are learned later from encrypted RSMP messages and checked against local configuration; they are not sent as plaintext handshake hints.
 

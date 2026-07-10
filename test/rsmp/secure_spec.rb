@@ -571,6 +571,8 @@ describe RSMP::Secure do
         public_key: vector.fetch(:initiator_public_key)
       )
       bundle = RSMP::Secure::CredentialBundle.decode(encoded, expected_profile: RSMP::Secure::V1_PROFILE)
+      cose_sign1 = RSMP::Secure::Cbor.decode(encoded)
+      protected_headers, unprotected_headers, payload, signature = cose_sign1
 
       expect(RSMP::Secure::CredentialBundle.id(bundle)).to be == 'RN+SI0001'
       expect(RSMP::Secure::CredentialBundle.public_key(bundle)).to be == vector.fetch(:initiator_public_key)
@@ -580,7 +582,11 @@ describe RSMP::Secure do
         vector.fetch(:initiator_public_key),
         RSMP::Secure::CredentialBundle.kid(bundle)
       )
-      expect(RSMP::Secure::CredentialBundle.encode(bundle)).to be == encoded
+      expect(RSMP::Secure::Cbor.decode(protected_headers)).to be == { 1 => -8 }
+      expect(unprotected_headers).to be == {}
+      expect(RSMP::Secure::Cbor.decode(payload)).to be == bundle
+      expect(signature.bytesize).to be == 64
+      expect(RSMP::Secure::CredentialBundle.encode(bundle)).to be == payload
     end
 
     it 'rejects tampered v1 credential bundles' do
@@ -591,14 +597,38 @@ describe RSMP::Secure do
         private_key: vector.fetch(:initiator_private_key),
         public_key: vector.fetch(:initiator_public_key)
       )
-      bundle = RSMP::Secure::CredentialBundle.decode(encoded, expected_profile: RSMP::Secure::V1_PROFILE)
-      tampered = bundle.merge('id' => 'RN+SI9999')
+      cose_sign1 = RSMP::Secure::Cbor.decode(encoded)
+      bundle = RSMP::Secure::Cbor.decode(cose_sign1.fetch(2))
+      tampered = cose_sign1.dup
+      tampered[2] = RSMP::Secure::Cbor.encode(bundle.merge('id' => 'RN+SI9999'))
 
       expect do
         RSMP::Secure::CredentialBundle.decode(RSMP::Secure::CredentialBundle.encode(tampered),
                                               expected_profile: RSMP::Secure::V1_PROFILE)
       end.to raise_exception(RSMP::Secure::ConfigurationError,
                              message: be == 'credential bundle "RN+SI9999" signature is invalid')
+    end
+
+    it 'verifies peer credentials with the configured trust key' do
+      vector = Edhoc::Native.suite0_test_vector
+      attacker = generated_secure_identity('attacker')
+      encoded = RSMP::Secure::CredentialBundle.create(
+        id: 'attacker',
+        profile: RSMP::Secure::V1_PROFILE,
+        private_key: attacker.fetch(:private_key),
+        public_key: attacker.fetch(:public_key)
+      )
+
+      expect do
+        RSMP::Secure::CredentialBundle.decode(
+          encoded,
+          expected_profile: RSMP::Secure::V1_PROFILE,
+          trusted_public_key: vector.fetch(:initiator_public_key)
+        )
+      end.to raise_exception(
+        RSMP::Secure::ConfigurationError,
+        message: be == 'credential bundle "attacker" signature is invalid'
+      )
     end
   end
 
