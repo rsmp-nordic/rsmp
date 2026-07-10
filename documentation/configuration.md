@@ -286,6 +286,8 @@ secure:
 
 Set `rekey_after_messages` or `rekey_after_seconds` to `null` to disable that trigger. `min_rekey_interval` prevents repeated rekeys if several triggers become due at the same time.
 
+Each direction has a hard limit of 4,294,967,295 encrypted frames per epoch because the COSE Partial IV is 32 bits. The channel fails closed rather than reusing a nonce when that limit is reached. `rekey_after_messages` cannot exceed 4,294,967,293, which reserves the initiator's final two old-epoch sequence numbers for the EDHOC rekey messages. Disabling the configurable triggers does not disable the hard frame-index limit.
+
 The responder confirms each completed rekey with an encrypted acknowledgement under the new epoch keys. The initiator does not install the new channel or resume normal writes until that acknowledgement is authenticated.
 
 Secure RSMP derives the traffic secret, directional keys, nonce prefixes, and

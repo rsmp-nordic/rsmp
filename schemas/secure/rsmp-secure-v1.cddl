@@ -14,6 +14,7 @@ profile = "rsmp-secure-v1"
 secure-version = 1
 connection-id = "single-rsmp-connection"
 direction = "i2r" / "r2i"
+frame-index = 1..4294967295
 
 ; ---------------------------------------------------------------------------
 ; Secure frames
@@ -44,6 +45,7 @@ rekey-frame = {
 ; Untagged RFC 9052 COSE_Encrypt0. The containing "enc" field identifies the
 ; COSE message type. The protected algorithm is ChaCha20/Poly1305 (24), and the
 ; unprotected Partial IV carries the minimal big-endian 32-bit frame index.
+; The decoded value is frame-index and never wraps within an epoch.
 cose-encrypt0 = [
   protected: bstr .cbor cose-encrypt0-protected,
   unprotected: {

@@ -36,6 +36,10 @@ unprotected header contains the minimal one-to-four-byte Partial IV used as the
 per-epoch frame index. The outer frame supplies the epoch and frame family;
 the RSMP session binding is supplied as COSE external AAD.
 
+The 32-bit Partial IV limits each direction to 4,294,967,295 encrypted frames
+per epoch. Implementations must rekey or close before another send and must
+never wrap or reuse the frame index with the same traffic key.
+
 Secure RSMP derives traffic material with full HKDF-SHA-256 (Extract followed
 by Expand), an empty salt, and the deterministic-CBOR `hkdf-info` map as the
 exact `info` byte string. The session id is derived during the initial

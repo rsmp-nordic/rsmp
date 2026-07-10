@@ -78,6 +78,7 @@ module RSMP
       SESSION_ID_BYTES = 16
       EXPORTER_SECRET_BYTES = 32
       TAG_BYTES = CoseEncrypt0::TAG_BYTES
+      MAX_SEQUENCE = CoseEncrypt0::MAX_SEQUENCE
       CONNECTION_ID = ChannelContext::CONNECTION_ID
       HKDF_HASH = 'SHA256'.freeze
       HKDF_SALT = ''.b.freeze
@@ -131,6 +132,10 @@ module RSMP
       end
 
       def encrypt_frame(frame_type, plaintext)
+        if @send_idx >= MAX_SEQUENCE
+          raise FrameError, "Secure frame index exhausted at #{MAX_SEQUENCE}; rekey or reconnect"
+        end
+
         @send_idx += 1
         {
           'v' => VERSION,
@@ -162,6 +167,10 @@ module RSMP
       end
 
       def decrypt_validated_frame(frame, frame_type)
+        if @recv_idx >= MAX_SEQUENCE
+          raise FrameError, "Secure frame index exhausted at #{MAX_SEQUENCE}; rekey or reconnect"
+        end
+
         encrypted = frame.fetch('enc')
         idx = CoseEncrypt0.sequence(encrypted)
         expected = @recv_idx + 1
