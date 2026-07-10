@@ -35,6 +35,12 @@ exact `info` byte string. The session id is derived during the initial
 handshake and remains stable when traffic keys are renewed on the same
 connection.
 
+The exporter context always includes the authenticated credential-bundle ids
+in EDHOC initiator/responder order. Both ids are mandatory, non-empty CBOR text
+strings. RSMP Core version and optional login authorization are established
+later inside encrypted RSMP messages; they are not plaintext EDHOC-frame hints
+or pre-handshake exporter-context fields.
+
 CDDL describes structure and CBOR types. Implementations must still perform
 semantic checks such as deterministic-CBOR validation, signature verification,
 credential authorization, EDHOC transcript validation, replay rejection, and

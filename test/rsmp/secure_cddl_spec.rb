@@ -60,6 +60,14 @@ describe 'Secure RSMP CDDL schemas' do
                                           public_key: vector.fetch(:initiator_public_key))
   end
 
+  def secure_channel_context
+    RSMP::Secure::Channel.rsmp_context(
+      profile: RSMP::Secure::PROFILE,
+      initiator_id: 'RN+SI0001',
+      responder_id: 'supervisor'
+    )
+  end
+
   it 'validates generated credential bundles and embedded credential structures' do
     credential = secure_credential('RN+SI0001')
     bundle = CBOR.decode(credential)
@@ -71,7 +79,7 @@ describe 'Secure RSMP CDDL schemas' do
 
   it 'validates secure frames and decrypted rekey plaintext' do
     secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
-    channel = RSMP::Secure::Channel.new(secret, role: :initiator)
+    channel = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
     data_frame = channel.encrypt_payload(RSMP::Secure::Cbor.encode('mType' => 'rSMsg', 'type' => 'Watchdog'))
     rekey_plaintext = { 'kind' => 'rekey_msg1', 'next_epoch' => 1, 'edhoc' => 'msg1'.b }
     rekey_frame = channel.encrypt_control(rekey_plaintext)
@@ -93,11 +101,7 @@ describe 'Secure RSMP CDDL schemas' do
   end
 
   it 'validates exporter context, HKDF info, and AEAD AAD structures' do
-    rsmp_context = RSMP::Secure::Channel.rsmp_context(
-      profile: RSMP::Secure::PROFILE,
-      initiator_id: 'RN+SI0001',
-      responder_id: 'supervisor'
-    )
+    rsmp_context = secure_channel_context
     channel = RSMP::Secure::Channel.new('s' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES,
                                         role: :initiator,
                                         rsmp_context: rsmp_context)
@@ -114,5 +118,15 @@ describe 'Secure RSMP CDDL schemas' do
                                     ))).to be == true
     expect(assert_cddl('secure-aad', channel.send(:aad, 'data', 'i2r', 1))).to be == true
     expect(assert_cddl('secure-aad', channel.send(:aad, 'rekey', 'i2r', 2))).to be == true
+  end
+
+  it 'rejects exporter contexts without either authenticated identity' do
+    context = CBOR.decode(secure_channel_context)
+
+    %w[initiator responder].each do |identity|
+      incomplete = context.reject { |key, _value| key == identity }
+
+      expect(SecureCddlSpecSupport.validate('rsmp-context', incomplete).nil?).to be == true
+    end
   end
 end

@@ -113,11 +113,11 @@ ccs-credential = {
 rsmp-context = {
   "context": "rsmp-secure-v1",
   "profile": profile,
+  "initiator": tstr,
+  "responder": tstr,
   "connection": {
     "socket": connection-id
-  },
-  ? "initiator": tstr,
-  ? "responder": tstr
+  }
 }
 
 hkdf-info = hkdf-context-info / hkdf-label-info

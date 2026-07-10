@@ -120,6 +120,14 @@ describe RSMP::Secure do
                                           public_key: public_key)
   end
 
+  def secure_channel_context
+    RSMP::Secure::Channel.rsmp_context(
+      profile: RSMP::Secure::PROFILE,
+      initiator_id: 'RN+SI0001',
+      responder_id: 'supervisor'
+    )
+  end
+
   def secure_identity(dir, name, private_key, credential)
     {
       'private_key' => write_secure_file(dir, "#{name}-private.key", private_key),
@@ -624,8 +632,8 @@ describe RSMP::Secure do
   with RSMP::Secure::Channel do
     it 'uses matching directional keys for initiator and responder' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
-      initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
-      responder = RSMP::Secure::Channel.new(secret, role: :responder)
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
       plaintext = RSMP::Secure::Cbor.encode('mType' => 'rSMsg', 'type' => 'Watchdog')
 
       frame = initiator.encrypt_payload(plaintext)
@@ -658,11 +666,7 @@ describe RSMP::Secure do
     end
 
     it 'builds the implemented RSMP exporter context' do
-      context = RSMP::Secure::Channel.rsmp_context(
-        profile: RSMP::Secure::PROFILE,
-        initiator_id: 'RN+SI0001',
-        responder_id: 'supervisor'
-      )
+      context = secure_channel_context
 
       expect(RSMP::Secure::Cbor.decode(context)).to be == {
         'connection' => {
@@ -673,6 +677,39 @@ describe RSMP::Secure do
         'profile' => RSMP::Secure::PROFILE,
         'responder' => 'supervisor'
       }
+    end
+
+    it 'requires both authenticated identities in the exporter context' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      incomplete_context = RSMP::Secure::Cbor.encode(
+        'context' => 'rsmp-secure-v1',
+        'profile' => RSMP::Secure::PROFILE,
+        'connection' => { 'socket' => RSMP::Secure::Channel::CONNECTION_ID }
+      )
+
+      expect do
+        RSMP::Secure::Channel.new(secret, role: :initiator)
+      end.to raise_exception(RSMP::Secure::ConfigurationError)
+      expect do
+        RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: incomplete_context)
+      end.to raise_exception(RSMP::Secure::ConfigurationError)
+      expect do
+        RSMP::Secure::Channel.rsmp_context(
+          profile: RSMP::Secure::PROFILE,
+          initiator_id: '',
+          responder_id: 'supervisor'
+        )
+      end.to raise_exception(RSMP::Secure::ConfigurationError)
+    end
+
+    it 'rejects invalid UTF-8 credential identities in the exporter context' do
+      expect do
+        RSMP::Secure::Channel.rsmp_context(
+          profile: RSMP::Secure::PROFILE,
+          initiator_id: "\xff".b,
+          responder_id: 'supervisor'
+        )
+      end.to raise_exception(RSMP::Secure::ConfigurationError)
     end
 
     it 'matches the Secure RSMP v1 HKDF-SHA-256 key schedule vector' do
@@ -712,7 +749,7 @@ describe RSMP::Secure do
 
     it 'binds the implemented secure data AAD shape' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
-      initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
       aad = initiator.send(:aad, 'data', 'i2r', 1)
 
       expect(RSMP::Secure::Cbor.decode(aad)).to be == {
@@ -728,8 +765,8 @@ describe RSMP::Secure do
 
     it 'rejects replayed data indices' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
-      initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
-      responder = RSMP::Secure::Channel.new(secret, role: :responder)
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
       frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
 
       responder.decrypt_frame(frame)
@@ -741,8 +778,8 @@ describe RSMP::Secure do
 
     it 'rejects authentication failures' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
-      initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
-      responder = RSMP::Secure::Channel.new(secret, role: :responder)
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
       frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
       frame['ct'] = frame.fetch('ct').dup.tap { |ct| ct.setbyte(ct.bytesize - 1, ct.getbyte(ct.bytesize - 1) ^ 0x01) }
 
@@ -753,8 +790,8 @@ describe RSMP::Secure do
 
     it 'encrypts rekey control frames with distinct frame type authentication' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
-      initiator = RSMP::Secure::Channel.new(secret, role: :initiator)
-      responder = RSMP::Secure::Channel.new(secret, role: :responder)
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
 
       frame = initiator.encrypt_control('kind' => 'rekey_msg1', 'next_epoch' => 1, 'edhoc' => 'msg1'.b)
 
@@ -766,7 +803,8 @@ describe RSMP::Secure do
 
       data_like = frame.merge('type' => 'data')
       expect do
-        RSMP::Secure::Channel.new(secret, role: :responder).decrypt_frame(data_like)
+        RSMP::Secure::Channel.new(secret, role: :responder,
+                                          rsmp_context: secure_channel_context).decrypt_frame(data_like)
       end.to raise_exception(RSMP::Secure::AuthenticationError)
     end
   end
@@ -1468,9 +1506,14 @@ describe RSMP::Secure do
     it 'holds new-epoch data until an in-progress responder rekey installs the new channel' do
       old_secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
       new_secret = 'n' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
-      old_channel = RSMP::Secure::Channel.new(old_secret, role: :responder)
-      new_channel = RSMP::Secure::Channel.new(new_secret, role: :responder, epoch: 1, session_id: old_channel.session_id)
-      peer_channel = RSMP::Secure::Channel.new(new_secret, role: :initiator, epoch: 1, session_id: old_channel.session_id)
+      old_channel = RSMP::Secure::Channel.new(old_secret, role: :responder,
+                                                          rsmp_context: secure_channel_context)
+      new_channel = RSMP::Secure::Channel.new(new_secret, role: :responder, epoch: 1,
+                                                          session_id: old_channel.session_id,
+                                                          rsmp_context: secure_channel_context)
+      peer_channel = RSMP::Secure::Channel.new(new_secret, role: :initiator, epoch: 1,
+                                                           session_id: old_channel.session_id,
+                                                           rsmp_context: secure_channel_context)
       transport = RSMP::Secure::Transport.new(
         RSMP::Secure::Transport::Config.new(
           frame_io: nil,
