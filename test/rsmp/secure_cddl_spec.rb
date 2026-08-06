@@ -52,7 +52,7 @@ describe 'Secure RSMP CDDL schemas' do
   end
 
   def secure_credential(id)
-    vector = Edhoc::Native.suite0_test_vector
+    vector = Edhoc::TestVector.suite0
 
     RSMP::Secure::CredentialBundle.create(id: id,
                                           profile: RSMP::Secure::PROFILE,
@@ -115,6 +115,7 @@ describe 'Secure RSMP CDDL schemas' do
                                         role: :initiator,
                                         rsmp_context: rsmp_context)
 
+    expect(assert_cddl_value('exporter-label', RSMP::Secure::Channel::EXPORTER_LABEL)).to be == true
     expect(assert_cddl('rsmp-context', rsmp_context)).to be == true
     expect(assert_cddl('hkdf-info', RSMP::Secure::Cbor.encode(
                                       'context' => 'rsmp-secure-v1 hkdf',

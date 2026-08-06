@@ -95,7 +95,7 @@ describe RSMP::CLI do
     it 'generates sample v1 credentials' do
       Dir.mktmpdir('rsmp-secure-cli') do |dir|
         result = invoke_cli('secure', 'generate', '--out', dir)
-        vector = Edhoc::Native.suite0_test_vector
+        vector = Edhoc::TestVector.suite0
         site_credential = File.binread(File.join(dir, 'RN+SI0001.cred'))
         supervisor_credential = File.binread(File.join(dir, 'supervisor.cred'))
         site_bundle = RSMP::Secure::CredentialBundle.decode(site_credential, expected_profile: RSMP::Secure::PROFILE)
@@ -117,7 +117,7 @@ describe RSMP::CLI do
     it 'generates a fresh identity with a custom id' do
       Dir.mktmpdir('rsmp-secure-cli') do |dir|
         result = invoke_cli('secure', 'generate', '--out', dir, '--id', 'RN+SI0002')
-        vector = Edhoc::Native.suite0_test_vector
+        vector = Edhoc::TestVector.suite0
         private_key = File.binread(File.join(dir, 'RN+SI0002.private.key'))
         public_key = File.binread(File.join(dir, 'RN+SI0002.pub'))
         credential = File.binread(File.join(dir, 'RN+SI0002.cred'))

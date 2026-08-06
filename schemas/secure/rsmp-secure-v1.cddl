@@ -12,6 +12,7 @@ secure-message = edhoc-frame / data-frame / rekey-frame
 
 profile = "rsmp-secure-v1"
 secure-version = 1
+exporter-label = 32768
 connection-id = "single-rsmp-connection"
 direction = "i2r" / "r2i"
 frame-index = 1..4294967295

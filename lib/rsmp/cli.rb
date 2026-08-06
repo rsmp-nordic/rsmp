@@ -83,7 +83,7 @@ module RSMP
       if options[:id]
         secure_identity_files(options[:id])
       else
-        secure_sample_files(Edhoc::Native.suite0_test_vector)
+        secure_sample_files(Edhoc::TestVector.suite0)
       end
     end
 
