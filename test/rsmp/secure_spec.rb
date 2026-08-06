@@ -62,7 +62,7 @@ describe RSMP::Secure do
   end
 
   def secure_settings(dir)
-    vector = Edhoc::Native.suite0_test_vector
+    vector = Edhoc::TestVector.suite0
     [site_secure_settings(dir, vector), supervisor_secure_settings(dir, vector)]
   end
 
@@ -190,7 +190,7 @@ describe RSMP::Secure do
   end
 
   def multi_site_secure_settings(dir)
-    vector = Edhoc::Native.suite0_test_vector
+    vector = Edhoc::TestVector.suite0
     supervisor = vector_secure_identity(vector, 'supervisor', :responder)
     site1 = vector_secure_identity(vector, 'RN+SI0001', :initiator)
     site2 = generated_secure_identity('RN+SI0002')
@@ -206,7 +206,7 @@ describe RSMP::Secure do
   end
 
   def multi_supervisor_secure_settings(dir)
-    vector = Edhoc::Native.suite0_test_vector
+    vector = Edhoc::TestVector.suite0
     site = vector_secure_identity(vector, 'RN+SI0001', :initiator)
     supervisor1 = vector_secure_identity(vector, 'supervisor1', :responder)
     supervisor2 = generated_secure_identity('supervisor2')
@@ -236,6 +236,7 @@ describe RSMP::Secure do
     expect(RSMP::Secure.log_summary(nil)).to be_nil
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:status)).to be == :implemented
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_cipher_suite)).to be == 4
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_exporter_label)).to be == 32_768
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:data_protection)).to be == 'COSE_Encrypt0'
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:cose_algorithm)).to be == 24
@@ -458,7 +459,7 @@ describe RSMP::Secure do
   it 'fails supervisor startup early when an implied secure peer file is missing' do
     Dir.mktmpdir do |dir|
       secure_dir = File.join(dir, 'secure')
-      vector = Edhoc::Native.suite0_test_vector
+      vector = Edhoc::TestVector.suite0
       FileUtils.mkdir_p(secure_dir)
       File.binwrite(File.join(secure_dir, 'supervisor.private.key'), vector.fetch(:responder_private_key))
       File.binwrite(File.join(secure_dir, 'supervisor.cred'),
@@ -590,7 +591,7 @@ describe RSMP::Secure do
     Dir.mktmpdir do |dir|
       site_secure, = secure_settings(dir)
       supervisor_peer = site_secure.fetch('peers').first
-      vector = Edhoc::Native.suite0_test_vector
+      vector = Edhoc::TestVector.suite0
       File.binwrite(site_secure.fetch('credential'),
                     vector_secure_credential(vector, :initiator, 'RN+SI9999'))
 
@@ -610,7 +611,7 @@ describe RSMP::Secure do
     Dir.mktmpdir do |dir|
       _site_secure, supervisor_secure = secure_settings(dir)
       site_peer = supervisor_secure.fetch('peers').first
-      vector = Edhoc::Native.suite0_test_vector
+      vector = Edhoc::TestVector.suite0
       File.binwrite(site_peer.fetch('credential'),
                     vector_secure_credential(vector, :initiator, 'RN+SI9999'))
 
@@ -671,7 +672,7 @@ describe RSMP::Secure do
 
   it 'resolves secure file paths relative to the config file directory' do
     Dir.mktmpdir do |dir|
-      vector = Edhoc::Native.suite0_test_vector
+      vector = Edhoc::TestVector.suite0
       config_dir = File.join(dir, 'config')
       secure_dir = File.join(config_dir, 'secure')
       FileUtils.mkdir_p(secure_dir)
@@ -735,7 +736,7 @@ describe RSMP::Secure do
 
   with RSMP::Secure::CredentialBundle do
     it 'encodes and verifies a deterministic v1 credential bundle' do
-      vector = Edhoc::Native.suite0_test_vector
+      vector = Edhoc::TestVector.suite0
       encoded = RSMP::Secure::CredentialBundle.create(
         id: 'RN+SI0001',
         profile: RSMP::Secure::V1_PROFILE,
@@ -763,7 +764,7 @@ describe RSMP::Secure do
     end
 
     it 'rejects tampered v1 credential bundles' do
-      vector = Edhoc::Native.suite0_test_vector
+      vector = Edhoc::TestVector.suite0
       encoded = RSMP::Secure::CredentialBundle.create(
         id: 'RN+SI0001',
         profile: RSMP::Secure::V1_PROFILE,
@@ -783,7 +784,7 @@ describe RSMP::Secure do
     end
 
     it 'rejects the deprecated polymorphic EdDSA credential algorithm' do
-      vector = Edhoc::Native.suite0_test_vector
+      vector = Edhoc::TestVector.suite0
       encoded = RSMP::Secure::CredentialBundle.create(
         id: 'RN+SI0001',
         profile: RSMP::Secure::V1_PROFILE,
@@ -805,7 +806,7 @@ describe RSMP::Secure do
     end
 
     it 'verifies peer credentials with the configured trust key' do
-      vector = Edhoc::Native.suite0_test_vector
+      vector = Edhoc::TestVector.suite0
       attacker = generated_secure_identity('attacker')
       encoded = RSMP::Secure::CredentialBundle.create(
         id: 'attacker',
@@ -1137,9 +1138,31 @@ describe RSMP::Secure do
   end
 
   with RSMP::Secure::Protocol do
+    it 'passes the exact RSMP context to the EDHOC exporter' do
+      calls = []
+      session = Object.new
+      session.define_singleton_method(:export_prk_with_context) do |label, context, length|
+        calls << [label, context, length]
+        's'.b * length
+      end
+      protocol = RSMP::Secure::Protocol.allocate
+      protocol.instance_variable_set(:@role, :initiator)
+      protocol.instance_variable_set(:@settings, 'profile' => RSMP::Secure::PROFILE)
+      protocol.instance_variable_set(:@local_id, 'RN+SI0001')
+      protocol.instance_variable_set(:@matched_peer_id, 'supervisor')
+
+      channel = protocol.send(:build_channel, session, epoch: 0)
+
+      expect(calls).to be == [[RSMP::Secure::Channel::EXPORTER_LABEL,
+                               secure_channel_context,
+                               RSMP::Secure::Channel::EXPORTER_SECRET_BYTES]]
+      expect(RSMP::Secure::Channel::EXPORTER_LABEL).to be == 32_768
+      expect(channel.rsmp_context).to be == secure_channel_context
+    end
+
     it 'rejects direct top-level public peer credentials without a resolved peer list' do
       Dir.mktmpdir do |dir|
-        vector = Edhoc::Native.suite0_test_vector
+        vector = Edhoc::TestVector.suite0
         settings = {
           'private_key' => write_secure_file(dir, 'site-private.key', vector.fetch(:initiator_private_key)),
           'credential' => write_secure_file(dir, 'site.cred',
@@ -1155,7 +1178,7 @@ describe RSMP::Secure do
 
     it 'reports when EDHOC rejects an unknown credential' do
       Dir.mktmpdir do |dir|
-        vector = Edhoc::Native.suite0_test_vector
+        vector = Edhoc::TestVector.suite0
         unknown_site = generated_secure_identity('RN+SI0002')
         site_settings = {
           'private_key' => write_secure_file(dir, 'site-private.key', unknown_site.fetch(:private_key)),
@@ -1209,7 +1232,7 @@ describe RSMP::Secure do
 
     it 'reports legacy JSON sent to a secure responder as a handshake error' do
       Dir.mktmpdir do |dir|
-        vector = Edhoc::Native.suite0_test_vector
+        vector = Edhoc::TestVector.suite0
         settings = supervisor_secure_settings(dir, vector)
         legacy_packet = %({"mType":"rSMsg","type":"Version"}\f)
         protocol = RSMP::Secure::Protocol.new(

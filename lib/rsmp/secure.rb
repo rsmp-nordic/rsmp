@@ -8,6 +8,7 @@ module RSMP
         status: :implemented,
         edhoc_method: 0,
         edhoc_cipher_suite: 4,
+        edhoc_exporter_label: 32_768,
         ecdh: 'X25519',
         signature: 'Ed25519/EdDSA',
         credential_signature_algorithm: -19,

@@ -53,7 +53,10 @@ connection.
 
 The exporter context always includes the authenticated credential-bundle ids
 in EDHOC initiator/responder order. Both ids are mandatory, non-empty CBOR text
-strings. RSMP Core version and optional login authorization are established
+strings. Its exact deterministic-CBOR bytes are passed as the RFC 9528 EDHOC
+exporter context using private-use label `32768`; labels `0` and `1` remain
+reserved for OSCORE. The context is also retained in the downstream HKDF
+traffic-secret info map. RSMP Core version and optional login authorization are established
 later inside encrypted RSMP messages; they are not plaintext EDHOC-frame hints
 or pre-handshake exporter-context fields.
 

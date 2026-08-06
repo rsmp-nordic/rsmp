@@ -191,12 +191,13 @@ module RSMP
       end
 
       def build_channel(session, epoch:, session_id: nil)
+        context = rsmp_context
         Channel.new(
-          session.export_prk(0, Channel::EXPORTER_SECRET_BYTES),
+          session.export_prk_with_context(Channel::EXPORTER_LABEL, context, Channel::EXPORTER_SECRET_BYTES),
           role: role,
           epoch: epoch,
           session_id: session_id,
-          rsmp_context: rsmp_context
+          rsmp_context: context
         )
       end
 
