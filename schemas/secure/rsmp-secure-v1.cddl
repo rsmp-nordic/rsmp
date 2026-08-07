@@ -1,20 +1,20 @@
 ; Secure RSMP v1 CDDL schema.
 ;
-; This file describes the implemented CBOR structures for rsmp-secure-v1.
-; It is currently a documentation/conformance artifact, not a runtime validator.
+; This file describes the normative CBOR structures for rsmp-secure-v1.
+; It is a conformance artifact, not a runtime validator.
 ;
 ; CDDL captures the structural shape. Implementations still need semantic checks:
-; deterministic CBOR encoding, unique map keys, signature validation, EDHOC
-; transcript validation, credential authorization, replay rejection, and checks
-; that the EDHOC credential and COSE key carry the same public key and kid.
+; deterministic CBOR encoding, unique map keys, EDHOC transcript validation,
+; credential authorization, replay rejection, and derived-KID verification.
 
-secure-message = edhoc-frame / data-frame / rekey-frame
+secure-message = edhoc-frame / edhoc-error-frame / data-frame / rekey-frame
 
 profile = "rsmp-secure-v1"
 secure-version = 1
 exporter-label = 32768
 connection-id = "single-rsmp-connection"
 direction = "i2r" / "r2i"
+epoch = 0..18446744073709551615
 frame-index = 1..4294967295
 
 ; ---------------------------------------------------------------------------
@@ -29,17 +29,24 @@ edhoc-frame = {
   "edhoc": bstr
 }
 
+edhoc-error-frame = {
+  "v": secure-version,
+  "type": "edhoc_error",
+  "profile": profile,
+  "edhoc": bstr
+}
+
 data-frame = {
   "v": secure-version,
   "type": "data",
-  "epoch": uint,
+  "epoch": epoch,
   "enc": cose-encrypt0
 }
 
 rekey-frame = {
   "v": secure-version,
   "type": "rekey",
-  "epoch": uint,
+  "epoch": epoch,
   "enc": cose-encrypt0
 }
 
@@ -60,58 +67,34 @@ cose-encrypt0-protected = {
 }
 
 ; Plaintext inside a decrypted rekey-frame.
-rekey-plaintext = rekey-edhoc-plaintext / rekey-ack-plaintext
+rekey-plaintext =
+  rekey-edhoc-plaintext /
+  rekey-simple-plaintext /
+  rekey-error-plaintext
 
 rekey-edhoc-plaintext = {
   "kind": "rekey_msg1" / "rekey_msg2" / "rekey_msg3",
-  "next_epoch": uint,
+  "next_epoch": epoch,
   "edhoc": bstr
 }
 
-rekey-ack-plaintext = {
-  "kind": "rekey_ack",
-  "next_epoch": uint
+rekey-simple-plaintext = {
+  "kind": "rekey_ack" / "rekey_request",
+  "next_epoch": epoch
+}
+
+rekey-error-plaintext = {
+  "kind": "rekey_error",
+  "next_epoch": epoch,
+  "code": "failed"
 }
 
 ; ---------------------------------------------------------------------------
-; Credential bundles
+; Pinned CCS credentials
 ; ---------------------------------------------------------------------------
-
-; Untagged RFC 9052 COSE_Sign1. The credential file context identifies the
-; COSE message type. The protected algorithm is Ed25519 (-19), and external AAD
-; is the empty byte string.
-credential-bundle = [
-  protected: bstr .cbor credential-sign1-protected,
-  unprotected: {},
-  payload: bstr .cbor credential-payload,
-  signature: ed25519-signature
-]
-
-credential-sign1-protected = {
-  1: -19
-}
-
-credential-payload = {
-  "v": secure-version,
-  "type": "rsmp-secure-credential",
-  "profile": profile,
-  "id": tstr,
-  "kid": kid,
-  "cose_key": cose-key-ed25519,
-  "edhoc_credential_format": "ccs-cbor",
-  "edhoc_credential": bstr .cbor ccs-credential
-}
-
-credential-sig-structure = [
-  context: "Signature1",
-  protected: bstr .cbor credential-sign1-protected,
-  external_aad: h'',
-  payload: bstr .cbor credential-payload
-]
 
 kid = bstr .size 16
 public-key-ed25519 = bstr .size 32
-ed25519-signature = bstr .size 64
 
 ; COSE_Key labels:
 ;   1  kty
@@ -123,9 +106,8 @@ ed25519-signature = bstr .size 64
 ;   kty OKP     = 1
 ;   crv Ed25519 = 6
 ;
-; The alg key parameter is omitted because the same key is used by the
-; COSE_Sign1 Ed25519 (-19) envelope and RFC 9528 EDHOC suite 4, whose fixed
-; signature algorithm remains EdDSA (-8).
+; The alg key parameter is omitted because RFC 9528 EDHOC suite 4 fixes the
+; signature algorithm to EdDSA (-8).
 cose-key-ed25519 = {
   1: 1,
   2: kid,
@@ -133,7 +115,7 @@ cose-key-ed25519 = {
   -2: public-key-ed25519
 }
 
-; CCS/CWT-style credential carried as CBOR bytes in the credential bundle.
+; The .cred file is exactly this deterministic-CBOR CCS/CWT-style credential.
 ; CWT claim labels:
 ;   2  sub
 ;   8  cnf
@@ -190,8 +172,8 @@ hkdf-label =
 secure-aad = {
   "context": "rsmp-secure-data-v1",
   "connection": connection-id,
-  "epoch": uint,
-  "idx": uint,
+  "epoch": epoch,
+  "idx": frame-index,
   "sender": direction,
   "session": bstr .size 16,
   "type": "data" / "rekey"

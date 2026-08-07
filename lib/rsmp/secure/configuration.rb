@@ -1,9 +1,12 @@
 require 'pathname'
+require_relative 'configuration/validation'
 
 module RSMP
   module Secure
     # Configuration helpers for Secure RSMP settings and path conventions.
     module Configuration
+      include ConfigurationValidation
+
       def settings(raw)
         raw = stringify_keys(raw || {})
         {
@@ -11,18 +14,23 @@ module RSMP
           'max_frame_size' => DEFAULT_MAX_FRAME_SIZE,
           'handshake_timeout' => DEFAULT_HANDSHAKE_TIMEOUT,
           'rekey_after_messages' => DEFAULT_REKEY_AFTER_MESSAGES,
+          'rekey_after_bytes' => DEFAULT_REKEY_AFTER_BYTES,
           'rekey_after_seconds' => DEFAULT_REKEY_AFTER_SECONDS,
-          'min_rekey_interval' => DEFAULT_MIN_REKEY_INTERVAL
+          'rekey_timeout' => DEFAULT_REKEY_TIMEOUT
         }.merge(raw)
       end
 
-      def merge_peer_settings(local, peer, peer_id: nil)
+      def merge_peer_settings(local, peer, peer_id: nil, peer_role: nil)
         local = local_identity_settings(local)
         peer = stringify_keys(peer || {})
         peer = default_peer_paths(peer, peer['id'] || peer_id)
         return local unless peer_configured?(peer)
 
-        settings_with_peers(local, [secure_peer(peer, peer['id'] || peer_id, supervisor_id: peer['supervisor_id'])])
+        authorized_id = peer['supervisor_id'] || peer_id || peer['id']
+        settings_with_peers(
+          local,
+          [secure_peer(peer, peer['id'] || peer_id, rsmp_id: authorized_id, rsmp_role: peer_role)]
+        )
       end
 
       def site_local_settings(site_settings)
@@ -35,15 +43,16 @@ module RSMP
       end
 
       def site_peer_settings(site_settings, supervisor_settings)
-        merge_peer_settings(site_local_settings(site_settings), supervisor_settings['secure'])
+        merge_peer_settings(site_local_settings(site_settings), supervisor_settings['secure'], peer_role: 'supervisor')
       end
 
       def supervisor_local_settings(supervisor_settings)
         secure_settings = supervisor_settings['secure'] || supervisor_settings.dig('default', 'secure')
+        local_id = local_identity_id(supervisor_settings, fallback: DEFAULT_SUPERVISOR_ID)
         settings_with_config_dir(
           supervisor_settings,
           secure_settings,
-          local_id: local_identity_id(supervisor_settings, fallback: DEFAULT_SUPERVISOR_ID),
+          local_id: local_id,
           credential_id: secure_settings && secure_settings['id']
         )
       end
@@ -51,7 +60,8 @@ module RSMP
       def supervisor_site_settings(supervisor_settings, site_settings, site_id: nil)
         merge_peer_settings(supervisor_local_settings(supervisor_settings),
                             site_settings['secure'],
-                            peer_id: site_settings['site_id'] || site_id)
+                            peer_id: site_settings['site_id'] || site_id,
+                            peer_role: 'site')
       end
 
       def site_inbound_settings(site_settings)
@@ -65,50 +75,6 @@ module RSMP
         settings_with_peers(local, sites_to_peers(sites, include_all: required?(local)))
       end
 
-      def validate_local_identity!(secure_settings)
-        secure_settings = settings(secure_settings)
-        return unless mode?(secure_settings)
-
-        validate_profile!(secure_settings)
-        validate_local_identity_file!(secure_settings, 'private_key')
-        validate_local_identity_file!(secure_settings, 'credential')
-      end
-
-      def validate_transport_mode!(secure_settings, connection_role:)
-        secure_settings = stringify_keys(secure_settings || {})
-        return true unless connection_role.to_s == 'server'
-        return true unless secure_settings['enabled'] == true && secure_settings['required'] != true
-
-        raise RSMP::ConfigurationError,
-              'secure.enabled does not secure an inbound listener; use secure.required: true'
-      end
-
-      def validate_peer_files!(secure_settings)
-        secure_settings = settings(secure_settings)
-        return unless mode?(secure_settings)
-
-        validate_profile!(secure_settings)
-        (secure_settings['peers'] || []).each do |peer|
-          validate_peer_file!(secure_settings, peer, 'public_key')
-          validate_peer_file!(secure_settings, peer, 'credential')
-        end
-      end
-
-      def validate_credentials!(secure_settings)
-        secure_settings = settings(secure_settings)
-        return unless mode?(secure_settings)
-
-        validate_local_identity!(secure_settings)
-        peers = secure_settings['peers']
-        raise RSMP::ConfigurationError, 'secure peer credentials must be configured on the RSMP peer entry' unless peers
-        raise RSMP::ConfigurationError, 'secure.peers must not be empty' if peers.empty?
-
-        validate_peer_files!(secure_settings)
-        ProfileCredentials.new(secure_settings).validate!
-      rescue RSMP::Secure::ConfigurationError => e
-        raise RSMP::ConfigurationError, e.message
-      end
-
       def expand_config_path(path, secure_settings)
         return path if Pathname.new(path).absolute?
 
@@ -119,28 +85,6 @@ module RSMP
       end
 
       private
-
-      def validate_profile!(secure_settings)
-        Secure.validate_profile_name!(secure_settings['profile'])
-      end
-
-      def validate_local_identity_file!(secure_settings, key)
-        path = secure_settings[key]
-        raise RSMP::ConfigurationError, "secure.#{key} is required" unless path
-
-        expanded = expand_config_path(path, secure_settings)
-        raise RSMP::ConfigurationError, "secure.#{key} file not found: #{expanded}" unless File.file?(expanded)
-      end
-
-      def validate_peer_file!(secure_settings, peer, key)
-        path = peer[key]
-        raise RSMP::ConfigurationError, "secure peer #{peer['id']} #{key} is required" unless path
-
-        expanded = expand_config_path(path, secure_settings)
-        return if File.file?(expanded)
-
-        raise RSMP::ConfigurationError, "secure peer #{peer['id']} #{key} file not found: #{expanded}"
-      end
 
       def local_identity_settings(local)
         settings(local).except(*PEER_SETTING_KEYS)
@@ -177,7 +121,8 @@ module RSMP
             secure,
             secure['id'] || "#{supervisor['ip']}:#{supervisor['port']}",
             credential_id: secure['id'],
-            supervisor_id: secure['supervisor_id']
+            rsmp_id: secure['supervisor_id'] || secure['id'],
+            rsmp_role: 'supervisor'
           )
         end
       end
@@ -191,22 +136,24 @@ module RSMP
           secure = default_peer_paths(secure, site_id)
           next unless peer_configured?(secure)
 
-          peers << secure_peer(secure, site_id, credential_id: site_id, site_id: site_id)
+          peers << secure_peer(secure, site_id, credential_id: site_id, rsmp_id: site_id, rsmp_role: 'site')
         end
       end
 
-      def secure_peer(secure, peer_id, credential_id: peer_id, **extra)
+      def secure_peer(secure, peer_id, credential_id: peer_id, rsmp_id: peer_id, rsmp_role: nil)
         peer = {
           'id' => peer_id,
-          'public_key' => secure['public_key'],
           'credential' => secure['credential']
-        }.merge(stringify_keys(extra))
+        }
         peer[PEER_ID_KEY] = credential_id if credential_id
+        peer[RSMP_ID_KEY] = rsmp_id if rsmp_id
+        peer[RSMP_ROLE_KEY] = rsmp_role if rsmp_role
+        peer[CORE_VERSIONS_KEY] = secure['core_versions'] if secure['core_versions']
         peer
       end
 
       def peer_configured?(secure)
-        secure['public_key'] && secure['credential']
+        secure['credential']
       end
 
       def local_identity_id(settings, fallback: nil)
@@ -226,17 +173,12 @@ module RSMP
         return secure unless id
 
         secure.merge(
-          'public_key' => secure['public_key'] || default_public_key_path(id),
           'credential' => secure['credential'] || default_credential_path(id)
         )
       end
 
       def default_private_key_path(id)
         "secure/#{id}.private.key"
-      end
-
-      def default_public_key_path(id)
-        "secure/#{id}.pub"
       end
 
       def default_credential_path(id)

@@ -75,7 +75,6 @@ module RSMP
           stream = IO::Stream::Buffered.new(socket)
           protocol = build_accepted_protocol(stream)
           site_id = retrieve_site_id(protocol)
-          validate_secure_site_identity(protocol, site_id)
           site_settings = site_id_to_site_setting site_id
 
           {
@@ -134,15 +133,6 @@ module RSMP
           ids.first['sId']
         end
 
-        def validate_secure_site_identity(protocol, site_id)
-          return unless protocol.respond_to?(:matched_peer_id)
-          return unless protocol.matched_peer_id
-          return if protocol.matched_peer_id == site_id
-
-          raise HandshakeError,
-                "Secure credential #{protocol.matched_peer_id.inspect} is not authorized for site #{site_id.inspect}"
-        end
-
         def setup_proxy(proxy, settings, id)
           if proxy
             raise ConnectionError, "Site #{id} already connected from port #{proxy.port}" if proxy.connected?
@@ -156,8 +146,14 @@ module RSMP
           proxy
         end
 
-        def validate_and_start_proxy(proxy, _protocol)
+        def validate_and_start_proxy(proxy, protocol)
           proxy.setup_site_settings
+          if protocol.respond_to?(:authorize!)
+            version = peek_version_message(protocol)
+            proxy.check_core_version(version)
+            proxy.validate_version!(version, step: 'Request')
+            protocol.authorize!(rsmp_id: proxy.site_id, core_version: proxy.core_version)
+          end
 
           proxy.start
           proxy.wait

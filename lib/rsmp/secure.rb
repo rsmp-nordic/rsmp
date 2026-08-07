@@ -1,5 +1,7 @@
+require 'timeout'
+
 module RSMP
-  # Secure RSMP prototype support.
+  # Secure RSMP authenticated and encrypted transport support.
   module Secure
     PROFILE = 'rsmp-secure-v1'.freeze
     V1_PROFILE = PROFILE
@@ -11,7 +13,6 @@ module RSMP
         edhoc_exporter_label: 32_768,
         ecdh: 'X25519',
         signature: 'Ed25519/EdDSA',
-        credential_signature_algorithm: -19,
         hash: 'SHA-256',
         edhoc_aead: 'ChaCha20-Poly1305',
         data_aead: 'ChaCha20-Poly1305',
@@ -19,7 +20,7 @@ module RSMP
         cose_algorithm: 24,
         encoding: 'deterministic CBOR',
         deterministic_cbor: true,
-        credential_format: 'COSE_Sign1 CBOR bundle with EDHOC KID/CCS credential'
+        credential_format: 'exact deterministic-CBOR CCS with an Ed25519 COSE_Key'
       }.freeze
     }.freeze
     IMPLEMENTED_PROFILES = PROFILES.select { |_name, metadata| metadata[:status] == :implemented }.keys.freeze
@@ -27,12 +28,19 @@ module RSMP
     DEFAULT_MAX_FRAME_SIZE = 65_536
     DEFAULT_HANDSHAKE_TIMEOUT = 2
     DEFAULT_REKEY_AFTER_MESSAGES = 1_000_000
+    DEFAULT_REKEY_AFTER_BYTES = 64 * 1024 * 1024 * 1024
     DEFAULT_REKEY_AFTER_SECONDS = 7_200
-    DEFAULT_MIN_REKEY_INTERVAL = 60
+    DEFAULT_REKEY_TIMEOUT = 2
+    MAX_REKEY_AFTER_MESSAGES = 1_000_000
+    MAX_REKEY_AFTER_BYTES = 64 * 1024 * 1024 * 1024
+    MAX_REKEY_AFTER_SECONDS = 7_200
     CONFIG_DIR_KEY = '__config_dir'.freeze
     LOCAL_ID_KEY = '__local_id'.freeze
     PEER_ID_KEY = '__credential_id'.freeze
-    PEER_SETTING_KEYS = %w[id public_key supervisor_id].freeze
+    RSMP_ID_KEY = '__rsmp_id'.freeze
+    RSMP_ROLE_KEY = '__rsmp_role'.freeze
+    CORE_VERSIONS_KEY = '__core_versions'.freeze
+    PEER_SETTING_KEYS = %w[id public_key supervisor_id core_versions].freeze
     DEFAULT_SUPERVISOR_ID = 'supervisor'.freeze
 
     require_relative 'secure/configuration'
@@ -40,10 +48,11 @@ module RSMP
 
     autoload :Cbor, 'rsmp/secure/cbor'
     autoload :CoseEncrypt0, 'rsmp/secure/cose_encrypt0'
-    autoload :CoseSign1, 'rsmp/secure/cose_sign1'
-    autoload :CredentialBundle, 'rsmp/secure/credential_bundle'
+    autoload :Credential, 'rsmp/secure/credential'
     autoload :FrameIO, 'rsmp/secure/frame_io'
     autoload :ProfileCredentials, 'rsmp/secure/profile_credentials'
+    autoload :RejectEad, 'rsmp/secure/reject_ead'
+    autoload :AuthorizationContext, 'rsmp/secure/authorization_context'
     autoload :Channel, 'rsmp/secure/channel'
     autoload :Transport, 'rsmp/secure/transport'
     autoload :Protocol, 'rsmp/secure/protocol'
@@ -90,15 +99,6 @@ module RSMP
         end
       end
 
-      def edhoc_session_class(name)
-        case name
-        when PROFILE
-          Edhoc::Suite4Session
-        else
-          raise ConfigurationError, "Unsupported secure profile #{name.inspect}"
-        end
-      end
-
       def mode?(raw)
         enabled?(raw) || required?(raw)
       end
@@ -124,13 +124,26 @@ module RSMP
 
         protocol = Protocol.new(stream, role: role, settings: settings, log: log, parent: task)
         timeout = protocol.settings['handshake_timeout']
-        if task
-          task.with_timeout(timeout) { protocol.handshake! }
+        runner = task || (Async::Task.current? if defined?(Async::Task))
+        if runner
+          runner.with_timeout(timeout) { protocol.handshake! }
         else
-          protocol.handshake!
+          Timeout.timeout(timeout) { protocol.handshake! }
         end
         protocol.log_secure_channel_up
         protocol
+      rescue StandardError => e
+        protocol&.close
+        raise HandshakeError, 'Secure RSMP handshake timed out' if timeout_error?(e)
+
+        raise
+      end
+
+      private
+
+      def timeout_error?(error)
+        error.is_a?(Timeout::Error) ||
+          (defined?(Async::TimeoutError) && error.is_a?(Async::TimeoutError))
       end
     end
   end

@@ -54,10 +54,7 @@ describe 'Secure RSMP CDDL schemas' do
   def secure_credential(id)
     vector = Edhoc::TestVector.suite0
 
-    RSMP::Secure::CredentialBundle.create(id: id,
-                                          profile: RSMP::Secure::PROFILE,
-                                          private_key: vector.fetch(:initiator_private_key),
-                                          public_key: vector.fetch(:initiator_public_key))
+    RSMP::Secure::Credential.create(id: id, public_key: vector.fetch(:initiator_public_key))
   end
 
   def secure_channel_context
@@ -68,15 +65,12 @@ describe 'Secure RSMP CDDL schemas' do
     )
   end
 
-  it 'validates generated credential bundles and embedded credential structures' do
+  it 'validates exact generated CCS credentials and embedded COSE keys' do
     credential = secure_credential('RN+SI0001')
-    cose_sign1 = CBOR.decode(credential)
-    bundle = CBOR.decode(cose_sign1.fetch(2))
+    ccs = CBOR.decode(credential)
 
-    expect(assert_cddl('credential-bundle', credential)).to be == true
-    expect(assert_cddl('credential-sig-structure', RSMP::Secure::CoseSign1.sig_structure(cose_sign1.fetch(2)))).to be == true
-    expect(assert_cddl_value('cose-key-ed25519', bundle.fetch('cose_key'))).to be == true
-    expect(assert_cddl('ccs-credential', bundle.fetch('edhoc_credential'))).to be == true
+    expect(assert_cddl('ccs-credential', credential)).to be == true
+    expect(assert_cddl_value('cose-key-ed25519', ccs.fetch(8).fetch(1))).to be == true
   end
 
   it 'validates secure frames and decrypted rekey plaintext' do
@@ -85,6 +79,8 @@ describe 'Secure RSMP CDDL schemas' do
     data_frame = channel.encrypt_payload(RSMP::Secure::Cbor.encode('mType' => 'rSMsg', 'type' => 'Watchdog'))
     rekey_plaintext = { 'kind' => 'rekey_msg1', 'next_epoch' => 1, 'edhoc' => 'msg1'.b }
     rekey_ack_plaintext = { 'kind' => 'rekey_ack', 'next_epoch' => 1 }
+    rekey_request_plaintext = { 'kind' => 'rekey_request', 'next_epoch' => 1 }
+    rekey_error_plaintext = { 'kind' => 'rekey_error', 'next_epoch' => 1, 'code' => 'failed' }
     rekey_frame = channel.encrypt_control(rekey_plaintext)
     edhoc_frame = {
       'v' => RSMP::Secure::VERSION,
@@ -93,9 +89,18 @@ describe 'Secure RSMP CDDL schemas' do
       'msg' => 1,
       'edhoc' => 'edhoc-message-1'.b
     }
+    edhoc_message4_frame = edhoc_frame.merge('msg' => 4, 'edhoc' => 'edhoc-message-4'.b)
+    edhoc_error_frame = {
+      'v' => RSMP::Secure::VERSION,
+      'type' => 'edhoc_error',
+      'profile' => RSMP::Secure::PROFILE,
+      'edhoc' => Edhoc::ErrorMessage.new(code: :unspecified, text: 'EDHOC handshake failed').to_bytes
+    }
 
     expect(assert_cddl_value('secure-message', edhoc_frame)).to be == true
     expect(assert_cddl_value('edhoc-frame', edhoc_frame)).to be == true
+    expect(assert_cddl_value('edhoc-frame', edhoc_message4_frame)).to be == true
+    expect(assert_cddl_value('edhoc-error-frame', edhoc_error_frame)).to be == true
     expect(assert_cddl_value('secure-message', data_frame)).to be == true
     expect(assert_cddl_value('data-frame', data_frame)).to be == true
     expect(assert_cddl_value('cose-encrypt0', data_frame.fetch('enc'))).to be == true
@@ -103,10 +108,22 @@ describe 'Secure RSMP CDDL schemas' do
     expect(assert_cddl_value('rekey-frame', rekey_frame)).to be == true
     expect(assert_cddl('rekey-plaintext', RSMP::Secure::Cbor.encode(rekey_plaintext))).to be == true
     expect(assert_cddl('rekey-plaintext', RSMP::Secure::Cbor.encode(rekey_ack_plaintext))).to be == true
+    expect(assert_cddl('rekey-plaintext', RSMP::Secure::Cbor.encode(rekey_request_plaintext))).to be == true
+    expect(assert_cddl('rekey-plaintext', RSMP::Secure::Cbor.encode(rekey_error_plaintext))).to be == true
     invalid_ack = rekey_ack_plaintext.merge('edhoc' => 'unexpected'.b)
     expect(SecureCddlSpecSupport.validate('rekey-plaintext', invalid_ack).nil?).to be == true
     obsolete_commit = { 'kind' => 'rekey_commit', 'next_epoch' => 1 }
     expect(SecureCddlSpecSupport.validate('rekey-plaintext', obsolete_commit).nil?).to be == true
+  end
+
+  it 'accepts monotonically increasing epochs above the old one-byte range' do
+    secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+    channel = RSMP::Secure::Channel.new(secret, role: :initiator, epoch: 256,
+                                                rsmp_context: secure_channel_context)
+    frame = channel.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
+
+    expect(assert_cddl_value('data-frame', frame)).to be == true
+    expect(SecureCddlSpecSupport.validate('data-frame', frame.merge('epoch' => 1 << 64)).nil?).to be == true
   end
 
   it 'validates exporter context, HKDF info, and AEAD AAD structures' do

@@ -80,12 +80,15 @@ module RSMP
       EXPORTER_LABEL = 32_768
       TAG_BYTES = CoseEncrypt0::TAG_BYTES
       MAX_SEQUENCE = CoseEncrypt0::MAX_SEQUENCE
+      MAX_EPOCH = (1 << 64) - 1
       CONNECTION_ID = ChannelContext::CONNECTION_ID
       HKDF_HASH = 'SHA256'.freeze
       HKDF_SALT = ''.b.freeze
       HKDF_CONTEXT = 'rsmp-secure-v1 hkdf'.freeze
 
-      attr_reader :role, :session_id, :epoch, :profile, :rsmp_context
+      attr_reader :role, :session_id, :epoch, :profile, :rsmp_context,
+                  :sent_frames, :received_frames, :sent_ciphertext_bytes,
+                  :received_ciphertext_bytes
 
       def self.rsmp_context(profile:, initiator_id:, responder_id:)
         ChannelContext.encode(profile: profile, initiator_id: initiator_id, responder_id: responder_id)
@@ -93,9 +96,12 @@ module RSMP
 
       def initialize(exporter_secret, role:, epoch: 0, session_id: nil, rsmp_context: nil)
         @role = role.to_sym
-        @epoch = epoch
+        @epoch = Integer(epoch)
+        raise ConfigurationError, "Secure epoch must be between 0 and #{MAX_EPOCH}" unless @epoch.between?(0, MAX_EPOCH)
+
         configure_context(rsmp_context)
         reset_indices
+        reset_usage
         derive_traffic_secrets(exporter_secret, session_id)
       end
 
@@ -118,7 +124,16 @@ module RSMP
       end
 
       def next_epoch
-        (@epoch + 1) % 256
+        raise FrameError, "Secure epoch exhausted at #{MAX_EPOCH}; reconnect" if @epoch == MAX_EPOCH
+
+        @epoch + 1
+      end
+
+      def clear!
+        %i[@traffic_secret @send_key @recv_key @send_nonce_prefix @recv_nonce_prefix].each do |name|
+          wipe!(instance_variable_get(name))
+          instance_variable_set(name, nil)
+        end
       end
 
       private
@@ -132,29 +147,40 @@ module RSMP
         @recv_idx = 0
       end
 
+      def reset_usage
+        @sent_frames = 0
+        @received_frames = 0
+        @sent_ciphertext_bytes = 0
+        @received_ciphertext_bytes = 0
+      end
+
       def encrypt_frame(frame_type, plaintext)
         if @send_idx >= MAX_SEQUENCE
           raise FrameError, "Secure frame index exhausted at #{MAX_SEQUENCE}; rekey or reconnect"
         end
 
-        @send_idx += 1
+        next_idx = @send_idx + 1
+        encrypted = CoseEncrypt0.encrypt(
+          plaintext,
+          key: @send_key,
+          nonce_prefix: @send_nonce_prefix,
+          sequence: next_idx,
+          external_aad: aad(frame_type, @send_direction, next_idx)
+        )
+        @send_idx = next_idx
+        @sent_frames += 1
+        @sent_ciphertext_bytes += encrypted.fetch(2).bytesize
         {
           'v' => VERSION,
           'type' => frame_type,
           'epoch' => @epoch,
-          'enc' => CoseEncrypt0.encrypt(
-            plaintext,
-            key: @send_key,
-            nonce_prefix: @send_nonce_prefix,
-            sequence: @send_idx,
-            external_aad: aad(frame_type, @send_direction, @send_idx)
-          )
+          'enc' => encrypted
         }
       end
 
       def derive_traffic_secrets(exporter_secret, session_id)
         @traffic_secret = derive_traffic_secret(exporter_secret)
-        @session_id = session_id || derive_labeled_secret(@traffic_secret, 'session id', SESSION_ID_BYTES)
+        @session_id = (session_id || derive_labeled_secret(@traffic_secret, 'session id', SESSION_ID_BYTES)).dup
         derive_directional_keys
       end
 
@@ -184,6 +210,8 @@ module RSMP
           external_aad: aad(frame_type, @recv_direction, idx)
         )
         @recv_idx = idx
+        @received_frames += 1
+        @received_ciphertext_bytes += encrypted.fetch(2).bytesize
         plaintext
       end
 
@@ -237,19 +265,34 @@ module RSMP
       end
 
       def validate_data_frame(frame)
+        validate_encrypted_frame(frame, 'data')
+      end
+
+      def validate_control_frame(frame)
+        validate_encrypted_frame(frame, 'rekey')
+      end
+
+      def validate_encrypted_frame(frame, type)
         raise FrameError, 'Secure frame must be a map' unless frame.is_a?(Hash)
+        unless frame.keys.sort == %w[enc epoch type v]
+          raise FrameError, "Secure #{type} frame contains unexpected fields"
+        end
+
+        validate_encrypted_frame_metadata(frame, type)
+      end
+
+      def validate_encrypted_frame_metadata(frame, type)
         raise FrameError, "Unexpected secure frame version #{frame['v'].inspect}" unless frame['v'] == VERSION
-        raise FrameError, "Unexpected secure frame type #{frame['type'].inspect}" unless frame['type'] == 'data'
+        raise FrameError, "Unexpected secure frame type #{frame['type'].inspect}" unless frame['type'] == type
         raise FrameError, "Unexpected secure epoch #{frame['epoch'].inspect}" unless frame['epoch'] == @epoch
         raise FrameError, 'Secure frame COSE_Encrypt0 object is missing' unless frame['enc'].is_a?(Array)
       end
 
-      def validate_control_frame(frame)
-        raise FrameError, 'Secure frame must be a map' unless frame.is_a?(Hash)
-        raise FrameError, "Unexpected secure frame version #{frame['v'].inspect}" unless frame['v'] == VERSION
-        raise FrameError, "Unexpected secure frame type #{frame['type'].inspect}" unless frame['type'] == 'rekey'
-        raise FrameError, "Unexpected secure epoch #{frame['epoch'].inspect}" unless frame['epoch'] == @epoch
-        raise FrameError, 'Secure frame COSE_Encrypt0 object is missing' unless frame['enc'].is_a?(Array)
+      def wipe!(value)
+        return unless value.is_a?(String) && !value.frozen?
+
+        value.replace("\0" * value.bytesize)
+        value.clear
       end
     end
   end

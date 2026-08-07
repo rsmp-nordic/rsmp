@@ -1,50 +1,48 @@
 Secure RSMP sample credentials
 ==============================
 
-The sample Secure RSMP configs refer to credential files in this directory, but
-the generated credential files themselves are intentionally ignored by git.
+The sample configurations refer to credentials in this directory. Generated
+key and credential files are intentionally ignored by Git.
 
-Generate local Secure RSMP v1 credentials with:
+Generate the repeatable sample site and supervisor identities with:
 
 ```sh
 bundle exec rsmp secure generate
 ```
 
-Generate an additional fresh identity for another site with:
+Generate a fresh identity with:
 
 ```sh
 bundle exec rsmp secure generate --id RN+SI0002
 ```
 
-Secure RSMP fills in conventional file paths when they are omitted:
+Each identity consists of two files:
 
-- A site with `site_id: RN+SI0001` uses `secure/RN+SI0001.private.key` and `secure/RN+SI0001.cred`.
-- A supervisor uses `secure/supervisor.private.key` and `secure/supervisor.cred`.
-- A secure-required supervisor trusts each configured site by convention, e.g. `sites.RN+SI0001` uses `secure/RN+SI0001.pub` and `secure/RN+SI0001.cred`.
-- A site supervisor endpoint with `secure.id: supervisor` trusts `secure/supervisor.pub` and `secure/supervisor.cred`.
+- `<id>.private.key`: a 64-byte Ed25519 seed-plus-public-key value. Keep it
+  secret.
+- `<id>.cred`: the exact deterministic-CBOR CCS credential pinned by
+  `rsmp-secure-v1`. It contains the identity, public key, and derived 16-byte
+  KID and is provisioned as the peer trust object.
 
-Use `secure.enabled: true` only for the endpoint that opens the TCP connection,
-and `secure.required: true` for the endpoint that listens. Secure handshake
-failure never causes an automatic retry using legacy RSMP. A listening endpoint
-configured only with `secure.enabled: true` is rejected as ambiguous.
+No separate `.pub` file or self-signed credential envelope is used. Trusting a
+`.cred` file means pinning the complete identity and public key it contains.
 
-These files are generated as `rsmp-secure-v1` credentials. Without `--id`, the
-command uses stable sample keys from the local `edhoc` gem test vector and is
-intended only for repeatable local examples. With
-`--id`, the command generates a fresh Ed25519 key and signed deterministic-CBOR
-credential bundle using the id as the file prefix.
+When paths are omitted, Secure RSMP uses these conventions:
 
-Generated credentials use the same v1 format as secure mode. Before deployment,
-protect private keys and run the generated public keys and credential bundles
-through your commissioning, backup, rotation, and trust-approval process.
+- Site `RN+SI0001` uses `secure/RN+SI0001.private.key` and
+  `secure/RN+SI0001.cred`.
+- The default supervisor uses `secure/supervisor.private.key` and
+  `secure/supervisor.cred`.
+- A secure-required supervisor trusts site `RN+SI0001` through
+  `secure/RN+SI0001.cred`.
+- A site endpoint with `secure.id: supervisor` trusts
+  `secure/supervisor.cred`.
 
-Generate v1 bundles with:
+Use `secure.enabled: true` on the endpoint opening the TCP connection and
+`secure.required: true` on the listener. Secure handshake failure never falls
+back to legacy RSMP.
 
-```sh
-bundle exec rsmp secure generate
-```
-
-The sample configs use:
-
-- `RN+SI0001.private.key`, `RN+SI0001.pub`, `RN+SI0001.cred` for the sample site side.
-- `supervisor.private.key`, `supervisor.pub`, `supervisor.cred` for the sample supervisor side.
+The no-argument command uses stable test-vector keys for repeatable local
+examples. Use freshly generated or hardware-backed keys in deployment and
+provision, rotate, revoke, back up, and audit credentials through an
+authenticated operational process.

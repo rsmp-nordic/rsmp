@@ -86,7 +86,8 @@ module RSMP
       log "Received Version message for site #{@site_id}", message: message, level: :log
       start_timer
       acknowledge message
-      response_id = core_3_3_0_or_newer? ? (@supervisor.site_id || @site_id) : @site_id
+      secure_supervisor_id = @protocol.local_id if @protocol.respond_to?(:local_id)
+      response_id = core_3_3_0_or_newer? ? (@supervisor.site_id || secure_supervisor_id || @site_id) : @site_id
       send_version_response response_id, core_versions
       @use_alarms = @site_settings['use_alarms'] != false if core_3_3_0_or_newer?
       @version_determined = true
@@ -175,6 +176,7 @@ module RSMP
       validate_version! message, step: 'Request'
       check_site_ids message
       check_sxl_version message
+      @protocol.authorize!(rsmp_id: @site_id, core_version: @core_version) if @protocol.respond_to?(:authorize!)
       version_accepted message
     end
 

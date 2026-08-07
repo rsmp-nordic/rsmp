@@ -4,7 +4,6 @@ secure:
   profile: rsmp-secure-v1
   rekey_after_messages: 100
   rekey_after_seconds: 10
-  min_rekey_interval: 5
 default:
   sxls:
     tlc: '1.2.1'

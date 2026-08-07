@@ -7,14 +7,16 @@ module RSMP
           RSMP::Secure.site_peer_settings(@site_settings, @supervisor_settings)
         end
 
-        def check_secure_supervisor_id(message)
+        def authorize_secure_supervisor(message)
           expected = @supervisor_settings.dig('secure', 'supervisor_id')
-          return unless expected
+          actual = message.attributes['supervisorId'] || expected
+          if expected && actual != expected
+            raise HandshakeError, "Secure supervisor credential is not authorized for supervisor #{actual.inspect}"
+          end
+          return unless @protocol.respond_to?(:authorize!)
 
-          actual = message.attributes['supervisorId']
-          return if actual == expected
-
-          raise HandshakeError, "Secure supervisor credential is not authorized for supervisor #{actual.inspect}"
+          actual ||= @protocol.authenticated_peer_id
+          @protocol.authorize!(rsmp_id: actual, core_version: @core_version)
         end
       end
     end

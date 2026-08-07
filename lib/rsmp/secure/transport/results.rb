@@ -46,6 +46,8 @@ module RSMP
         end
 
         def complete_result(result, value = nil, error: nil)
+          return unless result
+
           unregister_result(result)
           if error
             result.enqueue([:error, error])
@@ -57,11 +59,11 @@ module RSMP
         end
 
         def register_result(result)
-          @pending_results << result
+          @pending_results << result if result
         end
 
         def unregister_result(result)
-          @pending_results.delete(result)
+          @pending_results.delete(result) if result
         end
 
         def fail_transport(error)
@@ -75,6 +77,7 @@ module RSMP
           @writes.close unless @writes.closed?
           @rekey_responses.close unless @rekey_responses.closed?
           @rekey_done.signal
+          @epoch_changed.signal
         end
 
         def raise_if_failed
