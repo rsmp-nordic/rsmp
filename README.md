@@ -161,8 +161,9 @@ $ rsmp secure generate
 ```
 
 The sample configs in `config/tlc.yaml` and `config/supervisor.yaml` use conventional credential paths
-under `config/secure/`. See [configuration](documentation/configuration.md#secure-rsmp) and
-[`config/secure/README.md`](config/secure/README.md) for the secure YAML shape and key file conventions.
+under `config/secure/`. See [Using Secure RSMP](documentation/secure.md) for step-by-step setup,
+configuration, and operation. The [configuration reference](documentation/configuration.md#secure-rsmp)
+and [`config/secure/README.md`](config/secure/README.md) cover all settings and key file conventions.
 
 CDDL schemas for the Secure RSMP v1 CBOR structures are available under
 [`schemas/secure/`](schemas/secure/). They are documentation and conformance artifacts. The

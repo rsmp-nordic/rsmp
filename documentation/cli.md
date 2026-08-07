@@ -248,6 +248,8 @@ With `--id`, it writes a fresh Ed25519 private key and an exact deterministic-CB
 Before deployment, protect private keys and run generated credentials through your commissioning,
 backup, rotation, and trust-approval process.
 
+See [Using Secure RSMP](secure.md) for the complete setup and run workflow.
+
 ### `rsmp version`
 
 Prints the installed `rsmp` gem version:

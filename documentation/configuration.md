@@ -146,6 +146,8 @@ This reversed setup is used when the site listens and the supervision system ini
 
 Secure RSMP is configured in YAML with a `secure` section. The implemented profile is `rsmp-secure-v1`.
 
+For step-by-step credential provisioning, configuration, validation, and run commands, see [Using Secure RSMP](secure.md). This section is the detailed configuration and protocol reference.
+
 Profile status:
 
 | Profile | Status | Handshake | Data AEAD | Notes |
