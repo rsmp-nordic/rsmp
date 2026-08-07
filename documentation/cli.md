@@ -228,8 +228,8 @@ $ rsmp secure generate
 
 By default, this writes the sample site and supervisor credential files to `config/secure`:
 
-- `RN+SI0001.private.key`, `RN+SI0001.pub`, `RN+SI0001.cred`
-- `supervisor.private.key`, `supervisor.pub`, `supervisor.cred`
+- `RN+SI0001.private.key`, `RN+SI0001.cred`
+- `supervisor.private.key`, `supervisor.cred`
 
 Generate one additional fresh identity with a custom id:
 
@@ -244,7 +244,7 @@ Options:
 - `--force`, `-f`: overwrite existing files.
 
 Without `--id`, the command writes stable sample credentials for repeatable local examples.
-With `--id`, it writes a fresh Ed25519 private key, public key, and signed v1 credential bundle.
+With `--id`, it writes a fresh Ed25519 private key and an exact deterministic-CBOR CCS credential.
 Before deployment, protect private keys and run generated credentials through your commissioning,
 backup, rotation, and trust-approval process.
 

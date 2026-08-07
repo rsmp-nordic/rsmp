@@ -26,9 +26,11 @@ module RSMP
 
       require_relative 'transport/results'
       require_relative 'transport/rekey'
+      require_relative 'transport/lifecycle'
 
       include Results
       include Rekey
+      include Lifecycle
 
       attr_reader :settings, :role, :channel
 
@@ -40,10 +42,11 @@ module RSMP
 
       def start
         parent = @parent || Async::Task.current
+        @task_parent = parent
         @reader = start_task(parent, 'secure reader') { run_reader }
         @writer = start_task(parent, 'secure writer') { run_writer }
         @outbound = start_task(parent, 'secure outbound') { run_outbound }
-        @task_parent = parent
+        @rekey_monitor = start_task(parent, 'secure rekey monitor') { run_rekey_monitor }
         self
       end
 
@@ -74,6 +77,9 @@ module RSMP
         stop_tasks
         @session_builder = nil
         @channel_builder = nil
+        @pending_rekey_channel&.clear!
+        @channel&.clear!
+        @pending_rekey_channel = nil
         @channel = nil
       end
 
@@ -82,54 +88,6 @@ module RSMP
       end
 
       private
-
-      def configure(config)
-        @frame_io = config.frame_io
-        @role = config.role.to_sym
-        @settings = config.settings
-        @channel = config.channel
-        @peer_id = config.peer_id
-        @session_builder = config.session_builder
-        @channel_builder = config.channel_builder
-        @log = config.log
-        @parent = config.parent
-      end
-
-      def initialize_queues
-        @inbound = Async::LimitedQueue.new(MAX_PENDING_INBOUND)
-        @commands = Async::LimitedQueue.new(MAX_PENDING_OUTBOUND)
-        @writes = Async::LimitedQueue.new(MAX_PENDING_OUTBOUND)
-        @rekey_responses = Async::Queue.new
-        @pending_results = []
-        @error = nil
-      end
-
-      def initialize_rekey_state
-        @epoch_started_at = monotonic_now
-        @last_rekey_at = nil
-        @data_sent_in_epoch = 0
-        @rekeying = false
-        @pending_rekey_channel = nil
-        @rekey_done = Async::Notification.new
-      end
-
-      def start_task(parent, annotation)
-        parent.async do |task|
-          task.annotate annotation
-          yield
-        end
-      end
-
-      def stop_tasks
-        current = Async::Task.current?
-        [@reader, @writer, @outbound, @responder_rekey].each do |task|
-          task&.stop unless task.equal?(current)
-        end
-        @reader = nil
-        @writer = nil
-        @outbound = nil
-        @responder_rekey = nil
-      end
 
       def run_reader
         loop do
@@ -168,6 +126,8 @@ module RSMP
             process_send(command)
           when :rekey
             process_rekey_command(command)
+          when :peer_rekey, :threshold_rekey
+            process_internal_rekey_command(command)
           else
             complete_result(command.result, error: FrameError.new("Unknown secure command #{command.type.inspect}"))
           end
@@ -177,12 +137,12 @@ module RSMP
       end
 
       def process_send(command)
-        wait_for_rekey
-        maybe_rekey!
+        resolve_pending_rekey_before_send
+        renew_if_due!
         attributes = JSON.parse(command.json)
         plaintext = Cbor.encode(attributes)
         write_frame(@channel.encrypt_payload(plaintext))
-        @data_sent_in_epoch += 1
+        renew_if_due!
         complete_result(command.result, true)
       rescue JSON::ParserError => e
         complete_result(command.result, error: InvalidPacket.new(e.message))
@@ -192,23 +152,36 @@ module RSMP
       end
 
       def process_rekey_command(command)
-        unless initiator?
-          complete_result(command.result, error: FrameError.new('Secure responder cannot initiate rekey'))
-          return
-        end
-
         wait_for_rekey
-        execute_rekey_exchange
+        initiator? ? execute_rekey_exchange : request_rekey_and_wait
         complete_result(command.result, true)
       rescue StandardError => e
         complete_result(command.result, error: e)
         fail_transport(e) if secure_transport_error?(e)
       end
 
+      def process_internal_rekey_command(command)
+        @rekey_command_queued = false
+        unless @rekey_requested || rekey_due?
+          complete_result(command.result, true)
+          return
+        end
+        wait_for_rekey unless @rekey_requested
+        initiator? ? execute_rekey_exchange : request_rekey_and_wait
+        complete_result(command.result, true)
+      rescue StandardError => e
+        complete_result(command.result, error: e)
+        fail_transport(e)
+      end
+
       def enqueue_plaintext(frame)
-        wait_for_rekey if @rekeying && frame['epoch'] != @channel.epoch
+        if @rekeying || @rekey_requested
+          raise FrameError, 'Application data is not permitted while secure rekey is required or in progress'
+        end
+
         attributes = Cbor.decode(@channel.decrypt_frame(frame))
         @inbound.enqueue(JSON.generate(attributes, array_nl: nil, object_nl: nil, space_before: nil, space: nil))
+        schedule_rekey_if_due
       end
 
       def build_edhoc_session

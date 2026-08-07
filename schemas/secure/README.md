@@ -1,86 +1,36 @@
-# Secure RSMP CDDL Schemas
+# Secure RSMP CDDL schemas
 
-This directory contains CDDL schemas for the implemented Secure RSMP v1 CBOR
-structures.
+This directory contains the normative structural CDDL for `rsmp-secure-v1`.
+It covers:
 
-The protected path ends at the credential-authenticated peers that terminate
-the EDHOC/COSE session. Intermediaries preserve application-layer protection
-only when they forward the secure frames unchanged; translation or plaintext
-inspection makes the intermediary an explicit secure-channel endpoint.
+- four-message initial EDHOC frames and the generic EDHOC error frame;
+- encrypted RSMP data and rekey frames;
+- untagged RFC 9052 `COSE_Encrypt0` with ChaCha20/Poly1305;
+- responder rekey requests, EDHOC rekey messages, new-key acknowledgement,
+  and the generic rekey error;
+- exact deterministic-CBOR CCS credentials with Ed25519 COSE keys;
+- exporter-context and HKDF info maps; and
+- COSE external AAD and `Enc_structure`.
 
-The schemas are documentation and conformance artifacts. The development test
-suite uses the `cddl` gem to validate representative generated CBOR structures
-against them. The Ruby runtime does not load or validate against them; it uses
-explicit Ruby validation for deterministic CBOR, credential bundles, secure
-frames, replay state, and cryptographic checks.
-
-Run the conformance check with:
+Run the conformance checks with:
 
 ```console
 $ bundle exec sus test/rsmp/secure_cddl_spec.rb
 ```
 
-The main schema is:
+The Ruby runtime performs explicit semantic and cryptographic validation. CDDL
+does not by itself enforce deterministic encoding, exact derived KIDs, trust or
+authorization policy, EDHOC transcript validity, frame ordering, replay
+rejection, mandatory renewal thresholds, or secret erasure.
 
-- `rsmp-secure-v1.cddl`
+Every protected direction has an independent 32-bit Partial IV index beginning
+at 1 in each epoch. The profile renews keys at no more than 1,000,000 protected
+frames, 64 GiB of ciphertext, or two hours per direction and epoch. The outer
+epoch is an unsigned 64-bit value beginning at 0. Neither value may wrap.
 
-It describes:
+The exporter context binds the exact profile and both authenticated credential
+subjects in EDHOC initiator/responder order. Private-use exporter label `32768`
+produces 32 bytes of material, followed by the deterministic-CBOR-bound
+HKDF-SHA-256 schedule described in the normative specification.
 
-- Secure RSMP `edhoc`, `data`, and `rekey` frames.
-- Untagged RFC 9052 `COSE_Encrypt0` objects used by encrypted frames.
-- Encrypted rekey plaintext.
-- RFC 9052 COSE_Sign1 Secure RSMP credential bundles.
-- COSE Key shape used by Ed25519 credentials.
-- CCS-style EDHOC credential bytes.
-- RSMP exporter context and HKDF info maps.
-- COSE external AAD maps and the resulting RFC 9052 `Enc_structure`.
-
-Encrypted `data` and `rekey` frames carry an untagged `COSE_Encrypt0` object.
-Its protected header contains only algorithm `24` (ChaCha20/Poly1305), and its
-unprotected header contains the minimal one-to-four-byte Partial IV used as the
-per-epoch frame index. The outer frame supplies the epoch and frame family;
-the RSMP session binding is supplied as COSE external AAD.
-
-The 32-bit Partial IV limits each direction to 4,294,967,295 encrypted frames
-per epoch. Implementations must rekey or close before another send and must
-never wrap or reuse the frame index with the same traffic key.
-
-Secure RSMP derives traffic material with full HKDF-SHA-256 (Extract followed
-by Expand), an empty salt, and the deterministic-CBOR `hkdf-info` map as the
-exact `info` byte string. The session id is derived during the initial
-handshake and remains stable when traffic keys are renewed on the same
-connection.
-
-The exporter context always includes the authenticated credential-bundle ids
-in EDHOC initiator/responder order. Both ids are mandatory, non-empty CBOR text
-strings. Its exact deterministic-CBOR bytes are passed as the RFC 9528 EDHOC
-exporter context using private-use label `32768`; labels `0` and `1` remain
-reserved for OSCORE. The context is also retained in the downstream HKDF
-traffic-secret info map. RSMP Core version and optional login authorization are established
-later inside encrypted RSMP messages; they are not plaintext EDHOC-frame hints
-or pre-handshake exporter-context fields.
-
-Rekey completes with a responder `rekey_ack` encrypted under the new epoch
-keys after the responder authenticates EDHOC message 3. The initiator prepares
-its pending channel before sending message 3, then authenticates the
-acknowledgement before installing that channel locally. Successful rekey thus
-confirms both state installation and possession of the newly derived traffic
-keys without a separate commit message.
-
-CDDL describes structure and CBOR types. Implementations must still perform
-semantic checks such as deterministic-CBOR validation, signature verification,
-credential authorization, EDHOC transcript validation, replay rejection, and
-matching the EDHOC credential to the COSE key.
-
-Credential files are untagged COSE_Sign1 objects whose payload is the
-deterministic-CBOR credential map. The protected algorithm header and RFC 9052
-`Sig_structure` replace the prototype's custom signature fields. The signature
-proves possession of the embedded key and protects the bundle payload; peer
-trust still comes from matching that key to the separately configured public
-key and authorizing its credential id locally.
-
-The credential COSE_Sign1 protected header uses the fully specified Ed25519
-algorithm `-19` from RFC 9864. The embedded COSE_Key omits its optional `alg`
-parameter: Secure RSMP uses that key for the `-19` credential envelope, while
-RFC 9528 EDHOC cipher suite 4 still fixes its signature algorithm to the older
-generic EdDSA identifier `-8`.
+The main schema is `rsmp-secure-v1.cddl`.

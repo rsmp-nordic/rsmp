@@ -1,8 +1,9 @@
 GIT
   remote: https://github.com/rsmp-nordic/ruby-edhoc.git
-  revision: 724affaae27fa4c85be9f5f2804da4cc2f0ab7b9
+  revision: b46ac4395f31b5eabd3f59e22016218ab5dab44a
+  ref: b46ac4395f31b5eabd3f59e22016218ab5dab44a
   specs:
-    edhoc (0.2.0)
+    edhoc (1.0.0)
 
 PATH
   remote: .

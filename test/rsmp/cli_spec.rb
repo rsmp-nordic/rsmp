@@ -98,19 +98,19 @@ describe RSMP::CLI do
         vector = Edhoc::TestVector.suite0
         site_credential = File.binread(File.join(dir, 'RN+SI0001.cred'))
         supervisor_credential = File.binread(File.join(dir, 'supervisor.cred'))
-        site_bundle = RSMP::Secure::CredentialBundle.decode(site_credential, expected_profile: RSMP::Secure::PROFILE)
-        supervisor_bundle = RSMP::Secure::CredentialBundle.decode(supervisor_credential, expected_profile: RSMP::Secure::PROFILE)
+        site_ccs = RSMP::Secure::Credential.decode(site_credential)
+        supervisor_ccs = RSMP::Secure::Credential.decode(supervisor_credential)
 
         expect(result.status).to be == 0
         expect(result.output).to be(:include?, "Generated Secure RSMP credentials in #{dir}")
         expect(result.output).to be(:include?, 'Review and protect private keys before deployment.')
         expect(result.output).to be(:include?, 'Use your commissioning, backup, rotation, and trust-approval process for production.')
         expect(File.binread(File.join(dir, 'RN+SI0001.private.key'))).to be == vector.fetch(:initiator_private_key)
-        expect(File.binread(File.join(dir, 'RN+SI0001.pub'))).to be == vector.fetch(:initiator_public_key)
-        expect(RSMP::Secure::CredentialBundle.public_key(site_bundle)).to be == vector.fetch(:initiator_public_key)
+        expect(RSMP::Secure::Credential.public_key(site_ccs)).to be == vector.fetch(:initiator_public_key)
         expect(File.binread(File.join(dir, 'supervisor.private.key'))).to be == vector.fetch(:responder_private_key)
-        expect(File.binread(File.join(dir, 'supervisor.pub'))).to be == vector.fetch(:responder_public_key)
-        expect(RSMP::Secure::CredentialBundle.public_key(supervisor_bundle)).to be == vector.fetch(:responder_public_key)
+        expect(RSMP::Secure::Credential.public_key(supervisor_ccs)).to be == vector.fetch(:responder_public_key)
+        expect(File.exist?(File.join(dir, 'RN+SI0001.pub'))).to be == false
+        expect(File.exist?(File.join(dir, 'supervisor.pub'))).to be == false
       end
     end
 
@@ -119,40 +119,35 @@ describe RSMP::CLI do
         result = invoke_cli('secure', 'generate', '--out', dir, '--id', 'RN+SI0002')
         vector = Edhoc::TestVector.suite0
         private_key = File.binread(File.join(dir, 'RN+SI0002.private.key'))
-        public_key = File.binread(File.join(dir, 'RN+SI0002.pub'))
         credential = File.binread(File.join(dir, 'RN+SI0002.cred'))
-        bundle = RSMP::Secure::CredentialBundle.decode(credential, expected_profile: RSMP::Secure::PROFILE)
+        ccs = RSMP::Secure::Credential.decode(credential)
+        public_key = RSMP::Secure::Credential.public_key(ccs)
 
         expect(result.status).to be == 0
         expect(result.output).to be(:include?, "Generated Secure RSMP credentials in #{dir}")
         expect(private_key.bytesize).to be == 64
         expect(public_key.bytesize).to be == 32
         expect(private_key.byteslice(32, 32)).to be == public_key
-        expect(RSMP::Secure::CredentialBundle.id(bundle)).to be == 'RN+SI0002'
-        expect(RSMP::Secure::CredentialBundle.public_key(bundle)).to be == public_key
+        expect(RSMP::Secure::Credential.id(ccs)).to be == 'RN+SI0002'
         expect(public_key).not.to be == vector.fetch(:initiator_public_key)
+        expect(File.exist?(File.join(dir, 'RN+SI0002.pub'))).to be == false
         expect(File.exist?(File.join(dir, 'supervisor.pub'))).to be == false
       end
     end
 
-    it 'generates v1 credential bundles' do
+    it 'generates exact v1 CCS credentials' do
       Dir.mktmpdir('rsmp-secure-cli') do |dir|
         result = invoke_cli('secure', 'generate', '--out', dir, '--id', 'RN+SI0002')
         private_key = File.binread(File.join(dir, 'RN+SI0002.private.key'))
-        public_key = File.binread(File.join(dir, 'RN+SI0002.pub'))
         credential = File.binread(File.join(dir, 'RN+SI0002.cred'))
-        bundle = RSMP::Secure::CredentialBundle.decode(credential, expected_profile: RSMP::Secure::PROFILE)
+        ccs = RSMP::Secure::Credential.decode(credential)
+        public_key = RSMP::Secure::Credential.public_key(ccs)
 
         expect(result.status).to be == 0
-        expect(RSMP::Secure::CredentialBundle.id(bundle)).to be == 'RN+SI0002'
-        expect(RSMP::Secure::CredentialBundle.public_key(bundle)).to be == public_key
-        expect(RSMP::Secure::CredentialBundle.kid(bundle).bytesize).to be == 16
+        expect(RSMP::Secure::Credential.id(ccs)).to be == 'RN+SI0002'
+        expect(RSMP::Secure::Credential.kid(ccs).bytesize).to be == 16
         expect(private_key.byteslice(32, 32)).to be == public_key
-        expect(RSMP::Secure::CredentialBundle.edhoc_credential(bundle)).to be == RSMP::Secure::CredentialBundle.ccs_credential(
-          'RN+SI0002',
-          public_key,
-          RSMP::Secure::CredentialBundle.kid(bundle)
-        )
+        expect(RSMP::Secure::Cbor.encode(ccs)).to be == credential
       end
     end
 

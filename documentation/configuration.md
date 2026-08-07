@@ -150,7 +150,7 @@ Profile status:
 
 | Profile | Status | Handshake | Data AEAD | Notes |
 | --- | --- | --- | --- | --- |
-| `rsmp-secure-v1` | Implemented profile | EDHOC method 0, cipher suite 4 | COSE_Encrypt0 with ChaCha20-Poly1305 | Uses deterministic CBOR frames, COSE Partial IV sequence numbers, signed CBOR credential bundles, and EDHOC KID/CBOR credential transport. |
+| `rsmp-secure-v1` | Implemented profile | EDHOC method 0, cipher suite 4 | COSE_Encrypt0 with ChaCha20-Poly1305 | Uses deterministic CBOR, exact pinned CCS credentials, four-message initial EDHOC, and mandatory traffic-key renewal limits. |
 
 The secure layer is independent of the RSMP site/supervisor role:
 
@@ -168,20 +168,20 @@ Secure paths are resolved relative to the YAML config file, not the current work
 
 - A site with `site_id: RN+SI0001` uses `secure/RN+SI0001.private.key` and `secure/RN+SI0001.cred`.
 - A supervisor uses `secure/supervisor.private.key` and `secure/supervisor.cred`.
-- A site endpoint with `secure.id: supervisor` trusts `secure/supervisor.pub` and `secure/supervisor.cred`.
-- A supervisor with `secure.required: true` trusts every configured site by convention, e.g. `sites.RN+SI0001` uses `secure/RN+SI0001.pub` and `secure/RN+SI0001.cred`.
+- A site endpoint with `secure.id: supervisor` trusts `secure/supervisor.cred`.
+- A supervisor with `secure.required: true` trusts every configured site by convention, e.g. `sites.RN+SI0001` uses `secure/RN+SI0001.cred`.
 
-The endpoint `secure.id` is the peer id and conventional file prefix. For example, `id: supervisor-a` means the peer public key is `secure/supervisor-a.pub` and the peer credential is `secure/supervisor-a.cred` unless explicit paths are provided.
+The endpoint `secure.id` is the expected peer credential subject and conventional file prefix. For example, `id: supervisor-a` means the peer credential is `secure/supervisor-a.cred` unless an explicit path is provided.
 
-`private_key` is the local raw 64-byte Ed25519 signing key: a 32-byte private seed followed by its 32-byte public key. `credential` is the local public credential bundle. The credential file is an untagged COSE_Sign1 object whose deterministic-CBOR payload contains a COSE_Key-style public key, a KID, a CCS-style CBOR EDHOC credential, and profile metadata. Peer entries use a raw 32-byte Ed25519 `public_key` and a `credential` to define the trusted remote identity; the public key file must match the key embedded in the credential bundle, and EDHOC authenticates the peer by KID before using the configured CBOR credential.
+`private_key` is the local raw 64-byte Ed25519 signing key: a 32-byte private seed followed by its 32-byte public key. `credential` is the exact deterministic-CBOR CCS credential pinned by the profile. It contains a non-empty subject and an Ed25519 COSE_Key whose 16-byte KID is derived from the public key. No separate public-key file or self-signed envelope is used.
 
-The COSE_Sign1 signature protects the bundle payload and proves possession of its embedded key, but a self-signed bundle is not a trust anchor. Trust comes from the separately configured peer `public_key`; authorization comes from the local mapping of the authenticated credential id to the allowed RSMP peer or site.
+Trust comes from provisioning the complete peer `.cred` file through an authenticated process. EDHOC proves possession of its corresponding private key. Authorization then maps the authenticated credential subject to the expected RSMP identity, site or supervisor role, and permitted Core versions.
 
-The credential COSE_Sign1 protected header uses RFC 9864's fully specified Ed25519 algorithm `-19`. Its embedded COSE_Key omits the optional `alg` parameter because the key is also used by RFC 9528 EDHOC cipher suite 4, which still selects the generic EdDSA algorithm `-8` as part of the fixed suite.
+Use `core_versions` on a peer `secure` entry to restrict the encrypted RSMP `Version` selection. The authenticated identity and selected Core version are sealed for the connection; a later `Version` change is rejected.
 
-When secure mode is active, startup validates all configured credential material before opening a listener or starting an outgoing connection. This includes key lengths, deterministic COSE_Sign1 decoding and signature verification, consistency between the local private key and credential, consistency between each trusted public key and peer credential, and any explicitly configured peer or site identity. Invalid or stale credential files therefore fail startup instead of failing only after a peer connects.
+When secure mode is active, startup validates deterministic credential encoding, exact CCS shape, derived KIDs, key lengths, the local private-key/credential match, configured subjects, and duplicate peer identities or KIDs. Invalid material fails startup before a listener opens or an outgoing connection starts.
 
-The two authenticated credential-bundle ids are mandatory inputs to the Secure RSMP exporter context, ordered by EDHOC initiator and responder role. The exact deterministic-CBOR context bytes are passed to RFC 9528 `EDHOC_Exporter(label, context, length)` with private-use label `32768`, rather than the OSCORE-reserved labels `0` or `1`, and retained as an explicit input to the downstream Secure RSMP HKDF schedule. The RSMP Core version and any optional login authorization are learned later from encrypted RSMP messages and checked against local configuration; they are not sent as plaintext handshake hints.
+The two authenticated credential subjects are mandatory exporter-context inputs, ordered by EDHOC initiator and responder role. The exact deterministic-CBOR context is passed to RFC 9528 `EDHOC_Exporter` with private-use label `32768` and retained in the downstream HKDF-SHA-256 schedule. The RSMP identity and Core version are learned from encrypted RSMP messages and checked against local authorization policy.
 
 Encrypted RSMP data and rekey-control frames use untagged `COSE_Encrypt0` with protected algorithm `24` (ChaCha20/Poly1305). The COSE Partial IV carries the per-epoch message index, while the outer frame carries the epoch and frame type used for key selection and dispatch.
 
@@ -206,7 +206,7 @@ sxls:
   tlc: "1.3.0"
 ```
 
-With the example above, the site uses `secure/RN+SI0001.private.key` and `secure/RN+SI0001.cred`, and trusts the supervisor through `secure/supervisor.pub` and `secure/supervisor.cred`.
+With the example above, the site uses `secure/RN+SI0001.private.key` and `secure/RN+SI0001.cred`, and trusts the supervisor through the pinned `secure/supervisor.cred`.
 
 Example supervisor accepting secure sites:
 
@@ -237,8 +237,8 @@ sites:
     sxls:
       tlc: "1.3.0"
     secure:
-      public_key: secure/custom-site.pub
       credential: secure/custom-site.cred
+      core_versions: ["3.3.0"]
 ```
 
 A site can also listen for supervisor connections. In that case `secure.required` is on the site, and trusted supervisors stay in the existing `supervisors` list:
@@ -285,20 +285,21 @@ sites:
 
 Here the supervisor uses its conventional local identity, and each site peer uses the site id as the file prefix. The `secure: {}` marker is used because the supervisor is initiating outbound secure connections; `secure.required` only implies all configured site peers for inbound supervisor listeners.
 
-The secure layer supports automatic rekeying. Rekeying keeps the same profile and credentials, but derives fresh traffic keys and increments the epoch. Rekey triggers can be configured with:
+Traffic-key renewal is mandatory. It retains the authenticated credential subjects, authorization context, and session id, but derives fresh directional traffic keys and increments a non-wrapping unsigned 64-bit epoch. Every configured limit must be at or below the profile maximum:
 
 ```yaml
 secure:
   rekey_after_messages: 1000000
+  rekey_after_bytes: 68719476736
   rekey_after_seconds: 7200
-  min_rekey_interval: 60
+  rekey_timeout: 2
 ```
 
-Set `rekey_after_messages` or `rekey_after_seconds` to `null` to disable that trigger. `min_rekey_interval` prevents repeated rekeys if several triggers become due at the same time.
+The limits apply per direction and epoch. They cannot be disabled. `rekey_after_messages` must be between 3 and 1,000,000. `rekey_after_bytes` must leave space for two maximum-sized control frames and cannot exceed 64 GiB. `rekey_after_seconds` cannot exceed 7,200 seconds and must exceed the fixed two-second rekey timeout. `rekey_timeout` is exactly 2 seconds.
 
-Each direction has a hard limit of 4,294,967,295 encrypted frames per epoch because the COSE Partial IV is 32 bits. The channel fails closed rather than reusing a nonce when that limit is reached. `rekey_after_messages` cannot exceed 4,294,967,293, which reserves the initiator's final two old-epoch sequence numbers for the EDHOC rekey messages. Disabling the configurable triggers does not disable the hard frame-index limit.
+The original EDHOC initiator starts each rekey. The responder sends an encrypted request when its limit is due. Application data pauses while renewal is required or active. The responder's final acknowledgement is protected by the pending new-epoch keys, so the initiator installs the new channel only after authenticating possession of those keys.
 
-The responder confirms each completed rekey with an encrypted acknowledgement under the new epoch keys. The initiator does not install the new channel or resume normal writes until that acknowledgement is authenticated.
+Each direction also has an absolute 4,294,967,295-frame index space per epoch because the COSE Partial IV is 32 bits. The configured one-million-frame maximum and reserved control space ensure renewal happens much earlier. A frame index or epoch never wraps; exhaustion closes the connection.
 
 Secure RSMP derives the traffic secret, directional keys, nonce prefixes, and
 initial session id using full HKDF-SHA-256 (Extract followed by Expand). Each
@@ -351,7 +352,7 @@ Common per-site keys
 - `type` (string): optional human-readable type identifier.
 - `site_id` (string): explicit site identifier (if different from the mapping key).
 - `supervisors` (array): list of supervisor endpoints (objects with `ip` and `port`). Useful for reverse mappings or local-site configs.
-- `secure` (object): Secure RSMP peer settings for this site. Use `public_key` and `credential` for explicit trusted peer files, or omit them to use `secure/<site_id>.pub` and `secure/<site_id>.cred` by convention.
+- `secure` (object): Secure RSMP peer settings for this site. Use `credential` for an explicit pinned CCS file, or omit it to use `secure/<site_id>.cred` by convention. `core_versions` optionally restricts the authorized encrypted Core-version selection.
 - `components` (object): component definitions (same structure as site `components`), used by the supervisor-side proxies to set up component proxies.
 - `intervals` (object): per-site timer settings - `timer`, `watchdog`, `reconnect`, `after_connect` (numbers, seconds).
 - `timeouts` (object): per-site timeouts - `connect`, `watchdog`, `acknowledgement` (numbers, seconds).
@@ -368,7 +369,7 @@ The following lists the top-level site settings.
 - `connection_role` (string): `client` to connect to supervisors, or `server` to listen for supervisor connections (default: `client`).
 - `ip` (string): bind address when `connection_role` is `server` (default: `0.0.0.0`).
 - `port` (integer|string): listen port when `connection_role` is `server`. If omitted, it defaults to the first configured supervisor port.
-- `supervisors` (array): supervisor endpoints used when `connection_role` is `client`. Each endpoint may include `secure` peer settings with `id`, `public_key`, and `credential`.
+- `supervisors` (array): supervisor endpoints used when `connection_role` is `client`. Each endpoint may include secure peer settings with `id`, `credential`, and optional `core_versions`.
 - `secure` (object): Secure RSMP local settings. Use `enabled: true` for outgoing secure connections or `required: true` for secure inbound listeners.
 - `sxls` (object): SXL versions used by the site, keyed by SXL name.
 - `core_version` (string): RSMP Core version to use.

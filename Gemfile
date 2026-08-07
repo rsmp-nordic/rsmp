@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'edhoc', github: 'rsmp-nordic/ruby-edhoc'
+gem 'edhoc', github: 'rsmp-nordic/ruby-edhoc', ref: 'b46ac4395f31b5eabd3f59e22016218ab5dab44a'
 
 group :development do
   gem 'base64', '~> 0.3'

@@ -108,14 +108,10 @@ module RSMP
     def secure_sample_files(vector)
       {
         'RN+SI0001.private.key' => vector.fetch(:initiator_private_key),
-        'RN+SI0001.pub' => vector.fetch(:initiator_public_key),
         'RN+SI0001.cred' => secure_credential('RN+SI0001',
-                                              private_key: vector.fetch(:initiator_private_key),
                                               public_key: vector.fetch(:initiator_public_key)),
         'supervisor.private.key' => vector.fetch(:responder_private_key),
-        'supervisor.pub' => vector.fetch(:responder_public_key),
         'supervisor.cred' => secure_credential('supervisor',
-                                               private_key: vector.fetch(:responder_private_key),
                                                public_key: vector.fetch(:responder_public_key))
       }
     end
@@ -128,18 +124,13 @@ module RSMP
 
       {
         "#{id}.private.key" => private_key,
-        "#{id}.pub" => public_key,
         "#{id}.cred" => secure_credential(id,
-                                          private_key: private_key,
                                           public_key: public_key)
       }
     end
 
-    def secure_credential(id, private_key:, public_key:)
-      RSMP::Secure::CredentialBundle.create(id: id,
-                                            profile: RSMP::Secure::PROFILE,
-                                            private_key: private_key,
-                                            public_key: public_key)
+    def secure_credential(id, public_key:)
+      RSMP::Secure::Credential.create(id: id, public_key: public_key)
     end
 
     def validate_secure_identity_id(id)

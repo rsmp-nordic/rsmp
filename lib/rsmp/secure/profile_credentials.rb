@@ -1,82 +1,114 @@
+require 'edhoc'
 require 'openssl'
 
 module RSMP
   module Secure
-    # Loads secure credential files and unwraps profile-specific credential formats.
+    # Loads the exact pinned CCS credentials and implements ruby-edhoc callbacks.
     class ProfileCredentials
       ED25519_PRIVATE_KEY_BYTES = 64
       ED25519_PUBLIC_KEY_BYTES = 32
 
+      Peer = Struct.new(
+        :id, :kid, :credential, :public_key, :rsmp_id, :rsmp_role, :core_versions,
+        keyword_init: true
+      )
+
       def initialize(settings)
         @settings = settings
+        load_local!
+        load_peers!
       end
 
       def validate!
-        local_private_key = private_key
-        validate_private_key!(local_private_key)
-        local_session_options(local_private_key)
-        peer_entries
+        validate_private_key!(@private_key)
+        validate_private_key_credential!
       end
 
-      def private_key
-        read_file('private_key')
-      end
+      attr_reader :private_key
 
       def local_id
-        credential = read_file('credential')
-        bundle = CredentialBundle.decode(credential, expected_profile: @settings['profile'])
-        CredentialBundle.id(bundle)
+        Credential.id(@local_credential)
       end
 
-      def local_session_options(private_key)
-        credential = read_file('credential')
-        bundle = CredentialBundle.decode(credential, expected_profile: @settings['profile'])
-        validate_local_id!(bundle)
-        validate_private_key_bundle!(private_key, bundle)
-        {
-          credential: CredentialBundle.edhoc_credential(bundle),
-          credential_format: :kid_cbor,
-          kid: CredentialBundle.kid(bundle)
-        }
+      def select_local(context)
+        validate_context!(context)
+        Edhoc::LocalCredential.new(
+          private_key: @private_key,
+          identification: Edhoc::Credentials::KID.new(
+            identifier: Credential.kid(@local_credential),
+            credential: @local_credential_bytes,
+            format: :cbor
+          )
+        )
       end
 
-      def peer_entries
-        @settings['peers'].map do |peer|
-          credential = peer_credential(peer)
-          {
-            id: credential.fetch(:id),
-            public_key: credential.fetch(:public_key),
-            credential: credential.fetch(:edhoc_credential),
-            kid: credential[:kid]
-          }
+      def authenticate_peer(context, received)
+        validate_context!(context)
+        return unless received.kind == :kid && received.identifier
+
+        peer = @peers_by_kid[received.identifier]
+        return unless peer
+
+        Edhoc::TrustedCredential.new(
+          credential: peer.credential,
+          public_key: peer.public_key,
+          format: :cbor,
+          peer_id: peer.id
+        )
+      end
+
+      def peer(id)
+        @peers_by_id[id]
+      end
+
+      def clear!
+        wipe!(@private_key)
+        wipe!(@local_credential_bytes)
+        @peers_by_id.each_value do |peer|
+          wipe!(peer.credential)
+          wipe!(peer.public_key)
         end
       end
 
       private
 
-      def peer_credential(peer)
-        credential = read_path(peer['credential'], "peers.#{peer['id']}.credential")
-        public_key = read_path(peer['public_key'], "peers.#{peer['id']}.public_key")
-        validate_public_key!(public_key, peer)
-        bundled_peer_credential(public_key, credential, peer)
+      def load_local!
+        @private_key = read_file('private_key')
+        @local_credential_bytes = read_file('credential')
+        @local_credential = Credential.decode(@local_credential_bytes)
+        validate_local_id!
       end
 
-      def bundled_peer_credential(public_key, credential, peer)
-        bundle = CredentialBundle.decode(
-          credential,
-          expected_profile: @settings['profile'],
-          trusted_public_key: public_key
-        )
-        bundle_public_key = CredentialBundle.public_key(bundle)
-        validate_peer_bundle!(public_key, bundle, bundle_public_key)
-        validate_peer_id!(peer, bundle)
+      def load_peers!
+        @peers_by_id = {}
+        @peers_by_kid = {}
+        @settings.fetch('peers').each do |settings|
+          peer = load_peer(settings)
+          if @peers_by_id.key?(peer.id)
+            raise ConfigurationError, "duplicate secure peer credential subject #{peer.id.inspect}"
+          end
+          if @peers_by_kid.key?(peer.kid)
+            raise ConfigurationError, "duplicate secure peer credential KID #{peer.kid.unpack1('H*')}"
+          end
 
-        {
-          id: CredentialBundle.id(bundle),
-          public_key: bundle_public_key,
-          edhoc_credential: CredentialBundle.edhoc_credential(bundle),
-          kid: CredentialBundle.kid(bundle)
-        }
+          @peers_by_id[peer.id] = peer
+          @peers_by_kid[peer.kid] = peer
+        end
+      end
+
+      def load_peer(settings)
+        bytes = read_path(settings['credential'], "peers.#{settings['id']}.credential")
+        credential = Credential.decode(bytes)
+        validate_peer_id!(settings, credential)
+        Peer.new(
+          id: Credential.id(credential),
+          kid: Credential.kid(credential),
+          credential: bytes,
+          public_key: Credential.public_key(credential).dup,
+          rsmp_id: settings[RSMP_ID_KEY] || Credential.id(credential),
+          rsmp_role: settings[RSMP_ROLE_KEY] || 'peer',
+          core_versions: Array(settings[CORE_VERSIONS_KEY]).map(&:to_s).freeze
+        ).freeze
       end
 
       def validate_private_key!(private_key)
@@ -86,48 +118,45 @@ module RSMP
         end
 
         signing_key = OpenSSL::PKey.new_raw_private_key('Ed25519', private_key.byteslice(0, 32))
-        return if signing_key.raw_public_key == private_key.byteslice(32, 32)
+        derived = signing_key.raw_public_key
+        supplied = private_key.byteslice(32, ED25519_PUBLIC_KEY_BYTES)
+        return if OpenSSL.fixed_length_secure_compare(derived, supplied)
 
         raise ConfigurationError, 'secure.private_key public key does not match its private seed'
       end
 
-      def validate_public_key!(public_key, peer)
-        return if public_key.bytesize == ED25519_PUBLIC_KEY_BYTES
+      def validate_private_key_credential!
+        expected = @private_key.byteslice(32, ED25519_PUBLIC_KEY_BYTES)
+        actual = Credential.public_key(@local_credential)
+        return if OpenSSL.fixed_length_secure_compare(expected, actual)
+
+        raise ConfigurationError, "CCS credential #{local_id.inspect} does not match private key"
+      end
+
+      def validate_local_id!
+        expected = @settings[LOCAL_ID_KEY]
+        return unless expected
+        return if local_id == expected
 
         raise ConfigurationError,
-              "secure peer #{peer['id']} public_key must contain a #{ED25519_PUBLIC_KEY_BYTES}-byte Ed25519 public key"
+              "CCS credential #{local_id.inspect} does not match local id #{expected.inspect}"
       end
 
-      def validate_local_id!(bundle)
-        expected_id = @settings[LOCAL_ID_KEY]
-        return unless expected_id
-        return if CredentialBundle.id(bundle) == expected_id
+      def validate_peer_id!(settings, credential)
+        expected = settings[PEER_ID_KEY]
+        actual = Credential.id(credential)
+        return unless expected
+        return if actual == expected
 
         raise ConfigurationError,
-              "credential bundle #{CredentialBundle.id(bundle).inspect} does not match local id #{expected_id.inspect}"
+              "CCS credential #{actual.inspect} does not match peer id #{expected.inspect}"
       end
 
-      def validate_peer_id!(peer, bundle)
-        expected_id = peer[PEER_ID_KEY]
-        return unless expected_id
-        return if CredentialBundle.id(bundle) == expected_id
+      def validate_context!(context)
+        valid = context.method.zero? && context.cipher_suite == 4 && context.authentication == :signature
+        return if valid
 
-        raise ConfigurationError,
-              "credential bundle #{CredentialBundle.id(bundle).inspect} does not match peer id #{expected_id.inspect}"
-      end
-
-      def validate_private_key_bundle!(private_key, bundle)
-        return if private_key.byteslice(32, 32) == CredentialBundle.public_key(bundle)
-
-        id = CredentialBundle.id(bundle).inspect
-        raise ConfigurationError, "credential bundle #{id} does not match private key"
-      end
-
-      def validate_peer_bundle!(public_key, bundle, bundle_public_key)
-        return if public_key == bundle_public_key
-
-        id = CredentialBundle.id(bundle).inspect
-        raise ConfigurationError, "credential bundle #{id} does not match peer public key"
+        raise ConfigurationError, 'EDHOC callback does not match Secure RSMP method 0, suite 4, signature profile'
       end
 
       def read_file(key)
@@ -138,10 +167,19 @@ module RSMP
       end
 
       def read_path(path, key)
-        path = Secure.expand_config_path(path, @settings)
-        raise ConfigurationError, "secure.#{key} file not found: #{path}" unless File.file?(path)
+        raise ConfigurationError, "secure.#{key} is required" unless path
 
-        File.binread(path)
+        expanded = Secure.expand_config_path(path, @settings)
+        raise ConfigurationError, "secure.#{key} file not found: #{expanded}" unless File.file?(expanded)
+
+        File.binread(expanded)
+      end
+
+      def wipe!(value)
+        return unless value.is_a?(String) && !value.frozen?
+
+        value.replace("\0" * value.bytesize)
+        value.clear
       end
     end
   end

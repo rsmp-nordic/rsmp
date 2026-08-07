@@ -72,7 +72,7 @@ describe RSMP::Secure do
       'credential' => write_secure_file(dir, 'site.cred', vector_secure_credential(vector, :initiator, 'RN+SI0001')),
       'peers' => [supervisor_secure_peer(dir, vector)],
       'profile' => RSMP::Secure::PROFILE,
-      'handshake_timeout' => 1
+      'handshake_timeout' => 2
     }
   end
 
@@ -83,14 +83,13 @@ describe RSMP::Secure do
                                         vector_secure_credential(vector, :responder, 'supervisor')),
       'peers' => [site_secure_peer(dir, vector)],
       'profile' => RSMP::Secure::PROFILE,
-      'handshake_timeout' => 1
+      'handshake_timeout' => 2
     }
   end
 
   def supervisor_secure_peer(dir, vector)
     {
       'id' => 'supervisor',
-      'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key)),
       'credential' => write_secure_file(dir, 'supervisor.cred',
                                         vector_secure_credential(vector, :responder, 'supervisor'))
     }
@@ -99,7 +98,6 @@ describe RSMP::Secure do
   def site_secure_peer(dir, vector)
     {
       'id' => 'RN+SI0001',
-      'public_key' => write_secure_file(dir, 'site.pub', vector.fetch(:initiator_public_key)),
       'credential' => write_secure_file(dir, 'site-peer.cred',
                                         vector_secure_credential(vector, :initiator, 'RN+SI0001'))
     }
@@ -113,11 +111,8 @@ describe RSMP::Secure do
     )
   end
 
-  def secure_credential(id, private_key:, public_key:)
-    RSMP::Secure::CredentialBundle.create(id: id,
-                                          profile: RSMP::Secure::PROFILE,
-                                          private_key: private_key,
-                                          public_key: public_key)
+  def secure_credential(id, public_key:, **)
+    RSMP::Secure::Credential.create(id: id, public_key: public_key)
   end
 
   def secure_channel_context
@@ -132,13 +127,12 @@ describe RSMP::Secure do
     {
       'private_key' => write_secure_file(dir, "#{name}-private.key", private_key),
       'credential' => write_secure_file(dir, "#{name}.cred", credential),
-      'handshake_timeout' => 1
+      'handshake_timeout' => 2
     }
   end
 
-  def secure_peer(dir, name, public_key, credential)
+  def secure_peer(dir, name, _public_key, credential)
     {
-      'public_key' => write_secure_file(dir, "#{name}.pub", public_key),
       'credential' => write_secure_file(dir, "#{name}-peer.cred", credential)
     }
   end
@@ -154,7 +148,6 @@ describe RSMP::Secure do
   def public_peer_settings(peer)
     {
       'id' => peer['id'],
-      'public_key' => peer['public_key'],
       'credential' => peer['credential']
     }
   end
@@ -230,6 +223,11 @@ describe RSMP::Secure do
     Timecop.mock_process_clock = previous
   end
 
+  def authorize_secure_pair(initiator, responder, core_version: '3.3.0')
+    initiator.authorize!(rsmp_id: 'supervisor', core_version: core_version)
+    responder.authorize!(rsmp_id: 'RN+SI0001', core_version: core_version)
+  end
+
   it 'describes enabled secure settings for logs' do
     expect(RSMP::Secure.log_summary('enabled' => true)).to be == 'Secure profile rsmp-secure-v1'
     expect(RSMP::Secure.log_summary('required' => true)).to be == 'Secure profile rsmp-secure-v1'
@@ -240,7 +238,7 @@ describe RSMP::Secure do
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:edhoc_aead)).to be == 'ChaCha20-Poly1305'
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:data_protection)).to be == 'COSE_Encrypt0'
     expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:cose_algorithm)).to be == 24
-    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:credential_signature_algorithm)).to be == -19
+    expect(RSMP::Secure.profile_metadata('rsmp-secure-v1').fetch(:credential_format)).to be(:include?, 'CCS')
     expect(RSMP::Secure.implemented_profile?('rsmp-secure-test-dev')).to be == false
     expect(RSMP::Secure.implemented_profile?('rsmp-secure-v1')).to be == true
     expect(RSMP::Secure.handshake_complete_summary({ 'enabled' => true }, role: :initiator)).to be == 'Secure handshake complete (initiator, epoch 0)'
@@ -248,8 +246,9 @@ describe RSMP::Secure do
     expect(RSMP::Secure.rekey_started_summary({ 'enabled' => true }, role: :initiator, epoch: 1)).to be == 'Secure rekey started (initiator, epoch 1)'
     expect(RSMP::Secure.rekey_started_summary({ 'enabled' => true }, role: :initiator, epoch: 1, peer_id: 'RN+SI0002')).to be == 'Secure rekey with peer RN+SI0002 started (initiator, epoch 1)'
     expect(RSMP::Secure.settings({})['rekey_after_messages']).to be == 1_000_000
+    expect(RSMP::Secure.settings({})['rekey_after_bytes']).to be == 64 * 1024 * 1024 * 1024
     expect(RSMP::Secure.settings({})['rekey_after_seconds']).to be == 7_200
-    expect(RSMP::Secure.settings({})['min_rekey_interval']).to be == 60
+    expect(RSMP::Secure.settings({})['rekey_timeout']).to be == 2
   end
 
   it 'rejects unsupported secure profiles with a clear error' do
@@ -257,6 +256,20 @@ describe RSMP::Secure do
       RSMP::Secure.validate_profile_name!('rsmp-secure-unknown')
     end.to raise_exception(RSMP::ConfigurationError,
                            message: be == 'Unsupported secure profile "rsmp-secure-unknown"')
+  end
+
+  it 'requires positive mandatory rekey limits no weaker than the profile maxima' do
+    {
+      'rekey_after_messages' => nil,
+      'rekey_after_bytes' => RSMP::Secure::MAX_REKEY_AFTER_BYTES + 1,
+      'rekey_after_seconds' => 2,
+      'handshake_timeout' => 3,
+      'rekey_timeout' => 1
+    }.each do |key, value|
+      expect do
+        RSMP::Secure.validate_rekey_settings!(key => value)
+      end.to raise_exception(RSMP::ConfigurationError)
+    end
   end
 
   it 'rejects enabled-only security on a listening endpoint' do
@@ -284,7 +297,6 @@ describe RSMP::Secure do
     endpoint = {
       'secure' => {
         'id' => 'supervisor-a',
-        'public_key' => 'supervisor.pub',
         'credential' => 'supervisor.cred'
       }
     }
@@ -295,10 +307,10 @@ describe RSMP::Secure do
     expect(merged['credential']).to be == 'site.cred'
     expect(merged['peers']).to be == [{
       'id' => 'supervisor-a',
-      'public_key' => 'supervisor.pub',
       'credential' => 'supervisor.cred',
-      'supervisor_id' => nil,
-      RSMP::Secure::PEER_ID_KEY => 'supervisor-a'
+      RSMP::Secure::PEER_ID_KEY => 'supervisor-a',
+      RSMP::Secure::RSMP_ID_KEY => 'supervisor-a',
+      RSMP::Secure::RSMP_ROLE_KEY => 'supervisor'
     }]
   end
 
@@ -321,10 +333,10 @@ describe RSMP::Secure do
     expect(merged['credential']).to be == 'secure/RN+SI0002.cred'
     expect(merged['peers']).to be == [{
       'id' => 'supervisor',
-      'public_key' => 'secure/supervisor.pub',
       'credential' => 'secure/supervisor.cred',
-      'supervisor_id' => nil,
-      RSMP::Secure::PEER_ID_KEY => 'supervisor'
+      RSMP::Secure::PEER_ID_KEY => 'supervisor',
+      RSMP::Secure::RSMP_ID_KEY => 'supervisor',
+      RSMP::Secure::RSMP_ROLE_KEY => 'supervisor'
     }]
   end
 
@@ -348,17 +360,17 @@ describe RSMP::Secure do
     expect(settings['peers']).to be == [
       {
         'id' => 'RN+SI0001',
-        'public_key' => 'secure/RN+SI0001.pub',
         'credential' => 'secure/RN+SI0001.cred',
-        'site_id' => 'RN+SI0001',
-        RSMP::Secure::PEER_ID_KEY => 'RN+SI0001'
+        RSMP::Secure::PEER_ID_KEY => 'RN+SI0001',
+        RSMP::Secure::RSMP_ID_KEY => 'RN+SI0001',
+        RSMP::Secure::RSMP_ROLE_KEY => 'site'
       },
       {
         'id' => 'RN+SI0002',
-        'public_key' => 'secure/RN+SI0002.pub',
         'credential' => 'secure/RN+SI0002.cred',
-        'site_id' => 'RN+SI0002',
-        RSMP::Secure::PEER_ID_KEY => 'RN+SI0002'
+        RSMP::Secure::PEER_ID_KEY => 'RN+SI0002',
+        RSMP::Secure::RSMP_ID_KEY => 'RN+SI0002',
+        RSMP::Secure::RSMP_ROLE_KEY => 'site'
       }
     ]
   end
@@ -381,10 +393,10 @@ describe RSMP::Secure do
 
     expect(settings['peers']).to be == [{
       'id' => 'RN+SI0002',
-      'public_key' => 'secure/RN+SI0002.pub',
       'credential' => 'secure/RN+SI0002.cred',
-      'site_id' => 'RN+SI0002',
-      RSMP::Secure::PEER_ID_KEY => 'RN+SI0002'
+      RSMP::Secure::PEER_ID_KEY => 'RN+SI0002',
+      RSMP::Secure::RSMP_ID_KEY => 'RN+SI0002',
+      RSMP::Secure::RSMP_ROLE_KEY => 'site'
     }]
   end
 
@@ -405,10 +417,10 @@ describe RSMP::Secure do
     expect(settings['credential']).to be == 'secure/supervisor.cred'
     expect(settings['peers']).to be == [{
       'id' => 'RN+SI0002',
-      'public_key' => 'secure/RN+SI0002.pub',
       'credential' => 'secure/RN+SI0002.cred',
-      'supervisor_id' => nil,
-      RSMP::Secure::PEER_ID_KEY => 'RN+SI0002'
+      RSMP::Secure::PEER_ID_KEY => 'RN+SI0002',
+      RSMP::Secure::RSMP_ID_KEY => 'RN+SI0002',
+      RSMP::Secure::RSMP_ROLE_KEY => 'site'
     }]
   end
 
@@ -464,8 +476,6 @@ describe RSMP::Secure do
       File.binwrite(File.join(secure_dir, 'supervisor.private.key'), vector.fetch(:responder_private_key))
       File.binwrite(File.join(secure_dir, 'supervisor.cred'),
                     vector_secure_credential(vector, :responder, 'supervisor'))
-      File.binwrite(File.join(secure_dir, 'RN+SI0001.cred'),
-                    vector_secure_credential(vector, :initiator, 'RN+SI0001'))
 
       expect do
         RSMP::Supervisor.new(
@@ -487,12 +497,12 @@ describe RSMP::Secure do
         )
       end.to raise_exception(
         RSMP::ConfigurationError,
-        message: be == "secure peer RN+SI0001 public_key file not found: #{File.join(dir, 'secure/RN+SI0001.pub')}"
+        message: be == "secure peer RN+SI0001 credential file not found: #{File.join(dir, 'secure/RN+SI0001.cred')}"
       )
     end
   end
 
-  it 'fails startup before listening when a peer credential is not COSE_Sign1' do
+  it 'fails startup before listening when a peer credential is not the exact CCS shape' do
     Dir.mktmpdir do |dir|
       _site_secure, supervisor_secure = secure_settings(dir)
       site_peer = supervisor_secure.fetch('peers').first
@@ -505,7 +515,7 @@ describe RSMP::Secure do
         )
       end.to raise_exception(
         RSMP::ConfigurationError,
-        message: be == 'invalid credential bundle: Secure credential must be an untagged COSE_Sign1 array'
+        message: be == 'invalid CCS credential: credential must contain exactly the Secure RSMP v1 fields'
       )
     end
   end
@@ -549,12 +559,13 @@ describe RSMP::Secure do
     end
   end
 
-  it 'fails supervisor startup when a peer public key has the wrong length' do
+  it 'fails supervisor startup when a peer CCS public key has the wrong length' do
     Dir.mktmpdir do |dir|
       _site_secure, supervisor_secure = secure_settings(dir)
       site_peer = supervisor_secure.fetch('peers').first
-      public_key = File.binread(site_peer.fetch('public_key'))
-      File.binwrite(site_peer.fetch('public_key'), public_key.byteslice(0, 31))
+      credential = RSMP::Secure::Cbor.decode(File.binread(site_peer.fetch('credential')))
+      credential.fetch(8).fetch(1)[-2] = credential.fetch(8).fetch(1).fetch(-2).byteslice(0, 31)
+      File.binwrite(site_peer.fetch('credential'), RSMP::Secure::Cbor.encode(credential))
 
       expect do
         RSMP::Supervisor.new(
@@ -563,7 +574,7 @@ describe RSMP::Secure do
         )
       end.to raise_exception(
         RSMP::ConfigurationError,
-        message: be == 'secure peer RN+SI0001 public_key must contain a 32-byte Ed25519 public key'
+        message: be == 'invalid CCS credential: credential public key must be 32 bytes'
       )
     end
   end
@@ -582,7 +593,7 @@ describe RSMP::Secure do
         )
       end.to raise_exception(
         RSMP::ConfigurationError,
-        message: be == 'credential bundle "RN+SI0001" does not match private key'
+        message: be == 'CCS credential "RN+SI0001" does not match private key'
       )
     end
   end
@@ -602,7 +613,7 @@ describe RSMP::Secure do
         )
       end.to raise_exception(
         RSMP::ConfigurationError,
-        message: be == 'credential bundle "RN+SI9999" does not match local id "RN+SI0001"'
+        message: be == 'CCS credential "RN+SI9999" does not match local id "RN+SI0001"'
       )
     end
   end
@@ -622,7 +633,7 @@ describe RSMP::Secure do
         )
       end.to raise_exception(
         RSMP::ConfigurationError,
-        message: be == 'credential bundle "RN+SI9999" does not match peer id "RN+SI0001"'
+        message: be == 'CCS credential "RN+SI9999" does not match peer id "RN+SI0001"'
       )
     end
   end
@@ -654,13 +665,11 @@ describe RSMP::Secure do
       'sites' => {
         'RN+SI0001' => {
           'secure' => {
-            'public_key' => 'site1.pub',
             'credential' => 'site1.cred'
           }
         },
         'RN+SI0002' => {
           'secure' => {
-            'public_key' => 'site2.pub',
             'credential' => 'site2.cred'
           }
         }
@@ -680,7 +689,6 @@ describe RSMP::Secure do
       File.binwrite(File.join(secure_dir, 'RN+SI0001.private.key'), vector.fetch(:initiator_private_key))
       File.binwrite(File.join(secure_dir, 'RN+SI0001.cred'),
                     vector_secure_credential(vector, :initiator, 'RN+SI0001'))
-      File.binwrite(File.join(secure_dir, 'supervisor.pub'), vector.fetch(:responder_public_key))
       File.binwrite(File.join(secure_dir, 'supervisor.cred'),
                     vector_secure_credential(vector, :responder, 'supervisor'))
 
@@ -693,7 +701,6 @@ describe RSMP::Secure do
             port: 12111
             secure:
               id: supervisor
-              public_key: secure/supervisor.pub
               credential: secure/supervisor.cred
         secure:
           enabled: true
@@ -734,97 +741,60 @@ describe RSMP::Secure do
     end
   end
 
-  with RSMP::Secure::CredentialBundle do
-    it 'encodes and verifies a deterministic v1 credential bundle' do
+  with RSMP::Secure::Credential do
+    it 'encodes the exact deterministic v1 CCS credential' do
       vector = Edhoc::TestVector.suite0
-      encoded = RSMP::Secure::CredentialBundle.create(
+      encoded = RSMP::Secure::Credential.create(
         id: 'RN+SI0001',
-        profile: RSMP::Secure::V1_PROFILE,
-        private_key: vector.fetch(:initiator_private_key),
         public_key: vector.fetch(:initiator_public_key)
       )
-      bundle = RSMP::Secure::CredentialBundle.decode(encoded, expected_profile: RSMP::Secure::V1_PROFILE)
-      cose_sign1 = RSMP::Secure::Cbor.decode(encoded)
-      protected_headers, unprotected_headers, payload, signature = cose_sign1
+      credential = RSMP::Secure::Credential.decode(encoded)
+      kid = RSMP::Secure::Credential.kid(credential)
 
-      expect(RSMP::Secure::CredentialBundle.id(bundle)).to be == 'RN+SI0001'
-      expect(RSMP::Secure::CredentialBundle.public_key(bundle)).to be == vector.fetch(:initiator_public_key)
-      expect(RSMP::Secure::CredentialBundle.kid(bundle).bytesize).to be == 16
-      expect(RSMP::Secure::CredentialBundle.edhoc_credential(bundle)).to be == RSMP::Secure::CredentialBundle.ccs_credential(
-        'RN+SI0001',
-        vector.fetch(:initiator_public_key),
-        RSMP::Secure::CredentialBundle.kid(bundle)
-      )
-      expect(RSMP::Secure::Cbor.decode(protected_headers)).to be == { 1 => -19 }
-      expect(unprotected_headers).to be == {}
-      expect(RSMP::Secure::Cbor.decode(payload)).to be == bundle
-      expect(bundle.fetch('cose_key')).not.to be(:key?, 3)
-      expect(signature.bytesize).to be == 64
-      expect(RSMP::Secure::CredentialBundle.encode(bundle)).to be == payload
+      expect(credential).to be == {
+        2 => 'RN+SI0001',
+        8 => {
+          1 => {
+            1 => 1,
+            2 => kid,
+            -1 => 6,
+            -2 => vector.fetch(:initiator_public_key)
+          }
+        }
+      }
+      expect(kid).to be == Digest::SHA256.digest(vector.fetch(:initiator_public_key)).byteslice(0, 16)
+      expect(encoded).to be == RSMP::Secure::Cbor.encode(credential)
     end
 
-    it 'rejects tampered v1 credential bundles' do
+    it 'rejects unknown CCS fields and a KID not derived from the public key' do
       vector = Edhoc::TestVector.suite0
-      encoded = RSMP::Secure::CredentialBundle.create(
-        id: 'RN+SI0001',
-        profile: RSMP::Secure::V1_PROFILE,
-        private_key: vector.fetch(:initiator_private_key),
-        public_key: vector.fetch(:initiator_public_key)
-      )
-      cose_sign1 = RSMP::Secure::Cbor.decode(encoded)
-      bundle = RSMP::Secure::Cbor.decode(cose_sign1.fetch(2))
-      tampered = cose_sign1.dup
-      tampered[2] = RSMP::Secure::Cbor.encode(bundle.merge('id' => 'RN+SI9999'))
+      encoded = RSMP::Secure::Credential.create(id: 'RN+SI0001', public_key: vector.fetch(:initiator_public_key))
+      credential = RSMP::Secure::Cbor.decode(encoded)
+      with_unknown_field = credential.merge(99 => true)
+      wrong_kid = Marshal.load(Marshal.dump(credential))
+      wrong_kid.fetch(8).fetch(1)[2] = "\0" * 16
 
       expect do
-        RSMP::Secure::CredentialBundle.decode(RSMP::Secure::CredentialBundle.encode(tampered),
-                                              expected_profile: RSMP::Secure::V1_PROFILE)
+        RSMP::Secure::Credential.decode(RSMP::Secure::Cbor.encode(with_unknown_field))
       end.to raise_exception(RSMP::Secure::ConfigurationError,
-                             message: be == 'credential bundle "RN+SI9999" signature is invalid')
+                             message: be(:include?, 'exactly the Secure RSMP v1 fields'))
+      expect do
+        RSMP::Secure::Credential.decode(RSMP::Secure::Cbor.encode(wrong_kid))
+      end.to raise_exception(RSMP::Secure::ConfigurationError,
+                             message: be(:include?, 'kid does not match its public key'))
     end
 
-    it 'rejects the deprecated polymorphic EdDSA credential algorithm' do
+    it 'rejects a private COSE key parameter in a provisioned credential' do
       vector = Edhoc::TestVector.suite0
-      encoded = RSMP::Secure::CredentialBundle.create(
-        id: 'RN+SI0001',
-        profile: RSMP::Secure::V1_PROFILE,
-        private_key: vector.fetch(:initiator_private_key),
-        public_key: vector.fetch(:initiator_public_key)
+      credential = RSMP::Secure::Cbor.decode(
+        RSMP::Secure::Credential.create(id: 'RN+SI0001', public_key: vector.fetch(:initiator_public_key))
       )
-      cose_sign1 = RSMP::Secure::Cbor.decode(encoded)
-      cose_sign1[0] = RSMP::Secure::Cbor.encode(1 => -8)
+      credential.fetch(8).fetch(1)[-4] = vector.fetch(:initiator_private_key).byteslice(0, 32)
 
       expect do
-        RSMP::Secure::CredentialBundle.decode(
-          RSMP::Secure::Cbor.encode(cose_sign1),
-          expected_profile: RSMP::Secure::V1_PROFILE
-        )
-      end.to raise_exception(
-        RSMP::Secure::ConfigurationError,
-        message: be(:include?, 'must protect algorithm Ed25519 (-19)')
-      )
-    end
-
-    it 'verifies peer credentials with the configured trust key' do
-      vector = Edhoc::TestVector.suite0
-      attacker = generated_secure_identity('attacker')
-      encoded = RSMP::Secure::CredentialBundle.create(
-        id: 'attacker',
-        profile: RSMP::Secure::V1_PROFILE,
-        private_key: attacker.fetch(:private_key),
-        public_key: attacker.fetch(:public_key)
-      )
-
-      expect do
-        RSMP::Secure::CredentialBundle.decode(
-          encoded,
-          expected_profile: RSMP::Secure::V1_PROFILE,
-          trusted_public_key: vector.fetch(:initiator_public_key)
-        )
-      end.to raise_exception(
-        RSMP::Secure::ConfigurationError,
-        message: be == 'credential bundle "attacker" signature is invalid'
-      )
+        RSMP::Secure::Credential.decode(RSMP::Secure::Cbor.encode(credential))
+      end.to raise_exception(RSMP::Secure::ConfigurationError,
+                             message: be(:include?, 'exactly the Secure RSMP v1 fields'))
     end
   end
 
@@ -949,6 +919,37 @@ describe RSMP::Secure do
         RSMP::Secure::FrameError,
         message: be == "Secure frame index exhausted at #{maximum}; rekey or reconnect"
       )
+    end
+
+    it 'uses a monotonic uint64 epoch and fails closed instead of wrapping it' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      channel = RSMP::Secure::Channel.new(secret, role: :initiator, epoch: 255,
+                                                  rsmp_context: secure_channel_context)
+      exhausted = RSMP::Secure::Channel.new(secret, role: :initiator,
+                                                    epoch: RSMP::Secure::Channel::MAX_EPOCH,
+                                                    rsmp_context: secure_channel_context)
+
+      expect(channel.next_epoch).to be == 256
+      expect do
+        exhausted.next_epoch
+      end.to raise_exception(
+        RSMP::Secure::FrameError,
+        message: be(:include?, 'Secure epoch exhausted')
+      )
+    end
+
+    it 'tracks every protected frame and COSE ciphertext byte by direction' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
+      frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('ok' => true))
+
+      responder.decrypt_frame(frame)
+
+      expect(initiator.sent_frames).to be == 1
+      expect(responder.received_frames).to be == 1
+      expect(initiator.sent_ciphertext_bytes).to be == frame.fetch('enc').fetch(2).bytesize
+      expect(responder.received_ciphertext_bytes).to be == frame.fetch('enc').fetch(2).bytesize
     end
 
     it 'binds the secure profile into traffic keys and AAD' do
@@ -1138,10 +1139,90 @@ describe RSMP::Secure do
   end
 
   with RSMP::Secure::Protocol do
+    it 'binds a reject-all EAD handler and fresh four-byte EDHOC connection identifiers' do
+      Dir.mktmpdir do |dir|
+        site_settings, = secure_settings(dir)
+        protocol = RSMP::Secure::Protocol.new(SecureMemoryStream.new, role: :initiator, settings: site_settings)
+        first = protocol.send(:build_edhoc_session)
+        second = protocol.send(:build_edhoc_session)
+        ead = RSMP::Secure::RejectEad.new
+
+        expect(first.connection_id.bytesize).to be == 4
+        expect(first.connection_id).not.to be == second.connection_id
+        expect(first.instance_variable_get(:@ead)).not.to be_nil
+        expect(ead.supports?(1)).to be == false
+        expect do
+          ead.process(nil, [Edhoc::EAD::Token.new(label: 1, value: 'x')])
+        end.to raise_exception(Edhoc::EadError)
+      ensure
+        first&.close
+        second&.close
+        protocol&.close
+      end
+    end
+
+    it 'rejects duplicate provisioned KIDs even when credential subjects differ' do
+      Dir.mktmpdir do |dir|
+        vector = Edhoc::TestVector.suite0
+        local = secure_identity(dir, 'site', vector.fetch(:initiator_private_key),
+                                vector_secure_credential(vector, :initiator, 'RN+SI0001'))
+        shared_public_key = vector.fetch(:responder_public_key)
+        settings = local.merge(
+          'peers' => [
+            {
+              'id' => 'supervisor-a',
+              'credential' => write_secure_file(
+                dir, 'supervisor-a.cred',
+                secure_credential('supervisor-a', public_key: shared_public_key)
+              )
+            },
+            {
+              'id' => 'supervisor-b',
+              'credential' => write_secure_file(
+                dir, 'supervisor-b.cred',
+                secure_credential('supervisor-b', public_key: shared_public_key)
+              )
+            }
+          ]
+        )
+
+        expect do
+          RSMP::Secure::Protocol.new(SecureMemoryStream.new, role: :initiator, settings: settings)
+        end.to raise_exception(
+          RSMP::Secure::ConfigurationError,
+          message: be(:include?, 'duplicate secure peer credential KID')
+        )
+      end
+    end
+
+    it 'sends at most one fixed non-sensitive RFC 9528 error after a valid wrapper' do
+      Dir.mktmpdir do |dir|
+        _site_settings, supervisor_settings = secure_settings(dir)
+        stream = SecureMemoryStream.new
+        protocol = RSMP::Secure::Protocol.new(stream, role: :responder, settings: supervisor_settings)
+        protocol.instance_variable_set(:@received_valid_handshake_wrapper, true)
+
+        2.times { protocol.send(:send_edhoc_error) }
+        frame = RSMP::Secure::FrameIO.new(SecureMemoryStream.new(stream.written), max_frame_size: 65_536).read
+        error = Edhoc::ErrorMessage.parse(frame.fetch('edhoc'))
+
+        expect(frame.except('edhoc')).to be == {
+          'v' => 1,
+          'type' => 'edhoc_error',
+          'profile' => RSMP::Secure::PROFILE
+        }
+        expect(error.code).to be == :unspecified
+        expect(error.text).to be == 'EDHOC handshake failed'
+        expect(protocol.traffic_stats.written_frames).to be == 1
+      ensure
+        protocol&.close
+      end
+    end
+
     it 'passes the exact RSMP context to the EDHOC exporter' do
       calls = []
       session = Object.new
-      session.define_singleton_method(:export_prk_with_context) do |label, context, length|
+      session.define_singleton_method(:export) do |label:, context:, length:|
         calls << [label, context, length]
         's'.b * length
       end
@@ -1149,7 +1230,7 @@ describe RSMP::Secure do
       protocol.instance_variable_set(:@role, :initiator)
       protocol.instance_variable_set(:@settings, 'profile' => RSMP::Secure::PROFILE)
       protocol.instance_variable_set(:@local_id, 'RN+SI0001')
-      protocol.instance_variable_set(:@matched_peer_id, 'supervisor')
+      protocol.instance_variable_set(:@authenticated_peer_id, 'supervisor')
 
       channel = protocol.send(:build_channel, session, epoch: 0)
 
@@ -1166,8 +1247,7 @@ describe RSMP::Secure do
         settings = {
           'private_key' => write_secure_file(dir, 'site-private.key', vector.fetch(:initiator_private_key)),
           'credential' => write_secure_file(dir, 'site.cred',
-                                            vector_secure_credential(vector, :initiator, 'RN+SI0001')),
-          'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key))
+                                            vector_secure_credential(vector, :initiator, 'RN+SI0001'))
         }
 
         expect do
@@ -1185,11 +1265,10 @@ describe RSMP::Secure do
           'credential' => write_secure_file(dir, 'unknown-site.cred', unknown_site.fetch(:credential)),
           'peers' => [{
             'id' => 'supervisor',
-            'public_key' => write_secure_file(dir, 'supervisor.pub', vector.fetch(:responder_public_key)),
             'credential' => write_secure_file(dir, 'supervisor.cred',
                                               vector_secure_credential(vector, :responder, 'supervisor'))
           }],
-          'handshake_timeout' => 1
+          'handshake_timeout' => 2
         }
         supervisor_settings = {
           'private_key' => write_secure_file(dir, 'supervisor-private.key', vector.fetch(:responder_private_key)),
@@ -1197,11 +1276,10 @@ describe RSMP::Secure do
                                             vector_secure_credential(vector, :responder, 'supervisor')),
           'peers' => [{
             'id' => 'RN+SI0001',
-            'public_key' => write_secure_file(dir, 'site.pub', vector.fetch(:initiator_public_key)),
             'credential' => write_secure_file(dir, 'site.cred',
                                               vector_secure_credential(vector, :initiator, 'RN+SI0001'))
           }],
-          'handshake_timeout' => 1
+          'handshake_timeout' => 2
         }
         site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
 
@@ -1235,8 +1313,9 @@ describe RSMP::Secure do
         vector = Edhoc::TestVector.suite0
         settings = supervisor_secure_settings(dir, vector)
         legacy_packet = %({"mType":"rSMsg","type":"Version"}\f)
+        stream = SecureMemoryStream.new(legacy_packet)
         protocol = RSMP::Secure::Protocol.new(
-          SecureMemoryStream.new(legacy_packet),
+          stream,
           role: :responder,
           settings: settings
         )
@@ -1245,8 +1324,47 @@ describe RSMP::Secure do
           protocol.handshake!
         end.to raise_exception(
           RSMP::HandshakeError,
-          message: be(:include?, 'expected a secure CBOR frame')
+          message: be(:include?, 'Secure RSMP handshake failed')
         )
+        expect(stream.written).to be(:empty?)
+      end
+    end
+
+    it 'rejects application data until the initiator authenticates mandatory EDHOC message 4' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        initiator = RSMP::Secure::Protocol.new(
+          IO::Stream::Buffered.new(site_io), role: :initiator, settings: site_settings
+        )
+        responder = RSMP::Secure::Protocol.new(
+          IO::Stream::Buffered.new(supervisor_io), role: :responder, settings: supervisor_settings
+        )
+        original_write_edhoc = responder.method(:write_edhoc)
+        responder.define_singleton_method(:write_edhoc) do |number, message|
+          if number == 4
+            write_frame('v' => 1, 'type' => 'data', 'epoch' => 0, 'enc' => [])
+          else
+            original_write_edhoc.call(number, message)
+          end
+        end
+
+        initiator_task = Async::Task.current.async { initiator.handshake! }
+        responder_task = Async::Task.current.async { responder.handshake! }
+
+        expect do
+          initiator_task.wait
+        end.to raise_exception(
+          RSMP::HandshakeError,
+          message: be(:include?, 'Secure handshake frame contains unexpected fields')
+        )
+      ensure
+        initiator_task&.stop
+        responder_task&.stop
+        initiator&.close
+        responder&.close
+        site_io&.close
+        supervisor_io&.close
       end
     end
 
@@ -1277,6 +1395,8 @@ describe RSMP::Secure do
 
         expect(site_logs).to be == [['Secure handshake with peer supervisor complete (initiator, epoch 0)', { level: :info }]]
         expect(supervisor_logs).to be == [['Secure handshake with peer RN+SI0001 complete (responder, epoch 0)', { level: :info }]]
+        expect(site.traffic_stats.written_frames).to be == 2
+        expect(supervisor.traffic_stats.written_frames).to be == 2
 
         version = {
           'mType' => 'rSMsg',
@@ -1297,7 +1417,75 @@ describe RSMP::Secure do
       end
     end
 
-    it 'runs the v1 profile with CBOR credential bundles and exchanges encrypted RSMP messages' do
+    it 'seals one immutable credential, RSMP role, identity, and Core authorization context' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator,
+                                                                         settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder,
+                                                                               settings: supervisor_settings)
+        end
+        site = initiator_task.wait
+        supervisor = responder_task.wait
+
+        expect(supervisor.authorize!(rsmp_id: 'RN+SI0001', core_version: '3.3.0')).to be == true
+        context = supervisor.authorization_context
+        expect(context.to_h).to be == {
+          credential_id: 'RN+SI0001',
+          rsmp_id: 'RN+SI0001',
+          role: :peer,
+          core_version: '3.3.0'
+        }
+        expect(context).to be(:frozen?)
+        expect(supervisor.authorize!(rsmp_id: 'RN+SI0001', core_version: '3.3.0')).to be == true
+        expect do
+          supervisor.authorize!(rsmp_id: 'RN+SI9999', core_version: '3.3.0')
+        end.to raise_exception(RSMP::Secure::AuthenticationError)
+        expect(supervisor.channel).to be_nil
+      ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'closes when application data arrives before Version authorization' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator,
+                                                                         settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder,
+                                                                               settings: supervisor_settings)
+        end
+        site = initiator_task.wait
+        supervisor = responder_task.wait
+        site.write_lines(JSON.generate('mType' => 'rSMsg', 'type' => 'Watchdog'))
+
+        expect do
+          supervisor.read_line
+        end.to raise_exception(
+          RSMP::Secure::AuthenticationError,
+          message: be(:include?, 'not permitted before secure authorization')
+        )
+        expect(supervisor.channel).to be_nil
+      ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'runs the v1 profile with pinned CCS credentials and exchanges encrypted RSMP messages' do
       Dir.mktmpdir do |dir|
         site_settings, supervisor_settings = secure_settings(dir)
         site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
@@ -1309,6 +1497,7 @@ describe RSMP::Secure do
         end
         site = initiator_task.wait
         supervisor = responder_task.wait
+        authorize_secure_pair(site, supervisor)
 
         watchdog = {
           'mType' => 'rSMsg',
@@ -1356,6 +1545,7 @@ describe RSMP::Secure do
         end
         initiator_task.wait
         responder_task.wait
+        authorize_secure_pair(site, supervisor)
 
         pre_rekey = {
           'mType' => 'rSMsg',
@@ -1417,6 +1607,7 @@ describe RSMP::Secure do
         end
         initiator_task.wait
         responder_task.wait
+        authorize_secure_pair(site, supervisor)
 
         acknowledgement_attempted = Async::Queue.new
         frame_io = supervisor.instance_variable_get(:@frame_io)
@@ -1473,6 +1664,7 @@ describe RSMP::Secure do
         end
         initiator_task.wait
         responder_task.wait
+        authorize_secure_pair(site, supervisor)
 
         in_flight = {
           'mType' => 'rSMsg',
@@ -1518,6 +1710,7 @@ describe RSMP::Secure do
         end
         initiator_task.wait
         responder_task.wait
+        authorize_secure_pair(site, supervisor)
 
         site_reader = Async::Task.current.async { site.read_line }
         expect(site.rekey!).to be == true
@@ -1542,7 +1735,7 @@ describe RSMP::Secure do
       end
     end
 
-    it 'rejects manual rekey from the responder' do
+    it 'lets the responder request rekey while only the original initiator starts EDHOC' do
       Dir.mktmpdir do |dir|
         site_settings, supervisor_settings = secure_settings(dir)
         site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
@@ -1565,19 +1758,11 @@ describe RSMP::Secure do
         end
         initiator_task.wait
         responder_task.wait
+        authorize_secure_pair(site, supervisor)
 
-        error = nil
-        begin
-          supervisor.rekey!
-        rescue RSMP::Secure::FrameError => e
-          error = e
-        end
-
-        expect(error).to be_a(RSMP::Secure::FrameError)
-        expect(error.message).to be == 'Secure responder cannot initiate rekey'
-
-        expect(site.channel.epoch).to be == 0
-        expect(supervisor.channel.epoch).to be == 0
+        expect(supervisor.rekey!).to be == true
+        expect(site.channel.epoch).to be == 1
+        expect(supervisor.channel.epoch).to be == 1
       ensure
         site&.close
         supervisor&.close
@@ -1609,6 +1794,7 @@ describe RSMP::Secure do
         end
         initiator_task.wait
         responder_task.wait
+        authorize_secure_pair(site, supervisor)
 
         reader = Async::Task.current.async { site.read_line }
         frame = supervisor.channel.encrypt_payload(
@@ -1635,14 +1821,12 @@ describe RSMP::Secure do
         expect(read_error).to be_a(RSMP::Secure::AuthenticationError)
         expect(read_error.message).to be == 'Secure RSMP authentication failed'
 
-        write_error = nil
-        begin
+        expect do
           site.write_lines(JSON.generate('mType' => 'rSMsg', 'type' => 'Watchdog'))
-        rescue RSMP::Secure::AuthenticationError => e
-          write_error = e
-        end
-
-        expect(write_error).to be == read_error
+        end.to raise_exception(
+          RSMP::HandshakeError,
+          message: be == 'Secure RSMP handshake is not complete'
+        )
       ensure
         reader&.stop
         site&.close
@@ -1656,9 +1840,10 @@ describe RSMP::Secure do
       Dir.mktmpdir do |dir|
         site_settings, supervisor_settings = secure_settings(dir)
         site_settings = site_settings.merge(
-          'rekey_after_messages' => 1,
-          'rekey_after_seconds' => nil,
-          'min_rekey_interval' => 0
+          'rekey_after_messages' => 4
+        )
+        supervisor_settings = supervisor_settings.merge(
+          'rekey_after_messages' => 4
         )
         site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
         site = nil
@@ -1684,6 +1869,13 @@ describe RSMP::Secure do
         end
         initiator_task.wait
         responder_task.wait
+        authorize_secure_pair(site, supervisor)
+        rekey_requests = 0
+        original_encrypt_control = supervisor.channel.method(:encrypt_control)
+        supervisor.channel.define_singleton_method(:encrypt_control) do |attributes|
+          rekey_requests += 1 if attributes['kind'] == 'rekey_request'
+          original_encrypt_control.call(attributes)
+        end
 
         first = {
           'mType' => 'rSMsg',
@@ -1705,6 +1897,7 @@ describe RSMP::Secure do
 
         expect(site.channel.epoch).to be == 1
         expect(supervisor.channel.epoch).to be == 1
+        expect(rekey_requests).to be == 1
         expect(site_logs).to be == [
           ['Secure handshake with peer supervisor complete (initiator, epoch 0)', { level: :info }],
           ['Secure rekey with peer supervisor started (initiator, epoch 1)', { level: :info }],
@@ -1723,13 +1916,48 @@ describe RSMP::Secure do
       end
     end
 
+    it 'automatically rekeys before the mandatory ciphertext-byte limit' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_settings = site_settings.merge('rekey_after_bytes' => 150_000)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        site = nil
+        supervisor = nil
+        initiator_task = Async::Task.current.async do
+          site = RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator,
+                                                                                settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          supervisor = RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder,
+                                                                                            settings: supervisor_settings)
+        end
+        initiator_task.wait
+        responder_task.wait
+        authorize_secure_pair(site, supervisor)
+        message = {
+          'mType' => 'rSMsg',
+          'type' => 'Watchdog',
+          'blob' => 'x' * 20_000
+        }
+
+        site.write_lines(JSON.generate(message))
+
+        expect(JSON.parse(supervisor.read_line)).to be == message
+        expect(site.channel.epoch).to be == 1
+        expect(supervisor.channel.epoch).to be == 1
+      ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
     it 'serializes concurrent writes so only one automatic rekey starts for an epoch' do
       Dir.mktmpdir do |dir|
         site_settings, supervisor_settings = secure_settings(dir)
         site_settings = site_settings.merge(
-          'rekey_after_messages' => 1,
-          'rekey_after_seconds' => nil,
-          'min_rekey_interval' => 60
+          'rekey_after_messages' => 4
         )
         site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
         site = nil
@@ -1753,6 +1981,7 @@ describe RSMP::Secure do
         end
         initiator_task.wait
         responder_task.wait
+        authorize_secure_pair(site, supervisor)
 
         first = {
           'mType' => 'rSMsg',
@@ -1796,9 +2025,7 @@ describe RSMP::Secure do
         Dir.mktmpdir do |dir|
           site_settings, supervisor_settings = secure_settings(dir)
           site_settings = site_settings.merge(
-            'rekey_after_messages' => nil,
-            'rekey_after_seconds' => 10,
-            'min_rekey_interval' => 0
+            'rekey_after_seconds' => 10
           )
           site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
           site = nil
@@ -1820,6 +2047,7 @@ describe RSMP::Secure do
           end
           initiator_task.wait
           responder_task.wait
+          authorize_secure_pair(site, supervisor)
 
           first = {
             'mType' => 'rSMsg',
@@ -1857,9 +2085,8 @@ describe RSMP::Secure do
         Dir.mktmpdir do |dir|
           site_settings, supervisor_settings = secure_settings(dir)
           site_settings = site_settings.merge(
-            'rekey_after_messages' => 1,
-            'rekey_after_seconds' => 10,
-            'min_rekey_interval' => 0
+            'rekey_after_messages' => 4,
+            'rekey_after_seconds' => 10
           )
           site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
           site = nil
@@ -1883,6 +2110,7 @@ describe RSMP::Secure do
           end
           initiator_task.wait
           responder_task.wait
+          authorize_secure_pair(site, supervisor)
 
           first = {
             'mType' => 'rSMsg',
@@ -1917,13 +2145,10 @@ describe RSMP::Secure do
       end
     end
 
-    it 'holds new-epoch data until an in-progress responder rekey installs the new channel' do
+    it 'rejects application data while a required rekey is in progress' do
       old_secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
       new_secret = 'n' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
       old_channel = RSMP::Secure::Channel.new(old_secret, role: :responder,
-                                                          rsmp_context: secure_channel_context)
-      new_channel = RSMP::Secure::Channel.new(new_secret, role: :responder, epoch: 1,
-                                                          session_id: old_channel.session_id,
                                                           rsmp_context: secure_channel_context)
       peer_channel = RSMP::Secure::Channel.new(new_secret, role: :initiator, epoch: 1,
                                                            session_id: old_channel.session_id,
@@ -1949,18 +2174,13 @@ describe RSMP::Secure do
       frame = peer_channel.encrypt_payload(RSMP::Secure::Cbor.encode(message))
 
       transport.instance_variable_set(:@rekeying, true)
-      reader = Async::Task.current.async { transport.send(:enqueue_plaintext, frame) }
-      Async::Task.current.sleep 0.01
-      expect(reader).not.to be(:complete?)
-
-      transport.instance_variable_set(:@channel, new_channel)
-      transport.instance_variable_set(:@rekeying, false)
-      transport.instance_variable_get(:@rekey_done).signal
-
-      reader.wait
-      expect(JSON.parse(transport.read_line)).to be == message
+      expect do
+        transport.send(:enqueue_plaintext, frame)
+      end.to raise_exception(
+        RSMP::Secure::FrameError,
+        message: be == 'Application data is not permitted while secure rekey is required or in progress'
+      )
     ensure
-      reader&.stop
       transport&.close
     end
 
@@ -1989,7 +2209,9 @@ describe RSMP::Secure do
       transport.instance_variable_set(:@pending_rekey_channel, pending_channel)
       forged_ack = old_peer_channel.encrypt_control('kind' => 'rekey_ack', 'next_epoch' => 1)
 
-      transport.send(:process_rekey_frame, forged_ack)
+      expect do
+        transport.send(:process_rekey_frame, forged_ack)
+      end.to raise_exception(RSMP::Secure::FrameError)
       error = transport.instance_variable_get(:@error)
 
       expect(error).to be_a(RSMP::Secure::FrameError)

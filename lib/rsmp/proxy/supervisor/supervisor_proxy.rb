@@ -196,7 +196,7 @@ module RSMP
 
       check_core_version message
       check_sxl_version message
-      check_secure_supervisor_id message
+      authorize_secure_supervisor message
       @site_id = Supervisor.build_id_from_ip_port @ip, @port
       version_accepted message
     end

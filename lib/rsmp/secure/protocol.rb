@@ -3,17 +3,23 @@ require 'securerandom'
 require_relative 'channel'
 require_relative 'frame_io'
 require_relative 'protocol_errors'
+require_relative 'protocol/handshake'
 require_relative 'transport'
 
 module RSMP
   module Secure
-    # Secure RSMP protocol wrapper with EDHOC handshake and encrypted CBOR payloads.
+    # Secure RSMP protocol wrapper with EDHOC authentication and encrypted CBOR payloads.
     class Protocol
       include ProtocolErrors
+      include Handshake
 
       EDHOC_CONNECTION_ID_BYTES = 4
+      EDHOC_FRAME_KEYS = %w[edhoc msg profile type v].freeze
+      EDHOC_ERROR_FRAME_KEYS = %w[edhoc profile type v].freeze
+      PRE_AUTHORIZATION_TYPES = %w[MessageAck MessageNotAck Version].freeze
+      GENERIC_EDHOC_ERROR = 'EDHOC handshake failed'.freeze
 
-      attr_reader :settings, :role, :matched_peer_id, :local_id
+      attr_reader :settings, :role, :authenticated_peer_id, :local_id, :authorization_context
 
       def initialize(stream, role:, settings:, log: nil, parent: nil)
         @settings = Secure.settings(settings)
@@ -22,49 +28,62 @@ module RSMP
         @parent = parent
         validate_settings!
         @credentials = ProfileCredentials.new(@settings)
+        @credentials.validate!
         @local_id = @credentials.local_id
         @frame_io = FrameIO.new(stream, max_frame_size: @settings['max_frame_size'])
         @peek_line = nil
         @channel = nil
         @transport = nil
-        @matched_peer_id = nil
+        @authenticated_peer_id = nil
+        @authorization_context = nil
+        @received_valid_handshake_wrapper = false
+        @sent_edhoc_error = false
+        @peer_sent_edhoc_error = false
       end
 
       def handshake!
         require 'edhoc'
 
         session = build_edhoc_session
+        initiator? ? handshake_initiator(session) : handshake_responder(session)
 
-        if initiator?
-          handshake_initiator(session)
-        else
-          handshake_responder(session)
+        @authenticated_peer_id = session.peer_id
+        unless @authenticated_peer_id
+          raise AuthenticationError,
+                'EDHOC completed without an authenticated peer identity'
         end
 
-        @matched_peer_id = session.matched_peer_id
         @channel = build_channel(session, epoch: 0)
         start_transport
         true
       rescue Edhoc::Error => e
+        send_edhoc_error unless @peer_sent_edhoc_error
         raise HandshakeError, handshake_error_message(e)
       rescue FrameError => e
+        send_edhoc_error unless @peer_sent_edhoc_error
         raise HandshakeError, handshake_frame_error_message(e)
       ensure
         release_edhoc_session(session) if session
       end
 
-      def read_line
-        return take_peeked if @peek_line
-
+      def authorize!(rsmp_id:, core_version:)
         ensure_ready!
-        @transport.read_line
+        candidate = build_authorization_context(rsmp_id, core_version)
+        validate_unchanged_authorization!(candidate)
+
+        @authorization_context ||= candidate
+        true
+      rescue AuthenticationError
+        close
+        raise
+      end
+
+      def read_line
+        @peek_line ? take_peeked : read_and_validate_line
       end
 
       def peek_line
-        @peek_line ||= begin
-          ensure_ready!
-          @transport.read_line
-        end
+        @peek_line ||= read_and_validate_line
       end
 
       def write_lines(json)
@@ -79,8 +98,12 @@ module RSMP
 
       def close
         @transport&.close
+        @channel&.clear!
+        @credentials&.clear!
         @transport = nil
         @channel = nil
+        @authorization_context = nil
+        @peek_line = nil
       end
 
       def read_frame
@@ -114,127 +137,94 @@ module RSMP
         raise HandshakeError, 'Secure RSMP handshake is not complete' unless @transport
       end
 
+      def build_authorization_context(rsmp_id, core_version)
+        peer = @credentials.peer(authenticated_peer_id)
+        raise AuthenticationError, 'Authenticated peer is no longer in the trust store' unless peer
+
+        normalized_id = authorization_text(rsmp_id, 'identity')
+        normalized_version = authorization_text(core_version, 'Core version')
+        validate_authorized_identity!(peer, normalized_id)
+        validate_authorized_core!(peer, normalized_version)
+        AuthorizationContext.new(
+          credential_id: authenticated_peer_id,
+          rsmp_id: normalized_id,
+          role: peer.rsmp_role,
+          core_version: normalized_version
+        )
+      end
+
+      def validate_authorized_identity!(peer, identity)
+        return if identity == peer.rsmp_id
+
+        raise AuthenticationError,
+              "Secure credential #{authenticated_peer_id.inspect} is not authorized for RSMP identity " \
+              "#{identity.inspect}"
+      end
+
+      def validate_authorized_core!(peer, core_version)
+        return if peer.core_versions.empty? || peer.core_versions.include?(core_version)
+
+        raise AuthenticationError,
+              "Secure credential #{authenticated_peer_id.inspect} is not authorized for Core " \
+              "#{core_version.inspect}"
+      end
+
+      def validate_unchanged_authorization!(candidate)
+        return unless @authorization_context
+        return if @authorization_context.to_h == candidate.to_h
+
+        raise AuthenticationError, 'Secure RSMP authorization context cannot change on an established connection'
+      end
+
       def take_peeked
         line = @peek_line
         @peek_line = nil
         line
       end
 
-      def build_edhoc_session
-        private_key = @credentials.private_key
-        Secure.edhoc_session_class(@settings['profile']).new(
-          role: role,
-          private_key: private_key,
-          peers: @credentials.peer_entries,
-          connection_id: SecureRandom.random_bytes(EDHOC_CONNECTION_ID_BYTES),
-          **@credentials.local_session_options(private_key)
-        )
-      end
+      def read_and_validate_line
+        ensure_ready!
+        line = @transport.read_line
+        attributes = JSON.parse(line)
+        raise FrameError, 'Decrypted RSMP message must be an object' unless attributes.is_a?(Hash)
 
-      def start_transport
-        @transport = Transport.new(Transport::Config.new(
-                                     frame_io: @frame_io,
-                                     role: role,
-                                     settings: settings,
-                                     channel: @channel,
-                                     peer_id: @matched_peer_id,
-                                     session_builder: -> { build_edhoc_session },
-                                     channel_builder: lambda { |edhoc_session, epoch:, session_id:|
-                                       build_channel(edhoc_session, epoch: epoch, session_id: session_id)
-                                     },
-                                     log: @log,
-                                     parent: @parent
-                                   )).start
-      end
-
-      def handshake_initiator(session)
-        write_edhoc(1, session.compose_message1)
-        session.process_message2(read_edhoc(2))
-        write_edhoc(3, session.compose_message3)
-      end
-
-      def handshake_responder(session)
-        session.process_message1(read_edhoc(1))
-        write_edhoc(2, session.compose_message2)
-        session.process_message3(read_edhoc(3))
-      end
-
-      def write_edhoc(number, message)
-        @frame_io.write(
-          'v' => VERSION,
-          'type' => 'edhoc',
-          'profile' => @settings['profile'],
-          'msg' => number,
-          'edhoc' => message
-        )
-      end
-
-      def read_edhoc(number)
-        frame = @frame_io.read
-        validate_edhoc_frame(frame, number)
-        frame.fetch('edhoc')
-      end
-
-      def validate_edhoc_frame(frame, number)
-        raise FrameError, 'Secure frame must be a map' unless frame.is_a?(Hash)
-        raise FrameError, "Expected EDHOC frame #{number}, got #{frame['msg'].inspect}" unless frame['msg'] == number
-        raise FrameError, "Expected EDHOC frame, got #{frame['type'].inspect}" unless frame['type'] == 'edhoc'
-        unless frame['profile'] == @settings['profile']
-          raise FrameError, "Unexpected secure profile #{frame['profile'].inspect}"
+        type = attributes['type']
+        if authorization_context
+          raise AuthenticationError, 'RSMP Version cannot change after secure authorization' if type == 'Version'
+        elsif !PRE_AUTHORIZATION_TYPES.include?(type)
+          raise AuthenticationError, "RSMP #{type.inspect} is not permitted before secure authorization"
         end
-        raise FrameError, 'EDHOC message is missing' unless frame['edhoc'].is_a?(String)
-      end
-
-      def handshake_frame_error_message(error)
-        'Secure RSMP handshake failed: expected a secure CBOR frame, got invalid data ' \
-          "(#{error.message}). Check that both peers use the same secure or legacy mode."
-      end
-
-      def build_channel(session, epoch:, session_id: nil)
-        context = rsmp_context
-        Channel.new(
-          session.export_prk_with_context(Channel::EXPORTER_LABEL, context, Channel::EXPORTER_SECRET_BYTES),
-          role: role,
-          epoch: epoch,
-          session_id: session_id,
-          rsmp_context: context
-        )
-      end
-
-      def rsmp_context
-        initiator_id = initiator? ? local_id : matched_peer_id
-        responder_id = initiator? ? matched_peer_id : local_id
-        Channel.rsmp_context(
-          profile: @settings['profile'],
-          initiator_id: initiator_id,
-          responder_id: responder_id
-        )
-      end
-
-      def release_edhoc_session(session)
-        session.close if session.respond_to?(:close)
+        line
+      rescue JSON::ParserError => e
+        raise FrameError, "Invalid decrypted RSMP JSON: #{e.message}"
+      rescue AuthenticationError, FrameError
+        close
+        raise
       end
 
       def validate_settings!
         Secure.validate_profile_name!(@settings['profile'])
+        Secure.validate_rekey_settings!(@settings)
 
         %w[private_key credential].each do |key|
           raise ConfigurationError, "secure.#{key} is required" unless @settings[key]
         end
 
-        validate_peer_settings!
-      end
+        peers = @settings['peers']
+        raise ConfigurationError, 'secure peer credentials must be configured on the RSMP peer entry' unless peers
+        raise ConfigurationError, 'secure.peers must not be empty' if peers.empty?
 
-      def validate_peer_settings!
-        unless @settings['peers']
-          raise ConfigurationError, 'secure peer credentials must be configured on the RSMP peer entry'
-        end
-        raise ConfigurationError, 'secure.peers must not be empty' if @settings['peers'].empty?
-
-        @settings['peers'].each do |peer|
-          raise ConfigurationError, 'secure peer public key is required' unless peer['public_key']
+        peers.each do |peer|
           raise ConfigurationError, 'secure peer credential is required' unless peer['credential']
         end
+      end
+
+      def authorization_text(value, name)
+        text = value.dup.force_encoding(Encoding::UTF_8) if value.is_a?(String)
+        valid = text&.valid_encoding? && !text.empty?
+        raise AuthenticationError, "Secure RSMP #{name} must be a non-empty UTF-8 string" unless valid
+
+        text
       end
     end
   end

@@ -150,8 +150,9 @@ See [configuration](documentation/configuration.md) for connection-role examples
 
 Secure RSMP can be enabled in YAML with a `secure` section. The implemented profile is
 `rsmp-secure-v1`, using EDHOC method 0 / cipher suite 4, ChaCha20-Poly1305, deterministic CBOR
-frames, and signed CBOR credential bundles. The profile uses EDHOC KID identity hints and
-CBOR/CCS-style credentials, so the EDHOC handshake does not depend on X.509 credential transport.
+frames, and exact pinned deterministic-CBOR CCS credentials. The profile uses EDHOC KID identity
+hints; credentials are neither transported as X.509 certificates nor wrapped in a separate signed
+credential envelope.
 
 Generate local Secure RSMP v1 credentials with:
 
