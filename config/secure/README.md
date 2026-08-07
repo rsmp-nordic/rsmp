@@ -1,6 +1,8 @@
 Secure RSMP sample credentials
 ==============================
 
+See [`documentation/secure.md`](../../documentation/secure.md) for the step-by-step setup and run workflow.
+
 The sample configurations refer to credentials in this directory. Generated
 key and credential files are intentionally ignored by Git.
 
