@@ -276,6 +276,54 @@ describe RSMP::Schema do
     end
   end
 
+  with 'Version negotiation' do
+    def version_negotiator(core_version)
+      klass = Class.new do
+        include RSMP::Proxy::Modules::Versions
+
+        attr_reader :core_version
+      end
+      klass.new.tap do |proxy|
+        proxy.instance_variable_set(:@site_settings, { 'core_version' => core_version })
+      end
+    end
+
+    def version_message(attributes)
+      defaults = {
+        'RSMP' => RSMP::Schema.core_versions.map { |version| { 'vers' => version } },
+        'siteId' => [{ 'sId' => 'RN+SI0001' }],
+        'SXL' => '1.2.1',
+        'mId' => '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
+      }
+      RSMP::Version.new(defaults.merge(attributes))
+    end
+
+    it 'rejects an initial Version that does not match the selected Core schema' do
+      proxy = version_negotiator('3.3.0')
+      legacy_version = version_message({})
+
+      expect do
+        proxy.check_core_version legacy_version
+      end.to raise_exception(
+        RSMP::HandshakeError,
+        message: be(:include?, 'does not conform to negotiated RSMP 3.3.0')
+      )
+    end
+
+    it 'accepts the backwards-compatible hybrid request for every supported Core version' do
+      hybrid_version = version_message(
+        'step' => 'Request',
+        'SXLS' => [{ 'name' => 'tlc', 'version' => '1.2.1' }]
+      )
+
+      RSMP::Schema.core_versions.each do |core_version|
+        proxy = version_negotiator(core_version)
+        expect(proxy.check_core_version(hybrid_version)).to be == core_version
+        expect(proxy.core_version).to be == core_version
+      end
+    end
+  end
+
   def write_sxl_index(schema_dir, meta:, statuses: {}, commands: {}, alarms: {})
     File.write(File.join(schema_dir, 'sxl_index.json'), {
       'meta' => meta,
