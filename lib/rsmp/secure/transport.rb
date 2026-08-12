@@ -101,6 +101,11 @@ module RSMP
             raise FrameError, "Unexpected secure frame type #{frame['type'].inspect}"
           end
         end
+      rescue EOFError => e
+        # EOF before a new frame is an ordinary peer disconnect. Preserve it
+        # as the transport failure so blocked readers and writers wake up, but
+        # do not report it as a malformed or failed secure channel.
+        fail_transport(e, log_failure: false)
       rescue StandardError => e
         fail_transport(e)
       end

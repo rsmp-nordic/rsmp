@@ -178,7 +178,7 @@ module RSMP
         return 'validation' if error.is_a?(FrameError)
         return 'timeout' if timeout_error?(error)
         return 'protocol' if error.is_a?(HandshakeError)
-        return 'transport' if error.is_a?(IOError) || error.is_a?(SystemCallError)
+        return 'transport' if error.is_a?(EOFError) || error.is_a?(IOError) || error.is_a?(SystemCallError)
 
         'internal'
       end

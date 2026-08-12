@@ -26,15 +26,24 @@ module RSMP
       end
 
       def read
-        header = stream.read_exactly(HEADER_SIZE)
+        header = stream.read(HEADER_SIZE)
+        raise EOFError, 'Secure RSMP peer closed connection' unless header
+        raise FrameError, 'Truncated secure frame header' unless header.bytesize == HEADER_SIZE
+
         length = header.unpack1('N')
         raise FrameError, "Frame too large: #{length} bytes" if length > max_frame_size
 
-        payload = stream.read_exactly(length)
+        payload = read_payload(length)
         @traffic_stats.record_read(HEADER_SIZE + payload.bytesize)
         Cbor.decode(payload)
+      end
+
+      private
+
+      def read_payload(length)
+        stream.read_exactly(length)
       rescue EOFError
-        raise FrameError, 'Truncated secure frame'
+        raise FrameError, 'Truncated secure frame payload'
       end
     end
   end

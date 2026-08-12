@@ -70,6 +70,10 @@ module RSMP
 
         def process_status_subcribe(message)
           log "Received #{message.type}", message: message, level: :log
+          # Do not expose the new subscription to the periodic status timer
+          # while the acknowledgement write can yield. The initial update below
+          # must be the first update generated for this subscription.
+          acknowledge message
 
           return process_core_3_3_subscription(message) if core_3_3_0_or_newer?
 
@@ -83,7 +87,6 @@ module RSMP
           message.attributes['sS'].each do |arg|
             add_status_subscription(component_id, subs, update_list, arg, now)
           end
-          acknowledge message
           send_status_updates update_list
         end
 
