@@ -36,6 +36,7 @@ describe RSMP::Secure do
   def write_secure_file(dir, name, bytes)
     path = File.join(dir, name)
     File.binwrite(path, bytes)
+    File.chmod(0o600, path) if name.include?('private')
     path
   end
 
@@ -248,7 +249,153 @@ describe RSMP::Secure do
     expect(RSMP::Secure.settings({})['rekey_after_messages']).to be == 1_000_000
     expect(RSMP::Secure.settings({})['rekey_after_bytes']).to be == 64 * 1024 * 1024 * 1024
     expect(RSMP::Secure.settings({})['rekey_after_seconds']).to be == 7_200
+    expect(RSMP::Secure.settings({})['handshake_timeout']).to be == 2
     expect(RSMP::Secure.settings({})['rekey_timeout']).to be == 2
+  end
+
+  it 'disables decrypted secure payload logging by default' do
+    expect(RSMP::Secure.settings({})['log_decrypted_payloads']).to be == false
+  end
+
+  it 'rate limits repeated failed secure connections by peer key' do
+    now = 100.0
+    limiter = RSMP::Secure::ConnectionRateLimiter.new(clock: -> { now })
+
+    RSMP::Secure::ConnectionRateLimiter::MAX_FAILURES.times do
+      limiter.check!('192.0.2.1')
+      limiter.record_failure('192.0.2.1')
+    end
+    expect do
+      limiter.check!('192.0.2.1')
+    end.to raise_exception(RSMP::Secure::RateLimitError)
+    expect(limiter.check!('192.0.2.2')).to be_nil
+
+    logs = []
+    settings = RSMP::Secure.with_runtime_policy(
+      {},
+      revocation_list: nil,
+      rate_limiter: limiter,
+      rate_limit_key: '192.0.2.1'
+    )
+    expect do
+      RSMP::Secure.build_protocol(
+        SecureMemoryStream.new,
+        role: :responder,
+        settings: settings,
+        log: ->(message, options = {}) { logs << [message, options] }
+      )
+    end.to raise_exception(
+      RSMP::HandshakeError,
+      message: be == 'Secure RSMP connection temporarily rate limited'
+    )
+    expect(logs).to be == [['Secure handshake failed (category: rate_limit)', { level: :warning }]]
+
+    now += RSMP::Secure::ConnectionRateLimiter::BLOCK_SECONDS + 1
+    expect(limiter.check!('192.0.2.1')).to be_nil
+  end
+
+  it 'tracks and restores exact process-local credential revocations' do
+    revocations = RSMP::Secure::RevocationList.new
+
+    expect(revocations.revoke('RN+SI0001')).to be == true
+    expect(revocations.revoke('RN+SI0001')).to be == false
+    expect(revocations.revoked?('RN+SI0001')).to be == true
+    expect(revocations.revoked?('RN+SI0002')).to be == false
+    expect(revocations.restore('RN+SI0001')).to be == true
+    expect(revocations.revoked?('RN+SI0001')).to be == false
+  end
+
+  it 'categorizes secure failure logs without exposing exception detail' do
+    detail = RSMP::Secure::AuthenticationError.new('peer-controlled-sensitive-detail')
+    summary = RSMP::Secure.failure_summary('authorization', detail)
+
+    expect(summary).to be == 'Secure authorization failed (category: authentication)'
+  end
+
+  it 'redacts secure message payloads and payload-derived errors unless explicitly enabled' do
+    protocol = Object.new
+    protocol.define_singleton_method(:log_decrypted_payloads?) { false }
+    archive = RSMP::Archive.new
+    output = StringIO.new
+    logger = RSMP::Logger.new('stream' => output, 'style' => false, 'json' => true, 'watchdogs' => true)
+    target_class = Class.new do
+      include RSMP::Logging
+
+      def initialize(protocol, archive, logger)
+        @protocol = protocol
+        initialize_logging(archive: archive, logger: logger)
+      end
+
+      def author
+        'secure-test'
+      end
+    end
+    target = target_class.new(protocol, archive, logger)
+    attributes = {
+      'mType' => 'rSMsg',
+      'type' => 'Watchdog',
+      'mId' => 'secret-message-id',
+      'wTs' => '2026-08-12T08:00:00.000Z'
+    }
+    message = RSMP::Message.build(attributes, JSON.generate(attributes))
+    message.direction = :in
+
+    exception = RuntimeError.new('secret-message-id')
+    target.log('Received Watchdog secret-message-id', message: message, exception: exception)
+    item = archive.items.last
+
+    expect(item[:text]).to be == 'Received secure RSMP Watchdog (payload redacted)'
+    expect(item[:exception]).to be_nil
+    expect(item[:message].type).to be == 'Watchdog'
+    expect(item[:message].direction).to be == :in
+    expect(item[:message].attributes).to be == {}
+    expect(item[:message].m_id).to be_nil
+    expect(item[:message].json).to be_nil
+    expect(output.string).to be(:include?, 'Received secure RSMP Watchdog (payload redacted)')
+    expect(output.string).not.to be(:include?, 'secret-message-id')
+
+    unknown = RSMP::Message.build(attributes.merge('type' => 'secret-type-value'), nil)
+    unknown.direction = :in
+    target.log('Received secret-type-value', message: unknown)
+    expect(archive.items.last[:message].type).to be == 'Unknown'
+    expect(output.string).not.to be(:include?, 'secret-type-value')
+  end
+
+  it 'retains decrypted secure payloads when logging is explicitly enabled' do
+    protocol = Object.new
+    protocol.define_singleton_method(:log_decrypted_payloads?) { true }
+    archive = RSMP::Archive.new
+    output = StringIO.new
+    logger = RSMP::Logger.new('stream' => output, 'style' => false, 'json' => true, 'watchdogs' => true)
+    target_class = Class.new do
+      include RSMP::Logging
+
+      def initialize(protocol, archive, logger)
+        @protocol = protocol
+        initialize_logging(archive: archive, logger: logger)
+      end
+
+      def author
+        'secure-test'
+      end
+    end
+    target = target_class.new(protocol, archive, logger)
+    attributes = {
+      'mType' => 'rSMsg',
+      'type' => 'Watchdog',
+      'mId' => 'development-message-id',
+      'wTs' => '2026-08-12T08:00:00.000Z'
+    }
+    message = RSMP::Message.build(attributes, JSON.generate(attributes))
+    message.direction = :in
+
+    target.log('Received Watchdog development-message-id', message: message)
+    item = archive.items.last
+
+    expect(item[:text]).to be == 'Received Watchdog development-message-id'
+    expect(item[:message]).to be(:equal?, message)
+    expect(item[:message].attributes).to be == attributes
+    expect(output.string).to be(:include?, 'development-message-id')
   end
 
   it 'rejects unsupported secure profiles with a clear error' do
@@ -539,6 +686,23 @@ describe RSMP::Secure do
     end
   end
 
+  it 'fails startup when a private-key file permits group or other access' do
+    skip 'POSIX file permissions are not enforced on Windows' if Gem.win_platform?
+
+    Dir.mktmpdir do |dir|
+      vector = Edhoc::TestVector.suite0
+      settings = site_secure_settings(dir, vector)
+      File.chmod(0o644, settings.fetch('private_key'))
+
+      expect do
+        RSMP::Secure::Protocol.new(SecureMemoryStream.new, role: :initiator, settings: settings)
+      end.to raise_exception(
+        RSMP::Secure::ConfigurationError,
+        message: be(:include?, 'permissions must deny group and other access')
+      )
+    end
+  end
+
   it 'fails site startup when the private key public half does not match its private seed' do
     Dir.mktmpdir do |dir|
       site_secure, = secure_settings(dir)
@@ -686,7 +850,9 @@ describe RSMP::Secure do
       secure_dir = File.join(config_dir, 'secure')
       FileUtils.mkdir_p(secure_dir)
 
-      File.binwrite(File.join(secure_dir, 'RN+SI0001.private.key'), vector.fetch(:initiator_private_key))
+      private_key_path = File.join(secure_dir, 'RN+SI0001.private.key')
+      File.binwrite(private_key_path, vector.fetch(:initiator_private_key))
+      File.chmod(0o600, private_key_path)
       File.binwrite(File.join(secure_dir, 'RN+SI0001.cred'),
                     vector_secure_credential(vector, :initiator, 'RN+SI0001'))
       File.binwrite(File.join(secure_dir, 'supervisor.cred'),
@@ -737,6 +903,14 @@ describe RSMP::Secure do
 
       expect do
         RSMP::Secure::Cbor.decode(non_deterministic)
+      end.to raise_exception(RSMP::Secure::FrameError)
+    end
+
+    it 'rejects duplicate raw CBOR map keys' do
+      duplicate_keys = "\xA2\x61a\x01\x61a\x02".b
+
+      expect do
+        RSMP::Secure::Cbor.decode(duplicate_keys)
       end.to raise_exception(RSMP::Secure::FrameError)
     end
   end
@@ -1084,6 +1258,23 @@ describe RSMP::Secure do
       end.to raise_exception(RSMP::Secure::ReplayError)
     end
 
+    it 'rejects skipped and reordered data indices without advancing replay state' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
+      first = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('index' => 1))
+      second = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('index' => 2))
+
+      expect do
+        responder.decrypt_frame(second)
+      end.to raise_exception(
+        RSMP::Secure::ReplayError,
+        message: be == 'Expected secure frame index 1, got 2'
+      )
+      expect(RSMP::Secure::Cbor.decode(responder.decrypt_frame(first))).to be == { 'index' => 1 }
+      expect(RSMP::Secure::Cbor.decode(responder.decrypt_frame(second))).to be == { 'index' => 2 }
+    end
+
     it 'rejects authentication failures' do
       secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
       initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
@@ -1097,6 +1288,24 @@ describe RSMP::Secure do
       expect do
         responder.decrypt_frame(frame)
       end.to raise_exception(RSMP::Secure::AuthenticationError)
+    end
+
+    it 'rejects missing, unknown, and mistyped protected-frame fields' do
+      secret = 's' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      initiator = RSMP::Secure::Channel.new(secret, role: :initiator, rsmp_context: secure_channel_context)
+      frame = initiator.encrypt_payload(RSMP::Secure::Cbor.encode('index' => 1))
+      invalid_frames = [
+        frame.except('epoch'),
+        frame.merge('unknown' => true),
+        frame.merge('epoch' => '0')
+      ]
+
+      invalid_frames.each do |invalid_frame|
+        responder = RSMP::Secure::Channel.new(secret, role: :responder, rsmp_context: secure_channel_context)
+        expect do
+          responder.decrypt_frame(invalid_frame)
+        end.to raise_exception(RSMP::Secure::FrameError)
+      end
     end
 
     it 'rejects COSE_Encrypt0 with the wrong algorithm or a non-minimal Partial IV' do
@@ -1308,6 +1517,47 @@ describe RSMP::Secure do
       end
     end
 
+    it 'rejects a credential revoked before a new secure handshake' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        revocations = RSMP::Secure::RevocationList.new
+        revocations.revoke('RN+SI0001')
+        supervisor_settings = RSMP::Secure.with_runtime_policy(
+          supervisor_settings,
+          revocation_list: revocations
+        )
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        responder_logs = []
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator,
+                                                                         settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder,
+                                                                               settings: supervisor_settings,
+                                                                               log: lambda { |message, options = {}|
+                                                                                 responder_logs << [message, options]
+                                                                               })
+        end
+        expect do
+          responder_task.wait
+        end.to raise_exception(
+          RSMP::Secure::AuthenticationError,
+          message: be == 'Authenticated secure credential has been revoked'
+        )
+        expect(responder_logs).to be == [
+          ['Secure handshake failed (category: authentication)', { level: :warning }]
+        ]
+        site = initiator_task.wait
+      ensure
+        initiator_task&.stop
+        responder_task&.stop
+        site&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
     it 'reports legacy JSON sent to a secure responder as a handshake error' do
       Dir.mktmpdir do |dir|
         vector = Edhoc::TestVector.suite0
@@ -1468,13 +1718,178 @@ describe RSMP::Secure do
         end
         site = initiator_task.wait
         supervisor = responder_task.wait
-        site.write_lines(JSON.generate('mType' => 'rSMsg', 'type' => 'Watchdog'))
+        frame = site.channel.encrypt_payload(
+          RSMP::Secure::Cbor.encode('mType' => 'rSMsg', 'type' => 'Watchdog')
+        )
+        site.write_frame(frame)
 
         expect do
           supervisor.read_line
         end.to raise_exception(
           RSMP::Secure::AuthenticationError,
           message: be(:include?, 'not permitted before secure authorization')
+        )
+        expect(supervisor.channel).to be_nil
+      ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'closes locally instead of sending application data before Version authorization' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator,
+                                                                         settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder,
+                                                                               settings: supervisor_settings)
+        end
+        site = initiator_task.wait
+        supervisor = responder_task.wait
+
+        expect do
+          site.write_lines(JSON.generate('mType' => 'rSMsg', 'type' => 'Watchdog'))
+        end.to raise_exception(
+          RSMP::Secure::AuthenticationError,
+          message: be(:include?, 'not permitted before secure authorization')
+        )
+        expect(site.channel).to be_nil
+      ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'binds pre-authorization acknowledgements to the outbound Version message' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator,
+                                                                         settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder,
+                                                                               settings: supervisor_settings)
+        end
+        site = initiator_task.wait
+        supervisor = responder_task.wait
+        version = {
+          'mType' => 'rSMsg',
+          'type' => 'Version',
+          'step' => 'Request',
+          'RSMP' => [{ 'vers' => '3.3.0' }],
+          'siteId' => [{ 'sId' => 'RN+SI0001' }],
+          'mId' => '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
+        }
+        site.write_lines(JSON.generate(version))
+        expect(JSON.parse(supervisor.read_line)).to be == version
+
+        forged_ack = supervisor.channel.encrypt_payload(
+          RSMP::Secure::Cbor.encode(
+            'mType' => 'rSMsg',
+            'type' => 'MessageAck',
+            'oMId' => 'not-the-version-message-id'
+          )
+        )
+        supervisor.write_frame(forged_ack)
+
+        expect do
+          site.read_line
+        end.to raise_exception(
+          RSMP::Secure::AuthenticationError,
+          message: be(:include?, 'does not acknowledge the protected Version exchange')
+        )
+        expect(site.channel).to be_nil
+      ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'closes instead of sending a second Version message' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator,
+                                                                         settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder,
+                                                                               settings: supervisor_settings)
+        end
+        site = initiator_task.wait
+        supervisor = responder_task.wait
+        first = {
+          'mType' => 'rSMsg',
+          'type' => 'Version',
+          'step' => 'Request',
+          'RSMP' => [{ 'vers' => '3.3.0' }],
+          'siteId' => [{ 'sId' => 'RN+SI0001' }],
+          'mId' => '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
+        }
+        site.write_lines(JSON.generate(first))
+        expect(JSON.parse(supervisor.read_line)).to be == first
+
+        expect do
+          site.write_lines(JSON.generate(first.merge('mId' => '17f0115d-e221-441f-8c94-a7e706b58e76')))
+        end.to raise_exception(
+          RSMP::Secure::AuthenticationError,
+          message: be(:include?, 'second outbound RSMP Version')
+        )
+        expect(site.channel).to be_nil
+      ensure
+        site&.close
+        supervisor&.close
+        site_io&.close
+        supervisor_io&.close
+      end
+    end
+
+    it 'closes when a peer sends a second Version message' do
+      Dir.mktmpdir do |dir|
+        site_settings, supervisor_settings = secure_settings(dir)
+        site_io, supervisor_io = Socket.pair(:UNIX, :STREAM, 0)
+        initiator_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(site_io), role: :initiator,
+                                                                         settings: site_settings)
+        end
+        responder_task = Async::Task.current.async do
+          RSMP::Secure.build_protocol(IO::Stream::Buffered.new(supervisor_io), role: :responder,
+                                                                               settings: supervisor_settings)
+        end
+        site = initiator_task.wait
+        supervisor = responder_task.wait
+        first = {
+          'mType' => 'rSMsg',
+          'type' => 'Version',
+          'step' => 'Request',
+          'RSMP' => [{ 'vers' => '3.3.0' }],
+          'siteId' => [{ 'sId' => 'RN+SI0001' }],
+          'mId' => '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
+        }
+        site.write_lines(JSON.generate(first))
+        expect(JSON.parse(supervisor.read_line)).to be == first
+
+        second = first.merge('mId' => '17f0115d-e221-441f-8c94-a7e706b58e76')
+        site.write_frame(site.channel.encrypt_payload(RSMP::Secure::Cbor.encode(second)))
+
+        expect do
+          supervisor.read_line
+        end.to raise_exception(
+          RSMP::Secure::AuthenticationError,
+          message: be(:include?, 'second inbound RSMP Version')
         )
         expect(supervisor.channel).to be_nil
       ensure
@@ -1556,6 +1971,13 @@ describe RSMP::Secure do
         site.write_lines(JSON.generate(pre_rekey))
         expect(JSON.parse(supervisor.read_line)).to be == pre_rekey
 
+        secret_names = %i[@traffic_secret @send_key @recv_key @send_nonce_prefix @recv_nonce_prefix]
+        old_site_channel = site.channel
+        old_supervisor_channel = supervisor.channel
+        old_site_secret_refs = secret_names.map { |name| old_site_channel.instance_variable_get(name) }
+        old_supervisor_secret_refs = secret_names.map { |name| old_supervisor_channel.instance_variable_get(name) }
+        old_site_secret_values = old_site_secret_refs.map(&:dup)
+        old_supervisor_secret_values = old_supervisor_secret_refs.map(&:dup)
         session_id = site.channel.session_id
         expect(supervisor.channel.session_id).to be == session_id
 
@@ -1566,6 +1988,12 @@ describe RSMP::Secure do
         expect(supervisor.channel.session_id).to be == session_id
         expect(site.channel.instance_variable_get(:@recv_idx)).to be == 1
         expect(supervisor.channel.instance_variable_get(:@send_idx)).to be == 1
+        expect(old_site_secret_refs.all?(&:empty?)).to be == true
+        expect(old_supervisor_secret_refs.all?(&:empty?)).to be == true
+        expect(secret_names.map { |name| old_site_channel.instance_variable_get(name) }.all?(&:nil?)).to be == true
+        expect(secret_names.map { |name| old_supervisor_channel.instance_variable_get(name) }.all?(&:nil?)).to be == true
+        expect(secret_names.map { |name| site.channel.instance_variable_get(name) }).not.to be == old_site_secret_values
+        expect(secret_names.map { |name| supervisor.channel.instance_variable_get(name) }).not.to be == old_supervisor_secret_values
 
         post_rekey = pre_rekey.merge(
           'mId' => 'c6a0ec38-45a7-4339-a51c-4499deff1682',
@@ -1900,13 +2328,15 @@ describe RSMP::Secure do
         expect(rekey_requests).to be == 1
         expect(site_logs).to be == [
           ['Secure handshake with peer supervisor complete (initiator, epoch 0)', { level: :info }],
+          ['Secure authorization complete for supervisor as peer, Core 3.3.0', { level: :info }],
           ['Secure rekey with peer supervisor started (initiator, epoch 1)', { level: :info }],
-          ['Secure handshake with peer supervisor complete (initiator, epoch 1)', { level: :info }]
+          ['Secure rekey with peer supervisor complete (initiator, epoch 1)', { level: :info }]
         ]
         expect(supervisor_logs).to be == [
           ['Secure handshake with peer RN+SI0001 complete (responder, epoch 0)', { level: :info }],
+          ['Secure authorization complete for RN+SI0001 as peer, Core 3.3.0', { level: :info }],
           ['Secure rekey with peer RN+SI0001 started (responder, epoch 1)', { level: :info }],
-          ['Secure handshake with peer RN+SI0001 complete (responder, epoch 1)', { level: :info }]
+          ['Secure rekey with peer RN+SI0001 complete (responder, epoch 1)', { level: :info }]
         ]
       ensure
         site&.close
@@ -2184,6 +2614,164 @@ describe RSMP::Secure do
       transport&.close
     end
 
+    it 'rejects a rekey request delivered to the responder role' do
+      secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      channel = RSMP::Secure::Channel.new(secret, role: :responder,
+                                                  rsmp_context: secure_channel_context)
+      peer_channel = RSMP::Secure::Channel.new(secret, role: :initiator,
+                                                       rsmp_context: secure_channel_context)
+      transport = RSMP::Secure::Transport.new(
+        RSMP::Secure::Transport::Config.new(
+          frame_io: nil,
+          role: :responder,
+          settings: RSMP::Secure.settings({}),
+          channel: channel,
+          session_builder: nil,
+          channel_builder: nil,
+          log: nil,
+          parent: Async::Task.current
+        )
+      )
+      frame = peer_channel.encrypt_control('kind' => 'rekey_request', 'next_epoch' => 1)
+
+      expect do
+        transport.send(:process_rekey_frame, frame)
+      end.to raise_exception(
+        RSMP::Secure::FrameError,
+        message: be == 'Secure responder received a responder-only rekey request'
+      )
+    ensure
+      transport&.close
+    end
+
+    it 'rejects a rekey control for the wrong next epoch' do
+      secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      channel = RSMP::Secure::Channel.new(secret, role: :responder,
+                                                  rsmp_context: secure_channel_context)
+      peer_channel = RSMP::Secure::Channel.new(secret, role: :initiator,
+                                                       rsmp_context: secure_channel_context)
+      transport = RSMP::Secure::Transport.new(
+        RSMP::Secure::Transport::Config.new(
+          frame_io: nil,
+          role: :responder,
+          settings: RSMP::Secure.settings({}),
+          channel: channel,
+          session_builder: nil,
+          channel_builder: nil,
+          log: nil,
+          parent: Async::Task.current
+        )
+      )
+      frame = peer_channel.encrypt_control('kind' => 'rekey_msg1', 'next_epoch' => 2, 'edhoc' => 'msg1'.b)
+
+      expect do
+        transport.send(:process_rekey_frame, frame)
+      end.to raise_exception(
+        RSMP::Secure::FrameError,
+        message: be == 'Expected rekey epoch 1, got 2'
+      )
+    ensure
+      transport&.close
+    end
+
+    it 'rejects an unsolicited rekey response' do
+      secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      channel = RSMP::Secure::Channel.new(secret, role: :initiator,
+                                                  rsmp_context: secure_channel_context)
+      peer_channel = RSMP::Secure::Channel.new(secret, role: :responder,
+                                                       rsmp_context: secure_channel_context)
+      transport = RSMP::Secure::Transport.new(
+        RSMP::Secure::Transport::Config.new(
+          frame_io: nil,
+          role: :initiator,
+          settings: RSMP::Secure.settings({}),
+          channel: channel,
+          session_builder: nil,
+          channel_builder: nil,
+          log: nil,
+          parent: Async::Task.current
+        )
+      )
+      frame = peer_channel.encrypt_control('kind' => 'rekey_msg2', 'next_epoch' => 1, 'edhoc' => 'msg2'.b)
+
+      expect do
+        transport.send(:process_rekey_frame, frame)
+      end.to raise_exception(
+        RSMP::HandshakeError,
+        message: be == 'Unsolicited secure rekey response'
+      )
+    ensure
+      transport&.close
+    end
+
+    it 'rejects a changed credential identity during rekey' do
+      secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      channel = RSMP::Secure::Channel.new(secret, role: :initiator,
+                                                  rsmp_context: secure_channel_context)
+      transport = RSMP::Secure::Transport.new(
+        RSMP::Secure::Transport::Config.new(
+          frame_io: nil,
+          role: :initiator,
+          settings: RSMP::Secure.settings({}),
+          channel: channel,
+          peer_id: 'expected-peer',
+          session_builder: nil,
+          channel_builder: nil,
+          log: nil,
+          parent: Async::Task.current
+        )
+      )
+      session = Struct.new(:peer_id).new('different-peer')
+
+      expect do
+        transport.send(:validate_rekey_peer!, session)
+      end.to raise_exception(
+        RSMP::Secure::AuthenticationError,
+        message: be == 'Secure rekey authenticated a different credential identity'
+      )
+    ensure
+      transport&.close
+    end
+
+    it 'times out rekey and sends exactly one generic authenticated error control' do
+      secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
+      settings = RSMP::Secure.settings({}).merge('rekey_timeout' => 0.01)
+      channel = RSMP::Secure::Channel.new(secret, role: :initiator,
+                                                  rsmp_context: secure_channel_context)
+      peer_channel = RSMP::Secure::Channel.new(secret, role: :responder,
+                                                       rsmp_context: secure_channel_context)
+      transport = RSMP::Secure::Transport.new(
+        RSMP::Secure::Transport::Config.new(
+          frame_io: nil,
+          role: :initiator,
+          settings: settings,
+          channel: channel,
+          peer_id: 'expected-peer',
+          session_builder: -> { Async::Task.current.sleep(1) },
+          channel_builder: nil,
+          log: nil,
+          parent: Async::Task.current
+        )
+      )
+      frames = []
+      transport.define_singleton_method(:write_frame) { |frame| frames << frame }
+
+      expect do
+        transport.send(:execute_rekey_exchange)
+      end.to raise_exception(
+        RSMP::HandshakeError,
+        message: be(:start_with?, 'EDHOC rekey failed:')
+      )
+      expect(frames.size).to be == 1
+      expect(peer_channel.decrypt_control_frame(frames.first)).to be == {
+        'kind' => 'rekey_error',
+        'next_epoch' => 1,
+        'code' => 'failed'
+      }
+    ensure
+      transport&.close
+    end
+
     it 'rejects a responder acknowledgement encrypted under the old epoch keys' do
       old_secret = 'o' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
       new_secret = 'n' * RSMP::Secure::Channel::EXPORTER_SECRET_BYTES
@@ -2274,7 +2862,74 @@ describe RSMP::Secure do
         expect(supervisor_proxy.state).to be == :ready
         expect(site_proxy.schemas).to be == { core: '3.3.0' }
         expect(supervisor_proxy.schemas).to be == { core: '3.3.0' }
+        expect(site_proxy.instance_variable_get(:@protocol).authorization_context.role).to be == :site
+        expect(supervisor_proxy.instance_variable_get(:@protocol).authorization_context.role).to be == :supervisor
         expect(site_log.string).to be(:include?, 'Secure handshake with peer supervisor complete (initiator, epoch 0)')
+
+        expect(supervisor.revoke_secure_credential!('RN+SI0001')).to be == 1
+        expect(supervisor.secure_revocation_list.revoked?('RN+SI0001')).to be == true
+        expect(site_proxy.wait_for_state(:disconnected, timeout: 3)).to be == true
+        expect(supervisor.restore_secure_credential!('RN+SI0001')).to be == true
+      end
+    end
+  end
+
+  it 'closes a secure RSMP connection after authenticated RSMP schema validation fails' do
+    Dir.mktmpdir do |dir|
+      site_secure, supervisor_secure = secure_settings(dir)
+      site_peer = site_secure.fetch('peers').first
+      supervisor_peer = supervisor_secure.fetch('peers').first
+      port = 13_117
+      site = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'RN+SI0001',
+          'core_version' => '3.3.0',
+          'sxls' => {},
+          'supervisors' => [{ 'ip' => '127.0.0.1', 'port' => port,
+                              'secure' => public_peer_settings(site_peer) }],
+          'secure' => site_secure.except('peers').merge('enabled' => true)
+        },
+        log_settings: { 'active' => false }
+      )
+      supervisor = RSMP::Supervisor.new(
+        supervisor_settings: {
+          'port' => port,
+          'secure' => supervisor_secure.except('peers').merge('required' => true),
+          'default' => {
+            'core_version' => '3.3.0',
+            'sxls' => {}
+          },
+          'sites' => {
+            'RN+SI0001' => {
+              'sxls' => {},
+              'skip_validation' => ['Watchdog'],
+              'secure' => public_peer_settings(supervisor_peer)
+            }
+          }
+        },
+        log_settings: { 'active' => false }
+      )
+
+      with_async_context(context: lambda {
+        supervisor.start
+        supervisor.ready_condition.wait
+        site.start
+      }) do
+        site_proxy = supervisor.wait_for_site('RN+SI0001', timeout: 3)
+        supervisor_proxy = site.wait_for_supervisor('127.0.0.1', timeout: 3)
+        site_proxy.wait_for_state(:ready, timeout: 3)
+        supervisor_proxy.wait_for_state(:ready, timeout: 3)
+
+        sender_protocol = supervisor_proxy.instance_variable_get(:@protocol)
+        sender_protocol.write_lines(
+          JSON.generate(
+            'mType' => 'rSMsg',
+            'type' => 'Watchdog',
+            'mId' => 'invalid-authenticated-watchdog'
+          )
+        )
+
+        expect(site_proxy.wait_for_state(:disconnected, timeout: 3)).to be == true
       end
     end
   end

@@ -44,6 +44,11 @@ Use `secure.enabled: true` on the endpoint opening the TCP connection and
 `secure.required: true` on the listener. Secure handshake failure never falls
 back to legacy RSMP.
 
+Decrypted payload logging defaults to off. The repository's `config/tlc.yaml`
+and `config/supervisor.yaml` explicitly set `log_decrypted_payloads: true` for
+local development. Do not carry that setting into production unless an
+explicit diagnostic policy requires plaintext RSMP logs.
+
 The no-argument command uses stable test-vector keys for repeatable local
 examples. Use freshly generated or hardware-backed keys in deployment and
 provision, rotate, revoke, back up, and audit credentials through an

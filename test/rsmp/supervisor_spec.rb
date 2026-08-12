@@ -414,6 +414,11 @@ describe RSMP::Supervisor do
     end
 
     it 'closes when the initial Version does not match the selected Core schema' do
+      events = Async::Queue.new
+      receiver = Object.new
+      receiver.define_singleton_method(:receive_event) { |event| events.enqueue(event) }
+      supervisor.add_event_receiver(receiver)
+
       with_async_context(context: lambda {
         supervisor.start
       }) do |_task|
@@ -424,11 +429,12 @@ describe RSMP::Supervisor do
           RSMP::Schema.latest_version(:tlc).to_s
         )
 
-        error = Async::Task.current.with_timeout(collect_timeout) do
-          supervisor.error_queue.dequeue
+        event = Async::Task.current.with_timeout(collect_timeout) do
+          events.dequeue
         end
-        expect(error).to be_a(RSMP::HandshakeError)
-        expect(error.message).to be(:include?, 'does not conform to negotiated RSMP 3.3.0')
+        expect(event.type).to be == :invalid_message
+        expect(event.failure.code).to be == :protocol_failure
+        expect(event.failure.message).to be(:include?, 'does not conform to negotiated RSMP 3.3.0')
         expect(protocol.read_line).to be_nil
       end
     end

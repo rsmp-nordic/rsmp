@@ -23,9 +23,10 @@ module RSMP
           message = MessageNotAck.new({
                                         'oMId' => original.m_id,
                                         'rea' => reason || 'Unknown reason'
-                                      })
+          })
           message.original = original.clone
           send_generated_message message, "for #{original.type} #{original.m_id_short}", force: force
+          close(reason: :protocol_failure) if secure_protocol?
         end
 
         def expect_acknowledgement(message)
@@ -158,6 +159,12 @@ module RSMP
           log "StatusSubscribe #{short} acknowledged, allowing repeated status values for #{subscribe_list}",
               level: :info
           component.allow_repeat_updates subscribe_list
+        end
+
+        private
+
+        def secure_protocol?
+          @protocol.respond_to?(:secure?) && @protocol.secure?
         end
       end
     end

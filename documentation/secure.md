@@ -53,9 +53,14 @@ Start the site in another:
 $ bundle exec rsmp site --config config/tlc.yaml --json
 ```
 
-The logs identify the `rsmp-secure-v1` profile, report the authenticated peer when the secure handshake completes, and then show the normal RSMP connection sequence. Application messages are logged after decryption when JSON logging is enabled.
+The logs identify the `rsmp-secure-v1` profile, report the authenticated peer when the secure handshake completes, and then show the normal RSMP connection sequence. The checked-in development configurations explicitly set `secure.log_decrypted_payloads: true`, so `--json` includes decrypted application messages. This exposes plaintext and must not be copied into production policy without a specific diagnostic need.
 
 The no-argument generator uses public test-vector identities so this example is repeatable. Never use those sample private keys with real equipment or in production.
+
+On POSIX systems the library rejects a private-key file that grants any group
+or other permission bits. Use an owner-only mode such as `0600` (or read-only
+`0400` where operationally appropriate). The generated files already use
+owner-only permissions.
 
 ## Generate endpoint identities
 
@@ -108,6 +113,7 @@ supervisors:
 secure:
   enabled: true
   profile: rsmp-secure-v1
+  log_decrypted_payloads: false
   private_key: secure/RN+SI0001.private.key
   credential: secure/RN+SI0001.cred
 sxls:
@@ -145,6 +151,7 @@ port: 12111
 secure:
   required: true
   profile: rsmp-secure-v1
+  log_decrypted_payloads: false
   id: supervisor
   private_key: secure/supervisor.private.key
   credential: secure/supervisor.cred
@@ -200,6 +207,56 @@ The `config check` command catches unknown properties, invalid types, unsupporte
 - secure timeout and rekey bounds.
 
 Invalid secure material fails startup before the listener opens or the outgoing connection starts.
+
+## Control decrypted-payload logging
+
+Secure RSMP message payloads are redacted from the operational archive and
+normal logger output by default. Message type and direction remain available
+for filtering and diagnostics, but message attributes, identifiers, JSON, and
+payload-derived exception text are not retained.
+
+Development or a controlled diagnostic procedure can explicitly opt in:
+
+```yaml
+secure:
+  log_decrypted_payloads: true
+```
+
+This setting applies to every secure connection using that local `secure`
+section. It permits the complete decrypted `Message` object to enter the
+archive and permits `log.json: true` or `--json` to render it. Treat those logs
+as plaintext RSMP data, restrict access and retention, and turn the setting off
+when the diagnostic session ends. It has no effect on legacy plaintext RSMP
+connections.
+
+## Rate limiting and runtime revocation
+
+A secure-required listener rate-limits repeated failed handshakes from the
+same remote address. Five failures inside 60 seconds block another handshake
+from that address for 30 seconds. The limiter is process-local, uses monotonic
+time, does not delay the listener task, and does not affect successful peers or
+outbound connections.
+
+Credential-file or authorization-policy changes apply when configuration is
+loaded for a new connection. To revoke an authenticated credential immediately
+in a running site or supervisor process, call the node API with its exact
+credential subject:
+
+```ruby
+supervisor.revoke_secure_credential!('RN+SI0001')
+```
+
+This records the process-local revocation, closes every active connection
+authenticated with that credential, and rejects it during subsequent secure
+handshakes. After the administrative trust store has been corrected, it can be
+permitted for new connections again:
+
+```ruby
+supervisor.restore_secure_credential!('RN+SI0001')
+```
+
+Runtime revocations do not survive process restart. The durable credential
+must also be removed or replaced in configuration before restart.
 
 Run the endpoints with the same commands used for legacy RSMP. Secure mode comes entirely from the YAML configuration:
 

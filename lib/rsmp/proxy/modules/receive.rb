@@ -6,6 +6,8 @@ module RSMP
       module Receive
         def should_validate_ingoing_message?(message)
           return false if message.is_a?(Version) && !@version_determined
+          return true if secure_protocol?
+
           return true unless @site_settings
 
           skip = @site_settings['skip_validation']
@@ -116,6 +118,7 @@ module RSMP
           failure = peer_failure(code, text, message: message, raw: raw)
           publish_peer_failure(failure, message: message)
           log(text, message: message, level: :warning)
+          close(reason: :protocol_failure, failure: failure) if secure_protocol?
           Result.failure(failure: failure)
         end
 

@@ -74,10 +74,11 @@ module RSMP
         end
 
         def validate_negotiated_version(message)
-          message.validate(core: @core_version)
-        rescue SchemaError => e
+          validation = message.validate(core: @core_version)
+          return if validation.valid?
+
           raise HandshakeError,
-                "Version message does not conform to negotiated RSMP #{@core_version}: #{e.message}"
+                "Version message does not conform to negotiated RSMP #{@core_version}: #{validation.message}"
         end
 
         def process_version(message); end

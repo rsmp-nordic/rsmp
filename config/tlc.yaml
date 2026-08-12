@@ -7,6 +7,7 @@ supervisors:
 secure:
   enabled: true
   profile: rsmp-secure-v1
+  log_decrypted_payloads: true
   rekey_after_messages: 100
   rekey_after_seconds: 10
 sxls:
