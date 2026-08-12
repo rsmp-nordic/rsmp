@@ -73,7 +73,7 @@ module RSMP
       end
 
       def close
-        fail_transport(IOError.new('Secure RSMP transport is closed'))
+        fail_transport(IOError.new('Secure RSMP transport is closed'), log_failure: false)
         stop_tasks
         @session_builder = nil
         @channel_builder = nil
@@ -84,7 +84,7 @@ module RSMP
       end
 
       def log_secure_channel_up
-        log_secure(Secure.handshake_complete_summary(settings, role: role, epoch: @channel.epoch, peer_id: @peer_id))
+        log_secure(Secure.channel_up_summary(settings, role: role, epoch: @channel.epoch, peer_id: @peer_id))
       end
 
       private

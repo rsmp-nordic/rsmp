@@ -6,6 +6,7 @@ module RSMP
       module Receive
         def should_validate_ingoing_message?(message)
           return false if message.is_a?(Version) && !@version_determined
+          return true if secure_protocol?
 
           return true unless @site_settings
 
@@ -28,6 +29,7 @@ module RSMP
           str = "Received invalid package, must be valid JSON but got #{json.size} bytes: #{error.message}"
           distribute_error error.exception(str)
           log str, level: :warning
+          close if secure_protocol?
           nil
         end
 
@@ -35,6 +37,7 @@ module RSMP
           str = "Received malformed message, #{error.message}"
           distribute_error error.exception(str)
           log str, message: Malformed.new(attributes), level: :warning
+          close if secure_protocol?
           nil
         end
 

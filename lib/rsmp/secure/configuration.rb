@@ -16,7 +16,8 @@ module RSMP
           'rekey_after_messages' => DEFAULT_REKEY_AFTER_MESSAGES,
           'rekey_after_bytes' => DEFAULT_REKEY_AFTER_BYTES,
           'rekey_after_seconds' => DEFAULT_REKEY_AFTER_SECONDS,
-          'rekey_timeout' => DEFAULT_REKEY_TIMEOUT
+          'rekey_timeout' => DEFAULT_REKEY_TIMEOUT,
+          'log_decrypted_payloads' => false
         }.merge(raw)
       end
 

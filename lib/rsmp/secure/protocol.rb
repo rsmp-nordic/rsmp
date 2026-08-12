@@ -4,6 +4,8 @@ require_relative 'channel'
 require_relative 'frame_io'
 require_relative 'protocol_errors'
 require_relative 'protocol/handshake'
+require_relative 'protocol/message_state'
+require_relative 'protocol/runtime_policy'
 require_relative 'transport'
 
 module RSMP
@@ -12,11 +14,11 @@ module RSMP
     class Protocol
       include ProtocolErrors
       include Handshake
+      include RuntimePolicy
 
       EDHOC_CONNECTION_ID_BYTES = 4
       EDHOC_FRAME_KEYS = %w[edhoc msg profile type v].freeze
       EDHOC_ERROR_FRAME_KEYS = %w[edhoc profile type v].freeze
-      PRE_AUTHORIZATION_TYPES = %w[MessageAck MessageNotAck Version].freeze
       GENERIC_EDHOC_ERROR = 'EDHOC handshake failed'.freeze
 
       attr_reader :settings, :role, :authenticated_peer_id, :local_id, :authorization_context
@@ -39,6 +41,8 @@ module RSMP
         @received_valid_handshake_wrapper = false
         @sent_edhoc_error = false
         @peer_sent_edhoc_error = false
+        @connection_failure_recorded = false
+        @message_state = MessageState.new
       end
 
       def handshake!
@@ -52,6 +56,7 @@ module RSMP
           raise AuthenticationError,
                 'EDHOC completed without an authenticated peer identity'
         end
+        validate_peer_not_revoked!
 
         @channel = build_channel(session, epoch: 0)
         start_transport
@@ -68,12 +73,22 @@ module RSMP
 
       def authorize!(rsmp_id:, core_version:)
         ensure_ready!
+        validate_peer_not_revoked!
         candidate = build_authorization_context(rsmp_id, core_version)
         validate_unchanged_authorization!(candidate)
 
-        @authorization_context ||= candidate
+        unless @authorization_context
+          @authorization_context = candidate
+          @log&.call(
+            "Secure authorization complete for #{candidate.rsmp_id} as #{candidate.role}, " \
+            "Core #{candidate.core_version}",
+            level: :info
+          )
+        end
         true
-      rescue AuthenticationError
+      rescue AuthenticationError => e
+        record_failed_connection(e)
+        @log&.call('Secure authorization failed (category: policy)', level: :warning)
         close
         raise
       end
@@ -88,12 +103,20 @@ module RSMP
 
       def write_lines(json)
         ensure_ready!
+        @message_state.validate!(json, direction: :outbound, authorized: !authorization_context.nil?)
         @transport.write_lines(json)
+      rescue Error, HandshakeError, IOError, SystemCallError
+        close
+        raise
       end
 
       def rekey!
         ensure_ready!
         @transport.rekey!
+      rescue Error, HandshakeError, IOError, SystemCallError => e
+        record_failed_connection(e)
+        close
+        raise
       end
 
       def close
@@ -104,6 +127,15 @@ module RSMP
         @channel = nil
         @authorization_context = nil
         @peek_line = nil
+        @message_state.clear!
+      end
+
+      def secure?
+        true
+      end
+
+      def log_decrypted_payloads?
+        @settings['log_decrypted_payloads'] == true
       end
 
       def read_frame
@@ -185,19 +217,10 @@ module RSMP
       def read_and_validate_line
         ensure_ready!
         line = @transport.read_line
-        attributes = JSON.parse(line)
-        raise FrameError, 'Decrypted RSMP message must be an object' unless attributes.is_a?(Hash)
-
-        type = attributes['type']
-        if authorization_context
-          raise AuthenticationError, 'RSMP Version cannot change after secure authorization' if type == 'Version'
-        elsif !PRE_AUTHORIZATION_TYPES.include?(type)
-          raise AuthenticationError, "RSMP #{type.inspect} is not permitted before secure authorization"
-        end
+        @message_state.validate!(line, direction: :inbound, authorized: !authorization_context.nil?)
         line
-      rescue JSON::ParserError => e
-        raise FrameError, "Invalid decrypted RSMP JSON: #{e.message}"
-      rescue AuthenticationError, FrameError
+      rescue Error, HandshakeError, IOError, SystemCallError => e
+        record_failed_connection(e)
         close
         raise
       end

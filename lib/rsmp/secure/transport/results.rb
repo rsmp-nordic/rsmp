@@ -66,10 +66,11 @@ module RSMP
           @pending_results.delete(result) if result
         end
 
-        def fail_transport(error)
+        def fail_transport(error, log_failure: true)
           return if @error
 
           @error = error
+          log_transport_failure(error) if log_failure
           pending = @pending_results.dup
           pending.each { |result| complete_result(result, error: error) }
           @inbound.close unless @inbound.closed?
@@ -78,6 +79,11 @@ module RSMP
           @rekey_responses.close unless @rekey_responses.closed?
           @rekey_done.signal
           @epoch_changed.signal
+        end
+
+        def log_transport_failure(error)
+          stage = @rekeying || @rekey_requested ? 'rekey' : 'channel'
+          @log&.call(Secure.failure_summary(stage, error), level: :warning)
         end
 
         def raise_if_failed

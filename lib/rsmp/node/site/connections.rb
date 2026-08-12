@@ -76,7 +76,11 @@ module RSMP
 
     def accepted_supervisor_options(socket, remote_ip, remote_port)
       stream = IO::Stream::Buffered.new(socket)
-      protocol = build_accepted_protocol(stream, RSMP::Secure.site_inbound_settings(@site_settings))
+      protocol = build_accepted_protocol(
+        stream,
+        RSMP::Secure.site_inbound_settings(@site_settings),
+        rate_limit_key: remote_ip
+      )
       supervisor_proxy_options('ip' => remote_ip, 'port' => remote_port).merge(
         socket: socket,
         stream: stream,
@@ -85,9 +89,15 @@ module RSMP
       )
     end
 
-    def build_accepted_protocol(stream, secure_settings)
+    def build_accepted_protocol(stream, secure_settings, rate_limit_key:)
       return RSMP::Protocol.new(stream) unless RSMP::Secure.required?(secure_settings)
 
+      secure_settings = RSMP::Secure.with_runtime_policy(
+        secure_settings,
+        revocation_list: secure_revocation_list,
+        rate_limiter: secure_connection_rate_limiter,
+        rate_limit_key: rate_limit_key
+      )
       RSMP::Secure.build_protocol(
         stream,
         role: :responder,

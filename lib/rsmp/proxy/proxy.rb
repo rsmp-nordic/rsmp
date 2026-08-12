@@ -108,6 +108,7 @@ module RSMP
     def build_transport_protocol(stream, role:, secure_settings:)
       return RSMP::Protocol.new(stream) unless RSMP::Secure.enabled?(secure_settings)
 
+      secure_settings = secure_runtime_settings(secure_settings)
       RSMP::Secure.build_protocol(
         stream,
         role: role,

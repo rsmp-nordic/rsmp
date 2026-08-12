@@ -177,9 +177,25 @@ The endpoint `secure.id` is the expected peer credential subject and conventiona
 
 `private_key` is the local raw 64-byte Ed25519 signing key: a 32-byte private seed followed by its 32-byte public key. `credential` is the exact deterministic-CBOR CCS credential pinned by the profile. It contains a non-empty subject and an Ed25519 COSE_Key whose 16-byte KID is derived from the public key. No separate public-key file or self-signed envelope is used.
 
+On POSIX systems, the private-key file must deny all group and other access;
+owner-only modes such as `0600` and `0400` are accepted. Insecure permissions
+fail startup.
+
 Trust comes from provisioning the complete peer `.cred` file through an authenticated process. EDHOC proves possession of its corresponding private key. Authorization then maps the authenticated credential subject to the expected RSMP identity, site or supervisor role, and permitted Core versions.
 
 Use `core_versions` on a peer `secure` entry to restrict the encrypted RSMP `Version` selection. The authenticated identity and selected Core version are sealed for the connection; a later `Version` change is rejected.
+
+`log_decrypted_payloads` is a local boolean policy setting and defaults to
+`false`. With the default, Secure RSMP log entries retain only redacted message
+metadata and never retain message attributes, identifiers, JSON, or
+payload-derived exceptions. Set it to `true` only for an explicit development
+or diagnostic need. When enabled, the normal archive retains decrypted
+`Message` objects and JSON logging can emit complete plaintext payloads.
+
+Secure-required listeners automatically rate-limit repeated failed handshakes
+per remote address. Running `Site` and `Supervisor` objects also expose
+`revoke_secure_credential!` and `restore_secure_credential!` for process-local
+emergency revocation; see [Using Secure RSMP](secure.md#rate-limiting-and-runtime-revocation).
 
 When secure mode is active, startup validates deterministic credential encoding, exact CCS shape, derived KIDs, key lengths, the local private-key/credential match, configured subjects, and duplicate peer identities or KIDs. Invalid material fails startup before a listener opens or an outgoing connection starts.
 
@@ -204,6 +220,7 @@ supervisors:
 secure:
   enabled: true
   profile: rsmp-secure-v1
+  log_decrypted_payloads: false
 sxls:
   tlc: "1.3.0"
 ```
@@ -217,6 +234,7 @@ port: 12111
 secure:
   required: true
   profile: rsmp-secure-v1
+  log_decrypted_payloads: false
 default:
   sxls:
     tlc: "1.3.0"

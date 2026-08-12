@@ -4,6 +4,14 @@ module RSMP
       # State management helpers
       # Utility methods for waiting on state changes
       module State
+        def secure_peer_credential_id
+          @protocol&.authenticated_peer_id if @protocol.respond_to?(:authenticated_peer_id)
+        end
+
+        def secure_runtime_settings(settings)
+          RSMP::Secure.with_runtime_policy(settings, revocation_list: @node.secure_revocation_list)
+        end
+
         def ready?
           @state == :ready
         end

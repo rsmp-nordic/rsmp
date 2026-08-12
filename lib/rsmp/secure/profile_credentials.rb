@@ -163,16 +163,30 @@ module RSMP
         path = @settings[key]
         raise ConfigurationError, "secure.#{key} is required" unless path
 
-        read_path(path, key)
+        expanded = expanded_file_path(path, key)
+        validate_private_key_permissions!(expanded) if key == 'private_key'
+        File.binread(expanded)
       end
 
       def read_path(path, key)
         raise ConfigurationError, "secure.#{key} is required" unless path
 
+        File.binread(expanded_file_path(path, key))
+      end
+
+      def expanded_file_path(path, key)
         expanded = Secure.expand_config_path(path, @settings)
         raise ConfigurationError, "secure.#{key} file not found: #{expanded}" unless File.file?(expanded)
 
-        File.binread(expanded)
+        expanded
+      end
+
+      def validate_private_key_permissions!(path)
+        return if Gem.win_platform?
+        return if File.stat(path).mode.nobits?(0o077)
+
+        raise ConfigurationError,
+              "secure.private_key permissions must deny group and other access: #{path}"
       end
 
       def wipe!(value)

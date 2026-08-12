@@ -42,6 +42,9 @@ module RSMP
     CORE_VERSIONS_KEY = '__core_versions'.freeze
     PEER_SETTING_KEYS = %w[id public_key supervisor_id core_versions].freeze
     DEFAULT_SUPERVISOR_ID = 'supervisor'.freeze
+    REVOCATION_LIST_KEY = '__revocation_list'.freeze
+    RATE_LIMITER_KEY = '__connection_rate_limiter'.freeze
+    RATE_LIMIT_KEY = '__connection_rate_limit_key'.freeze
 
     require_relative 'secure/configuration'
     extend Configuration
@@ -56,12 +59,15 @@ module RSMP
     autoload :Channel, 'rsmp/secure/channel'
     autoload :Transport, 'rsmp/secure/transport'
     autoload :Protocol, 'rsmp/secure/protocol'
+    autoload :ConnectionRateLimiter, 'rsmp/secure/connection_rate_limiter'
+    autoload :RevocationList, 'rsmp/secure/revocation_list'
 
     class Error < RSMP::Error; end
     class ConfigurationError < Error; end
     class FrameError < Error; end
     class AuthenticationError < Error; end
     class ReplayError < Error; end
+    class RateLimitError < Error; end
 
     class << self
       def enabled?(raw)
@@ -119,21 +125,40 @@ module RSMP
         "Secure rekey#{peer} started (#{role}, epoch #{epoch})"
       end
 
+      def channel_up_summary(raw, role:, epoch:, peer_id: nil)
+        return handshake_complete_summary(raw, role: role, epoch: epoch, peer_id: peer_id) if epoch.zero?
+
+        peer = peer_id ? " with peer #{peer_id}" : ''
+        "Secure rekey#{peer} complete (#{role}, epoch #{epoch})"
+      end
+
+      def failure_summary(stage, error)
+        "Secure #{stage} failed (category: #{failure_category(error)})"
+      end
+
+      def with_runtime_policy(raw, revocation_list:, rate_limiter: nil, rate_limit_key: nil)
+        runtime = {
+          REVOCATION_LIST_KEY => revocation_list,
+          RATE_LIMITER_KEY => rate_limiter,
+          RATE_LIMIT_KEY => rate_limit_key
+        }.compact
+        (raw || {}).merge(runtime)
+      end
+
       def build_protocol(stream, role:, settings:, task: nil, log: nil)
         require_relative 'secure/protocol'
 
+        settings ||= {}
+        check_connection_rate_limit!(settings)
         protocol = Protocol.new(stream, role: role, settings: settings, log: log, parent: task)
-        timeout = protocol.settings['handshake_timeout']
-        runner = task || (Async::Task.current? if defined?(Async::Task))
-        if runner
-          runner.with_timeout(timeout) { protocol.handshake! }
-        else
-          Timeout.timeout(timeout) { protocol.handshake! }
-        end
+        perform_handshake(protocol, task)
         protocol.log_secure_channel_up
         protocol
       rescue StandardError => e
         protocol&.close
+        record_connection_failure(settings, e)
+        log&.call(failure_summary('handshake', e), level: :warning)
+        raise HandshakeError, 'Secure RSMP connection temporarily rate limited' if e.is_a?(RateLimitError)
         raise HandshakeError, 'Secure RSMP handshake timed out' if timeout_error?(e)
 
         raise
@@ -144,6 +169,36 @@ module RSMP
       def timeout_error?(error)
         error.is_a?(Timeout::Error) ||
           (defined?(Async::TimeoutError) && error.is_a?(Async::TimeoutError))
+      end
+
+      def failure_category(error)
+        return 'rate_limit' if error.is_a?(RateLimitError)
+        return 'authentication' if error.is_a?(AuthenticationError)
+        return 'replay' if error.is_a?(ReplayError)
+        return 'validation' if error.is_a?(FrameError)
+        return 'timeout' if timeout_error?(error)
+        return 'protocol' if error.is_a?(HandshakeError)
+        return 'transport' if error.is_a?(IOError) || error.is_a?(SystemCallError)
+
+        'internal'
+      end
+
+      def perform_handshake(protocol, task)
+        timeout = protocol.settings['handshake_timeout']
+        runner = task || (Async::Task.current? if defined?(Async::Task))
+        return runner.with_timeout(timeout) { protocol.handshake! } if runner
+
+        Timeout.timeout(timeout) { protocol.handshake! }
+      end
+
+      def check_connection_rate_limit!(settings)
+        settings[RATE_LIMITER_KEY]&.check!(settings[RATE_LIMIT_KEY])
+      end
+
+      def record_connection_failure(settings, error)
+        return if error.is_a?(RateLimitError)
+
+        settings[RATE_LIMITER_KEY]&.record_failure(settings[RATE_LIMIT_KEY])
       end
     end
   end
