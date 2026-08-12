@@ -18,7 +18,8 @@ module RSMP
 
         def store_last_sent_status_item(component_id, item)
           @last_status_sent[component_id][item['sCI']] ||= {}
-          @last_status_sent[component_id][item['sCI']][item['n']] = item['s']
+          @last_status_sent[component_id][item['sCI']][item['n']] =
+            encode_status_value(item['sCI'], item['n'], item['s'])
         end
 
         def check_on_change_update(subscription, component, code, name)

@@ -25,6 +25,10 @@ describe RSMP::Secure do
       false
     end
 
+    def read(size)
+      @input.read(size)
+    end
+
     def read_exactly(size)
       data = @input.read(size)
       raise EOFError if data.nil? || data.bytesize < size
@@ -1000,12 +1004,24 @@ describe RSMP::Secure do
       end.to raise_exception(RSMP::Secure::FrameError)
     end
 
-    it 'rejects truncated frames' do
+    it 'treats EOF before a frame as a clean peer disconnect' do
+      expect do
+        RSMP::Secure::FrameIO.new(SecureMemoryStream.new, max_frame_size: 100).read
+      end.to raise_exception(EOFError, message: be(:==, 'Secure RSMP peer closed connection'))
+    end
+
+    it 'rejects truncated frame headers' do
+      expect do
+        RSMP::Secure::FrameIO.new(SecureMemoryStream.new("\x00\x01".b), max_frame_size: 100).read
+      end.to raise_exception(RSMP::Secure::FrameError, message: be(:==, 'Truncated secure frame header'))
+    end
+
+    it 'rejects truncated frame payloads' do
       bytes = "#{[10].pack('N')}xx"
 
       expect do
         RSMP::Secure::FrameIO.new(SecureMemoryStream.new(bytes), max_frame_size: 100).read
-      end.to raise_exception(RSMP::Secure::FrameError)
+      end.to raise_exception(RSMP::Secure::FrameError, message: be(:==, 'Truncated secure frame payload'))
     end
 
     it 'rejects invalid CBOR' do
