@@ -635,6 +635,24 @@ describe RSMP::Proxy do
       proxy
     end
 
+    it 'reserves status values before a transport write can yield' do
+      proxy = build_supervisor_proxy
+      component = proxy.site.find_component('C1')
+      component.define_singleton_method(:get_status) { |_code, _name| %w[1 recent] }
+      observed_value = nil
+      proxy.define_singleton_method(:send_message) do |_message|
+        observed_value = fetch_last_sent_status('C1', 'S0001', 'signalgroupstatus')
+      end
+
+      proxy.send_component_status_update(
+        'C1',
+        { 'S0001' => ['signalgroupstatus'] },
+        '2026-08-12T11:00:00.000Z'
+      )
+
+      expect(observed_value).to be == '1'
+    end
+
     it 'buffers site-originated aggregated status while disconnected' do
       proxy = build_supervisor_proxy
       message = RSMP::AggregatedStatus.new(

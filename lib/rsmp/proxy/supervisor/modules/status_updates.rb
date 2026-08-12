@@ -138,8 +138,11 @@ module RSMP
                                       'sS' => build_status_list(component, by_code)
                                     })
           apply_nts_message_attributes update
-          send_message update
+          # Reserve these values before sending. Secure transports may yield while
+          # writing, allowing the status timer to run and otherwise enqueue the
+          # same on-change values a second time.
           store_last_sent_status update
+          send_message update
           component.status_updates_sent
         end
       end
