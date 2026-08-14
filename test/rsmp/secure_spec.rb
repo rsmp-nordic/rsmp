@@ -2890,7 +2890,7 @@ describe RSMP::Secure do
     end
   end
 
-  it 'closes a secure RSMP connection after authenticated RSMP schema validation fails' do
+  it 'keeps the same secure RSMP channel after an authenticated RSMP message is rejected' do
     Dir.mktmpdir do |dir|
       site_secure, supervisor_secure = secure_settings(dir)
       site_peer = site_secure.fetch('peers').first
@@ -2918,7 +2918,6 @@ describe RSMP::Secure do
           'sites' => {
             'RN+SI0001' => {
               'sxls' => {},
-              'skip_validation' => ['Watchdog'],
               'secure' => public_peer_settings(supervisor_peer)
             }
           }
@@ -2936,16 +2935,39 @@ describe RSMP::Secure do
         site_proxy.wait_for_state(:ready, timeout: 3)
         supervisor_proxy.wait_for_state(:ready, timeout: 3)
 
-        sender_protocol = supervisor_proxy.instance_variable_get(:@protocol)
-        sender_protocol.write_lines(
-          JSON.generate(
-            'mType' => 'rSMsg',
-            'type' => 'Watchdog',
-            'mId' => 'invalid-authenticated-watchdog'
-          )
+        protocol = supervisor_proxy.instance_variable_get(:@protocol)
+        session_id = protocol.channel.session_id
+        invalid = RSMP::Watchdog.new('mId' => '65fd13ec-7232-4a1f-a760-9398eb7fe32f')
+        rejection = RSMP::AckCollector.new(
+          supervisor_proxy,
+          m_id: invalid.m_id,
+          timeout: 3
         )
+        rejection = supervisor_proxy.send_message_and_collect(
+          invalid,
+          rejection,
+          validate: false
+        )[:collector]
 
-        expect(site_proxy.wait_for_state(:disconnected, timeout: 3)).to be == true
+        expect(rejection.status).to be == :cancelled
+        expect(rejection.error).to be_a(RSMP::MessageRejected)
+        expect(site_proxy.state).to be == :ready
+        expect(supervisor_proxy.state).to be == :ready
+
+        valid = RSMP::Watchdog.new('wTs' => supervisor_proxy.clock.to_s)
+        acknowledgement = RSMP::AckCollector.new(
+          supervisor_proxy,
+          m_id: valid.m_id,
+          timeout: 3
+        )
+        acknowledgement = supervisor_proxy.send_message_and_collect(
+          valid,
+          acknowledgement
+        )[:collector]
+
+        expect(acknowledgement.status).to be == :ok
+        expect(supervisor_proxy.instance_variable_get(:@protocol)).to be(:equal?, protocol)
+        expect(protocol.channel.session_id).to be == session_id
       end
     end
   end
