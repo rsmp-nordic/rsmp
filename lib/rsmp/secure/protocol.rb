@@ -130,10 +130,6 @@ module RSMP
         @message_state.clear!
       end
 
-      def secure?
-        true
-      end
-
       def log_decrypted_payloads?
         @settings['log_decrypted_payloads'] == true
       end
