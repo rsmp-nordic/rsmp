@@ -37,23 +37,31 @@ module RSMP
           level: :info,
           timestamp: @clock.now
       log_secure_listener
+      listen_for_sites
+    rescue StandardError => e
+      distribute_error e, level: :internal
+    end
 
+    def listen_for_sites
       @endpoint = IO::Endpoint.tcp('0.0.0.0', @supervisor_settings['port'])
       @accept_task = Async::Task.current.async do |task|
         task.annotate 'supervisor accept loop'
-        @endpoint.accept do |socket| # creates fibers
-          handle_connection(socket)
-        rescue StandardError => e
-          distribute_error e, level: :internal
-        end
-      rescue Async::Stop
-        # Expected during shutdown - no action needed
-      rescue StandardError => e
-        distribute_error e, level: :internal
+        accept_site_connections
       end
 
       @ready_condition.signal
       @accept_task.wait
+    end
+
+    def accept_site_connections
+      @endpoint.accept do |socket| # creates fibers
+        handle_connection(socket)
+      rescue StandardError => e
+        distribute_error e, level: :internal
+      end
+      Async::Notification.new.wait
+    rescue Async::Stop
+      # Expected during shutdown - no action needed
     rescue StandardError => e
       distribute_error e, level: :internal
     end

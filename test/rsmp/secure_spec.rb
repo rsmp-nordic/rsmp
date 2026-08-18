@@ -2890,6 +2890,90 @@ describe RSMP::Secure do
     end
   end
 
+  it 'connects a site-to-site leader and follower through Secure RSMP' do
+    Dir.mktmpdir do |dir|
+      leader_identity = generated_secure_identity('LEADER')
+      follower_identity = generated_secure_identity('FOLLOWER')
+      leader_secure = persisted_secure_identity(dir, 'leader', leader_identity)
+      follower_secure = persisted_secure_identity(dir, 'follower', follower_identity)
+      leader_peer = persisted_secure_peer(dir, 'leader', leader_identity).merge('id' => 'LEADER')
+      follower_peer = persisted_secure_peer(dir, 'follower', follower_identity).merge('id' => 'FOLLOWER')
+      port = 13_118
+
+      follower = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'FOLLOWER',
+          'connection_role' => 'server',
+          'ip' => '127.0.0.1',
+          'port' => port,
+          'core_version' => '3.3.0',
+          'sxls' => {},
+          'supervisors' => [
+            {
+              'ip' => '127.0.0.1',
+              'port' => port,
+              'secure' => leader_peer
+            }
+          ],
+          'secure' => follower_secure.merge('id' => 'FOLLOWER', 'required' => true)
+        },
+        log_settings: { 'active' => false }
+      )
+      leader = RSMP::Supervisor.new(
+        supervisor_settings: {
+          'site_id' => 'LEADER',
+          'connection_role' => 'client',
+          'secure' => leader_secure.merge('id' => 'LEADER', 'enabled' => true),
+          'default' => {
+            'core_version' => '3.3.0',
+            'sxls' => {}
+          },
+          'sites' => {
+            'FOLLOWER' => {
+              'core_version' => '3.3.0',
+              'sxls' => {},
+              'secure' => follower_peer,
+              'supervisors' => [{ 'ip' => '127.0.0.1', 'port' => port }]
+            }
+          }
+        },
+        log_settings: { 'active' => false }
+      )
+
+      with_async_context(context: lambda {
+        follower.start
+        follower.ready_condition.wait
+        leader.start
+      }) do
+        leader_proxy = leader.wait_for_site('FOLLOWER', timeout: 3)
+        follower_proxy = follower.wait_for_supervisor('127.0.0.1', timeout: 3)
+
+        leader_proxy.wait_for_state(:ready, timeout: 3)
+        follower_proxy.wait_for_state(:ready, timeout: 3)
+
+        leader_protocol = leader_proxy.instance_variable_get(:@protocol)
+        follower_protocol = follower_proxy.instance_variable_get(:@protocol)
+        expect(leader_protocol.role).to be == :initiator
+        expect(follower_protocol.role).to be == :responder
+        expect(leader_protocol.authorization_context.to_h).to be == {
+          credential_id: 'FOLLOWER',
+          rsmp_id: 'FOLLOWER',
+          role: :site,
+          core_version: '3.3.0'
+        }
+        expect(follower_protocol.authorization_context.to_h).to be == {
+          credential_id: 'LEADER',
+          rsmp_id: 'LEADER',
+          role: :supervisor,
+          core_version: '3.3.0'
+        }
+        expect(leader_protocol.channel.session_id).to be == follower_protocol.channel.session_id
+        expect(leader_proxy.state).to be == :ready
+        expect(follower_proxy.state).to be == :ready
+      end
+    end
+  end
+
   it 'keeps the same secure RSMP channel after an authenticated RSMP message is rejected' do
     Dir.mktmpdir do |dir|
       site_secure, supervisor_secure = secure_settings(dir)

@@ -158,7 +158,7 @@ The secure layer is independent of the RSMP site/supervisor role:
 
 - `connection_role` decides which TCP side connects and therefore which EDHOC role is used.
 - RSMP site/supervisor identity is still checked through the normal RSMP `Version` exchange.
-- The first encrypted RSMP message is still the normal `Version` message.
+- The initial encrypted `Version` exchange follows the RSMP application roles, not the EDHOC roles. A site or site-to-site follower sends first even when it is the EDHOC responder.
 
 The security boundary is the pair of credential-authenticated endpoints that terminate the EDHOC/COSE session. TCP proxies, VPN gateways, and similar intermediaries can remain outside that boundary when they forward Secure RSMP frames unchanged. A gateway that decrypts, translates, inspects plaintext, or re-encrypts frames terminates the secure channel and is an explicit trusted endpoint; protection across that gateway requires a separate Secure RSMP session on each side.
 
@@ -304,6 +304,15 @@ sites:
 ```
 
 Here the supervisor uses its conventional local identity, and each site peer uses the site id as the file prefix. The `secure: {}` marker is used because the supervisor is initiating outbound secure connections; `secure.required` only implies all configured site peers for inbound supervisor listeners.
+
+The same site-listener and supervisor-client implementation supports direct
+site-to-site communication. Instantiate or run the follower as a site in server
+role and the leader as a supervisor in client role. Set the leader's top-level
+`site_id` and `secure.id` to its site identity, and pin that credential as the
+follower's supervisor-role peer. Pin the follower credential under the leader's
+`sites` entry. The leader is the TCP/EDHOC initiator, while the follower remains
+the sender of the first Version message. See the “Direct site-to-site
+connections” section in `documentation/secure.md` for complete YAML examples.
 
 Traffic-key renewal is mandatory. It retains the authenticated credential subjects, authorization context, and session id, but derives fresh directional traffic keys and increments a non-wrapping unsigned 64-bit epoch. Every configured limit must be at or below the profile maximum:
 

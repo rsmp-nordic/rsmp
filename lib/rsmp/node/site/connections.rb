@@ -30,6 +30,7 @@ module RSMP
       rescue StandardError => e
         distribute_error e, level: :internal
       end
+      Async::Notification.new.wait
     rescue Async::Stop
       # Expected during shutdown - no action needed
     rescue StandardError => e

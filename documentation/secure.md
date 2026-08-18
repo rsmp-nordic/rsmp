@@ -189,6 +189,86 @@ Core 3.3 permits the connection direction to be reversed. The security rule rema
 
 Trusted supervisors remain in the site's `supervisors` list. For an outbound supervisor, each site entry needs its endpoint under `supervisors` and a `secure` peer marker or explicit credential. See the [connection-role examples](configuration.md#secure-rsmp) for the complete YAML shapes.
 
+## Direct site-to-site connections
+
+The gem represents the site-to-site follower with `RSMP::Site` and the leader
+with `RSMP::Supervisor`. These names describe their RSMP application roles on
+the connection: the follower sends the Version request and provides components,
+while the leader sends the Version response and requests commands and statuses.
+Both endpoints may still be physical sites.
+
+Under the Core site-to-site transport rules, the leader opens TCP. It therefore
+uses `connection_role: client` and `secure.enabled: true`, making it the EDHOC
+initiator. The follower listens with `connection_role: server` and
+`secure.required: true`, making it the EDHOC responder. The follower still sends
+the first encrypted RSMP Version message because Version order follows the RSMP
+application roles, not the EDHOC roles.
+
+A follower configuration can look like this:
+
+```yaml
+site_id: FOLLOWER
+connection_role: server
+ip: 0.0.0.0
+port: 12111
+core_version: '3.3.0'
+secure:
+  required: true
+  profile: rsmp-secure-v1
+  id: FOLLOWER
+  private_key: secure/FOLLOWER.private.key
+  credential: secure/FOLLOWER.cred
+supervisors:
+  - ip: 192.0.2.20
+    port: 12111
+    secure:
+      id: LEADER
+      credential: secure/LEADER.cred
+      core_versions: ['3.3.0']
+sxls:
+  tlc: '1.3.0'
+components:
+  main:
+    TC:
+```
+
+Configure the leader through the supervisor application role:
+
+```yaml
+site_id: LEADER
+connection_role: client
+secure:
+  enabled: true
+  profile: rsmp-secure-v1
+  id: LEADER
+  private_key: secure/LEADER.private.key
+  credential: secure/LEADER.cred
+default:
+  core_version: '3.3.0'
+  sxls:
+    tlc: '1.3.0'
+sites:
+  FOLLOWER:
+    core_version: '3.3.0'
+    sxls:
+      tlc: '1.3.0'
+    secure:
+      id: FOLLOWER
+      credential: secure/FOLLOWER.cred
+      core_versions: ['3.3.0']
+    supervisors:
+      - ip: 192.0.2.30
+        port: 12111
+```
+
+The `supervisors` key under the leader's `sites.FOLLOWER` entry is the existing
+outbound endpoint list used by the supervisor-side client implementation. In a
+site-to-site deployment it contains the follower's listening address.
+
+The leader and follower credentials are pinned in both directions. The secure
+authorization context records the follower as the `site` role and the leader as
+the `supervisor` role, independently of their EDHOC initiator/responder roles.
+
 ## Validate and run configurations
 
 Validate the YAML shape before starting either endpoint:
