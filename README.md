@@ -146,6 +146,30 @@ sxls:
 
 See [configuration](documentation/configuration.md) for connection-role examples and other YAML settings.
 
+### Secure RSMP
+
+Secure RSMP can be enabled in YAML with a `secure` section. The implemented profile is
+`rsmp-secure-v1`, using EDHOC method 0 / cipher suite 4, ChaCha20-Poly1305, deterministic CBOR
+frames, and exact pinned deterministic-CBOR CCS credentials. The profile uses EDHOC KID identity
+hints; credentials are neither transported as X.509 certificates nor wrapped in a separate signed
+credential envelope.
+
+Generate local Secure RSMP v1 credentials with:
+
+```console
+$ rsmp secure generate
+```
+
+The sample configs in `config/tlc.yaml` and `config/supervisor.yaml` use conventional credential paths
+under `config/secure/`. See [Using Secure RSMP](documentation/secure.md) for step-by-step setup,
+configuration, and operation. The [configuration reference](documentation/configuration.md#secure-rsmp)
+and [`config/secure/README.md`](config/secure/README.md) cover all settings and key file conventions.
+
+CDDL schemas for the Secure RSMP v1 CBOR structures are available under
+[`schemas/secure/`](schemas/secure/). They are documentation and conformance artifacts. The
+development test suite validates representative generated CBOR structures against them; the Ruby
+runtime uses explicit protocol and cryptographic validation instead.
+
 ## Command-line tool
 Tools for easily running RSMP supervisors and sites. The binary is called ```rsmp```.
 

@@ -18,7 +18,8 @@ module RSMP
 
         def store_last_sent_status_item(component_id, item)
           @last_status_sent[component_id][item['sCI']] ||= {}
-          @last_status_sent[component_id][item['sCI']][item['n']] = item['s']
+          @last_status_sent[component_id][item['sCI']][item['n']] =
+            encode_status_value(item['sCI'], item['n'], item['s'])
         end
 
         def check_on_change_update(subscription, component, code, name)
@@ -138,8 +139,11 @@ module RSMP
                                       'sS' => build_status_list(component, by_code)
                                     })
           apply_nts_message_attributes update
-          send_message update
+          # Reserve these values before sending. Secure transports may yield while
+          # writing, allowing the status timer to run and otherwise enqueue the
+          # same on-change values a second time.
           store_last_sent_status update
+          send_message update
           component.status_updates_sent
         end
       end

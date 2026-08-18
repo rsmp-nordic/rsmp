@@ -54,7 +54,17 @@ module RSMP
 
       check_sxls
       check_core_versions
+      check_secure_credentials
       setup_components @site_settings['components']
+    end
+
+    def check_secure_credentials
+      secure_settings = RSMP::Secure.site_inbound_settings(@site_settings)
+      RSMP::Secure.validate_transport_mode!(
+        secure_settings,
+        connection_role: @site_settings['connection_role']
+      )
+      RSMP::Secure.validate_credentials!(secure_settings)
     end
 
     def denormalize_sxls(settings)
@@ -188,20 +198,27 @@ module RSMP
       super
     end
 
-    def wait_for_supervisor(ip, timeout:)
-      supervisor = find_supervisor ip
+    def wait_for_supervisor(ip, timeout:, port: nil)
+      supervisor = find_supervisor ip, port: port
       return supervisor if supervisor
 
-      wait_for_condition(@proxies_condition, timeout: timeout) { find_supervisor ip }
+      wait_for_condition(@proxies_condition, timeout: timeout) { find_supervisor ip, port: port }
     rescue Async::TimeoutError
-      raise RSMP::TimeoutError, "Supervisor '#{ip}' did not connect within #{timeout}s"
+      raise RSMP::TimeoutError, "Supervisor '#{supervisor_endpoint(ip, port)}' did not connect within #{timeout}s"
     end
 
-    def find_supervisor(ip)
+    def find_supervisor(ip, port: nil)
       @proxies.each do |supervisor|
-        return supervisor if ip == :any || supervisor.ip == ip
+        next unless ip == :any || supervisor.ip == ip
+        next if port && supervisor.port != port
+
+        return supervisor
       end
       nil
+    end
+
+    def supervisor_endpoint(ip, port)
+      port ? "#{ip}:#{port}" : ip
     end
 
     def build_component(id:, type:, settings:)

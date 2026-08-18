@@ -69,8 +69,9 @@ module RSMP
 
     # stop our task and any subtask
     def stop_task
-      @task.stop
-      @task = nil
+      task = @task
+      task&.stop
+      @task = nil if @task.equal?(task)
     end
 
     # wait for an async condition to signal, then yield to block

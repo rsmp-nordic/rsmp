@@ -287,6 +287,26 @@ describe RSMP::Supervisor do
       end
     end
 
+    it 'closes when the initial Version does not match the selected Core schema' do
+      with_async_context(context: lambda {
+        supervisor.start
+      }) do |_task|
+        protocol = site_connect
+        send_legacy_version(
+          protocol,
+          [{ 'vers' => '3.3.0' }],
+          RSMP::Schema.latest_version(:tlc).to_s
+        )
+
+        error = Async::Task.current.with_timeout(collect_timeout) do
+          supervisor.error_queue.dequeue
+        end
+        expect(error).to be_a(RSMP::HandshakeError)
+        expect(error.message).to be(:include?, 'does not conform to negotiated RSMP 3.3.0')
+        expect(protocol.read_line).to be_nil
+      end
+    end
+
     it 'accepts a 2-part sxl version like "1.2"' do
       with_async_context(context: lambda {
         supervisor.start

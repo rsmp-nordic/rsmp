@@ -32,6 +32,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'async', '~> 2.39'
+  spec.add_dependency 'cbor', '~> 0.5'
   spec.add_dependency 'colorize', '~> 1.1'
   spec.add_dependency 'io-endpoint', '~> 0.17'
   spec.add_dependency 'io-stream', '~> 0.13'

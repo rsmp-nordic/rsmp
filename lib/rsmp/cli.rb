@@ -1,4 +1,5 @@
 require 'thor'
+require 'fileutils'
 require_relative '../rsmp'
 require_relative 'cli/configuration'
 
@@ -44,6 +45,99 @@ module RSMP
       end
 
       exit 1 unless valid
+    end
+  end
+
+  # CLI subcommands for Secure RSMP credentials.
+  class SecureCLI < Thor
+    namespace :secure
+    desc 'generate', 'Generate Secure RSMP credentials'
+    method_option :out, type: :string, aliases: '-o',
+                        banner: 'Output directory',
+                        default: 'config/secure'
+    method_option :force, type: :boolean, aliases: '-f',
+                          banner: 'Overwrite existing files',
+                          default: false
+    method_option :id, type: :string,
+                       banner: 'Generate one fresh identity using this file prefix'
+    def generate
+      require 'edhoc'
+      require 'openssl'
+
+      output = options[:out]
+      files = secure_generated_files
+      check_secure_generated_files(output, files)
+      write_secure_generated_files(output, files)
+
+      puts "Generated Secure RSMP credentials in #{output}"
+      puts 'Review and protect private keys before deployment.'
+      puts 'Use your commissioning, backup, rotation, and trust-approval process for production.'
+    rescue LoadError => e
+      puts "Error: Cannot load edhoc gem: #{e.message}"
+      exit 1
+    end
+
+    private
+
+    def secure_generated_files
+      if options[:id]
+        secure_identity_files(options[:id])
+      else
+        secure_sample_files(Edhoc::TestVector.suite0)
+      end
+    end
+
+    def check_secure_generated_files(output, files)
+      existing = files.keys.select { |name| File.exist?(File.join(output, name)) }
+      return if existing.empty? || options[:force]
+
+      puts "Error: Refusing to overwrite existing files in #{output}: #{existing.join(', ')}"
+      puts 'Use --force to replace them.'
+      exit 1
+    end
+
+    def write_secure_generated_files(output, files)
+      FileUtils.mkdir_p(output)
+      files.each_pair do |name, bytes|
+        path = File.join(output, name)
+        File.binwrite(path, bytes)
+        File.chmod(0o600, path)
+      end
+    end
+
+    def secure_sample_files(vector)
+      {
+        'RN+SI0001.private.key' => vector.fetch(:initiator_private_key),
+        'RN+SI0001.cred' => secure_credential('RN+SI0001',
+                                              public_key: vector.fetch(:initiator_public_key)),
+        'supervisor.private.key' => vector.fetch(:responder_private_key),
+        'supervisor.cred' => secure_credential('supervisor',
+                                               public_key: vector.fetch(:responder_public_key))
+      }
+    end
+
+    def secure_identity_files(id)
+      validate_secure_identity_id(id)
+      key = OpenSSL::PKey.generate_key('ED25519')
+      private_key = key.raw_private_key + key.raw_public_key
+      public_key = key.raw_public_key
+
+      {
+        "#{id}.private.key" => private_key,
+        "#{id}.cred" => secure_credential(id,
+                                          public_key: public_key)
+      }
+    end
+
+    def secure_credential(id, public_key:)
+      RSMP::Secure::Credential.create(id: id, public_key: public_key)
+    end
+
+    def validate_secure_identity_id(id)
+      return unless id.empty? || id.include?('/') || id.include?('\\')
+
+      puts 'Error: --id must be a non-empty filename prefix without path separators'
+      exit 1
     end
   end
 
@@ -101,6 +195,7 @@ module RSMP
 
     register SchemaCLI, 'schema', 'schema COMMAND', 'SXL schema commands'
     register ConfigCLI, 'config', 'config COMMAND', 'Configuration commands'
+    register SecureCLI, 'secure', 'secure COMMAND', 'Secure RSMP development commands'
 
     private
 

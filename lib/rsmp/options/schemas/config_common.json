@@ -6,7 +6,8 @@
       "type": "object",
       "properties": {
         "ip": { "type": "string" },
-        "port": { "type": ["integer", "string"] }
+        "port": { "type": ["integer", "string"] },
+        "secure": { "$ref": "#/$defs/secure" }
       },
       "required": ["ip", "port"],
       "additionalProperties": false
@@ -122,6 +123,27 @@
             }
           ]
         }
+      },
+      "additionalProperties": false
+    },
+    "secure": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Use Secure RSMP for outbound connections; a failed secure handshake never falls back to legacy RSMP." },
+        "required": { "type": "boolean", "description": "Require Secure RSMP on inbound listeners and reject legacy RSMP on that endpoint." },
+        "profile": { "enum": ["rsmp-secure-v1"] },
+        "id": { "type": "string" },
+        "supervisor_id": { "type": "string" },
+        "core_versions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+        "private_key": { "type": "string" },
+        "credential": { "type": "string" },
+        "log_decrypted_payloads": { "type": "boolean", "description": "Permit decrypted Secure RSMP message payloads in the operational archive and JSON logs. Defaults to false and should be enabled only by explicit development or diagnostic policy." },
+        "max_frame_size": { "type": "integer", "minimum": 1, "maximum": 65536 },
+        "handshake_timeout": { "enum": [2] },
+        "rekey_after_messages": { "type": "integer", "minimum": 3, "maximum": 1000000 },
+        "rekey_after_bytes": { "type": "integer", "minimum": 3, "maximum": 68719476736 },
+        "rekey_after_seconds": { "type": "number", "exclusiveMinimum": 2, "maximum": 7200 },
+        "rekey_timeout": { "enum": [2] }
       },
       "additionalProperties": false
     }

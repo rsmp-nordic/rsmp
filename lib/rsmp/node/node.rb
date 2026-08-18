@@ -4,7 +4,8 @@ module RSMP
     include Logging
     include Task
 
-    attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock, :collector
+    attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock, :collector,
+                :secure_connection_rate_limiter, :secure_revocation_list
 
     def initialize(options = {})
       initialize_logging options
@@ -14,6 +15,8 @@ module RSMP
       @error_queue = Async::Queue.new
       @ignore_errors = []
       @collect = options[:collect]
+      @secure_connection_rate_limiter = Secure::ConnectionRateLimiter.new
+      @secure_revocation_list = Secure::RevocationList.new
     end
 
     def inspect
@@ -65,6 +68,25 @@ module RSMP
 
     def clear_deferred
       @deferred.clear
+    end
+
+    def revoke_secure_credential!(credential_id)
+      secure_revocation_list.revoke(credential_id)
+      closed = Array(@proxies).count do |proxy|
+        peer_id = proxy.secure_peer_credential_id
+        next false unless peer_id && secure_revocation_list.revoked?(peer_id)
+
+        proxy.close
+        true
+      end
+      log "Revoked secure credential #{credential_id.inspect}; closed #{closed} active connection(s)", level: :warning
+      closed
+    end
+
+    def restore_secure_credential!(credential_id)
+      restored = secure_revocation_list.restore(credential_id)
+      log "Restored secure credential #{credential_id.inspect} for new connections", level: :info if restored
+      restored
     end
 
     def check_required_settings(settings, required)

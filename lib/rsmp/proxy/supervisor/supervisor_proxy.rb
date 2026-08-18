@@ -8,6 +8,8 @@ module RSMP
     include Modules::Alarms
     include Modules::AggregatedStatus
     include Modules::MessageBuffer
+    include Modules::Lifecycle
+    include Modules::Secure
 
     attr_reader :supervisor_id, :site, :message_buffer
 
@@ -15,6 +17,7 @@ module RSMP
       super(options.merge(node: options[:site]))
       @site = options[:site]
       @site_settings = @site.site_settings.clone
+      @supervisor_settings = options[:supervisor_settings] || {}
       @ip = options[:ip]
       @port = options[:port]
       @status_subscriptions = {}
@@ -25,8 +28,6 @@ module RSMP
       @message_buffer = []
     end
 
-    # handle communication
-    # if disconnected, then try to reconnect
     def run
       if @protocol
         run_accepted_connection
@@ -68,18 +69,10 @@ module RSMP
       stop_subtasks
     end
 
-    def start_handshake
-      send_version_request @site_settings['site_id'], core_versions
-    end
-
-    def close
-      prune_unbuffered_status_subscriptions
-      super
-    end
-
     # connect to the supervisor and initiate handshake supervisor
     def connect
       log "Connecting to supervisor at #{@ip}:#{@port}", level: :info
+      log_secure_transport secure_settings
       self.state = :connecting
       connect_tcp
       @logger.unmute @ip, @port
@@ -107,7 +100,8 @@ module RSMP
       task.sleep delay if delay
 
       @stream = IO::Stream::Buffered.new(@socket)
-      @protocol = RSMP::Protocol.new(@stream) # rsmp messages are json terminated with a form-feed
+      @logger.unmute @ip, @port
+      @protocol = build_transport_protocol(@stream, role: :initiator, secure_settings: secure_settings)
       self.state = :connected
     rescue Errno::ECONNREFUSED => e # rescue to avoid log output
       log 'Connection refused', level: :warning
@@ -202,6 +196,7 @@ module RSMP
 
       check_core_version message
       check_sxl_version message
+      authorize_secure_supervisor message
       @site_id = Supervisor.build_id_from_ip_port @ip, @port
       version_accepted message
     end

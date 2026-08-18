@@ -56,6 +56,15 @@ describe RSMP::Task do
       expect(obj.task).to be_nil
       expect(obj.task_status).to be_nil
     end
+
+    it 'is safe when the task has already stopped' do
+      obj.start
+      Async::Task.current.sleep(0)
+      obj.stop_task
+      obj.stop_task
+      expect(obj.task).to be_nil
+      expect(obj.task_status).to be_nil
+    end
   end
 
   with 'restart' do

@@ -42,12 +42,21 @@ module RSMP
           candidates = message.versions & versions
           if candidates.any?
             @core_version = candidates.max_by { |v| Gem::Version.new(v) } # pick latest version
+            validate_negotiated_version message
+            @core_version
           else
             reason = "RSMP versions [#{message.versions.join(', ')}] requested, " \
                      "but only [#{versions.join(', ')}] supported."
             dont_acknowledge message, 'Version message rejected', reason, force: true
             raise HandshakeError, reason
           end
+        end
+
+        def validate_negotiated_version(message)
+          message.validate(core: @core_version)
+        rescue SchemaError => e
+          raise HandshakeError,
+                "Version message does not conform to negotiated RSMP #{@core_version}: #{e.message}"
         end
 
         def process_version(message); end

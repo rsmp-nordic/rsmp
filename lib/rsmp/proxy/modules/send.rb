@@ -29,14 +29,14 @@ module RSMP
         def with_send_ready(message, force:, buffer:)
           return yield if force || connected?
 
-          error = NotReady.new
+          error = NotReady.new("Cannot send #{message.type}: connection is #{@state}")
           raise error unless buffer
 
           buffer_message(message, error)
         end
 
         def write_message(message, validate:)
-          raise IOError unless @protocol
+          raise IOError, "Cannot send #{message.type}: connection transport is closed" unless @protocol
 
           message.direction = :out
           message.encode_for(schemas) unless validate == false

@@ -23,7 +23,9 @@ end
 def require_minimum_core_version!(source_path)
   yaml = YAML.load_file(source_path)
   minimum_core_version = yaml.dig('meta', 'minimum_core_version')
-  raise "Missing meta.minimum_core_version in #{source_path}" if minimum_core_version.nil? || minimum_core_version.to_s.empty?
+  return unless minimum_core_version.nil? || minimum_core_version.to_s.empty?
+
+  raise "Missing meta.minimum_core_version in #{source_path}"
 end
 
 # Update vendored schemas from source repos.
