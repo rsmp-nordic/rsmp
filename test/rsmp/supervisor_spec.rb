@@ -432,8 +432,8 @@ describe RSMP::Supervisor do
         event = Async::Task.current.with_timeout(collect_timeout) do
           events.dequeue
         end
-        expect(event.type).to be == :invalid_message
-        expect(event.failure.code).to be == :protocol_failure
+        expect(event.type).to be == :connection_rejected
+        expect(event.failure.code).to be == :handshake_failed
         expect(event.failure.message).to be(:include?, 'does not conform to negotiated RSMP 3.3.0')
         expect(protocol.read_line).to be_nil
       end

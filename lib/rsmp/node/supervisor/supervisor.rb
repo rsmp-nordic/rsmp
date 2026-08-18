@@ -37,7 +37,10 @@ module RSMP
           level: :info,
           timestamp: @clock.now
       log_secure_listener
+      listen_for_sites
+    end
 
+    def listen_for_sites
       @endpoint = IO::Endpoint.tcp('0.0.0.0', @supervisor_settings['port'])
       barrier = Async::Barrier.new(parent: @task)
       @accept_task = barrier.async do |task|

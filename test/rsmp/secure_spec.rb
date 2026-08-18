@@ -2833,7 +2833,6 @@ describe RSMP::Secure do
       port = 13_113
       site_log = StringIO.new
       site_logger = RSMP::Logger.new('stream' => site_log, 'style' => false)
-      site_logger.mute('127.0.0.1', port)
       site = RSMP::Site.new(
         site_settings: {
           'site_id' => 'RN+SI0001',
@@ -2868,11 +2867,11 @@ describe RSMP::Secure do
         supervisor.ready_condition.wait
         site.start
       }) do
-        site_proxy = supervisor.wait_for_site('RN+SI0001', timeout: 3)
-        supervisor_proxy = site.wait_for_supervisor('127.0.0.1', timeout: 3)
+        site_proxy = supervisor.wait_for_site!('RN+SI0001', timeout: 3)
+        supervisor_proxy = site.wait_for_supervisor!('127.0.0.1', timeout: 3)
 
-        site_proxy.wait_for_state(:ready, timeout: 3)
-        supervisor_proxy.wait_for_state(:ready, timeout: 3)
+        site_proxy.wait_for_state!(:ready, timeout: 3)
+        supervisor_proxy.wait_for_state!(:ready, timeout: 3)
 
         expect(site_proxy.state).to be == :ready
         expect(supervisor_proxy.state).to be == :ready
@@ -2884,8 +2883,92 @@ describe RSMP::Secure do
 
         expect(supervisor.revoke_secure_credential!('RN+SI0001')).to be == 1
         expect(supervisor.secure_revocation_list.revoked?('RN+SI0001')).to be == true
-        expect(site_proxy.wait_for_state(:disconnected, timeout: 3)).to be == true
+        expect(site_proxy.wait_for_state!(:disconnected, timeout: 3)).to be == :disconnected
         expect(supervisor.restore_secure_credential!('RN+SI0001')).to be == true
+      end
+    end
+  end
+
+  it 'connects a site-to-site leader and follower through Secure RSMP' do
+    Dir.mktmpdir do |dir|
+      leader_identity = generated_secure_identity('LEADER')
+      follower_identity = generated_secure_identity('FOLLOWER')
+      leader_secure = persisted_secure_identity(dir, 'leader', leader_identity)
+      follower_secure = persisted_secure_identity(dir, 'follower', follower_identity)
+      leader_peer = persisted_secure_peer(dir, 'leader', leader_identity).merge('id' => 'LEADER')
+      follower_peer = persisted_secure_peer(dir, 'follower', follower_identity).merge('id' => 'FOLLOWER')
+      port = 13_118
+
+      follower = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'FOLLOWER',
+          'connection_role' => 'server',
+          'ip' => '127.0.0.1',
+          'port' => port,
+          'core_version' => '3.3.0',
+          'sxls' => {},
+          'supervisors' => [
+            {
+              'ip' => '127.0.0.1',
+              'port' => port,
+              'secure' => leader_peer
+            }
+          ],
+          'secure' => follower_secure.merge('id' => 'FOLLOWER', 'required' => true)
+        },
+        log_settings: { 'active' => false }
+      )
+      leader = RSMP::Supervisor.new(
+        supervisor_settings: {
+          'site_id' => 'LEADER',
+          'connection_role' => 'client',
+          'secure' => leader_secure.merge('id' => 'LEADER', 'enabled' => true),
+          'default' => {
+            'core_version' => '3.3.0',
+            'sxls' => {}
+          },
+          'sites' => {
+            'FOLLOWER' => {
+              'core_version' => '3.3.0',
+              'sxls' => {},
+              'secure' => follower_peer,
+              'supervisors' => [{ 'ip' => '127.0.0.1', 'port' => port }]
+            }
+          }
+        },
+        log_settings: { 'active' => false }
+      )
+
+      with_async_context(context: lambda {
+        follower.start
+        follower.ready_condition.wait
+        leader.start
+      }) do
+        leader_proxy = leader.wait_for_site!('FOLLOWER', timeout: 3)
+        follower_proxy = follower.wait_for_supervisor!('127.0.0.1', timeout: 3)
+
+        leader_proxy.wait_for_state!(:ready, timeout: 3)
+        follower_proxy.wait_for_state!(:ready, timeout: 3)
+
+        leader_protocol = leader_proxy.instance_variable_get(:@protocol)
+        follower_protocol = follower_proxy.instance_variable_get(:@protocol)
+        expect(leader_protocol.role).to be == :initiator
+        expect(follower_protocol.role).to be == :responder
+        expect(leader_protocol.authorization_context.to_h).to be == {
+          credential_id: 'FOLLOWER',
+          rsmp_id: 'FOLLOWER',
+          role: :site,
+          core_version: '3.3.0'
+        }
+        expect(follower_protocol.authorization_context.to_h).to be == {
+          credential_id: 'LEADER',
+          rsmp_id: 'LEADER',
+          role: :supervisor,
+          core_version: '3.3.0'
+        }
+        expect(leader_protocol.channel.session_id).to be == follower_protocol.channel.session_id
+        expect(leader_proxy.state).to be == :ready
+        expect(follower_proxy.state).to be == :ready
       end
     end
   end
@@ -2930,10 +3013,10 @@ describe RSMP::Secure do
         supervisor.ready_condition.wait
         site.start
       }) do
-        site_proxy = supervisor.wait_for_site('RN+SI0001', timeout: 3)
-        supervisor_proxy = site.wait_for_supervisor('127.0.0.1', timeout: 3)
-        site_proxy.wait_for_state(:ready, timeout: 3)
-        supervisor_proxy.wait_for_state(:ready, timeout: 3)
+        site_proxy = supervisor.wait_for_site!('RN+SI0001', timeout: 3)
+        supervisor_proxy = site.wait_for_supervisor!('127.0.0.1', timeout: 3)
+        site_proxy.wait_for_state!(:ready, timeout: 3)
+        supervisor_proxy.wait_for_state!(:ready, timeout: 3)
 
         protocol = supervisor_proxy.instance_variable_get(:@protocol)
         session_id = protocol.channel.session_id
@@ -2947,10 +3030,10 @@ describe RSMP::Secure do
           invalid,
           rejection,
           validate: false
-        )[:collector]
+        )
 
-        expect(rejection.status).to be == :cancelled
-        expect(rejection.error).to be_a(RSMP::MessageRejected)
+        expect(rejection.failure?).to be == true
+        expect(rejection.failure.code).to be == :message_rejected
         expect(site_proxy.state).to be == :ready
         expect(supervisor_proxy.state).to be == :ready
 
@@ -2963,9 +3046,10 @@ describe RSMP::Secure do
         acknowledgement = supervisor_proxy.send_message_and_collect(
           valid,
           acknowledgement
-        )[:collector]
+        )
 
-        expect(acknowledgement.status).to be == :ok
+        expect(acknowledgement.success?).to be == true
+        expect(acknowledgement.value.messages.size).to be == 1
         expect(supervisor_proxy.instance_variable_get(:@protocol)).to be(:equal?, protocol)
         expect(protocol.channel.session_id).to be == session_id
       end
@@ -3036,15 +3120,15 @@ describe RSMP::Secure do
         site1.start
         site2.start
       }) do
-        site1_proxy = supervisor.wait_for_site('RN+SI0001', timeout: 3)
-        site2_proxy = supervisor.wait_for_site('RN+SI0002', timeout: 3)
-        supervisor1 = site1.wait_for_supervisor('127.0.0.1', timeout: 3)
-        supervisor2 = site2.wait_for_supervisor('127.0.0.1', timeout: 3)
+        site1_proxy = supervisor.wait_for_site!('RN+SI0001', timeout: 3)
+        site2_proxy = supervisor.wait_for_site!('RN+SI0002', timeout: 3)
+        supervisor1 = site1.wait_for_supervisor!('127.0.0.1', timeout: 3)
+        supervisor2 = site2.wait_for_supervisor!('127.0.0.1', timeout: 3)
 
-        site1_proxy.wait_for_state(:ready, timeout: 3)
-        site2_proxy.wait_for_state(:ready, timeout: 3)
-        supervisor1.wait_for_state(:ready, timeout: 3)
-        supervisor2.wait_for_state(:ready, timeout: 3)
+        site1_proxy.wait_for_state!(:ready, timeout: 3)
+        site2_proxy.wait_for_state!(:ready, timeout: 3)
+        supervisor1.wait_for_state!(:ready, timeout: 3)
+        supervisor2.wait_for_state!(:ready, timeout: 3)
 
         expect(site1_proxy.state).to be == :ready
         expect(site2_proxy.state).to be == :ready
@@ -3120,14 +3204,14 @@ describe RSMP::Secure do
         supervisor2.ready_condition.wait
         site.start
       }) do
-        site1_proxy = supervisor1.wait_for_site('RN+SI0001', timeout: 3)
-        site2_proxy = supervisor2.wait_for_site('RN+SI0001', timeout: 3)
-        supervisor1_proxy = site.wait_for_supervisor('127.0.0.1', port: port1, timeout: 3)
-        supervisor2_proxy = site.wait_for_supervisor('127.0.0.1', port: port2, timeout: 3)
-        site1_proxy.wait_for_state(:ready, timeout: 3)
-        site2_proxy.wait_for_state(:ready, timeout: 3)
-        supervisor1_proxy.wait_for_state(:ready, timeout: 3)
-        supervisor2_proxy.wait_for_state(:ready, timeout: 3)
+        site1_proxy = supervisor1.wait_for_site!('RN+SI0001', timeout: 3)
+        site2_proxy = supervisor2.wait_for_site!('RN+SI0001', timeout: 3)
+        supervisor1_proxy = site.wait_for_supervisor!('127.0.0.1', port: port1, timeout: 3)
+        supervisor2_proxy = site.wait_for_supervisor!('127.0.0.1', port: port2, timeout: 3)
+        site1_proxy.wait_for_state!(:ready, timeout: 3)
+        site2_proxy.wait_for_state!(:ready, timeout: 3)
+        supervisor1_proxy.wait_for_state!(:ready, timeout: 3)
+        supervisor2_proxy.wait_for_state!(:ready, timeout: 3)
 
         expect(site1_proxy.state).to be == :ready
         expect(site2_proxy.state).to be == :ready

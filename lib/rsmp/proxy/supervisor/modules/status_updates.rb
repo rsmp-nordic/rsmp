@@ -149,11 +149,11 @@ module RSMP
 
         def send_component_status_update(component_id, by_code, now)
           component = @site.find_component component_id
-          update = StatusUpdate.new({
-                                      'cId' => component_id,
-                                      'sTs' => now,
-                                      'sS' => build_status_list(component, by_code)
-          })
+          update = StatusUpdate.new(
+            'cId' => component_id,
+            'sTs' => now,
+            'sS' => build_status_list(component, by_code)
+          )
           apply_nts_message_attributes update
           # Reserve these values before sending. Secure transports may yield while
           # writing, allowing the status timer to run and otherwise enqueue the

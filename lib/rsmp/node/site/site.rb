@@ -61,15 +61,6 @@ module RSMP
       setup_components @site_settings['components']
     end
 
-    def check_secure_credentials
-      secure_settings = RSMP::Secure.site_inbound_settings(@site_settings)
-      RSMP::Secure.validate_transport_mode!(
-        secure_settings,
-        connection_role: @site_settings['connection_role']
-      )
-      RSMP::Secure.validate_credentials!(secure_settings)
-    end
-
     def denormalize_sxls(settings)
       sxls = settings['sxls']
       return settings unless sxls.is_a?(Array)
