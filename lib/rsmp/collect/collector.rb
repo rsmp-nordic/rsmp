@@ -1,37 +1,25 @@
 module RSMP
-  # Collects messages from a distributor.
-  # Can filter by message type, componet and direction.
-  # Wakes up the once the desired number of messages has been collected.
+  # Collects matching messages and resolves once with an immutable Result.
   class Collector
     include Receiver
-    include Status
     include Reporting
     include Logging
 
-    attr_reader :condition, :messages, :status, :error, :task, :m_id, :initiator
+    attr_reader :messages, :m_id, :initiator
 
     def initialize(distributor, options = {})
       initialize_receiver distributor, filter: options[:filter]
       @options = {
         cancel: {
-          schema_error: true,
-          disconnect: false
+          invalid_message: true,
+          disconnect: true
         }
-      }.deep_merge options
+      }.deep_merge(options)
       @timeout = options[:timeout]
       @num = options[:num]
       @initiator = options[:initiator]
       @m_id = options[:m_id] || @initiator&.attributes&.dig('mId')
-      @condition = Async::Notification.new
-      make_title options[:title]
-
-      if task
-        @task = task
-      elsif distributor.respond_to? 'task'
-        # if distributor is a Proxy, or some other object that implements task(),
-        # then try to get the task that way
-        @task = distributor.task
-      end
+      make_title(options[:title])
       reset
     end
 
@@ -45,207 +33,202 @@ module RSMP
                end
     end
 
-    def use_task(task)
-      @task = task
-    end
-
     def reset
       @messages = []
-      @error = nil
-      @status = :ready
+      @completion = Completion.new
+      @active = false
     end
 
-    # Inspect formatter that shows the message we have collected
+    def active?
+      @active
+    end
+
+    alias collecting? active?
+
     def inspect
       "#<#{self.class.name}:#{object_id}, message:#{@messages}>"
     end
 
-    # if an errors caused collection to abort, then raise it
-    # return self, so this can be tucked on to calls that return a collector
-    def ok!
-      raise @error if @error
-
-      self
-    end
-
-    # Collect message
-    # Will return once all messages have been collected, or timeout is reached
     def collect(&)
       start(&)
       wait
-      @status
     ensure
-      @distributor&.remove_receiver self
+      stop
     end
 
-    # Collect message
-    # Returns the collected messages, or raise an exception in case of a time out.
     def collect!(&)
-      collect(&)
-      ok!
-      @messages
+      collect(&).value!.messages
     end
 
-    # If collection is not active, return status immeditatly. Otherwise wait until
-    # the desired messages have been collected, or timeout is reached.
+    # The configured timeout terminates this collection. Completion retains the
+    # result, so every current or future waiter observes the same value.
     def wait
-      if collecting?
-        if @timeout
-          @task.with_timeout(@timeout) { @condition.wait }
-        else
-          @condition.wait
-        end
+      raise 'collector has not been started' unless active? || @completion.resolved?
+
+      observed = @completion.wait(timeout: @timeout)
+      if timeout_result?(observed)
+        finish_failure(observed.failure.with(message: describe_progress))
+        observed = @completion.wait
       end
-      @status
-    rescue Async::TimeoutError
-      @error = RSMP::TimeoutError.new describe_progress
-      @status = :timeout
+      observed
     end
 
-    # If collection is not active, raise an error. Otherwise wait until
-    # the desired messages have been collected.
-    # If timeout is reached or collection was cancelled with an error, an exception is raised.
     def wait!
-      wait
-      raise @error if timeout? || (cancelled? && @error)
-
-      @messages
+      wait.value!.messages
     end
 
-    # Start collection and return immediately
-    # You can later use wait() to wait for completion
     def start(&block)
-      raise "Can't start collectimng unless ready (currently #{@status})" unless ready?
+      raise 'collector is already active' if active?
 
       @block = block
-      raise ArgumentError, 'Num, timeout or block must be provided' unless @num || @timeout || @block
+      raise ArgumentError, 'num, timeout or block must be provided' unless @num || @timeout || @block
 
       reset
-      @status = :collecting
+      @active = true
       log_start
-      @distributor&.add_receiver self
+      @distributor.add_receiver(self)
+      self
     end
 
-    # Check if we receive a NotAck related to initiating request, identified by @m_id.
-    def reject_not_ack(message)
-      return unless @m_id
+    def stop
+      return self unless @active
 
-      return unless message.is_a?(MessageNotAck)
-      return unless message.attribute('oMId') == @m_id
+      @active = false
+      @distributor.remove_receiver(self)
+      self
+    end
 
-      m_id_short = RSMP::Message.shorten_m_id @m_id, 8
-      cancel RSMP::MessageRejected.new("#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'")
-      @distributor.log "#{identifier}: cancelled due to a NotAck", level: :debug
+    # Check for a NotAck related to the initiating request.
+    def reject_not_ack?(message)
+      return false unless @m_id
+      return false unless message.is_a?(MessageNotAck)
+      return false unless message.attribute('oMId') == @m_id
+
+      m_id_short = RSMP::Message.shorten_m_id(@m_id, 8)
+      finish_failure(
+        Failure.new(
+          code: :message_rejected,
+          message: "#{@title} #{m_id_short} was rejected with '#{message.attribute('rea')}'",
+          source: :peer,
+          context: { message: message, original_message_id: @m_id }
+        )
+      )
+      @distributor.log "#{identifier}: rejected by a NotAck", level: :debug
       true
     end
 
-    # Handle message and return true if we're done collecting
     def receive(message)
-      raise ArgumentError unless message
-      unless ready? || collecting?
-        raise "can't process message when status is :#{@status}, title: #{@title}, desc: #{describe}"
-      end
+      return unless active?
 
-      if perform_match message
-        if done?
-          complete
-        else
-          incomplete
-        end
+      if perform_match?(message)
+        done? ? complete : incomplete
       end
-      @status
+      active?
     end
 
     def describe; end
 
-    # Match message against our collection criteria
-    def perform_match(message)
-      return false if reject_not_ack(message)
+    def perform_match?(message)
+      return false if reject_not_ack?(message)
       return false unless acceptable?(message)
 
       if @block
-        status = [@block.call(message)].flatten
-        return unless collecting?
+        status = Array(@block.call(message))
+        return false unless active?
 
-        keep message if status.include?(:keep)
+        keep(message) if status.include?(:keep)
       else
-        keep message
+        keep(message)
       end
+      true
     end
 
-    # Have we collected the required number of messages?
     def done?
       @num && @messages.size >= @num
     end
 
-    # Called when we're done collecting. Remove ourself as a receiver,
-    # se we don't receive message notifications anymore
     def complete
-      @status = :ok
-      do_stop
+      finish_success(build_collection)
       log_complete
     end
 
-    # called when we received a message, but are not done yet
     def incomplete
       log_incomplete
     end
 
-    # Remove ourself as a receiver, so we don't receive message notifications anymore,
-    # and wake up the async condition
-    def do_stop
-      @distributor.remove_receiver self
-      @condition.signal
-    end
+    def receive_event(event)
+      return unless active?
 
-    # Handle upstream error
-    def receive_error(error, options = {})
-      case error
-      when RSMP::SchemaError
-        receive_schema_error error, options
-      when RSMP::DisconnectError
-        receive_disconnect error, options
+      case event.type
+      when :invalid_message
+        receive_invalid_message(event)
+      when :connection_ended
+        receive_connection_ended(event)
       end
     end
 
-    # Cancel if we received e schema error for a message type we're collecting
-    def receive_schema_error(error, options)
-      return unless @options.dig(:cancel, :schema_error)
+    def receive_invalid_message(event)
+      return unless @options.dig(:cancel, :invalid_message)
+      return unless event.message
+      return unless acceptable?(event.message)
 
-      message = options[:message]
-      return unless message
-
-      klass = message.class.name.split('::').last
-      return unless @filter&.type.nil? || [@filter&.type].flatten.include?(klass)
-
-      @distributor.log "#{identifier}: cancelled due to schema error in #{klass} #{message.m_id_short}", level: :debug
-      cancel error
+      finish_failure(event.failure)
     end
 
-    # Cancel if we received e notifiction about a disconnect
-    def receive_disconnect(error, _options)
+    def receive_connection_ended(event)
       return unless @options.dig(:cancel, :disconnect)
 
-      @distributor.log "#{identifier}: cancelled due to a connection error: #{error}", level: :debug
-      cancel error
+      finish_failure(event.failure)
     end
 
-    # Abort collection
-    def cancel(error = nil)
-      @error = error
-      @status = :cancelled
-      do_stop
+    # Explicit cancellation is an expected caller-controlled result.
+    def cancel(reason = 'Collection cancelled')
+      finish_failure(
+        Failure.new(code: :cancelled, message: reason.to_s, source: :local)
+      )
     end
 
-    # Store a message in the result array
+    def fail(failure)
+      raise ArgumentError, 'failure must be an RSMP::Failure' unless failure.is_a?(Failure)
+
+      finish_failure(failure)
+    end
+
+    # Unexpected receiver/callback failures reject the completion so waiters see
+    # the original exception and stack trace.
+    def crash(error)
+      return unless active?
+
+      @completion.crash(error)
+      stop
+    end
+
     def keep(message)
       @messages << message
     end
 
-    # Check a message against our match criteria
-    # Return true if there's a match, false if not
     def acceptable?(message)
       @filter.nil? || @filter.accept?(message)
+    end
+
+    def build_collection
+      Collection.new(messages: @messages)
+    end
+
+    private
+
+    def timeout_result?(result)
+      result.failure? && result.failure.code == :timeout && !@completion.resolved?
+    end
+
+    def finish_success(collection)
+      @completion.succeed(collection)
+      stop
+    end
+
+    def finish_failure(failure)
+      @completion.fail(failure)
+      stop
     end
   end
 end

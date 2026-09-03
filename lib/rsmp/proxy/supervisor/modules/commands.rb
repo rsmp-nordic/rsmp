@@ -107,7 +107,7 @@ module RSMP
                                          })
           apply_nts_message_attributes response
           acknowledge message
-          send_message response
+          send_generated_message response
         end
       end
     end

@@ -34,45 +34,39 @@ module RSMP
       end
 
       loop do
-        connect
+        connected = connect
+        unless connected.success?
+          publish_connection_attempt_failure(connected.failure)
+          break unless reconnect_delay?
+
+          next
+        end
         start_reader
         start_handshake
-        wait_for_reader # run until disconnected
-        break unless reconnect_delay?
-      rescue Restart
-        @logger.mute @ip, @port
-        raise
-      rescue RSMP::ConnectionError => e
-        log e, level: :error
-        break unless reconnect_delay?
-      rescue StandardError => e
-        distribute_error e, level: :internal
+        close_from_result(wait_for_reader)
         break unless reconnect_delay?
       ensure
+        close(reason: :internal_failure) if $ERROR_INFO
         close
-        stop_subtasks
       end
     end
 
     def run_accepted_connection
+      begin_session
       self.state = :connected
       start_reader
       start_handshake
-      wait_for_reader
-    rescue RSMP::ConnectionError => e
-      log e, level: :error
-    rescue StandardError => e
-      distribute_error e, level: :internal
+      close_from_result(wait_for_reader)
     ensure
+      close(reason: :internal_failure) if $ERROR_INFO
       close
-      stop_subtasks
     end
 
     def start_handshake
       send_version_request @site_settings['site_id'], core_versions
     end
 
-    def close
+    def close(...)
       prune_unbuffered_status_subscriptions
       super
     end
@@ -80,14 +74,15 @@ module RSMP
     # connect to the supervisor and initiate handshake supervisor
     def connect
       log "Connecting to supervisor at #{@ip}:#{@port}", level: :info
+      begin_session
       self.state = :connecting
-      connect_tcp
+      opened = connect_tcp
+      return opened if opened.failure?
+
+      self.state = :connected
       @logger.unmute @ip, @port
       log "Connected to supervisor at #{@ip}:#{@port}", level: :info
-    rescue SystemCallError => e
-      raise ConnectionError, "Could not connect to supervisor at #{@ip}:#{@port}: Errno #{e.errno} #{e}"
-    rescue StandardError => e
-      raise ConnectionError, "Error while connecting to supervisor at #{@ip}:#{@port}: #{e}"
+      Result.success(self)
     end
 
     def stop_task
@@ -108,10 +103,22 @@ module RSMP
 
       @stream = IO::Stream::Buffered.new(@socket)
       @protocol = RSMP::Protocol.new(@stream) # rsmp messages are json terminated with a form-feed
-      self.state = :connected
+      Result.success(self)
     rescue Errno::ECONNREFUSED => e # rescue to avoid log output
       log 'Connection refused', level: :warning
-      raise e
+      failed_connection_result(e)
+    rescue SystemCallError, SocketError, IOError, Async::TimeoutError => e
+      failed_connection_result(e)
+    end
+
+    def failed_connection_result(error)
+      Result.failure(
+        :connection_failed,
+        message: "Could not connect to supervisor at #{@ip}:#{@port}: #{error.message}",
+        source: :transport,
+        context: { ip: @ip, port: @port, session_id: @session_id },
+        cause: error
+      )
     end
 
     def handshake_complete
@@ -142,9 +149,6 @@ module RSMP
       else
         super
       end
-    rescue UnknownComponent, UnknownCommand, UnknownStatus,
-           MessageRejected, MissingAttribute => e
-      dont_acknowledge message, '', e.to_s
     end
 
     def handle_interface_request(message)
@@ -221,7 +225,7 @@ module RSMP
     end
 
     def send_component_list
-      send_message ComponentList.new('components' => @site.component_list)
+      send_generated_message ComponentList.new('components' => @site.component_list)
     end
 
     def component_list_acknowledged

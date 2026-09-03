@@ -29,7 +29,7 @@ module RSMP
                                                })
 
           apply_nts_message_attributes message
-          send_message message
+          send_generated_message message
         end
 
         def process_aggregated_status_request(message)

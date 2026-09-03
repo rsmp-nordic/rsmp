@@ -186,8 +186,8 @@ describe RSMP::Supervisor do
     end
 
     def wait_for_proxy_creation
-      proxy = supervisor.wait_for_site 'RN+SI0001', timeout: collect_timeout
-      proxy.wait_for_state(:ready, timeout: collect_timeout)
+      proxy = supervisor.wait_for_site! 'RN+SI0001', timeout: collect_timeout
+      proxy.wait_for_state!(:ready, timeout: collect_timeout)
       proxy
     end
 
@@ -279,7 +279,7 @@ describe RSMP::Supervisor do
         protocol = site_connect
         protocol.write_lines %({"mType":"rSMsg","type":"Version","RSMP":[{"vers":"#{core_version}"}],"siteId":[{"sId":"RN+SI0001"}],"SXL":"#{sxl_version}","mId":"8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6"})
 
-        proxy = supervisor.wait_for_site 'RN+SI0001', timeout: collect_timeout
+        proxy = supervisor.wait_for_site! 'RN+SI0001', timeout: collect_timeout
         expect(proxy).to be_a(RSMP::SiteProxy)
         expect(proxy.site_id).to be == 'RN+SI0001'
 

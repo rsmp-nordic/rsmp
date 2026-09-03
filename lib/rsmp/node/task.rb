@@ -1,95 +1,101 @@
 module RSMP
-  class Restart < StandardError
-  end
-
-  # Task helpers for starting and managing an Async task lifecycle.
+  # Explicit ownership for a long-running Async task tree.
   module Task
+    class ConditionWaitTimeout < Async::TimeoutError; end
+
     attr_reader :task
 
     def initialize_task
       @task = nil
+      @termination_completion = Completion.new
     end
 
-    # start our async tasks and return immediately
-    # run() will be called inside the task to perform actual long-running work
-    def start
-      return if @task
+    # Start under an explicit Async parent. A current task is accepted for
+    # convenience, but this library never creates a hidden root reactor.
+    def start(parent: Async::Task.current)
+      return @task if @task&.running?
 
-      # Use current task context if available, otherwise create new reactor
-      if Async::Task.current?
-        Async::Task.current.async do |task|
-          task.annotate "#{self.class.name} main task"
-          @task = task
-          run
-          stop_subtasks
-          @task = nil
-        end
-      else
-        Async do |task|
-          task.annotate "#{self.class.name} main task"
-          @task = task
-          run
-          stop_subtasks
-          @task = nil
-        end
+      valid_parent = parent.respond_to?(:async) && (!parent.respond_to?(:running?) || parent.running?)
+      raise ArgumentError, 'an active Async parent task is required' unless valid_parent
+
+      child = parent.async do |task|
+        task.annotate "#{self.class.name} main task"
+        @task = task
+        run
+      ensure
+        stop_subtasks
       end
-      self
+      @task = child
     end
 
-    # initiate restart by raising a Restart exception
     def restart
-      raise Restart, "restart initiated by #{self.class.name}:#{object_id}"
+      termination_completion.succeed(Termination.new(reason: :restart, source: self))
     end
 
-    # get the status of our task, or nil of no task
+    def wait_for_termination
+      termination_completion.wait
+    end
+
     def task_status
       @task&.status
     end
 
-    # perform any long-running work
-    # the method will be called from an async task, and should not return
-    # if subtasks are needed, the method should call wait() on each of them
-    # once running, ready() must be called
     def run
       start_subtasks
     end
 
-    # wait for our task to complete
+    # Async::Task#wait raises unexpected child failures and returns nil for
+    # cancellation, matching Async's native task contract.
     def wait
       @task&.wait
     end
 
-    # stop our task
     def stop
-      stop_subtasks
-      stop_task if @task
+      stop_task
     end
 
     def stop_subtasks; end
 
-    # stop our task and any subtask
     def stop_task
-      @task.stop
-      @task = nil
+      task = @task
+      return unless task&.running?
+
+      task.cancel
+      task.wait unless task.current?
     end
 
-    # wait for an async condition to signal, then yield to block
-    # if block returns true we're done. otherwise, wait again
+    # Wait for an edge-triggered condition and return an expected timeout as a
+    # Result. Async cancellation is not rescued and therefore propagates.
     def wait_for_condition(condition, timeout:, task: Async::Task.current, &block)
-      raise "Can't wait without a task" unless task
+      raise ArgumentError, 'an active Async task is required' unless task&.running?
 
-      task.with_timeout(timeout) do
-        while task.running?
-          value = condition.wait
-          return value unless block
+      value = task.with_timeout(timeout, ConditionWaitTimeout) do
+        loop do
+          signalled = condition.wait
+          break signalled unless block
 
-          result = yield value
-          return result if result
+          matched = yield(signalled)
+          break matched if matched
         end
-        raise "Can't wait for condition because task #{task.object_id} #{task.annotation} is not running"
       end
-    rescue Async::TimeoutError
-      raise RSMP::TimeoutError
+      Result.success(value)
+    rescue ConditionWaitTimeout => e
+      Result.failure(
+        :timeout,
+        message: "Condition was not met within #{timeout}s",
+        source: :timeout,
+        cause: e
+      )
+    end
+
+    def wait_for_condition!(...)
+      wait_for_condition(...).value!
+    end
+
+    private
+
+    def termination_completion
+      @termination_completion ||= Completion.new
     end
   end
 end

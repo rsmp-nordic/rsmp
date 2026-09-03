@@ -106,13 +106,24 @@ module RSMP
 
     def run
       log_site_starting
-      start_status_timer
+      barrier = Async::Barrier.new(parent: @task)
+      termination_task = barrier.async { wait_for_termination }
+      start_auxiliary_tasks(barrier)
       if server_role?
-        listen_for_supervisors
+        listen_for_supervisors(parent: barrier)
       else
-        @proxies.each(&:start)
-        @proxies.each(&:wait)
+        @proxies.each { |proxy| proxy.start(parent: barrier) }
       end
+      barrier.wait do |finished|
+        result = finished.wait
+        break result if finished.equal?(termination_task)
+      end
+    ensure
+      barrier.cancel if barrier && !barrier.empty?
+    end
+
+    def start_auxiliary_tasks(parent)
+      start_status_timer(parent: parent)
     end
 
     def aggregated_status_changed(component, _options = {})
@@ -135,16 +146,16 @@ module RSMP
 
     def send_alarm(alarm)
       @proxies.each do |proxy|
-        proxy.send_message alarm if proxy.receive_alarms?
+        proxy.send_generated_message alarm if proxy.receive_alarms?
       end
     end
 
-    def start_status_timer
+    def start_status_timer(parent:)
       return if @status_timer
 
       interval = @site_settings['intervals']['timer'] || 1
       log "Starting site status timer with interval #{interval} seconds", level: :debug
-      @status_timer = @task.async do |task|
+      @status_timer = parent.async do |task|
         task.annotate 'site status timer'
         run_status_timer task, interval
       end
@@ -155,11 +166,8 @@ module RSMP
       loop do
         now = Clock.now
         tick_status_subscriptions now
-      rescue StandardError => e
-        distribute_error e, level: :internal
-      ensure
         next_time += interval
-        duration = next_time - Time.now.to_f
+        duration = [next_time - Time.now.to_f, 0].max
         task.sleep duration
       end
     end
@@ -169,14 +177,14 @@ module RSMP
     end
 
     def stop_status_timer
-      @status_timer&.stop
+      @status_timer&.cancel if @status_timer&.running?
     ensure
       @status_timer = nil
     end
 
     def stop_subtasks
       stop_status_timer
-      @accept_task&.stop
+      @accept_task&.cancel if @accept_task&.running?
       @accept_task = nil
       @endpoint = nil
       super
@@ -190,11 +198,18 @@ module RSMP
 
     def wait_for_supervisor(ip, timeout:)
       supervisor = find_supervisor ip
-      return supervisor if supervisor
+      return Result.success(supervisor) if supervisor
 
       wait_for_condition(@proxies_condition, timeout: timeout) { find_supervisor ip }
-    rescue Async::TimeoutError
-      raise RSMP::TimeoutError, "Supervisor '#{ip}' did not connect within #{timeout}s"
+        .map { |proxy| proxy }
+    end
+
+    def wait_for_supervisor!(ip, timeout:)
+      result = wait_for_supervisor(ip, timeout: timeout)
+      return result.value! if result.success?
+
+      failure = result.failure.with(message: "Supervisor '#{ip}' did not connect within #{timeout}s")
+      Result.failure(failure: failure).value!
     end
 
     def find_supervisor(ip)

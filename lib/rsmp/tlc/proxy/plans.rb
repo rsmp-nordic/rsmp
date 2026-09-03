@@ -6,7 +6,9 @@ module RSMP
       module Plans
         # M0014 - Set dynamic bands for a signal plan.
         def set_dynamic_bands(plan:, status:, within:)
-          validate_ready 'set dynamic bands'
+          readiness = validate_ready 'set dynamic bands'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -27,12 +29,14 @@ module RSMP
             'n' => 'plan',
             'v' => command_value('M0014', 'plan', plan)
           }]
-          send_command_and_collect(command_list, within: within).ok!
+          send_command_and_collect(command_list, within: within)
         end
 
         # M0023 - Set timeout for dynamic bands.
         def set_dynamic_bands_timeout(status, within:)
-          validate_ready 'set dynamic bands timeout'
+          readiness = validate_ready 'set dynamic bands timeout'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -48,12 +52,14 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-          send_command_and_collect(command_list, within: within).ok!
+          send_command_and_collect(command_list, within: within)
         end
 
         # M0015 - Set offset for a signal plan.
         def set_offset(plan:, offset:, within:)
-          validate_ready 'set offset'
+          readiness = validate_ready 'set offset'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -74,12 +80,14 @@ module RSMP
             'n' => 'plan',
             'v' => command_value('M0015', 'plan', plan)
           }]
-          send_command_and_collect(command_list, within: within).ok!
+          send_command_and_collect(command_list, within: within)
         end
 
         # Set the timeplan (signal plan) on the remote TLC.
         def set_timeplan(plan_nr, within:)
-          validate_ready 'set timeplan'
+          readiness = validate_ready 'set timeplan'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -101,13 +109,16 @@ module RSMP
             'v' => command_value('M0002', 'timeplan', plan_nr)
           }]
           confirm_status = [{ 'sCI' => 'S0014', 'n' => 'status', 's' => integer_value(plan_nr) }]
-          send_command_and_collect(command_list, within: within).ok!
-          wait_for_status("timeplan #{plan_nr}", confirm_status, timeout: within)
+          send_command_and_collect(command_list, within: within).and_then do |exchange|
+            wait_for_status("timeplan #{plan_nr}", confirm_status, timeout: within).map { exchange }
+          end
         end
 
         # M0016 - Set week table (mapping week days to traffic situations).
         def set_week_table(status, within:)
-          validate_ready 'set week table'
+          readiness = validate_ready 'set week table'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -123,12 +134,14 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-          send_command_and_collect(command_list, within:).ok!
+          send_command_and_collect(command_list, within:)
         end
 
         # M0017 - Set day table (mapping time periods to signal plans).
         def set_day_table(status, within:)
-          validate_ready 'set day table'
+          readiness = validate_ready 'set day table'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -144,12 +157,14 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-          send_command_and_collect(command_list, within:).ok!
+          send_command_and_collect(command_list, within:)
         end
 
         # M0018 - Set cycle time for a signal plan.
         def set_cycle_time(plan:, cycle_time:, within:)
-          validate_ready 'set cycle time'
+          readiness = validate_ready 'set cycle time'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -170,12 +185,13 @@ module RSMP
             'n' => 'plan',
             'v' => command_value('M0018', 'plan', plan)
           }]
-          send_command_and_collect(command_list, within:).ok!
+          send_command_and_collect(command_list, within:)
         end
 
         # M0010 - Order signal start for a signal group component.
         def order_signal_start(component_id, within:)
-          validate_ready 'order signal start'
+          readiness = validate_ready 'order signal start'
+          return readiness if readiness.failure?
 
           security_code = security_code_for(2)
 
@@ -190,12 +206,13 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-          send_command_and_collect(command_list, component: component_id, within:).ok!
+          send_command_and_collect(command_list, component: component_id, within:)
         end
 
         # M0011 - Order signal stop for a signal group component.
         def order_signal_stop(component_id, within:)
-          validate_ready 'order signal stop'
+          readiness = validate_ready 'order signal stop'
+          return readiness if readiness.failure?
 
           security_code = security_code_for(2)
 
@@ -210,7 +227,7 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-          send_command_and_collect(command_list, component: component_id, within:).ok!
+          send_command_and_collect(command_list, component: component_id, within:)
         end
       end
     end

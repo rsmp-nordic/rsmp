@@ -56,11 +56,24 @@ module RSMP
     end
 
     def distribute_immediately(message)
-      @receivers.each { |receiver| receiver.receive message }
+      @receivers.dup.each { |receiver| deliver(receiver, :receive, message) }
     end
 
-    def distribute_error(error, options = {})
-      @receivers.each { |receiver| receiver.receive_error error, options }
+    def distribute_event(event)
+      raise ArgumentError, 'event must be an RSMP::Event' unless event.is_a?(RSMP::Event)
+
+      @receivers.dup.each { |receiver| deliver(receiver, :receive_event, event) }
+    end
+
+    private
+
+    def deliver(receiver, method, value)
+      receiver.public_send(method, value)
+    rescue StandardError => e
+      remove_receiver(receiver)
+      raise unless receiver.respond_to?(:crash)
+
+      receiver.crash(e)
     end
   end
 end

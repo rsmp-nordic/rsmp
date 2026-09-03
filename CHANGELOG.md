@@ -705,3 +705,9 @@ Initial release.
 
 ## 0.48.2
 - fix legacy TLC M0001 schemas to use scalar command arguments
+
+## 0.50.0
+- return immutable results for finite sends, waits, validation, and collection
+- publish typed events for expected peer and connection failures
+- preserve unexpected exceptions and backtraces through structured Async task trees
+- add explicit bang variants for callers that prefer exception-based handling

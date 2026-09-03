@@ -45,8 +45,8 @@ describe 'Connecting' do
       supervisor.ready_condition.wait
       site.start
     }) do |_task|
-      site_proxy = supervisor.wait_for_site config[:site_id], timeout: config[:timeout]
-      supervisor_proxy = site.wait_for_supervisor config[:ip], timeout: config[:timeout]
+      site_proxy = supervisor.wait_for_site! config[:site_id], timeout: config[:timeout]
+      supervisor_proxy = site.wait_for_supervisor! config[:ip], timeout: config[:timeout]
 
       expect(site_proxy).to be_a(RSMP::SiteProxy)
       expect(supervisor_proxy).to be_a(RSMP::SupervisorProxy)
@@ -54,8 +54,8 @@ describe 'Connecting' do
       expect(supervisor.proxies.size).to be == 1
       expect(site.proxies.size).to be == 1
 
-      site_proxy.wait_for_state :ready, timeout: config[:timeout]
-      supervisor_proxy.wait_for_state :ready, timeout: config[:timeout]
+      site_proxy.wait_for_state! :ready, timeout: config[:timeout]
+      supervisor_proxy.wait_for_state! :ready, timeout: config[:timeout]
 
       expect(site_proxy.state).to be == :ready
       expect(supervisor_proxy.state).to be == :ready
@@ -72,8 +72,8 @@ describe 'Connecting' do
       supervisor.start
       supervisor.ready_condition.wait
     }) do |_task|
-      site_proxy = supervisor.wait_for_site config[:site_id], timeout: config[:timeout]
-      supervisor_proxy = site.wait_for_supervisor config[:ip], timeout: config[:timeout]
+      site_proxy = supervisor.wait_for_site! config[:site_id], timeout: config[:timeout]
+      supervisor_proxy = site.wait_for_supervisor! config[:ip], timeout: config[:timeout]
 
       expect(supervisor.proxies.size).to be == 1
       expect(site.proxies.size).to be == 1
@@ -81,8 +81,8 @@ describe 'Connecting' do
       expect(site_proxy).to be_a(RSMP::SiteProxy)
       expect(supervisor_proxy).to be_a(RSMP::SupervisorProxy)
 
-      site_proxy.wait_for_state :ready, timeout: config[:timeout]
-      supervisor_proxy.wait_for_state :ready, timeout: config[:timeout]
+      site_proxy.wait_for_state! :ready, timeout: config[:timeout]
+      supervisor_proxy.wait_for_state! :ready, timeout: config[:timeout]
 
       expect(site_proxy.state).to be == :ready
       expect(supervisor_proxy.state).to be == :ready
@@ -100,11 +100,11 @@ describe 'Connecting' do
       supervisor.ready_condition.wait
       site.start
     }) do |_task|
-      site_proxy = supervisor.wait_for_site config[:site_id], timeout: config[:timeout]
-      supervisor_proxy = site.wait_for_supervisor config[:ip], timeout: config[:timeout]
+      site_proxy = supervisor.wait_for_site! config[:site_id], timeout: config[:timeout]
+      supervisor_proxy = site.wait_for_supervisor! config[:ip], timeout: config[:timeout]
 
-      site_proxy.wait_for_state :ready, timeout: config[:timeout]
-      supervisor_proxy.wait_for_state :ready, timeout: config[:timeout]
+      site_proxy.wait_for_state! :ready, timeout: config[:timeout]
+      supervisor_proxy.wait_for_state! :ready, timeout: config[:timeout]
 
       expect(site_proxy.accepted_sxls).to be == []
       expect(supervisor_proxy.accepted_sxls).to be == []
@@ -146,8 +146,8 @@ describe 'Connecting' do
       supervisor.ready_condition.wait
       site.start
     }) do |_task|
-      supervisor_proxy = site.wait_for_supervisor config[:ip], timeout: config[:timeout]
-      supervisor_proxy.wait_for_state :ready, timeout: config[:timeout]
+      supervisor_proxy = site.wait_for_supervisor! config[:ip], timeout: config[:timeout]
+      supervisor_proxy.wait_for_state! :ready, timeout: config[:timeout]
 
       expect(supervisor_proxy.receive_alarms?).to be == false
     end

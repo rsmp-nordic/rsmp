@@ -8,24 +8,24 @@ module RSMP
   class MalformedMessage < Error
   end
 
+  # Semantic failures which may be raised while processing a schema-valid peer
+  # message. The receive boundary converts only this explicit family to a peer
+  # Failure; unrelated exceptions retain their original stack trace.
+  class PeerMessageError < Error
+  end
+
   # Raised when schema validation fails.
   class SchemaError < Error
     attr_accessor :schemas
   end
 
-  class InvalidMessage < Error
+  class InvalidMessage < PeerMessageError
   end
 
   class UnknownMessage < Error
   end
 
-  class MissingAcknowledgment < Error
-  end
-
-  class MissingWatchdog < Error
-  end
-
-  class MessageRejected < Error
+  class MessageRejected < PeerMessageError
   end
 
   class MissingAttribute < InvalidMessage
@@ -37,36 +37,27 @@ module RSMP
   class HandshakeError < FatalError
   end
 
-  class NotReady < Error
-  end
-
-  class TimeoutError < Error
-  end
-
-  class DisconnectError < Error
-  end
-
   class ConnectionError < Error
   end
 
-  class UnknownComponent < Error
+  class UnknownComponent < PeerMessageError
   end
 
-  class UnknownCommand < Error
+  class UnknownCommand < PeerMessageError
   end
 
-  class UnknownStatus < Error
+  class UnknownStatus < PeerMessageError
   end
 
   class ConfigurationError < Error
   end
 
-  class RepeatedAlarmError < Error
+  class RepeatedAlarmError < PeerMessageError
   end
 
-  class RepeatedStatusError < Error
+  class RepeatedStatusError < PeerMessageError
   end
 
-  class TimestampError < Error
+  class TimestampError < PeerMessageError
   end
 end

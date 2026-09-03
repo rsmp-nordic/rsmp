@@ -41,6 +41,8 @@ module RSMP
     end
 
     # Core must pass. SXL-defined messages pass if at least one SXL schema passes.
+    # A message which does not satisfy its schemas is an ordinary validation
+    # outcome. Invalid API arguments and unavailable schemas still raise.
     def self.validate(message, schemas, options = {})
       raise ArgumentError, 'message missing' unless message
       raise ArgumentError, 'schemas missing' unless schemas
@@ -49,9 +51,9 @@ module RSMP
 
       errors = validate_core(message, schemas, options)
       errors.concat validate_sxls(message, schemas, options) if errors.empty?
-      return nil if errors.empty?
-
-      errors
+      Validation.new(violations: errors)
+    rescue UnknownMessageCodeError => e
+      Validation.new(violations: [['', 'unknown_message_code', e.message]])
     end
   end
 end

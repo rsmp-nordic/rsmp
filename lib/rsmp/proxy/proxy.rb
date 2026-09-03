@@ -16,10 +16,11 @@ module RSMP
     include Modules::Receive
     include Modules::Versions
     include Modules::Tasks
+    include Modules::Lifecycle
 
     attr_reader :state, :archive, :connection_info, :sxls, :accepted_sxls, :rejected_sxls,
                 :collector, :ip, :port, :node, :core_version, :sxl_interfaces,
-                :site_settings
+                :site_settings, :session_id
 
     def initialize(options)
       @node = options[:node]
@@ -31,6 +32,8 @@ module RSMP
       clear
       @state = :disconnected
       @state_condition = Async::Notification.new
+      @session_id = 0
+      @session_closed = true
     end
 
     def inspect
@@ -39,67 +42,6 @@ module RSMP
 
     def now
       node.now
-    end
-
-    # Connection lifecycle methods
-
-    def disconnect; end
-
-    # wait for the reader task to complete,
-    # which is not expected to happen before the connection is closed
-    def wait_for_reader
-      @reader&.wait
-    end
-
-    # close connection, but keep our main task running so we can reconnect
-    def close
-      log 'Closing connection', level: :warning
-      close_stream
-      close_socket
-      stop_reader
-      self.state = :disconnected
-      distribute_error DisconnectError.new('Connection was closed')
-
-      # stop timer
-      # as we're running inside the timer, code after stop_timer() will not be called,
-      # unless it's in the ensure block
-      stop_timer
-    end
-
-    def stop_subtasks
-      stop_timer
-      stop_reader
-      clear
-      super
-    end
-
-    def stop_timer
-      @timer&.stop
-    ensure
-      @timer = nil
-    end
-
-    def stop_reader
-      @reader&.stop
-    ensure
-      @reader = nil
-    end
-
-    def close_stream
-      @stream&.close
-    ensure
-      @stream = nil
-    end
-
-    def close_socket
-      @socket&.close
-    ensure
-      @socket = nil
-    end
-
-    def stop_task
-      close
-      super
     end
 
     # State management methods
@@ -172,10 +114,6 @@ module RSMP
 
     def clock
       @node.clock
-    end
-
-    def receive_error(error, options = {})
-      @node.receive_error error, options
     end
 
     def log(str, options = {})

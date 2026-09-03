@@ -88,7 +88,7 @@ module RSMP
           end
         end
 
-        def buffer_message(message, error = nil)
+        def buffer_message(message)
           prepared = prepare_message_for_buffer message, core_version: @core_version
           if prepared
             enqueue_buffered_message prepared
@@ -97,8 +97,6 @@ module RSMP
           else
             super
           end
-        rescue NotReady, IOError
-          raise error if error
         end
 
         def enqueue_buffered_message(message)
@@ -118,19 +116,20 @@ module RSMP
           @message_buffer = []
           log "Sending #{queued.size} buffered message(s)", level: :info
           queued.each_with_index do |message, index|
-            break unless flush_buffered_message(message, queued, index)
+            break unless flush_buffered_message?(message, queued, index)
           end
         end
 
-        def flush_buffered_message(message, queued, index)
+        def flush_buffered_message?(message, queued, index)
           prepared = prepare_message_for_buffer message, core_version: @core_version, for_send: true
           return true unless prepared
 
-          send_message prepared, 'from buffer', buffer: false
-          true
-        rescue NotReady, IOError
+          result = send_message(prepared, 'from buffer', buffer: false)
+          return true if result.success?
+
           @message_buffer = queued[index..] + @message_buffer
-          log "Stopped sending buffered messages; #{message_buffer.size} message(s) remain queued", level: :warning
+          log "Stopped sending buffered messages (#{result.failure.code}); " \
+              "#{message_buffer.size} message(s) remain queued", level: :warning
           false
         end
       end

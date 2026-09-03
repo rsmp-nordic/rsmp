@@ -11,7 +11,8 @@ describe RSMP::Collector do
         collector = subject.new proxy, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
+        expect(result.value).to be_a(RSMP::Collection)
         expect(collector.messages).to be_a(Array)
         expect(collector.messages.size).to be == 1
         expect(collector.messages.first).to be_a(RSMP::Watchdog)
@@ -28,7 +29,7 @@ describe RSMP::Collector do
         collector = subject.new proxy, filter: filter, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be_a(Array)
         expect(collector.messages.size).to be == 1
         expect(collector.messages.first).to be_a(RSMP::Watchdog)
@@ -45,7 +46,7 @@ describe RSMP::Collector do
         collector = subject.new proxy, filter: filter, num: 2, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be_a(Array)
         expect(collector.messages.size).to be == 2
         expect(collector.messages.first).to be_a(RSMP::Watchdog)
@@ -64,7 +65,7 @@ describe RSMP::Collector do
         collector = subject.new proxy, filter: filter, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be_a(Array)
         expect(collector.messages.size).to be == 1
         expect(collector.messages.first).to be_a(RSMP::MessageAck)
@@ -82,7 +83,7 @@ describe RSMP::Collector do
         collector = RSMP::AckCollector.new proxy, m_id: m_id, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be_a(Array)
         expect(collector.messages.size).to be == 1
         expect(collector.messages.first).to be_a(RSMP::MessageAck)
@@ -101,7 +102,7 @@ describe RSMP::Collector do
         collector = subject.new proxy, filter: filter, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be_a(Array)
         expect(collector.messages.size).to be == 1
         expect(collector.messages.first).to be_a(RSMP::MessageNotAck)
@@ -117,7 +118,8 @@ describe RSMP::Collector do
       collector = subject.new proxy, filter: filter, num: 1, timeout: collect_timeout
       result = collector.collect
 
-      expect(result).to be == :timeout
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :timeout
       expect(collector.messages).to be_a(Array)
       expect(collector.messages.size).to be == 0
     end
@@ -128,7 +130,7 @@ describe RSMP::Collector do
       collect_task = task.async do
         collector = subject.new proxy, num: 1
         result = collector.collect
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
       end
       proxy.distribute RSMP::Watchdog.new
       collect_task.wait
@@ -142,7 +144,7 @@ describe RSMP::Collector do
         collector = subject.new proxy, num: 1, timeout: 1, filter: filter
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be_a(Array)
         expect(collector.messages.size).to be == 1
         expect(collector.messages.first).to be_a(RSMP::StatusUpdate)
@@ -155,7 +157,7 @@ describe RSMP::Collector do
     it 'raises if required options are missing' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
-      collector = subject.new proxy, task: task
+      collector = subject.new proxy
       expect { collector.collect }.to raise_exception(ArgumentError)
     end
 
@@ -174,10 +176,11 @@ describe RSMP::Collector do
         )
         result = collector.collect
 
-        expect(result).to be == :cancelled
+        expect(result.failure?).to be == true
+        expect(result.failure.code).to be == :message_rejected
         expect(collector.messages).to be_a(Array)
         expect(collector.messages.size).to be == 0
-        expect(collector.error).to be_a(RSMP::MessageRejected)
+        expect(result.failure.context[:message]).to be_a(RSMP::MessageNotAck)
       end
       proxy.distribute RSMP::MessageNotAck.new 'oMId' => message.m_id
       collect_task.wait
@@ -195,7 +198,7 @@ describe RSMP::Collector do
           messages << message
           :keep if message.is_a? RSMP::AggregatedStatus
         end
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(messages.size).to be == 2
         expect(collector.messages.size).to be == 1
       end
@@ -212,7 +215,8 @@ describe RSMP::Collector do
         result = collector.collect do |_message|
           collector.cancel
         end
-        expect(result).to be == :cancelled
+        expect(result.failure?).to be == true
+        expect(result.failure.code).to be == :cancelled
         expect(collector.messages.size).to be == 0
       end
       proxy.distribute RSMP::Watchdog.new
@@ -226,11 +230,22 @@ describe RSMP::Collector do
         collector = subject.new proxy, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :cancelled
-        expect(collector.error).to be_a(RSMP::SchemaError)
+        expect(result.failure?).to be == true
+        expect(result.failure.code).to be == :invalid_peer_message
         expect(collector.messages.size).to be == 0
       end
-      proxy.distribute_error RSMP::SchemaError.new, message: RSMP::Watchdog.new
+      failure = RSMP::Failure.new(
+        code: :invalid_peer_message,
+        message: 'schema error',
+        source: :peer,
+        context: { message: RSMP::Watchdog.new }
+      )
+      proxy.distribute_event RSMP::Event.new(
+        type: :invalid_message,
+        source: proxy,
+        message: failure.context[:message],
+        failure: failure
+      )
       collect_task.wait
     end
 
@@ -241,11 +256,16 @@ describe RSMP::Collector do
         collector = subject.new proxy, num: 1, timeout: collect_timeout, cancel: { disconnect: true }
         result = collector.collect
 
-        expect(result).to be == :cancelled
-        expect(collector.error).to be_a(RSMP::DisconnectError)
+        expect(result.failure?).to be == true
+        expect(result.failure.code).to be == :disconnected
         expect(collector.messages.size).to be == 0
       end
-      proxy.distribute_error RSMP::DisconnectError.new, message: RSMP::Watchdog.new
+      failure = RSMP::Failure.new(code: :disconnected, message: 'disconnected', source: :connection)
+      proxy.distribute_event RSMP::Event.new(
+        type: :connection_ended,
+        source: proxy,
+        failure: failure
+      )
       collect_task.wait
     end
 
@@ -253,13 +273,14 @@ describe RSMP::Collector do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       collect_task = task.async do
-        collector = subject.new proxy, task: task
+        collector = subject.new proxy
         messages = []
         result = collector.collect do |message|
           messages << message
           collector.cancel if messages.size >= 2
         end
-        expect(result).to be == :cancelled
+        expect(result.failure?).to be == true
+        expect(result.failure.code).to be == :cancelled
         expect(messages.size).to be == 2
         expect(collector.messages.size).to be == 0
       end
@@ -275,7 +296,7 @@ describe RSMP::Collector do
       proxy = RSMP::SiteProxyStub.new task
       collect_task = task.async do
         collector = subject.new proxy, num: 1, timeout: collect_timeout
-        expect { collector.collect! }.to raise_exception(RSMP::TimeoutError)
+        expect { collector.collect! }.to raise_exception(RSMP::OperationError)
       end
       collect_task.wait
     end
@@ -306,7 +327,7 @@ describe RSMP::Collector do
           timeout: collect_timeout,
           m_id: message.m_id
         )
-        expect { collector.collect! }.to raise_exception(RSMP::MessageRejected)
+        expect { collector.collect! }.to raise_exception(RSMP::OperationError)
       end
       proxy.distribute RSMP::MessageNotAck.new 'oMId' => message.m_id
       collect_task.wait
@@ -319,23 +340,25 @@ describe RSMP::Collector do
       proxy = RSMP::SiteProxyStub.new task
       collector = subject.new proxy, num: 1, timeout: collect_timeout
       collector.start
-      expect(collector.status).to be == :collecting
+      expect(collector.active?).to be == true
     end
   end
 
   with '#wait' do
-    it 'returns :ok if already complete' do
+    it 'returns a successful Result if already complete' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       collector = subject.new proxy, num: 1, timeout: collect_timeout
       collector.start
       proxy.distribute RSMP::Watchdog.new
       expect(collector.messages.size).to be == 1
-      expect(collector.status).to be == :ok
-      expect(collector.wait).to be == :ok
+      expect(collector.active?).to be == false
+      result = collector.wait
+      expect(result.success?).to be == true
+      expect(result.value.messages.size).to be == 1
     end
 
-    it 'returns :ok after completion' do
+    it 'returns a successful Result after completion' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       collector = subject.new proxy, num: 1, timeout: collect_timeout
@@ -344,17 +367,20 @@ describe RSMP::Collector do
         collector.wait
       end
       proxy.distribute RSMP::Watchdog.new
-      expect(collect_task.wait).to be == :ok
+      result = collect_task.wait
+      expect(result.success?).to be == true
       expect(collector.messages.size).to be == 1
-      expect(collector.status).to be == :ok
+      expect(collector.active?).to be == false
     end
 
-    it 'returns :timeout' do
+    it 'returns a timeout failure' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       collector = subject.new proxy, num: 1, timeout: collect_timeout
       collector.start
-      expect(collector.wait).to be == :timeout
+      result = collector.wait
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :timeout
     end
   end
 
@@ -387,35 +413,51 @@ describe RSMP::Collector do
       expect(messages.first).to be_a(RSMP::Watchdog)
     end
 
-    it 'raises TimeoutError' do
+    it 'raises OperationError on timeout' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       collector = subject.new proxy, num: 1, timeout: collect_timeout
       collector.start
-      expect { collector.wait! }.to raise_exception(RSMP::TimeoutError)
+      expect { collector.wait! }.to raise_exception(RSMP::OperationError)
     end
 
-    it 'raises error when cancelled due to schema error' do
+    it 'raises OperationError when an invalid message ends collection' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       collect_task = task.async do
         collector = subject.new proxy, num: 1, timeout: collect_timeout
         collector.start
-        expect { collector.wait! }.to raise_exception(RSMP::SchemaError)
+        expect { collector.wait! }.to raise_exception(RSMP::OperationError)
       end
-      proxy.distribute_error RSMP::SchemaError.new, message: RSMP::Watchdog.new
+      message = RSMP::Watchdog.new
+      failure = RSMP::Failure.new(
+        code: :invalid_peer_message,
+        message: 'schema error',
+        source: :peer,
+        context: { message: message }
+      )
+      proxy.distribute_event RSMP::Event.new(
+        type: :invalid_message,
+        source: proxy,
+        message: message,
+        failure: failure
+      )
       collect_task.wait
     end
 
-    it 'raises error when cancelled due to schema error' do
+    it 'preserves unexpected receiver exceptions and their backtraces' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       collect_task = task.async do
         collector = subject.new proxy, num: 1, timeout: collect_timeout
-        collector.start
-        expect { collector.wait! }.to raise_exception(RSMP::SchemaError)
+        expect do
+          # rubocop:disable-next Lint/UnreachableLoop
+          collector.collect do
+            raise 'collector callback bug'
+          end
+        end.to raise_exception(RuntimeError, message: be =~ /collector callback bug/)
       end
-      proxy.distribute_error RSMP::SchemaError.new, message: RSMP::Watchdog.new
+      proxy.distribute RSMP::Watchdog.new
       collect_task.wait
     end
   end

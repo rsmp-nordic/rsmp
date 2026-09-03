@@ -3,23 +3,29 @@ module RSMP
     module Modules
       # Handles aggregated status requests and responses
       module AggregatedStatus
-        # Build and send an AggregatedStatusRequest. Returns { sent: message }.
+        # Build and send an AggregatedStatusRequest. Returns Result<AggregatedStatusRequest>.
         def request_aggregated_status(component, m_id: nil, validate: true)
-          validate_ready 'request aggregated status'
+          readiness = validate_ready 'request aggregated status'
+          return readiness if readiness.failure?
+
           m_id ||= RSMP::Message.make_m_id
           message = RSMP::AggregatedStatusRequest.new({
                                                         'cId' => component,
                                                         'mId' => m_id
                                                       })
           apply_nts_message_attributes message
-          send_message message, validate: validate
-          { sent: message }
+          send_message(message, validate: validate).map(&:message)
         end
 
-        # Build, send an AggregatedStatusRequest and collect the response. Returns the collector.
-        # Call .ok! on the result to raise on NotAck or timeout.
+        def request_aggregated_status!(...)
+          request_aggregated_status(...).value!
+        end
+
+        # Build, send an AggregatedStatusRequest and collect the response. Returns Result<Exchange>.
         def request_aggregated_status_and_collect(component, within:, m_id: nil, validate: true)
-          validate_ready 'request aggregated status'
+          readiness = validate_ready 'request aggregated status'
+          return readiness if readiness.failure?
+
           m_id ||= RSMP::Message.make_m_id
           message = RSMP::AggregatedStatusRequest.new({
                                                         'cId' => component,
@@ -27,7 +33,11 @@ module RSMP
                                                       })
           apply_nts_message_attributes message
           collector = AggregatedStatusCollector.new(self, timeout: within, m_id: m_id, num: 1)
-          send_message_and_collect(message, collector, validate: validate)[:collector]
+          send_message_and_collect(message, collector, validate: validate)
+        end
+
+        def request_aggregated_status_and_collect!(...)
+          request_aggregated_status_and_collect(...).value!
         end
 
         def validate_aggregated_status(message, status_elements)

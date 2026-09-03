@@ -95,21 +95,20 @@ describe RSMP::StatusCollector do
       expect(collector.done?).to be == true
     end
 
-    it 'raises if notified after being complete' do
+    it 'ignores notifications after being complete' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       collector = subject.new(proxy, want.values, timeout: collect_timeout)
       collector.start
       collector.receive build_status_message(ok.values)
       expect(collector.done?).to be == true
-      expect { collector.receive build_status_message(ok.values) }.to raise_exception(RuntimeError)
+      expect(collector.receive(build_status_message(ok.values))).to be_nil
     end
 
     it 'extra status updates are ignored' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       collector = subject.new(proxy, want.values, timeout: collect_timeout)
-      collector.use_task task
       # proxy should have no receivers initially
       expect(proxy.receivers.size).to be == 0
 
@@ -140,7 +139,7 @@ describe RSMP::StatusCollector do
     it 'gets message and each item' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
-      collector = subject.new(proxy, want.values, task: task, timeout: collect_timeout)
+      collector = subject.new(proxy, want.values, timeout: collect_timeout)
       collect_task = task.async do
         messages = []
         items = []
@@ -152,7 +151,7 @@ describe RSMP::StatusCollector do
           end
           nil
         end
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(messages.size).to be == 1
         expect(items.size).to be == 3
         expect(collector.messages.size).to be == 1
@@ -165,7 +164,7 @@ describe RSMP::StatusCollector do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
       my_want = { 'sCI' => 'S0001', 'n' => 'status' }
-      collector = subject.new(proxy, [my_want], task: task, timeout: collect_timeout)
+      collector = subject.new(proxy, [my_want], timeout: collect_timeout)
       collect_task = task.async do
         items = []
         result = collector.collect do |_message, item|
@@ -174,7 +173,7 @@ describe RSMP::StatusCollector do
           items << item
           item['s'] == '3'
         end
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(items.size).to be == 3
         expect(collector.messages.size).to be == 1
       end
@@ -187,12 +186,13 @@ describe RSMP::StatusCollector do
     it 'can cancel' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task
-      collector = subject.new(proxy, want.values, task: task)
+      collector = subject.new(proxy, want.values)
       collect_task = task.async do
         result = collector.collect do |_message, _item|
           collector.cancel
         end
-        expect(result).to be == :cancelled
+        expect(result.failure?).to be == true
+        expect(result.failure.code).to be == :cancelled
         expect(collector.messages.size).to be == 0
       end
       collector.receive build_status_message([ok[:s5], ok[:s7], ok[:s11]])

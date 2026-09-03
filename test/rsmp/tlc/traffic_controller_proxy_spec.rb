@@ -127,7 +127,7 @@ describe RSMP::TLC::SupervisorInterface do
       connection_proxy.instance_variable_get(:@main).instance_variable_set(
         :@statuses, { 'S0014' => { 'status' => { 's' => '2', 'q' => 'recent' } } }
       )
-      expect(proxy.timeplan_attributes).to be == ({ 'status' => { 's' => '2', 'q' => 'recent' } })
+      expect(proxy.timeplan_attributes).to be == { 'status' => { 's' => '2', 'q' => 'recent' } }
     end
 
     it 'returns empty hash when no main component' do
@@ -156,7 +156,9 @@ describe RSMP::TLC::SupervisorInterface do
       }.each do |method, args|
         it "validates proxy is ready before #{method}" do
           setup_proxy
-          expect { proxy.send(method, *args, within: 1) }.to raise_exception(RSMP::NotReady)
+          result = proxy.send(method, *args, within: 1)
+          expect(result.failure?).to be == true
+          expect(result.failure.code).to be == :not_ready
         end
       end
     end
@@ -165,7 +167,9 @@ describe RSMP::TLC::SupervisorInterface do
       %i[fetch_signal_plan subscribe_to_timeplan].each do |method|
         it "validates proxy is ready before #{method}" do
           setup_proxy
-          expect { proxy.send(method) }.to raise_exception(RSMP::NotReady)
+          result = proxy.send(method)
+          expect(result.failure?).to be == true
+          expect(result.failure.code).to be == :not_ready
         end
       end
     end
@@ -183,38 +187,43 @@ describe RSMP::TLC::SupervisorInterface do
       }.each do |method, kwargs|
         it "validates proxy is ready before #{method}" do
           setup_proxy
-          expect { proxy.send(method, **kwargs.first) }.to raise_exception(RSMP::NotReady)
+          result = proxy.send(method, **kwargs.first)
+          expect(result.failure?).to be == true
+          expect(result.failure.code).to be == :not_ready
         end
       end
     end
 
     it 'validates proxy is ready before wait_for_status' do
       setup_proxy
-      expect do
-        proxy.wait_for_status('test status', [{ 'sCI' => 'S0014', 'n' => 'status', 's' => '1' }])
-      end.to raise_exception(RSMP::NotReady)
+      result = proxy.wait_for_status('test status', [{ 'sCI' => 'S0014', 'n' => 'status', 's' => '1' }])
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :not_ready
     end
 
     it 'validates proxy is ready before force_detector_logic' do
       setup_proxy
-      expect do
-        proxy.force_detector_logic('DL1', status: 'True', mode: 'True', within: 1)
-      end.to raise_exception(RSMP::NotReady)
+      result = proxy.force_detector_logic('DL1', status: 'True', mode: 'True', within: 1)
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :not_ready
     end
 
     it 'validates proxy is ready before order_signal_start' do
       setup_proxy
-      expect { proxy.order_signal_start('SG1', within: 1) }.to raise_exception(RSMP::NotReady)
+      result = proxy.order_signal_start('SG1', within: 1)
+      expect(result.failure.code).to be == :not_ready
     end
 
     it 'validates proxy is ready before order_signal_stop' do
       setup_proxy
-      expect { proxy.order_signal_stop('SG1', within: 1) }.to raise_exception(RSMP::NotReady)
+      result = proxy.order_signal_stop('SG1', within: 1)
+      expect(result.failure.code).to be == :not_ready
     end
 
     it 'validates proxy is ready before set_clock' do
       setup_proxy
-      expect { proxy.set_clock(Time.now, within: 1) }.to raise_exception(RSMP::NotReady)
+      result = proxy.set_clock(Time.now, within: 1)
+      expect(result.failure.code).to be == :not_ready
     end
 
     it 'raises error when main component is missing for set_timeplan' do
@@ -228,9 +237,16 @@ describe RSMP::TLC::SupervisorInterface do
 
     it 'validates proxy is ready before request_status' do
       setup_proxy
+      result = proxy.request_status_and_collect({ S0014: [:status] }, within: 5)
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :not_ready
+    end
+
+    it 'raises OperationError only through a bang API' do
+      setup_proxy
       expect do
-        proxy.request_status_and_collect({ S0014: [:status] }, within: 5)
-      end.to raise_exception(RSMP::NotReady)
+        proxy.request_status_and_collect!({ S0014: [:status] }, within: 5)
+      end.to raise_exception(RSMP::OperationError)
     end
   end
 

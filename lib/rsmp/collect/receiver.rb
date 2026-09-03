@@ -23,7 +23,7 @@ module RSMP
       handle_message(message) if accept_message?(message)
     end
 
-    def receive_error(error, options = {}); end
+    def receive_event(event); end
 
     def accept_message?(message)
       @filter.nil? || @filter.accept?(message)

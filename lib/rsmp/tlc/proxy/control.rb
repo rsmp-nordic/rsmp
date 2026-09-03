@@ -6,20 +6,29 @@ module RSMP
       module Control
         # M0001 - Set functional position (NormalControl, YellowFlash, Dark).
         def set_functional_position(status, within:, timeout_minutes: 0)
-          validate_ready 'set functional position'
+          readiness = validate_ready 'set functional position'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           command_list = functional_position_command_list(status, timeout_minutes)
           confirm_status = functional_position_confirm_status(status)
-          collector = send_command_and_collect(command_list, within: within)
-          collector.ok!
-          wait_for_status "functional position #{status}", confirm_status, timeout: within unless confirm_status.empty?
-          { collector: collector }
+          send_command_and_collect(command_list, within: within).and_then do |exchange|
+            next Result.success(exchange) if confirm_status.empty?
+
+            wait_for_status("functional position #{status}", confirm_status, timeout: within).map { exchange }
+          end
+        end
+
+        def set_functional_position!(...)
+          set_functional_position(...).value!
         end
 
         # M0005 - Set or clear an emergency route.
         def set_emergency_route(route:, active:, within:)
-          validate_ready 'set emergency route'
+          readiness = validate_ready 'set emergency route'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -41,12 +50,18 @@ module RSMP
             'v' => command_value('M0005', 'emergencyroute', route)
           }]
 
-          send_command_and_collect(command_list, within: within).ok!
+          send_command_and_collect(command_list, within: within)
+        end
+
+        def set_emergency_route!(...)
+          set_emergency_route(...).value!
         end
 
         # M0007 - Enable or disable fixed-time control.
         def set_fixed_time(status, within:)
-          validate_ready 'set fixed time'
+          readiness = validate_ready 'set fixed time'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -64,13 +79,20 @@ module RSMP
           }]
 
           confirm_status = [{ 'sCI' => 'S0009', 'n' => 'status', 's' => [boolean_value(status)] }]
-          send_command_and_collect(command_list, within: within).ok!
-          wait_for_status "fixed time #{status}", confirm_status, timeout: within
+          send_command_and_collect(command_list, within: within).and_then do |exchange|
+            wait_for_status("fixed time #{status}", confirm_status, timeout: within).map { exchange }
+          end
+        end
+
+        def set_fixed_time!(...)
+          set_fixed_time(...).value!
         end
 
         # M0003 - Set traffic situation (activate a specific situation number).
         def set_traffic_situation(situation, within:)
-          validate_ready 'set traffic situation'
+          readiness = validate_ready 'set traffic situation'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -93,13 +115,20 @@ module RSMP
           }]
 
           confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => integer_value(situation) }]
-          send_command_and_collect(command_list, within: within).ok!
-          wait_for_status "traffic situation #{situation}", confirm_status, timeout: within
+          send_command_and_collect(command_list, within: within).and_then do |exchange|
+            wait_for_status("traffic situation #{situation}", confirm_status, timeout: within).map { exchange }
+          end
+        end
+
+        def set_traffic_situation!(...)
+          set_traffic_situation(...).value!
         end
 
         # M0003 - Clear the active traffic situation.
         def unset_traffic_situation(within:)
-          validate_ready 'unset traffic situation'
+          readiness = validate_ready 'unset traffic situation'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -122,8 +151,13 @@ module RSMP
           }]
 
           confirm_status = [{ 'sCI' => 'S0015', 'n' => 'status', 's' => 1 }]
-          send_command_and_collect(command_list, within: within).ok!
-          wait_for_status 'traffic situation unset', confirm_status, timeout: within
+          send_command_and_collect(command_list, within: within).and_then do |exchange|
+            wait_for_status('traffic situation unset', confirm_status, timeout: within).map { exchange }
+          end
+        end
+
+        def unset_traffic_situation!(...)
+          unset_traffic_situation(...).value!
         end
 
         private

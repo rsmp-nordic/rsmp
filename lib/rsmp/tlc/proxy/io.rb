@@ -6,7 +6,9 @@ module RSMP
       module IO
         # M0006 - Set a single input to a given status.
         def set_input(input:, status:, within:)
-          validate_ready 'set input'
+          readiness = validate_ready 'set input'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -27,12 +29,18 @@ module RSMP
             'n' => 'input',
             'v' => command_value('M0006', 'input', input)
           }]
-          send_command_and_collect(command_list, within: within).ok!
+          send_command_and_collect(command_list, within: within)
+        end
+
+        def set_input!(...)
+          set_input(...).value!
         end
 
         # M0013 - Set all inputs via a bit-pattern string.
         def set_inputs(status, within:)
-          validate_ready 'set inputs'
+          readiness = validate_ready 'set inputs'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -48,52 +56,59 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-          send_command_and_collect(command_list, within: within).ok!
+          send_command_and_collect(command_list, within: within)
+        end
+
+        def set_inputs!(...)
+          set_inputs(...).value!
         end
 
         # M0019 - Force an input to a given value.
         def force_input(input:, status:, value:, within:)
-          validate_ready 'force input'
+          readiness = validate_ready 'force input'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           command_list = force_input_command_list(input, status, value)
           confirm_status = force_input_confirm_status(input, status, value)
-          send_command_and_collect(command_list, within: within).ok!
-          wait_for_status "force input #{input}", confirm_status, timeout: within
+          send_command_and_collect(command_list, within: within).and_then do |exchange|
+            wait_for_status("force input #{input}", confirm_status, timeout: within).map { exchange }
+          end
+        end
+
+        def force_input!(...)
+          force_input(...).value!
         end
 
         # M0020 - Force an output to a given value.
         def force_output(output:, status:, value:, within:)
-          validate_ready 'force output'
+          readiness = validate_ready 'force output'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
-          security_code = security_code_for(2)
+          send_command_and_collect(force_output_command_list(output, status, value), within: within)
+        end
 
-          command_list = [{
-            'cCI' => 'M0020',
-            'cO' => 'setOutput',
-            'n' => 'status',
-            'v' => command_value('M0020', 'status', status)
-          }, {
-            'cCI' => 'M0020',
-            'cO' => 'setOutput',
-            'n' => 'securityCode',
-            'v' => security_code.to_s
-          }, {
-            'cCI' => 'M0020',
-            'cO' => 'setOutput',
-            'n' => 'output',
-            'v' => command_value('M0020', 'output', output)
-          }, {
-            'cCI' => 'M0020',
-            'cO' => 'setOutput',
-            'n' => 'outputValue',
-            'v' => command_value('M0020', 'outputValue', value)
-          }]
-          send_command_and_collect(command_list, within: within).ok!
+        def force_output!(...)
+          force_output(...).value!
         end
 
         private
+
+        def force_output_command_list(output, status, value)
+          security_code = security_code_for(2)
+          values = { 'status' => status, 'output' => output, 'outputValue' => value }
+          values.map do |name, item|
+            { 'cCI' => 'M0020', 'cO' => 'setOutput', 'n' => name, 'v' => command_value('M0020', name, item) }
+          end.insert(1, {
+                       'cCI' => 'M0020',
+                       'cO' => 'setOutput',
+                       'n' => 'securityCode',
+                       'v' => security_code.to_s
+                     })
+        end
 
         def force_input_command_list(input, status, value)
           security_code = security_code_for(2)

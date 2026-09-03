@@ -1,226 +1,146 @@
-# Collection
-You often need to collect messages or responses. The collector classes are used to collect message asyncronously. Other tasks continue until the collection completes, time outs or is cancelled.
+# Finite operations and message collection
 
-A collector can collect ingoing and/or outgoing messages.
-
-An object that includes the Distributor module (or implements the same functionality) must be provided when you construct a Collected. The collector will attach itself to this distributor when it starts collecting, to receive messages. The SiteProxy and SupervisorProxy classes both include the Distributor module, and can therefore be used as message sources.
-
-Messages that match the relevant criteria are stored by the collector.
-
-When the collection is done, the collector detaches from the distributor, and returns the status.
-
-
-## Collector
-Class used for collecting messages filtered by message type, direction and/or component id. A block can be used for custom filtering.
-
-You can choose to collect a specific number of message and/or for a specific duration.
-
-A collector has a status, which is `:ready` initialialy. When you start collecting, it changes to `:collecting`. It will be `:ok` once collection completes successfully, or `:cancel` if it was cancelled to to some error or by a filter block.
-
-### Initialization
-When you create a collector, you provide a Filter to specify the messages types you want to collect. You can also specify ingoing and/or outgoing direction and the RSMP component.
+RSMP distinguishes expected operational failures from implementation defects.
+Operations that can normally time out, be rejected, or lose their connection
+return an `RSMP::Result`. They do not use exceptions for ordinary control flow.
 
 ```ruby
-collector = MessageCollector.new(distributor,
-	num: 10,
-	filter: Filter.new(ingoing: true, outgoing: true)
+result = proxy.wait_for_state(:ready, timeout: 5)
+
+if result.success?
+  puts "Reached #{result.value}"
+else
+  warn "#{result.failure.code}: #{result.failure.message}"
+end
 ```
 
-num: The number of messages to collect. If not provided, a timeout must be set instead.
-filter: filter to identify the types of messages to look for.
+`RSMP::Result::Success` contains `value`. `RSMP::Result::Failure` contains an
+immutable `RSMP::Failure` with:
 
-### Filter
-The Filter class is used to filter messages according to message type, direction and component.
+- `code`: a stable symbol such as `:timeout`, `:not_ready`,
+  `:message_rejected`, or `:disconnected`.
+- `message`: a human-readable explanation.
+- `source`: where the failure originated, such as `:peer`, `:transport`,
+  `:connection`, `:timeout`, or `:local`.
+- `context`: structured details such as the message and connection session.
+- `cause`: the underlying exception, when an expected low-level exception was
+  translated at a boundary.
+
+Use the corresponding bang method when exception-based handling is more
+convenient. A failed result is then raised as `RSMP::OperationError`; its
+`failure` attribute retains the structured failure.
 
 ```ruby
-filter = Filter.new(
-	type: 'Alarm',
-	ingoing: true,
-	outgoing: false,
-	component: 'DL1'
-	)
+proxy.wait_for_state!(:ready, timeout: 5)
 ```
 
-type: a string, or an array of string, specifiying one or more RSMP message types.
-ingoing: Whether to collect ingoing messages. Defaults to true
-outgoing: Whether to collect outgoing messages. Defaults to true
-component: An RSMP component id.
+Unexpected exceptions are never converted into a `Result`. They propagate with
+their original class and backtrace because they indicate a bug in the library or
+calling application.
 
-### Collecting
-Use collect() to start collecting and wait for completion or timeout. The status will be returned.
+Message handlers can reject schema-valid but semantically invalid peer input by
+raising `RSMP::PeerMessageError` or one of its domain subclasses, normally
+`RSMP::MessageRejected`. The receive boundary converts only this explicit error
+family to a peer failure. It does not rescue arbitrary `StandardError` values.
+
+## Validation
+
+Schema mismatches are expected when communicating with an external peer.
+`RSMP::Schema.validate` and `message.validate` return an `RSMP::Validation`:
 
 ```ruby
-result = collector.collect # => :ok, :timeout or :cancelled
-collector.messages # => collected messages
+validation = message.validate(core: '3.3.0', tlc: '1.3.0')
+
+unless validation.valid?
+  warn validation.message
+  validation.violations.each { |violation| warn violation.inspect }
+end
 ```
 
-If you want start collection, but not wait for the result, use `start()`. You can then later use `wait()` if you want:
+`message.validate!` is the explicit raising variant. Invalid API arguments,
+missing schema configuration, and unknown schema versions still raise directly
+because they are programming or configuration errors rather than invalid peer
+messages.
+
+## Collectors
+
+A collector attaches to a message distributor, such as `SiteProxy` or
+`SupervisorProxy`, and waits for matching messages. Give it a count, a timeout,
+or a block that completes or cancels the collection.
 
 ```ruby
-result = collector.start # => nil
-# do other stuff
+filter = RSMP::Filter.new(type: 'Alarm', ingoing: true, component: 'DL1')
+collector = RSMP::Collector.new(proxy, filter: filter, num: 2, timeout: 5)
+result = collector.collect
+```
+
+A successful collector returns `Result<RSMP::Collection>`. A collection is an
+immutable snapshot containing `messages` and, for state collectors, `reached`
+and `matcher_status`.
+
+```ruby
+if result.success?
+  result.value.messages.each { |message| puts message }
+end
+```
+
+`collect!` and `wait!` return the message array directly and raise
+`RSMP::OperationError` for an expected failure.
+
+To start without waiting:
+
+```ruby
+collector.start
+# Perform another operation.
 result = collector.wait
 ```
 
-### Custom filtering
-You can use a block to do extra filtering. The block will be callled for each messages that passes the Filter provided when initializing the collector.
+Collectors start in an inactive state, become active after `start`, and detach
+from the distributor exactly once when they succeed or fail. A matching
+`MessageNotAck`, timeout, invalid peer message, connection end, or explicit
+`cancel` resolves the collector with a failure. An exception raised by a custom
+collector callback rejects its completion and propagates unchanged.
 
-The block must return nil or a list of symbols to indicate whether the message should be kept, and whether collection should be cancelled.
+Custom blocks return `:keep` to retain a matching message. They can also call
+`collector.cancel(reason)` explicitly.
 
 ```ruby
 result = collector.collect do |message|
-	:keep, :cancel 		# example of how to keep the message and cancel collection
+  next :keep if useful?(message)
+
+  collector.cancel('No longer needed') if finished?
 end
 ```
 
-`:keep` keeps (collect) this message
-`:cancel` cancel collection
+## Sending and collecting atomically
 
-Note that you cannot use `return` in a block. You can either simply provide the values as the last expresssion in the block, or use next().
-
-Exceptions in the block will cause the collector to abort. If the collect! or wait! variants are used, the exception is propagated to the caller.
-
-### Bang version
-The method collect!() will raise exceptions in case of errors, and will return the collect message directly.
+High-level send methods follow the same non-bang/bang convention:
 
 ```ruby
-message = collector.collect! # => collected message.
+result = proxy.send_command(command_list, component: 'C1')
+message = proxy.send_command!(command_list, component: 'C1')
 ```
 
-Similar, `wait!()` will raise an exception in case of timeouts or errors:
+Methods ending in `_and_collect` start their collector before sending, so an
+immediate peer response cannot be missed. They return `Result<RSMP::Exchange>`.
+The exchange contains the request and the immutable completed collection.
 
 ```ruby
-message = collector.wait! # => collected message.
-```
+result = proxy.send_command_and_collect(command_list, component: 'C1', within: 5)
 
-
-### Schema Errors and Disconnects
-The collector can optionally cancel collection in special cases, controlled by the `:cancel` option provided when contructing the collector.
-
-```ruby
-options = {
-	cancel: {
-		disconnect: true,
-		schema_error: true
-	}
-}
-result = collector.collect options
-```
-
-disconnect: If the proxy which provides messages experience a disconnect, the collector will cancel collection.
-
-schema_error: If the proxy receives a message with a schema error, the collector will cancel collection, if the the invalid message has the correct message type.
-
-### NotAck
-A typical scenaria is that you send a command or status request, and want to collect the response. But if the original message is rejected by the site, you will received a NotAck instead of a reply. The collector classes can handle this, as long as you provide the message id of the original request in the `m_id` key of teh options when you construct the collector.
-
-If a NotAck is received with a matching `oMId` (original message id), the collection is cancelled.
-
-## StatusCollector
-Waits for a set of status criteria to be met.
-
-Note that a single RSMP status message can contain multiple status items. Unlike MessageCollector, a StatusCollector therefore operates on items, rather than messages, and you can't specify a number of messages to collect.
-
-
-### Criteria
-You construct a StatusCollector with set of criteria, specifying the status codes, names, and optionally values that must be met.
-
-### Collecting
-When you start collection, it will complete once all criteria are all fulfilled, the timeout is reached or a custom filtering block aborts the collection.
-
-```ruby
-collector = StatusCollector.new(options)
-result = matcher.collect(timeout: 5)
-```
-
-### Custom filtering
-You can use a block to do extra filtering. The block will be called for each individual status item that fulfils all criteria, like status code and name, component, etc.
-
-Like with MessageCollector, the block must return a hash specifing whether to keep the message and whether to continue collection.
-
-```ruby
-matcher = StatusCollector.new(options)
-result = matcher.collect(options) do |message,item|
-	next(:keep) if good_item?(item) 		# keep item
+if result.success?
+  exchange = result.value
+  puts exchange.request
+  puts exchange.collection.messages
 end
 ```
 
-## Sending commands
-The method `send_command` sends a CommandRequest to the site and returns the sent message. `component:` defaults to `main.c_id`.
+Status requests and subscriptions use the same shape:
 
 ```ruby
-message = send_command(
-  [{'cCI' => 'M0001', 'n' => 'status', 'v' => 'NormalControl'}],
-  component: 'AA+BBCCC=DDDEE001'
-)
+result = proxy.request_status_and_collect(status_list, component: 'C1', within: 5)
+result = proxy.subscribe_to_status_and_collect(subscription_list, component: 'C1', within: 5)
 ```
 
-To send and wait for the CommandResponse, use `send_command_and_collect`. It returns a collector; call `.ok!` to raise on NotAck or timeout.
-
-```ruby
-collector = send_command_and_collect(
-  [{'cCI' => 'M0001', 'n' => 'status', 'v' => 'NormalControl'}],
-  within: 5,
-  component: 'AA+BBCCC=DDDEE001'
-)
-collector.ok!
-```
-
-## Requesting status
-The method `request_status` sends a StatusRequest to the site and returns `{ sent: message }`. `component:` defaults to `main.c_id`.
-
-```ruby
-result = request_status(
-  [{'sCI' => 'S0001', 'n' => 'signalgroupstatus'}],
-  component: 'AA+BBCCC=DDDEE001'
-)
-result[:sent]  # => the StatusRequest message
-```
-
-To send and wait for the StatusResponse, use `request_status_and_collect`. It returns a collector; call `.ok!` to raise on NotAck or timeout.
-
-```ruby
-collector = request_status_and_collect(
-  [{'sCI' => 'S0001', 'n' => 'signalgroupstatus'}],
-  within: 5,
-  component: 'AA+BBCCC=DDDEE001'
-)
-collector.ok!
-```
-
-## Subscribing to status updates
-The method `subscribe_to_status` sends a StatusSubscribe message to the site and returns `{ sent: message }`. `component:` defaults to `main.c_id`.
-
-### Without collection
-
-```ruby
-result = subscribe_to_status(
-  [{'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'uRt' => '1'}],
-  component: 'AA+BBCCC=DDDEE001'
-)
-result[:sent]  # => the StatusSubscribe message
-```
-
-If you want to manually collect incoming status updates after subscribing, start a collector before subscribing so you don't miss early responses:
-
-```ruby
-task = async do
-  MessageCollector.new(options).collect(num: 5, timeout: 10)
-end
-subscribe_to_status(status_list)
-task.wait
-```
-
-### With collection
-
-Use `subscribe_to_status_and_collect` to subscribe and collect status updates matching the criteria. It returns a collector; call `.ok!` to raise on NotAck or timeout.
-
-```ruby
-collector = subscribe_to_status_and_collect(
-  [{'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'uRt' => '1'}],
-  within: 5,
-  component: 'AA+BBCCC=DDDEE001'
-)
-collector.ok!
-```
-
+The raising variants are `send_command_and_collect!`,
+`request_status_and_collect!`, and `subscribe_to_status_and_collect!`.

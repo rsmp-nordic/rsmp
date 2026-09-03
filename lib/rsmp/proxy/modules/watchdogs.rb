@@ -40,7 +40,7 @@ module RSMP
 
         def send_watchdog(now = Clock.now)
           message = RSMP::Watchdog.new({ 'wTs' => clock.to_s })
-          send_message message
+          send_generated_message message
           @latest_watchdog_send_at = now
         end
 
@@ -52,7 +52,20 @@ module RSMP
 
           str = "No Watchdog received within #{timeout} seconds"
           log str, level: :warning
-          distribute MissingWatchdog.new(str)
+          failure = Failure.new(
+            code: :missing_watchdog,
+            message: str,
+            source: :peer,
+            context: { session_id: session_id }
+          )
+          distribute_event(
+            Event.new(
+              type: :missing_watchdog,
+              source: self,
+              session_id: session_id,
+              failure: failure
+            )
+          )
         end
 
         def process_watchdog(message)
