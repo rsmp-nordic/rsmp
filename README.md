@@ -20,12 +20,20 @@ The RSMP::Site and RSMP::Supervisor classes can be used to run a RSMP site.
 
 ```ruby
 require 'rsmp'
-RSMP::Site.new.start 		# run site until Ctlr-C is pressed
+Async do |task|
+  site = RSMP::Site.new
+  site.start(parent: task)
+  site.wait
+end
 ```
 
 ```ruby
 require 'rsmp'
-RSMP::Supervisor.new.start  		# run supervisor until Ctlr-C is pressed
+Async do |task|
+  supervisor = RSMP::Supervisor.new
+  supervisor.start(parent: task)
+  supervisor.wait
+end
 ```
 
 By default, a site will try to connect to a single supervisor on localhost 127.0.0.1, port 12111. By default, a supervisor will listen for sites on port 12111 and accept any site.
@@ -131,11 +139,18 @@ the RSMP Core and SXL source repositories.
 Core and SXL schemas are selected with a flat map:
 
 ```ruby
-RSMP::Schema.validate(message, {
+validation = RSMP::Schema.validate(message, {
   core: '3.3.0',
   tlc: '1.3.0'
 })
+warn validation.message if validation.invalid?
 ```
+
+Finite operations such as waits, sends, and response collection return
+`RSMP::Result`. Expected peer, transport, and timeout failures are values;
+unexpected implementation errors still propagate with their original
+backtraces. See [finite operations and collection](documentation/collecting_message.md)
+and [Async task ownership](documentation/tasks.md).
 
 Sites and supervisors configure one or more SXLs with `sxls`:
 

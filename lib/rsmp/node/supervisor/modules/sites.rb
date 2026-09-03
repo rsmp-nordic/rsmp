@@ -23,24 +23,35 @@ module RSMP
 
         def wait_for_site(site_id, timeout:)
           site = find_site site_id
-          return site if site
+          return Result.success(site) if site
 
           wait_for_condition(@site_id_condition, timeout: timeout) do
             find_site site_id
           end
-        rescue Async::TimeoutError
+        end
+
+        def wait_for_site!(site_id, timeout:)
+          result = wait_for_site(site_id, timeout: timeout)
+          return result.value! if result.success?
+
           str = if site_id == :any
                   'No site connected'
                 else
                   "Site '#{site_id}' did not connect"
                 end
-          raise RSMP::TimeoutError, "#{str} within #{timeout}s"
+          Result.failure(failure: result.failure.with(message: "#{str} within #{timeout}s")).value!
         end
 
         def wait_for_site_disconnect(site_id, timeout:)
           wait_for_condition(@site_id_condition, timeout: timeout) { true unless find_site site_id }
-        rescue Async::TimeoutError
-          raise RSMP::TimeoutError, "Site '#{site_id}' did not disconnect within #{timeout}s"
+        end
+
+        def wait_for_site_disconnect!(site_id, timeout:)
+          result = wait_for_site_disconnect(site_id, timeout: timeout)
+          return result.value! if result.success?
+
+          failure = result.failure.with(message: "Site '#{site_id}' did not disconnect within #{timeout}s")
+          Result.failure(failure: failure).value!
         end
 
         def check_site_id(site_id)

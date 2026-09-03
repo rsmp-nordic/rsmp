@@ -163,8 +163,9 @@ module RSMP
       puts "Error: #{e}"
       exit 1
     rescue StandardError => e
-      puts "Uncaught error: #{e}"
-      puts caller.join("\n")
+      warn "Uncaught error: #{e.class}: #{e.message}"
+      warn e.full_message(highlight: false, order: :top)
+      exit 1
     end
 
     desc 'supervisor', 'Run RSMP supervisor'
@@ -280,7 +281,10 @@ module RSMP
         loop do
           site = site_class.new(site_settings: settings, log_settings: log_settings)
           site.start
-          site.wait
+          termination = site.wait
+          break unless termination&.success? && termination.value.reason == :restart
+
+          site.stop
         rescue Psych::SyntaxError => e
           puts "Cannot read config file #{e}"
           break
@@ -288,8 +292,6 @@ module RSMP
                RSMP::ConfigurationError => e
           puts "Cannot start site: #{e}"
           break
-        rescue RSMP::Restart
-          site.stop
         end
       end
     end

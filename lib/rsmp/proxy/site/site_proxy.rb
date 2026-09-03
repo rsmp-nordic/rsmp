@@ -56,10 +56,6 @@ module RSMP
       else
         super
       end
-    rescue RSMP::RepeatedAlarmError, RSMP::RepeatedStatusError, RSMP::TimestampError => e
-      str = "Rejected #{message.type} message,"
-      dont_acknowledge message, str, e.to_s
-      distribute_error e.exception("#{str}#{e.message} #{message.json}")
     end
 
     def handled_by_parent?(message)
@@ -115,7 +111,18 @@ module RSMP
     end
 
     def validate_ready(action)
-      raise NotReady, "Can't #{action} because connection is not ready. (Currently #{@state})" unless ready?
+      return Result.success(self) if ready?
+
+      Result.failure(
+        :not_ready,
+        message: "Can't #{action} because connection is not ready. (Currently #{@state})",
+        source: :connection,
+        context: { action: action, state: @state, session_id: session_id }
+      )
+    end
+
+    def validate_ready!(action)
+      validate_ready(action).value!
     end
 
     def version_acknowledged; end
@@ -202,11 +209,6 @@ module RSMP
       else
         dont_acknowledge message, 'Rejected', "No config found for site #{@site_id}"
       end
-    end
-
-    def receive_error(error, options = {})
-      @supervisor&.receive_error error, options
-      distribute_error error, options
     end
 
     def build_component(id:, type:, settings: {})

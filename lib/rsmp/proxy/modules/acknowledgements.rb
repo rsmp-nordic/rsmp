@@ -5,16 +5,16 @@ module RSMP
       # Manages sending/receiving acks and nacks, and tracking acknowledged messages
       module Acknowledgements
         def acknowledge(original)
-          raise InvalidArgument unless original
+          raise ArgumentError, 'original message is required' unless original
 
           ack = MessageAck.build_from(original)
           ack.original = original.clone
-          send_message ack, "for #{ack.original.type} #{original.m_id_short}"
+          send_generated_message ack, "for #{ack.original.type} #{original.m_id_short}"
           check_ingoing_acknowledged original
         end
 
         def dont_acknowledge(original, prefix = nil, reason = nil, force: true)
-          raise InvalidArgument unless original
+          raise ArgumentError, 'original message is required' unless original
 
           str = [prefix, reason].join(' ')
           log str, message: original, level: :warning if reason
@@ -23,7 +23,7 @@ module RSMP
                                         'rea' => reason || 'Unknown reason'
                                       })
           message.original = original.clone
-          send_message message, "for #{original.type} #{original.m_id_short}", force: force
+          send_generated_message message, "for #{original.type} #{original.m_id_short}", force: force
         end
 
         def expect_acknowledgement(message)
@@ -45,11 +45,22 @@ module RSMP
 
             str = "No acknowledgements for #{message.type} #{message.m_id_short} within #{timeout} seconds"
             log str, level: :error
-            begin
-              close
-            ensure
-              distribute_error MissingAcknowledgment.new(str)
-            end
+            failure = Failure.new(
+              code: :missing_acknowledgement,
+              message: str,
+              source: :peer,
+              context: { message: message, session_id: session_id }
+            )
+            distribute_event(
+              Event.new(
+                type: :missing_acknowledgement,
+                source: self,
+                session_id: session_id,
+                message: message,
+                failure: failure
+              )
+            )
+            close(reason: :missing_acknowledgement, failure: failure)
           end
         end
 

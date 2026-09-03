@@ -7,10 +7,9 @@ module RSMP
 
     attr_reader :messages
 
-    def initialize(distributor, task:, filter: nil)
+    def initialize(distributor, filter: nil)
       initialize_receiver distributor, filter: filter
       @condition = Async::Notification.new
-      @task = task
       clear
     end
 
@@ -21,14 +20,23 @@ module RSMP
     def wait_for_message(timeout: nil)
       if @messages.empty?
         if timeout
-          @task.with_timeout(timeout) { @condition.wait }
+          Async::Task.current.with_timeout(timeout) { @condition.wait }
         else
           @condition.wait
         end
       end
-      @messages.shift
-    rescue Async::TimeoutError
-      raise RSMP::TimeoutError
+      Result.success(@messages.shift)
+    rescue Async::TimeoutError => e
+      Result.failure(
+        :timeout,
+        message: "No message was received within #{timeout}s",
+        source: :timeout,
+        cause: e
+      )
+    end
+
+    def wait_for_message!(...)
+      wait_for_message(...).value!
     end
 
     def handle_message(message)

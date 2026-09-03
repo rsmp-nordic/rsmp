@@ -138,9 +138,9 @@ describe RSMP::Site do
         end
       }) do |_task|
         site.start
-        proxy = site.wait_for_supervisor :any, timeout: collect_timeout
+        proxy = site.wait_for_supervisor! :any, timeout: collect_timeout
         expect(proxy).to be_a(RSMP::SupervisorProxy)
-        proxy.wait_for_state(:ready, timeout: collect_timeout)
+        proxy.wait_for_state!(:ready, timeout: collect_timeout)
       end
     end
   end

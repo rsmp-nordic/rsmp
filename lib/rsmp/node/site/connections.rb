@@ -9,30 +9,24 @@ module RSMP
       end
     end
 
-    def listen_for_supervisors
+    def listen_for_supervisors(parent:)
       ip = @site_settings['ip'] || '0.0.0.0'
       port = @site_settings['port']
       log "Starting #{site_type_name} listener on #{ip}:#{port}", level: :info, timestamp: @clock.now
       @endpoint = IO::Endpoint.tcp(ip, port)
-      @accept_task = Async::Task.current.async do |task|
+      @accept_task = parent.async do |task|
         task.annotate 'site accept loop'
         accept_supervisor_connections
       end
 
       @ready_condition.signal
-      @accept_task.wait
+      @accept_task
     end
 
     def accept_supervisor_connections
       @endpoint.accept do |socket|
         accept_supervisor_connection socket
-      rescue StandardError => e
-        distribute_error e, level: :internal
       end
-    rescue Async::Stop
-      # Expected during shutdown - no action needed
-    rescue StandardError => e
-      distribute_error e, level: :internal
     end
 
     def accept_supervisor_connection(socket)

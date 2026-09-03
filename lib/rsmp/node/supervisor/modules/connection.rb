@@ -15,13 +15,27 @@ module RSMP
             reject_connection socket, info
           end
         rescue ConnectionError, HandshakeError => e
-          log "Rejected connection from #{remote_ip}:#{remote_port}, #{e}", level: :warning
-          distribute_error e
-        rescue StandardError => e
-          log "Connection: #{e}", exception: e, level: :error
-          distribute_error e, level: :internal
+          report_connection_rejection(e, remote_ip, remote_port)
         ensure
           close socket, info
+        end
+
+        def report_connection_rejection(error, remote_ip, remote_port)
+          log "Rejected connection from #{remote_ip}:#{remote_port}, #{error}", level: :warning
+          failure = Failure.new(
+            code: error.is_a?(HandshakeError) ? :handshake_failed : :connection_rejected,
+            message: error.message,
+            source: :peer,
+            context: { ip: remote_ip, port: remote_port }
+          )
+          publish_event(
+            Event.new(
+              type: :connection_rejected,
+              source: self,
+              failure: failure,
+              context: { ip: remote_ip, port: remote_port }
+            )
+          )
         end
 
         def accept?(_socket, _info)

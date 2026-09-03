@@ -4,12 +4,14 @@ describe RSMP::Proxy do
   class CapturingProtocol
     attr_reader :lines
 
-    def initialize
+    def initialize(&on_write)
       @lines = []
+      @on_write = on_write
     end
 
     def write_lines(line)
       @lines << line
+      @on_write&.call(line)
     end
   end
 
@@ -33,6 +35,12 @@ describe RSMP::Proxy do
     end
   end
 
+  class FaultySxlInterface
+    def validate_message!(_message)
+      nil.unexpected_interface_bug
+    end
+  end
+
   let(:options) { {} }
   let(:proxy) { subject.new options }
 
@@ -40,33 +48,36 @@ describe RSMP::Proxy do
     it 'wakes up' do
       task = Async::Task.current
       subtask = task.async do |_subtask|
-        proxy.wait_for_state :connected, timeout: 0.001
+        proxy.wait_for_state :connected, timeout: 1
       end
       proxy.state = :connected
-      expect(subtask.wait).to be == true
+      result = subtask.wait
+      expect(result.success?).to be == true
+      expect(result.value).to be == :connected
     end
 
     it 'accepts array of states and returns current state' do
       task = Async::Task.current
       subtask = task.async do |_subtask|
-        state = proxy.wait_for_state %i[ok ready], timeout: 0.001
-        expect(state).to be == :ready
+        result = proxy.wait_for_state %i[ok ready], timeout: 1
+        expect(result.value).to be == :ready
       end
       proxy.state = :ready
       subtask.result
     end
 
     it 'times out' do
-      expect do
-        proxy.wait_for_state :connected, timeout: 0.001
-      end.to raise_exception(RSMP::TimeoutError)
+      result = proxy.wait_for_state :connected, timeout: 0.001
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :timeout
     end
 
     it 'returns immediately if state is already correct' do
       proxy.state = :disconnected
       proxy.instance_variable_set(:@state_condition, Async::Notification.new)
       result = proxy.wait_for_state :disconnected, timeout: 0.001
-      expect(result).to be == true
+      expect(result.success?).to be == true
+      expect(result.value).to be == :disconnected
     end
   end
 
@@ -76,7 +87,7 @@ describe RSMP::Proxy do
       condition = Async::Notification.new
       subtask = task.async do |_subtask|
         result = proxy.wait_for_condition condition, timeout: 0.001
-        expect(result).to be_truthy
+        expect(result.success?).to be == true
       end
       condition.signal
       subtask.result
@@ -84,9 +95,24 @@ describe RSMP::Proxy do
 
     it 'times out' do
       condition = Async::Notification.new
+      result = proxy.wait_for_condition condition, timeout: 0.001
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :timeout
+    end
+
+    it 'does not relabel an Async timeout raised by condition processing' do
+      task = Async::Task.current
+      condition = Async::Notification.new
+      waiting = task.async do
+        proxy.wait_for_condition(condition, timeout: 1) do
+          raise Async::TimeoutError, 'condition processing defect'
+        end
+      end
+      condition.signal
+
       expect do
-        proxy.wait_for_condition condition, timeout: 0.001
-      end.to raise_exception(RSMP::TimeoutError)
+        waiting.wait
+      end.to raise_exception(Async::TimeoutError, message: be == 'condition processing defect')
     end
   end
 
@@ -116,6 +142,36 @@ describe RSMP::Proxy do
       expect(result).to be == true
 
       subtask.result
+    end
+  end
+
+  with 'reader failure boundaries' do
+    it 'returns an expected failure when the peer closes the stream' do
+      protocol = Object.new
+      protocol.define_singleton_method(:read_line) { nil }
+      reader_proxy = subject.new(protocol: protocol, stream: Object.new, log_settings: { 'active' => false })
+      reader_proxy.instance_variable_set(:@session_closed, false)
+      reader_proxy.define_singleton_method(:log) { |_message, **_options| nil }
+
+      result = reader_proxy.run_reader(0)
+
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :disconnected
+      expect(result.failure.source).to be == :peer
+    end
+
+    it 'does not relabel a processing system error as a transport failure' do
+      protocol = Object.new
+      protocol.define_singleton_method(:read_line) { '{}' }
+      reader_proxy = subject.new(protocol: protocol, stream: Object.new, log_settings: { 'active' => false })
+      reader_proxy.instance_variable_set(:@session_closed, false)
+      reader_proxy.define_singleton_method(:process_packet) do |_json|
+        raise Errno::ENOENT, 'processing defect'
+      end
+
+      expect do
+        reader_proxy.run_reader(0)
+      end.to raise_exception(Errno::ENOENT, message: be =~ /processing defect/)
     end
   end
 
@@ -227,7 +283,7 @@ describe RSMP::Proxy do
       )
       site_proxy.instance_variable_set(:@sxl_interfaces, { 'tlc' => RejectingSxlInterface.new })
 
-      site_proxy.process_packet({
+      result = site_proxy.process_packet({
         'mType' => 'rSMsg',
         'type' => 'StatusUpdate',
         'cId' => 'C1',
@@ -240,6 +296,8 @@ describe RSMP::Proxy do
       expect(response['type']).to be == 'MessageNotAck'
       expect(response['oMId']).to be == '859e189e-c973-4b40-90c4-45a7a25f2dda'
       expect(response['rea']).to be == 'SXL says no'
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :message_rejected
     end
 
     it 'sends MessageNotAck when no accepted SXL defines an incoming message code' do
@@ -253,7 +311,7 @@ describe RSMP::Proxy do
         [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }]
       )
 
-      site_proxy.process_packet({
+      result = site_proxy.process_packet({
         'mType' => 'rSMsg',
         'type' => 'StatusUpdate',
         'cId' => 'C1',
@@ -266,6 +324,78 @@ describe RSMP::Proxy do
       expect(response['type']).to be == 'MessageNotAck'
       expect(response['oMId']).to be == '859e189e-c973-4b40-90c4-45a7a25f2dda'
       expect(response['rea']).to be =~ /No accepted SXL defines status code\(s\) S0000/
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :invalid_peer_message
+    end
+
+    it 'reports schema-valid messages for unknown components as peer failures' do
+      site = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'TLC001',
+          'supervisors' => [],
+          'sxls' => { 'tlc' => RSMP::Schema.latest_version(:tlc) }
+        },
+        log_settings: { 'active' => false }
+      )
+      protocol = CapturingProtocol.new
+      supervisor_proxy = RSMP::SupervisorProxy.new(
+        site: site,
+        ip: '127.0.0.1',
+        port: 12_345,
+        protocol: protocol
+      )
+      supervisor_proxy.instance_variable_set(:@state, :connected)
+      supervisor_proxy.instance_variable_set(:@core_version, '3.3.0')
+      supervisor_proxy.instance_variable_set(:@version_determined, true)
+      supervisor_proxy.instance_variable_set(
+        :@accepted_sxls,
+        [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }]
+      )
+      interface = CapturingSxlInterface.new
+      interface.define_singleton_method(:process_message) do |_message|
+        raise RSMP::UnknownComponent, 'Component unknown is missing'
+      end
+      supervisor_proxy.instance_variable_set(:@sxl_interfaces, { 'tlc' => interface })
+
+      result = supervisor_proxy.process_packet({
+        'mType' => 'rSMsg',
+        'type' => 'StatusRequest',
+        'cId' => 'unknown',
+        'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus' }],
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda'
+      }.to_json)
+
+      response = JSON.parse(protocol.lines.last)
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :invalid_peer_message
+      expect(result.failure.source).to be == :peer
+      expect(response['type']).to be == 'MessageNotAck'
+      expect(response['rea']).to be =~ /Component unknown/
+    end
+
+    it 'does not relabel an implementation defect as a peer failure' do
+      site_proxy.instance_variable_set(:@state, :connected)
+      site_proxy.instance_variable_set(:@core_version, '3.3.0')
+      site_proxy.instance_variable_set(:@version_determined, true)
+      site_proxy.instance_variable_set(
+        :@accepted_sxls,
+        [{ 'name' => 'tlc', 'version' => RSMP::Schema.latest_version(:tlc) }]
+      )
+      site_proxy.instance_variable_set(:@sxl_interfaces, { 'tlc' => FaultySxlInterface.new })
+
+      json = {
+        'mType' => 'rSMsg',
+        'type' => 'StatusUpdate',
+        'cId' => 'C1',
+        'sTs' => '2024-01-01T10:00:00.000Z',
+        'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '1', 'q' => 'recent' }],
+        'mId' => '859e189e-c973-4b40-90c4-45a7a25f2dda'
+      }.to_json
+
+      expect { site_proxy.process_packet(json) }.to raise_exception(
+        NoMethodError,
+        message: be =~ /unexpected_interface_bug/
+      )
     end
 
     it 'dispatches supervisor-side SXL requests to the interface without generic pre-processing' do
@@ -601,6 +731,32 @@ describe RSMP::Proxy do
       expect(sent['sS'].first['s']).to be == 3
     end
 
+    it 'returns invalid caller messages as failures but raises for invalid generated messages' do
+      proxy, = build_core_3_3_supervisor_proxy
+      message = RSMP::MessageAck.new
+
+      result = proxy.send_message message
+
+      expect(result.failure?).to be == true
+      expect(result.failure.source).to be == :local
+      expect do
+        proxy.send_generated_message message
+      end.to raise_exception(RSMP::OperationError, message: be =~ /Could not send MessageAck/)
+    end
+
+    it 'does not relabel a receiver system error as a transport failure' do
+      proxy, = build_core_3_3_supervisor_proxy
+      receiver = Object.new
+      receiver.define_singleton_method(:receive) do |_message|
+        raise Errno::ENOENT, 'receiver defect'
+      end
+      proxy.add_receiver(receiver)
+
+      expect do
+        proxy.send_message(RSMP::Watchdog.new('wTs' => '2024-01-01T10:00:00.000Z'), validate: false)
+      end.to raise_exception(Errno::ENOENT, message: be =~ /receiver defect/)
+    end
+
     it 'does not add legacy NTS attributes for 3.3.0 messages' do
       proxy, = build_core_3_3_supervisor_proxy
       message = RSMP::StatusRequest.new
@@ -609,6 +765,66 @@ describe RSMP::Proxy do
 
       expect(message.attributes.key?('ntsOId')).to be == false
       expect(message.attributes.key?('xNId')).to be == false
+    end
+  end
+
+  with 'finite request operations' do
+    def ready_site_proxy(protocol)
+      supervisor = RSMP::Supervisor.new(
+        supervisor_settings: {
+          'default' => { 'sxls' => { 'tlc' => '1.3.0' }, 'core_version' => '3.3.0' }
+        },
+        log_settings: { 'active' => false }
+      )
+      proxy = RSMP::SiteProxy.new(
+        supervisor: supervisor,
+        ip: '127.0.0.1',
+        port: 12_345,
+        site_id: 'TLC001'
+      )
+      proxy.instance_variable_set(:@protocol, protocol)
+      proxy.instance_variable_set(:@state, :ready)
+      proxy.instance_variable_set(:@core_version, '3.3.0')
+      proxy.instance_variable_set(:@version_determined, true)
+      proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
+      proxy
+    end
+
+    it 'returns the sent high-level message in a successful Result' do
+      result = ready_site_proxy(CapturingProtocol.new).send_command(
+        [{ 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'status', 'v' => 'NormalControl' }],
+        component: 'C1',
+        validate: false
+      )
+
+      expect(result.success?).to be == true
+      expect(result.value).to be_a(RSMP::CommandRequest)
+    end
+
+    it 'starts collection before sending and returns an immutable Exchange' do
+      proxy = nil
+      protocol = CapturingProtocol.new do |_line|
+        response = RSMP::CommandResponse.new(
+          'cId' => 'C1',
+          'cTS' => '2024-01-01T10:00:00.000Z',
+          'rvs' => [{ 'cCI' => 'M0001', 'n' => 'status', 'v' => 'NormalControl', 'age' => 'recent' }]
+        )
+        response.direction = :in
+        proxy.distribute(response)
+      end
+      proxy = ready_site_proxy(protocol)
+
+      result = proxy.send_command_and_collect(
+        [{ 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'status', 'v' => 'NormalControl' }],
+        component: 'C1',
+        within: 0.1,
+        validate: false
+      )
+
+      expect(result.success?).to be == true
+      expect(result.value).to be_a(RSMP::Exchange)
+      expect(result.value.collection.messages.first).to be_a(RSMP::CommandResponse)
+      expect(result.value.collection.frozen?).to be == true
     end
   end
 
@@ -672,7 +888,9 @@ describe RSMP::Proxy do
         'rvs' => [{ 'n' => 'status', 'v' => 'true' }]
       )
 
-      expect { proxy.send_message message }.to raise_exception(RSMP::NotReady)
+      result = proxy.send_message message
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :not_ready
       expect(proxy.message_buffer).to be == []
     end
 

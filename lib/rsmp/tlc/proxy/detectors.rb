@@ -7,7 +7,8 @@ module RSMP
         # M0008 - Force detector logic to a given mode and status.
         # component_id must refer to the detector logic component, not main.
         def force_detector_logic(component_id, status:, mode:, within:)
-          validate_ready 'force detector logic'
+          readiness = validate_ready 'force detector logic'
+          return readiness if readiness.failure?
 
           security_code = security_code_for(2)
 
@@ -27,12 +28,18 @@ module RSMP
             'n' => 'mode',
             'v' => command_value('M0008', 'mode', mode)
           }]
-          send_command_and_collect(command_list, component: component_id, within: within).ok!
+          send_command_and_collect(command_list, component: component_id, within: within)
+        end
+
+        def force_detector_logic!(...)
+          force_detector_logic(...).value!
         end
 
         # M0021 - Set the trigger level for traffic counting.
         def set_trigger_level(status, within:)
-          validate_ready 'set trigger level'
+          readiness = validate_ready 'set trigger level'
+          return readiness if readiness.failure?
+
           raise 'TLC main component not found' unless main
 
           security_code = security_code_for(2)
@@ -48,7 +55,11 @@ module RSMP
             'n' => 'securityCode',
             'v' => security_code.to_s
           }]
-          send_command_and_collect(command_list, within: within).ok!
+          send_command_and_collect(command_list, within: within)
+        end
+
+        def set_trigger_level!(...)
+          set_trigger_level(...).value!
         end
       end
     end

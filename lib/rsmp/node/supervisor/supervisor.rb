@@ -38,23 +38,18 @@ module RSMP
           timestamp: @clock.now
 
       @endpoint = IO::Endpoint.tcp('0.0.0.0', @supervisor_settings['port'])
-      @accept_task = Async::Task.current.async do |task|
+      barrier = Async::Barrier.new(parent: @task)
+      @accept_task = barrier.async do |task|
         task.annotate 'supervisor accept loop'
         @endpoint.accept do |socket| # creates fibers
           handle_connection(socket)
-        rescue StandardError => e
-          distribute_error e, level: :internal
         end
-      rescue Async::Stop
-        # Expected during shutdown - no action needed
-      rescue StandardError => e
-        distribute_error e, level: :internal
       end
 
       @ready_condition.signal
-      @accept_task.wait
-    rescue StandardError => e
-      distribute_error e, level: :internal
+      barrier.wait
+    ensure
+      barrier.cancel if barrier && !barrier.empty?
     end
 
     def connect_to_sites
@@ -63,8 +58,11 @@ module RSMP
           timestamp: @clock.now
       build_outbound_proxies
       @ready_condition.signal
-      @proxies.each(&:start)
-      @proxies.each(&:wait)
+      barrier = Async::Barrier.new(parent: @task)
+      @proxies.each { |proxy| proxy.start(parent: barrier) }
+      barrier.wait
+    ensure
+      barrier.cancel if barrier && !barrier.empty?
     end
 
     def build_outbound_proxies
@@ -93,7 +91,7 @@ module RSMP
     def stop
       log "Stopping supervisor #{@supervisor_settings['site_id']}", level: :info
 
-      @accept_task&.stop
+      @accept_task&.cancel if @accept_task&.running?
       @accept_task = nil
 
       @endpoint = nil

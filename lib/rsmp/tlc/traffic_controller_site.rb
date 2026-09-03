@@ -28,9 +28,9 @@ module RSMP
         'TLC'
       end
 
-      def start
+      def start_auxiliary_tasks(parent)
         super
-        start_tlc_timer
+        start_tlc_timer(parent: parent)
         main.initiate_startup_sequence
       end
 
@@ -82,11 +82,11 @@ module RSMP
         end
       end
 
-      def start_tlc_timer
+      def start_tlc_timer(parent:)
         task_name = 'tlc timer'
         log "Starting #{task_name} with interval #{@interval} seconds", level: :debug
 
-        @timer = @task.async do |task|
+        @timer = parent.async do |task|
           task.annotate task_name
           run_tlc_timer task
         end
@@ -96,9 +96,6 @@ module RSMP
         next_time = Time.now.to_f
         loop do
           timer(@clock.now)
-        rescue StandardError => e
-          distribute_error e, level: :internal
-        ensure
           # adjust sleep duration to avoid drift. so wake up always happens on the
           # same fractional second.
           # note that Time.now is not monotonic. If the clock is changed,
@@ -108,7 +105,7 @@ module RSMP
           # if the clock is changed, the wake up would then happen on a different
           # fractional second
           next_time += @interval
-          duration = next_time - Time.now.to_f
+          duration = [next_time - Time.now.to_f, 0].max
           task.sleep duration
         end
       end
@@ -116,7 +113,7 @@ module RSMP
       def stop_tlc_timer
         return unless @timer
 
-        @timer.stop
+        @timer.cancel if @timer.running?
         @timer = nil
       end
 

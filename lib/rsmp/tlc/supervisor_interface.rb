@@ -6,6 +6,7 @@ module RSMP
       include Proxy::Control
       include Proxy::IO
       include Proxy::Plans
+      include Proxy::PlansBang
       include Proxy::Status
       include Proxy::Detectors
       include Proxy::System
@@ -32,7 +33,8 @@ module RSMP
       end
 
       def subscribe_to_timeplan
-        validate_ready 'subscribe to timeplan'
+        readiness = validate_ready 'subscribe to timeplan'
+        return readiness if readiness.failure?
 
         status_list = [
           { 'sCI' => 'S0014', 'n' => 'status', 'uRt' => '0' },
@@ -43,6 +45,10 @@ module RSMP
         raise 'TLC main component not found' unless main
 
         subscribe_to_status status_list, component: main.c_id
+      end
+
+      def subscribe_to_timeplan!(...)
+        subscribe_to_timeplan(...).value!
       end
 
       def process_status_update(message)

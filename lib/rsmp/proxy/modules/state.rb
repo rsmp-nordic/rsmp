@@ -6,14 +6,24 @@ module RSMP
       module State
         def wait_for_state(state, timeout:)
           states = [state].flatten
-          return true if states.include?(@state)
+          return Result.success(@state) if states.include?(@state)
 
-          wait_for_condition(@state_condition, timeout: timeout) do
+          result = wait_for_condition(@state_condition, timeout: timeout) do
             states.include?(@state)
           end
-          true
-        rescue RSMP::TimeoutError
-          raise RSMP::TimeoutError, "Did not reach state #{state} within #{timeout}s"
+          return Result.success(@state) if result.success?
+
+          Result.failure(
+            :timeout,
+            message: "Did not reach state #{state} within #{timeout}s",
+            source: :timeout,
+            context: { expected: states, actual: @state },
+            cause: result.failure.cause
+          )
+        end
+
+        def wait_for_state!(...)
+          wait_for_state(...).value!
         end
 
         def handshake_complete

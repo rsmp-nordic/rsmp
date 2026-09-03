@@ -66,13 +66,13 @@ module RSMP
 
         def send_version_response(site_id, core_versions)
           if core_3_3?
-            send_message Version.new({
-                                       'step' => 'Response',
-                                       'RSMP' => [{ 'vers' => core_version }],
-                                       'supervisorId' => site_id,
-                                       'SXLS' => version_response_sxls,
-                                       'receiveAlarms' => @site_settings['receive_alarms'] != false
-                                     }), validate: false
+            send_generated_message Version.new({
+                                                 'step' => 'Response',
+                                                 'RSMP' => [{ 'vers' => core_version }],
+                                                 'supervisorId' => site_id,
+                                                 'SXLS' => version_response_sxls,
+                                                 'receiveAlarms' => @site_settings['receive_alarms'] != false
+                                               }), validate: false
           else
             send_version_message(site_id, core_versions, step: nil)
           end
@@ -81,7 +81,7 @@ module RSMP
         def send_version_message(site_id, core_versions, step:)
           attributes = version_message_attributes(site_id, core_versions)
           attributes.merge!(version_request_attributes) if step == 'Request'
-          send_message Version.new(attributes), validate: false
+          send_generated_message Version.new(attributes), validate: false
         end
 
         def version_message_attributes(site_id, core_versions)

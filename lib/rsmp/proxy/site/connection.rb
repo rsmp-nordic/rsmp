@@ -12,50 +12,46 @@ module RSMP
     end
 
     def run_accepted_connection
+      begin_session
       self.state = :connected
       start_reader
-      wait_for_reader # run until disconnected
-    rescue RSMP::ConnectionError => e
-      log e, level: :error
-    rescue StandardError => e
-      distribute_error e, level: :internal
+      ended = wait_for_reader
+      close_from_result(ended)
     ensure
+      close(reason: :internal_failure) if $ERROR_INFO
       close
     end
 
     def run_outbound_connection
       loop do
         setup_site_settings
-        connect
+        connected = connect
+        unless connected.success?
+          publish_connection_attempt_failure(connected.failure)
+          break unless reconnect_delay?
+
+          next
+        end
         start_reader
-        wait_for_reader
-        break unless reconnect_delay?
-      rescue Restart
-        @logger.mute @ip, @port
-        raise
-      rescue RSMP::ConnectionError => e
-        log e, level: :error
-        break unless reconnect_delay?
-      rescue StandardError => e
-        distribute_error e, level: :internal
+        close_from_result(wait_for_reader)
         break unless reconnect_delay?
       ensure
+        close(reason: :internal_failure) if $ERROR_INFO
         close
-        stop_subtasks
       end
     end
 
     def connect
       log "Connecting to site #{@site_id} at #{@ip}:#{@port}", level: :info
+      begin_session
       self.state = :connecting
-      open_socket
+      opened = open_socket
+      return opened if opened.failure?
+
       self.state = :connected
       @logger.unmute @ip, @port
       log "Connected to site #{@site_id} at #{@ip}:#{@port}", level: :info
-    rescue SystemCallError => e
-      raise ConnectionError, "Could not connect to site #{@site_id} at #{@ip}:#{@port}: Errno #{e.errno} #{e}"
-    rescue StandardError => e
-      raise ConnectionError, "Error while connecting to site #{@site_id} at #{@ip}:#{@port}: #{e}"
+      Result.success(self)
     end
 
     def open_socket
@@ -64,6 +60,15 @@ module RSMP
       task.with_timeout(timeout) { @socket = endpoint.connect }
       @stream = IO::Stream::Buffered.new(@socket)
       @protocol = RSMP::Protocol.new(@stream)
+      Result.success(self)
+    rescue SystemCallError, SocketError, IOError, Async::TimeoutError => e
+      Result.failure(
+        :connection_failed,
+        message: "Could not connect to site #{@site_id} at #{@ip}:#{@port}: #{e.message}",
+        source: :transport,
+        context: { ip: @ip, port: @port, session_id: @session_id },
+        cause: e
+      )
     end
 
     def reconnect_delay?

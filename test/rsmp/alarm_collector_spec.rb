@@ -39,7 +39,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, num: 2, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right, wrong]
       end
       proxy.distribute right
@@ -54,7 +54,8 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :timeout
+        expect(result.failure?).to be == true
+        expect(result.failure.code).to be == :timeout
       end
       collect_task.wait
     end
@@ -66,7 +67,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'cId' => 'DL1' }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
@@ -81,7 +82,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'aCId' => 'A0302' }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
@@ -96,7 +97,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'aSp' => 'Issue' }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
@@ -111,7 +112,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'aSp' => /[Ii]ssue/ }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
@@ -126,7 +127,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'ack' => 'Acknowledged' }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
@@ -141,7 +142,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'aS' => 'Active' }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
@@ -156,7 +157,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'sS' => 'notSuspended' }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
@@ -171,7 +172,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'cat' => 'D' }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
@@ -186,7 +187,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'pri' => '1' }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong
@@ -202,7 +203,7 @@ describe RSMP::AlarmCollector do
         collector = subject.new proxy, matcher: { 'rvs' => rvs }, num: 1, timeout: collect_timeout
         result = collector.collect
 
-        expect(result).to be == :ok
+        expect(result.success?).to be == true
         expect(collector.messages).to be == [right]
       end
       proxy.distribute wrong

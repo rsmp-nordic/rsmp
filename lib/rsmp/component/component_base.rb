@@ -70,7 +70,7 @@ module RSMP
 
     def set_aggregated_status(status, options = {})
       status = [status] if status.is_a? Symbol
-      raise InvalidArgument unless status.is_a? Array
+      raise ArgumentError, 'aggregated status must be an Array' unless status.is_a? Array
 
       input = status & AGGREGATED_STATUS_KEYS
       return unless input != @aggregated_status
@@ -82,8 +82,8 @@ module RSMP
     end
 
     def aggregated_status_bools=(status)
-      raise InvalidArgument unless status.is_a? Array
-      raise InvalidArgument unless status.size == 8
+      raise ArgumentError, 'aggregated status must be an Array' unless status.is_a? Array
+      raise ArgumentError, 'aggregated status must contain 8 elements' unless status.size == 8
 
       return unless status != @aggregated_status_bools
 

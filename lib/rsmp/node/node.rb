@@ -3,16 +3,16 @@ module RSMP
   class Node
     include Logging
     include Task
+    include EventSource
 
-    attr_reader :archive, :logger, :task, :deferred, :error_queue, :clock, :collector
+    attr_reader :archive, :logger, :task, :deferred, :clock, :collector
 
     def initialize(options = {})
       initialize_logging options
       initialize_task
+      initialize_event_source
       @deferred = []
       @clock = Clock.new
-      @error_queue = Async::Queue.new
-      @ignore_errors = []
       @collect = options[:collect]
     end
 
@@ -29,24 +29,6 @@ module RSMP
       @proxies.each(&:stop)
       @proxies.clear
       super
-    end
-
-    def ignore_errors(classes)
-      was = @ignore_errors
-      @ignore_errors = [classes].flatten
-      yield
-    ensure
-      @ignore_errors = was
-    end
-
-    def distribute_error(error, options = {})
-      return if @ignore_errors.find { |klass| error.is_a? klass }
-
-      if options[:level] == :internal
-        log ["#{error} in task: #{Async::Task.current}", error.backtrace].flatten.join("\n"),
-            level: :error
-      end
-      @error_queue.enqueue error
     end
 
     def defer(key, item = nil)

@@ -8,7 +8,7 @@ module RSMP
             component.alarms.each_pair do |_alarm_code, alarm_state|
               if alarm_state.active
                 alarm = AlarmIssue.new(alarm_state.to_hash.merge('aSp' => 'Issue'))
-                send_message alarm
+                send_generated_message alarm
               end
             end
           end

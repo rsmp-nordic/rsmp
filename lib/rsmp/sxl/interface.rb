@@ -6,7 +6,14 @@ module RSMP
     class Interface
       extend Forwardable
 
-      def_delegators :proxy, :send_message, :send_message_and_collect, :validate_ready, :log
+      def_delegators :proxy,
+                     :send_message,
+                     :send_message!,
+                     :send_message_and_collect,
+                     :send_message_and_collect!,
+                     :validate_ready,
+                     :validate_ready!,
+                     :log
 
       attr_reader :proxy, :name, :version
 

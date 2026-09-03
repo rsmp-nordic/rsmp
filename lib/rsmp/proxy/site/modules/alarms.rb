@@ -18,66 +18,73 @@ module RSMP
                                                   'cId' => component,
                                                   'aCId' => alarm_code
                                                 })
-          send_message message, validate: options[:validate]
-          message
+          send_message(message, validate: options[:validate]).map(&:message)
+        end
+
+        def send_alarm_acknowledgement!(...)
+          send_alarm_acknowledgement(...).value!
         end
 
         # Send an AlarmSuspend message and optionally collect the confirming response.
-        # When collect: true, returns [message, response]; when collect: false, returns message.
-        def suspend_alarm(task, c_id:, a_c_id:, collect: false)
+        # Returns Result<Exchange> when collecting and Result<AlarmSuspend> otherwise.
+        def suspend_alarm(c_id:, a_c_id:, collect: false)
           message = RSMP::AlarmSuspend.new(
             'mId' => RSMP::Message.make_m_id,
             'cId' => c_id,
             'aCId' => a_c_id
           )
           if collect
-            collect_task = task.async do
-              RSMP::AlarmCollector.new(self,
-                                       m_id: message.m_id,
-                                       num: 1,
-                                       matcher: {
-                                         'cId' => c_id,
-                                         'aCI' => a_c_id,
-                                         'aSp' => 'Suspend',
-                                         'sS' => /^Suspended/i
-                                       },
-                                       timeout: node.supervisor_settings.dig('default', 'timeouts', 'alarm')).collect!
-            end
-            send_message message
-            [message, collect_task.wait.first]
+            collector = RSMP::AlarmCollector.new(
+              self,
+              m_id: message.m_id,
+              num: 1,
+              matcher: {
+                'cId' => c_id,
+                'aCId' => a_c_id,
+                'aSp' => 'Suspend',
+                'sS' => /^Suspended/i
+              },
+              timeout: node.supervisor_settings.dig('default', 'timeouts', 'alarm')
+            )
+            send_message_and_collect(message, collector)
           else
-            send_message message
-            message
+            send_message(message).map(&:message)
           end
         end
 
+        def suspend_alarm!(...)
+          suspend_alarm(...).value!
+        end
+
         # Send an AlarmResume message and optionally collect the confirming response.
-        # When collect: true, returns [message, response]; when collect: false, returns message.
-        def resume_alarm(task, c_id:, a_c_id:, collect: false)
+        # Returns Result<Exchange> when collecting and Result<AlarmResume> otherwise.
+        def resume_alarm(c_id:, a_c_id:, collect: false)
           message = RSMP::AlarmResume.new(
             'mId' => RSMP::Message.make_m_id,
             'cId' => c_id,
             'aCId' => a_c_id
           )
           if collect
-            collect_task = task.async do
-              RSMP::AlarmCollector.new(self,
-                                       m_id: message.m_id,
-                                       num: 1,
-                                       matcher: {
-                                         'cId' => c_id,
-                                         'aCI' => a_c_id,
-                                         'aSp' => 'Suspend',
-                                         'sS' => /^notSuspended/i
-                                       },
-                                       timeout: node.supervisor_settings.dig('default', 'timeouts', 'alarm')).collect!
-            end
-            send_message message
-            [message, collect_task.wait.first]
+            collector = RSMP::AlarmCollector.new(
+              self,
+              m_id: message.m_id,
+              num: 1,
+              matcher: {
+                'cId' => c_id,
+                'aCId' => a_c_id,
+                'aSp' => 'Suspend',
+                'sS' => /^notSuspended/i
+              },
+              timeout: node.supervisor_settings.dig('default', 'timeouts', 'alarm')
+            )
+            send_message_and_collect(message, collector)
           else
-            send_message message
-            message
+            send_message(message).map(&:message)
           end
+        end
+
+        def resume_alarm!(...)
+          resume_alarm(...).value!
         end
       end
     end

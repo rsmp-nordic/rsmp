@@ -213,8 +213,6 @@ module RSMP
             end.join(',')
             TrafficControllerSite.make_status times
           end
-        rescue StandardError => e
-          puts e
         end
       end
     end

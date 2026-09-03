@@ -9,6 +9,21 @@ class TaskTest
   end
 end
 
+class FaultyTaskTest
+  include RSMP::Task
+
+  attr_reader :trigger
+
+  def initialize
+    @trigger = Async::Notification.new
+  end
+
+  def run
+    trigger.wait
+    nil.missing_validator_method
+  end
+end
+
 describe RSMP::Task do
   let(:obj) { TaskTest.new }
 
@@ -53,20 +68,39 @@ describe RSMP::Task do
     it 'stops the task' do
       obj.start
       obj.stop
-      expect(obj.task).to be_nil
-      expect(obj.task_status).to be_nil
+      expect(obj.task).to be_a(Async::Task)
+      expect(obj.task_status).to be == :cancelled
     end
   end
 
   with 'restart' do
-    it 'raises Restart' do
+    it 'resolves an explicit termination value' do
       obj.start
       Async::Task.current.sleep(0)
       expect(obj.task).to be_a(Async::Task)
       expect(obj.task_status).to be == :running
 
-      expect { obj.restart }.to raise_exception(RSMP::Restart)
+      obj.restart
+      termination = obj.wait_for_termination
+      expect(termination.success?).to be == true
+      expect(termination.value).to be_a(RSMP::Termination)
+      expect(termination.value.reason).to be == :restart
       obj.stop
+    end
+  end
+
+  with 'unexpected failures' do
+    it 'preserves the original exception through wait' do
+      faulty = FaultyTaskTest.new
+      faulty.start
+      waiting = Async::Task.current.async do
+        expect { faulty.wait }.to raise_exception(
+          NoMethodError,
+          message: be =~ /missing_validator_method/
+        )
+      end
+      faulty.trigger.signal
+      waiting.wait
     end
   end
 end

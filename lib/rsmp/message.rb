@@ -164,11 +164,14 @@ module RSMP
     end
 
     def validate(schemas)
-      errors = RSMP::Schema.validate attributes, schemas
-      return unless errors
+      RSMP::Schema.validate attributes, schemas
+    end
 
-      error_string = errors.map { |item| item.reject { |e| e == '' } }.compact.join(', ').strip
-      err = SchemaError.new error_string.to_s
+    def validate!(schemas)
+      validation = validate(schemas)
+      return self if validation.valid?
+
+      err = SchemaError.new validation.message
       err.schemas = schemas
       raise err
     end
@@ -199,13 +202,12 @@ module RSMP
 
   # Represents a malformed message with invalid attributes.
   class Malformed < Message
-    # rubocop:disable Lint/MissingSuper
+    # rubocop:disable-next Lint/MissingSuper
     def initialize(attributes = {})
       # don't call super, just copy (potentially invalid) attributes
       @attributes = {}
       @invalid_attributes = attributes
     end
-    # rubocop:enable Lint/MissingSuper
   end
 
   # Version message, lists supported versions and SXL information.
@@ -391,7 +393,7 @@ module RSMP
     end
 
     def original=(message)
-      raise InvalidArgument unless message
+      raise ArgumentError, 'original message is required' unless message
 
       @original = message
     end

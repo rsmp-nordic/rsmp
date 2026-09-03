@@ -1,103 +1,121 @@
 module RSMP
   class Proxy
     module Modules
-      # Reader and timer task management
-      # Handles async tasks for reading from socket and running periodic timers
+      # Reader and timer tasks are siblings in one supervised session barrier.
       module Tasks
-        # run an async task that reads from @socket
+        def session_active?(id = @session_id)
+          id == @session_id && !@session_closed
+        end
+
+        def session_tasks
+          @session_tasks ||= Async::Barrier.new(parent: @task)
+        end
+
         def start_reader
-          @reader = @task.async do |task|
-            task.annotate 'reader'
-            run_reader
+          id = @session_id
+          @reader = session_tasks.async do |task|
+            task.annotate "reader session #{id}"
+            run_reader(id)
           end
         end
 
-        def run_reader
+        def run_reader(id)
           @stream ||= IO::Stream::Buffered.new(@socket)
-          @protocol ||= RSMP::Protocol.new(@stream) # rsmp messages are json terminated with a form-feed
-          loop do
-            read_line
+          @protocol ||= RSMP::Protocol.new(@stream)
+          while session_active?(id)
+            line = read_protocol_line
+            return line if line.failure?
+
+            process_received_line(line.value)
           end
-        rescue Restart
-          log 'Closing connection', level: :warning
-          raise
-        rescue EOFError, Async::Stop
-          log 'Connection closed', level: :warning
-        rescue IOError => e
-          log "IOError: #{e}", level: :debug
-        rescue Errno::ECONNRESET
-          log 'Connection reset by peer', level: :warning
-        rescue Errno::EPIPE
-          log 'Broken pipe', level: :warning
-        rescue StandardError => e
-          distribute_error e, level: :internal
+          Result.success(:closed)
         end
 
-        def read_line
+        def read_protocol_line
           json = @protocol.read_line
-          beginning = Time.now
-          message = process_packet json
-          duration = Time.now - beginning
-          ms = (duration * 1000).round(4)
-          per_second = if duration.positive?
-                         (1.0 / duration).round
-                       else
-                         Float::INFINITY
-                       end
-          if message
-            type = message.type
-            m_id = Logger.shorten_message_id(message.m_id)
-          else
-            type = 'Unknown'
-            m_id = nil
+          raise EOFError, 'Connection closed by peer' unless json
+
+          Result.success(json)
+        rescue EOFError => e
+          connection_read_failure(:peer_closed, 'Connection closed by peer', e)
+        rescue IOError, Errno::ECONNRESET, Errno::EPIPE => e
+          connection_read_failure(:transport_failure, e.message, e)
+        end
+
+        def connection_read_failure(reason, text, error)
+          log(text, level: :warning)
+          Result.failure(
+            :disconnected,
+            message: text,
+            source: reason == :peer_closed ? :peer : :transport,
+            context: { reason: reason, session_id: @session_id },
+            cause: error
+          )
+        end
+
+        # Wait for the reader while observing every sibling. A failed timer task
+        # raises here with its original exception and backtrace.
+        def wait_for_session
+          session_tasks.wait do |finished|
+            result = finished.wait
+            break result if finished.equal?(@reader)
+            next if finished.cancelled? || !session_active?
+
+            raise "#{finished.annotation} ended while its connection session was active"
           end
-          str = [type, m_id, "processed in #{ms}ms, #{per_second}req/s"].compact.join(' ')
-          log str, level: :statistics
+        ensure
+          @session_tasks.cancel if @session_tasks && !@session_tasks.empty?
+          @session_tasks = nil
+        end
+
+        def process_received_line(json)
+          beginning = Time.now
+          result = process_packet(json)
+          log_processing_statistics(result, beginning)
+          result
+        end
+
+        def log_processing_statistics(result, beginning)
+          message = result.success? ? result.value : result.failure.context[:message]
+          duration = Time.now - beginning
+          type = message.respond_to?(:type) ? message.type : 'Unknown'
+          m_id = message.respond_to?(:m_id) ? Logger.shorten_message_id(message.m_id) : nil
+          log([type, m_id, processing_speed(duration)].compact.join(' '), level: :statistics)
+        end
+
+        def processing_speed(duration)
+          milliseconds = (duration * 1000).round(4)
+          per_second = duration.positive? ? (1.0 / duration).round : Float::INFINITY
+          "processed in #{milliseconds}ms, #{per_second}req/s"
         end
 
         def start_timer
-          return if @timer
+          return if @timer&.running?
 
-          name = 'timer'
+          id = @session_id
           interval = @site_settings['intervals']['timer'] || 1
-          log "Starting #{name} with interval #{interval} seconds", level: :debug
+          log "Starting timer with interval #{interval} seconds", level: :debug
           @latest_watchdog_received = Clock.now
-          @timer = @task.async do |task|
-            task.annotate 'timer'
-            run_timer task, interval
+          @timer = session_tasks.async do |task|
+            task.annotate "timer session #{id}"
+            run_timer(task, interval, id)
           end
         end
 
-        def run_timer(task, interval)
+        def run_timer(task, interval, id)
           next_time = Time.now.to_f
-          loop do
-            begin
-              now = Clock.now
-              timer(now)
-            rescue RSMP::Schema::Error => e
-              log "Timer: Schema error: #{e}", level: :warning
-            rescue EOFError => e
-              log "Timer: Connection closed: #{e}", level: :warning
-            rescue IOError
-              log 'Timer: IOError', level: :warning
-            rescue Errno::ECONNRESET
-              log 'Timer: Connection reset by peer', level: :warning
-            rescue Errno::EPIPE
-              log 'Timer: Broken pipe', level: :warning
-            rescue StandardError => e
-              distribute_error e, level: :internal
-            end
-          ensure
+          while session_active?(id)
+            timer(Clock.now)
             next_time += interval
-            duration = next_time - Time.now.to_f
-            task.sleep duration
+            task.sleep([next_time - Time.now.to_f, 0].max) if session_active?(id)
           end
+          Result.success(:closed)
         end
 
         def timer(now)
-          watchdog_send_timer now
-          check_ack_timeout now
-          check_watchdog_timeout now
+          watchdog_send_timer(now)
+          check_ack_timeout(now)
+          check_watchdog_timeout(now)
         end
       end
     end

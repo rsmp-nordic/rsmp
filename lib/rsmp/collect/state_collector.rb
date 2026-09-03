@@ -106,9 +106,9 @@ module RSMP
       end
     end
 
-    def perform_match(message)
+    def perform_match?(message)
       return false if super == false
-      return unless collecting?
+      return false unless collecting?
 
       @matchers.each do |matcher|
         break unless collecting?
@@ -120,6 +120,7 @@ module RSMP
           handle_match_result(matched, matcher, message, item)
         end
       end
+      true
     end
 
     # don't collect anything. Matcher will collect them instead
@@ -247,6 +248,14 @@ module RSMP
     # log when we end collecting
     def log_complete
       @distributor.log "#{identifier}: Completed with #{matcher_got_hash}", level: :collect
+    end
+
+    def build_collection
+      Collection.new(
+        messages: messages,
+        reached: reached,
+        matcher_status: matcher_status
+      )
     end
   end
 end

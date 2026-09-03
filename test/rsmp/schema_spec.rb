@@ -28,14 +28,15 @@ describe RSMP::Schema do
       'mId' => '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
     }
 
-    expect(subject.validate(version_request, { core: '3.3.0' })).to be_nil
+    expect(subject.validate(version_request, { core: '3.3.0' }).valid?).to be == true
   end
 
   it 'validates SXL messages using the matching flat SXL schema' do
-    expect(subject.validate(status_request, {
-                              core: '3.3.0',
-                              tlc: '1.3.0'
-                            })).to be_nil
+    validation = subject.validate(status_request, {
+                                    core: '3.3.0',
+                                    tlc: '1.3.0'
+                                  })
+    expect(validation.valid?).to be == true
   end
 
   it 'resolves SXL definitions using the negotiated core version' do
@@ -46,20 +47,20 @@ describe RSMP::Schema do
       expect(subject.validate(dynamic_defs_status_response('clean'), {
                                 core: '3.2.2',
                                 dynamic_defs: '1.0.0'
-                              })).to be_nil
+                              }).valid?).to be == true
       expect(subject.validate(dynamic_defs_status_response('clean'), {
                                 core: '3.3.0',
                                 dynamic_defs: '1.0.0'
-                              })).to be_nil
+                              }).valid?).to be == true
 
       expect(subject.validate(dynamic_defs_status_response("bad\u0001"), {
                                 core: '3.2.2',
                                 dynamic_defs: '1.0.0'
-                              })).to be_nil
+                              }).valid?).to be == true
       expect(subject.validate(dynamic_defs_status_response("bad\u0001"), {
                                 core: '3.3.0',
                                 dynamic_defs: '1.0.0'
-                              })).not.to be_nil
+                              }).invalid?).to be == true
     ensure
       subject.remove_schema_type(:dynamic_defs)
     end
@@ -144,17 +145,18 @@ describe RSMP::Schema do
     subject.remove_schema_type(:tlc_copy)
   end
 
-  it 'raises when no accepted SXL defines the message code' do
+  it 'returns invalid when no accepted SXL defines the message code' do
     unknown_status_request = status_request.merge(
       'sS' => [{ 'sCI' => 'S9999', 'n' => 'unknown' }]
     )
 
-    expect do
-      subject.validate(unknown_status_request, {
-                         core: '3.3.0',
-                         tlc: '1.3.0'
-                       })
-    end.to raise_exception(RSMP::Schema::UnknownMessageCodeError, message: be =~ /S9999/)
+    validation = subject.validate(unknown_status_request, {
+                                    core: '3.3.0',
+                                    tlc: '1.3.0'
+                                  })
+
+    expect(validation.invalid?).to be == true
+    expect(validation.message).to be =~ /S9999/
   end
 
   it 'resolves SXL messages with an SXL metadata prefix' do

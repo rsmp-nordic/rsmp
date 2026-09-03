@@ -138,7 +138,7 @@ module RSMP
                                       'sS' => build_status_list(component, by_code)
                                     })
           apply_nts_message_attributes update
-          send_message update
+          send_generated_message update
           store_last_sent_status update
           component.status_updates_sent
         end

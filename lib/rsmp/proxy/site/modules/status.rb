@@ -3,9 +3,11 @@ module RSMP
     module Modules
       # Handles status requests, responses, subscriptions and updates
       module Status
-        # Build and send a StatusRequest. Returns { sent: message }.
+        # Build and send a StatusRequest. Returns Result<StatusRequest>.
         def request_status(status_list, component: nil, m_id: nil, validate: true)
-          validate_ready 'request status'
+          readiness = validate_ready 'request status'
+          return readiness if readiness.failure?
+
           component ||= main.c_id
           m_id ||= RSMP::Message.make_m_id
 
@@ -21,14 +23,18 @@ module RSMP
                                               'mId' => m_id
                                             })
           apply_nts_message_attributes message
-          send_message message, validate: validate
-          { sent: message }
+          send_message(message, validate: validate).map(&:message)
         end
 
-        # Build, send a StatusRequest and collect the StatusResponse. Returns the collector.
-        # Call .ok! on the result to raise on NotAck or timeout.
+        def request_status!(...)
+          request_status(...).value!
+        end
+
+        # Build, send a StatusRequest and collect the StatusResponse. Returns Result<Exchange>.
         def request_status_and_collect(status_list, within:, component: nil, m_id: nil, validate: true)
-          validate_ready 'request status'
+          readiness = validate_ready 'request status'
+          return readiness if readiness.failure?
+
           component ||= main.c_id
           m_id ||= RSMP::Message.make_m_id
 
@@ -45,7 +51,11 @@ module RSMP
                                             })
           apply_nts_message_attributes message
           collector = StatusCollector.new(self, list.to_a, timeout: within, m_id: m_id)
-          send_message_and_collect(message, collector, validate: validate)[:collector]
+          send_message_and_collect(message, collector, validate: validate)
+        end
+
+        def request_status_and_collect!(...)
+          request_status_and_collect(...).value!
         end
 
         def process_status_response(message)
@@ -71,9 +81,11 @@ module RSMP
           end
         end
 
-        # Build and send a StatusSubscribe. Returns { sent: message }.
+        # Build and send a StatusSubscribe. Returns Result<StatusSubscribe>.
         def subscribe_to_status(status_list, component: nil, m_id: nil, validate: true)
-          validate_ready 'subscribe to status'
+          readiness = validate_ready 'subscribe to status'
+          return readiness if readiness.failure?
+
           component ||= main.c_id
           m_id ||= RSMP::Message.make_m_id
 
@@ -89,14 +101,18 @@ module RSMP
                                                 'mId' => m_id
                                               })
           apply_nts_message_attributes message
-          send_message message, validate: validate
-          { sent: message }
+          send_message(message, validate: validate).map(&:message)
         end
 
-        # Build, send a StatusSubscribe and collect the first matching status update. Returns the collector.
-        # Call .ok! on the result to raise on NotAck or timeout.
+        def subscribe_to_status!(...)
+          subscribe_to_status(...).value!
+        end
+
+        # Build, send a StatusSubscribe and collect the first matching status update. Returns Result<Exchange>.
         def subscribe_to_status_and_collect(status_list, within:, component: nil, m_id: nil, validate: true)
-          validate_ready 'subscribe to status'
+          readiness = validate_ready 'subscribe to status'
+          return readiness if readiness.failure?
+
           component ||= main.c_id
           m_id ||= RSMP::Message.make_m_id
 
@@ -113,7 +129,11 @@ module RSMP
                                               })
           apply_nts_message_attributes message
           collector = StatusCollector.new(self, list.to_a, timeout: within, m_id: m_id)
-          send_message_and_collect(message, collector, validate: validate)[:collector]
+          send_message_and_collect(message, collector, validate: validate)
+        end
+
+        def subscribe_to_status_and_collect!(...)
+          subscribe_to_status_and_collect(...).value!
         end
 
         def remove_subscription_item(component_id, code, name)
@@ -131,15 +151,20 @@ module RSMP
             remove_subscription_item(component, item['sCI'], item['n'])
           end
 
-          return unless ready? # if the connection is don't we skip sending
+          # Local subscription state must be cleaned up even when the peer has
+          # already disconnected. In that case there is nothing left to send.
+          return Result.success(nil) unless ready?
 
           message = RSMP::StatusUnsubscribe.new({
                                                   'cId' => component,
                                                   'sS' => status_list
                                                 })
           apply_nts_message_attributes message
-          send_message message, validate: validate
-          message
+          send_message(message, validate: validate).map(&:message)
+        end
+
+        def unsubscribe_to_status!(...)
+          unsubscribe_to_status(...).value!
         end
 
         # unsubscribes to all statuses (with all attributes) defined in the used SXL

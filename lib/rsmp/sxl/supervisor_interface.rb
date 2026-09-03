@@ -8,12 +8,19 @@ module RSMP
 
       def_delegators :proxy,
                      :request_status,
+                     :request_status!,
                      :request_status_and_collect,
+                     :request_status_and_collect!,
                      :subscribe_to_status,
+                     :subscribe_to_status!,
                      :subscribe_to_status_and_collect,
+                     :subscribe_to_status_and_collect!,
                      :unsubscribe_to_status,
+                     :unsubscribe_to_status!,
                      :send_command,
-                     :send_command_and_collect
+                     :send_command!,
+                     :send_command_and_collect,
+                     :send_command_and_collect!
 
       def process_message(_message); end
     end
