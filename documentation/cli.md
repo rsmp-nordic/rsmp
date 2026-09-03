@@ -1,6 +1,7 @@
 # RSMP CLI
 
-The `rsmp` command can run a site, run a supervisor, validate config files, generate JSON Schemas from an SXL, and print the gem version.
+The `rsmp` command can run a site, run a supervisor, validate config files, resolve SXL dependencies,
+verify SXL manifests, generate JSON Schemas from an SXL, and print the gem version.
 
 Use help at any level:
 
@@ -8,8 +9,10 @@ Use help at any level:
 $ rsmp help
 $ rsmp help site
 $ rsmp help supervisor
-$ rsmp help config check
-$ rsmp help schema generate
+$ rsmp config help check
+$ rsmp schema help generate
+$ rsmp sxl help resolve
+$ rsmp sxl help verify
 ```
 
 ## Quick Examples
@@ -64,6 +67,18 @@ Generate JSON Schema files from an SXL YAML file:
 
 ```console
 $ rsmp schema generate --in schemas/tlc/1.3.0/sxl.yaml --out /tmp/tlc-schema
+```
+
+Resolve an SXL and its dependencies from local sources:
+
+```console
+$ rsmp sxl resolve schema/sxl.yaml --source ../sxl-catalog
+```
+
+Verify the resulting manifest against the same sources:
+
+```console
+$ rsmp sxl verify manifest.yaml --source ../sxl-catalog
 ```
 
 ## Configuration Files
@@ -206,9 +221,69 @@ Options:
 - `--in PATH`, `-i PATH`: path to the input `sxl.yaml`. Defaults to `sxl.yaml`.
 - `--out PATH`, `-o PATH`: output directory. Defaults to the current directory.
 
-The command writes the generated status, command, alarm, root schema, definitions, and `sxl_index.json` files to the output directory.
+The input can use either the top-level `components` or `objects` mapping. Both forms are normalized to
+`components` before processing. The command
+writes the generated status, command, alarm, root schema, definitions, and `sxl_index.json` files to the output directory.
 
 If the input file is missing, the command prints an error and exits with status `1`.
+
+### `rsmp sxl resolve`
+
+Resolves direct and transitive SXL dependencies, checks for conflicting component types and message codes,
+and writes a manifest:
+
+```console
+$ rsmp sxl resolve schema/sxl.yaml --source ../sxl-catalog
+```
+
+Roots can be SXL YAML paths or `name:requirement` specifications. Several roots can be supplied
+for a site SXL list:
+
+```console
+$ rsmp sxl resolve traffic_light_controller:~1.3 public_priority:2.1.0 \
+    --source ../sxl-catalog --out site-manifest.yaml
+```
+
+Quote a requirement when it contains spaces:
+
+```console
+$ rsmp sxl resolve 'traffic_light_controller:>=1.3.0 and <2.0.0' --source ../sxl-catalog
+```
+
+Source arguments can be individual YAML files or directories. Directories are searched recursively for files
+named `sxl.yaml` or `sxl.yml`. Every source must use top-level `meta`, optional `prefix`, optional
+`dependencies`, and either `components` or `objects`. Both input forms are normalized to `components`.
+Sources are indexed by exact `meta.name` and `meta.version`.
+
+Options:
+
+- `--source PATH...`, `-s PATH...`: one or more local source files or directories.
+- `--out PATH`, `-o PATH`: manifest output path. Defaults to `manifest.yaml`.
+- `--format VERSION`: RSMP Core version written as `meta.format`. Defaults to the latest Core version bundled with the gem.
+- `--force`, `-f`: replace an existing output file. Without this option, existing files are preserved and the command fails.
+
+The resolver supports exact versions, `>`, `>=`, `<`, `<=`, `~`, and two comparisons joined by `and`. It tries
+available versions newest first, rejects unsatisfied requirements and dependency cycles, applies each SXL prefix,
+and rejects component types or message codes defined by more than one resolved SXL. For non-zero major versions,
+`~1.3` means `>=1.3.0 and <2.0.0`. A major-zero compatibility requirement must include all three parts and is exact,
+for example `~0.3.1` matches only `0.3.1`.
+
+### `rsmp sxl verify`
+
+Verifies a manifest against locally supplied SXL sources:
+
+```console
+$ rsmp sxl verify manifest.yaml --source ../sxl-catalog
+```
+
+The manifest defaults to `manifest.yaml`. `--source PATH...` has the same meaning as for `sxl resolve`.
+Verification checks the manifest shape and metadata, natural name order, availability of every exact SXL version,
+the complete dependency closure and version requirements, dependency cycles, Core-format compatibility, and component
+or message-code conflicts. A valid manifest prints `OK`; a failure prints an error and exits with status `1`.
+
+Because the manifest format records only exact resolved versions and does not distinguish roots from dependencies,
+verification checks validity but cannot determine whether the manifest still selects the newest versions in a changed
+source catalogue. Run `sxl resolve` again to refresh version selection.
 
 ### `rsmp version`
 

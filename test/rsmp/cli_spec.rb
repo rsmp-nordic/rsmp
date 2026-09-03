@@ -79,6 +79,7 @@ describe RSMP::CLI do
     expect(result.output).to be(:include?, 'schema')
     expect(result.output).to be(:include?, 'site')
     expect(result.output).to be(:include?, 'supervisor')
+    expect(result.output).to be(:include?, 'sxl')
     expect(result.output).to be(:include?, 'version')
   end
 
@@ -345,6 +346,21 @@ describe RSMP::CLI do
       end
     end
 
+    it 'generates identical schemas from components and objects' do
+      indices = %w[components objects].map do |root_key|
+        with_temp_config('sxl.yaml', minimal_sxl_yaml(root_key: root_key)) do |input|
+          Dir.mktmpdir do |dir|
+            result = invoke_cli('schema', 'generate', '--in', input, '--out', dir)
+            expect(result.status).to be == 0
+            JSON.parse(File.read(File.join(dir, 'sxl_index.json'), encoding: 'UTF-8'))
+          end
+        end
+      end
+
+      expect(indices[0]).to be == indices[1]
+      expect(indices[0].dig('statuses', 'S0001', 'required', 'count')).to be == 'integer'
+    end
+
     it 'copies fallback definitions from the minimum core version' do
       with_temp_config('sxl.yaml', minimal_sxl_yaml('minimum_core_version: 3.1.2')) do |input|
         Dir.mktmpdir do |dir|
@@ -408,6 +424,57 @@ describe RSMP::CLI do
           expect(value['pattern']).to be == '^(\\d{1,3}\\-\\d{1,3})(?:,(\\d{1,3}\\-\\d{1,3}))*$'
           expect(result.output).to be == ''
         end
+      end
+    end
+  end
+
+  with 'sxl command' do
+    it 'resolves local SXL dependencies and writes a manifest' do
+      Dir.mktmpdir('rsmp-sxl-cli') do |dir|
+        write_sxl(dir, name: 'base', version: '1.0.0', root_key: 'objects')
+        write_sxl(dir, name: 'base', version: '1.2.0', root_key: 'objects')
+        write_sxl(dir, name: 'extension', version: '1.0.0', dependencies: { 'base' => '~1.0' })
+        output = File.join(dir, 'manifest.yaml')
+
+        result = invoke_cli('sxl', 'resolve', 'extension:1.0.0', '--source', dir, '--out', output)
+        manifest = Psych.safe_load_file(output)
+
+        expect(result.status).to be == 0
+        expect(result.output).to be == "Wrote #{output}\n"
+        expect(manifest['meta']['created_by']).to be == "rsmp v#{RSMP::VERSION}"
+        expect(manifest['meta']['format']).to be == RSMP::Schema.latest_core_version
+        expect(manifest['sxls']).to be == {
+          'base' => '1.2.0',
+          'extension' => '1.0.0'
+        }
+      end
+    end
+
+    it 'accepts an SXL YAML path as an exact root and refuses unsafe overwrite' do
+      Dir.mktmpdir('rsmp-sxl-cli') do |dir|
+        root = write_sxl(dir, name: 'standalone', version: '1.0.0', root_key: 'objects')
+        output = File.join(dir, 'manifest.yaml')
+        File.write(output, 'keep me')
+
+        result = invoke_cli('sxl', 'resolve', root, '--out', output)
+
+        expect(result.status).to be == 1
+        expect(result.output).to be(:include?, 'Refusing to overwrite existing manifest')
+        expect(File.read(output)).to be == 'keep me'
+      end
+    end
+
+    it 'verifies a manifest against supplied local sources' do
+      Dir.mktmpdir('rsmp-sxl-cli') do |dir|
+        root = write_sxl(dir, name: 'standalone', version: '1.0.0')
+        output = File.join(dir, 'manifest.yaml')
+        resolved = invoke_cli('sxl', 'resolve', root, '--out', output)
+
+        result = invoke_cli('sxl', 'verify', output, '--source', dir)
+
+        expect(resolved.status).to be == 0
+        expect(result.status).to be == 0
+        expect(result.output).to be == "OK\n"
       end
     end
   end
@@ -540,7 +607,7 @@ describe RSMP::CLI do
     end
   end
 
-  def minimal_sxl_yaml(extra_meta = nil)
+  def minimal_sxl_yaml(extra_meta = nil, root_key: 'objects')
     extra_meta = "  #{extra_meta}\n" if extra_meta
     <<~YAML
       ---
@@ -548,7 +615,7 @@ describe RSMP::CLI do
         name: test
         description: Test SXL
         version: 1.0.0
-      #{extra_meta}objects:
+      #{extra_meta}#{root_key}:
         Test Object:
           statuses:
             S0001:
@@ -576,5 +643,24 @@ describe RSMP::CLI do
                   type: string_list_as_string
                   pattern: "^(\\\\d{1,3}\\\\-\\\\d{1,3})(?:,(\\\\d{1,3}\\\\-\\\\d{1,3}))*$"
     YAML
+  end
+
+  def write_sxl(root, name:, version:, **options)
+    dependencies = options.fetch(:dependencies, {})
+    components = options.fetch(:components, {})
+    root_key = options.fetch(:root_key, 'components')
+    path = File.join(root, name, version, 'sxl.yaml')
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, Psych.dump({
+                                  'meta' => {
+                                    'name' => name,
+                                    'description' => "#{name} test SXL",
+                                    'version' => version,
+                                    'minimum_core_version' => '3.3.0'
+                                  },
+                                  'dependencies' => dependencies,
+                                  root_key => components
+                                }))
+    path
   end
 end

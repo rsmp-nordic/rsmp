@@ -21,6 +21,91 @@ module RSMP
     end
   end
 
+  # CLI subcommands for SXL dependency resolution and manifests.
+  class SXLCLI < Thor
+    namespace :sxl
+
+    desc 'resolve ROOT...', 'Resolve SXL dependencies and write a manifest'
+    method_option :source, type: :array, aliases: '-s', default: [],
+                           banner: 'Local SXL file or directory paths'
+    method_option :out, type: :string, aliases: '-o', default: 'manifest.yaml',
+                        banner: 'Manifest output path'
+    method_option :format, type: :string, default: RSMP::Schema.latest_core_version,
+                           enum: RSMP::Schema.core_versions,
+                           banner: 'RSMP Core manifest format version'
+    method_option :force, type: :boolean, aliases: '-f', default: false,
+                          banner: 'Overwrite an existing manifest'
+    def resolve(*roots)
+      raise RSMP::SXL::Processing::Error, 'sxl resolve requires at least one root' if roots.empty?
+
+      ensure_manifest_output_available!
+      catalogue = RSMP::SXL::Processing::Catalogue.new(options[:source])
+      requirements = roots.map { |root| root_requirement(root, catalogue) }
+      documents = RSMP::SXL::Processing::Resolver.new(catalogue).resolve(requirements)
+      manifest = RSMP::SXL::Processing::Manifest.create(documents, format: options[:format])
+      write_manifest(manifest)
+      puts "Wrote #{options[:out]}"
+    rescue RSMP::SXL::Processing::Error, SystemCallError => e
+      fail_sxl_command(e)
+    end
+
+    desc 'verify [MANIFEST]', 'Verify an SXL manifest against local sources'
+    method_option :source, type: :array, aliases: '-s', default: [],
+                           banner: 'Local SXL file or directory paths'
+    def verify(path = 'manifest.yaml')
+      catalogue = RSMP::SXL::Processing::Catalogue.new(options[:source])
+      manifest = RSMP::SXL::Processing::Manifest.load(path)
+      RSMP::SXL::Processing::Manifest.verify!(manifest, catalogue)
+      puts 'OK'
+    rescue RSMP::SXL::Processing::Error, SystemCallError => e
+      fail_sxl_command(e)
+    end
+
+    private
+
+    def root_requirement(root, catalogue)
+      return path_root_requirement(root, catalogue) if File.exist?(root)
+
+      name, requirement = root.split(':', 2)
+      unless requirement
+        raise RSMP::SXL::Processing::Error,
+              "Invalid root #{root.inspect}; expected an SXL YAML path or name:requirement"
+      end
+
+      RSMP::SXL::Processing::Document.validate_name!(name)
+      [name, RSMP::SXL::Processing::VersionRequirement.new(requirement)]
+    end
+
+    def path_root_requirement(path, catalogue)
+      raise RSMP::SXL::Processing::Error, "Root SXL #{path} is not a file" unless File.file?(path)
+
+      document = RSMP::SXL::Processing::Document.load(path)
+      catalogue.add_document(document)
+      [document.name, RSMP::SXL::Processing::VersionRequirement.new(document.version_string)]
+    end
+
+    def ensure_manifest_output_available!
+      output = options[:out]
+      return unless File.exist?(output)
+      raise RSMP::SXL::Processing::Error, "Manifest output #{output} is a directory" if File.directory?(output)
+      return if options[:force]
+
+      raise RSMP::SXL::Processing::Error,
+            "Refusing to overwrite existing manifest #{output}; use --force to replace it"
+    end
+
+    def write_manifest(manifest)
+      output = options[:out]
+      FileUtils.mkdir_p(File.dirname(File.expand_path(output)))
+      File.write(output, RSMP::SXL::Processing::Manifest.dump(manifest))
+    end
+
+    def fail_sxl_command(error)
+      puts "Error: #{error.message}"
+      exit 1
+    end
+  end
+
   # CLI subcommands for RSMP configuration validation.
   class ConfigCLI < Thor
     namespace :config
@@ -100,6 +185,7 @@ module RSMP
     end
 
     register SchemaCLI, 'schema', 'schema COMMAND', 'SXL schema commands'
+    register SXLCLI, 'sxl', 'sxl COMMAND', 'SXL dependency and manifest commands'
     register ConfigCLI, 'config', 'config COMMAND', 'Configuration commands'
 
     private

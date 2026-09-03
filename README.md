@@ -149,6 +149,15 @@ See [configuration](documentation/configuration.md) for connection-role examples
 ## Command-line tool
 Tools for easily running RSMP supervisors and sites. The binary is called ```rsmp```.
 
+It also provides SXL dependency and manifest tooling:
+
+```console
+$ rsmp sxl resolve path/to/sxl.yaml --source path/to/sxl-catalog
+$ rsmp sxl verify manifest.yaml --source path/to/sxl-catalog
+```
+
+See [the CLI reference](documentation/cli.md#rsmp-sxl-resolve) for source layout, requirement syntax, and options.
+
 The ```supervisor``` command will start an RSMP supervisor, which sites can connect to:
 
 ```console

@@ -20,7 +20,7 @@ module RSMP
         def self.convert(yaml)
           sxl = build_empty_sxl
           sxl[:meta] = yaml['meta']
-          merge_objects(sxl, yaml['objects'])
+          merge_components(sxl, component_definitions(yaml))
           sxl
         end
 
@@ -28,16 +28,20 @@ module RSMP
           { meta: {}, alarms: {}, statuses: {}, commands: {} }
         end
 
-        def self.merge_objects(sxl, objects)
-          objects.each_pair do |_type, object|
-            merge_object_items(sxl, object)
+        def self.component_definitions(yaml)
+          yaml.fetch('components') { yaml.fetch('objects') }
+        end
+
+        def self.merge_components(sxl, components)
+          components.each_pair do |_type, component|
+            merge_component_items(sxl, component)
           end
         end
 
-        def self.merge_object_items(sxl, object)
-          object['alarms']&.each { |id, item| sxl[:alarms][id] = item }
-          object['statuses']&.each { |id, item| sxl[:statuses][id] = item }
-          object['commands']&.each { |id, item| sxl[:commands][id] = item }
+        def self.merge_component_items(sxl, component)
+          component['alarms']&.each { |id, item| sxl[:alarms][id] = item }
+          component['statuses']&.each { |id, item| sxl[:statuses][id] = item }
+          component['commands']&.each { |id, item| sxl[:commands][id] = item }
         end
       end
     end
