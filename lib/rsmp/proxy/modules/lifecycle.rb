@@ -22,6 +22,7 @@ module RSMP
         end
 
         def begin_session
+          clear
           @session_id += 1
           @session_closed = false
           @session_id

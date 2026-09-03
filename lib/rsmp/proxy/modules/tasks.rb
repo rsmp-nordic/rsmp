@@ -56,13 +56,15 @@ module RSMP
         # Wait for the reader while observing every sibling. A failed timer task
         # raises here with its original exception and backtrace.
         def wait_for_session
-          session_tasks.wait do |finished|
+          reader = @reader
+          observed = session_tasks.wait do |finished|
             result = finished.wait
-            break result if finished.equal?(@reader)
+            break result if finished.equal?(reader)
             next if finished.cancelled? || !session_active?
 
             raise "#{finished.annotation} ended while its connection session was active"
           end
+          observed.is_a?(Result::Success) || observed.is_a?(Result::Failure) ? observed : Result.success(:closed)
         ensure
           @session_tasks.cancel if @session_tasks && !@session_tasks.empty?
           @session_tasks = nil

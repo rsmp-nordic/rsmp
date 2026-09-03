@@ -41,9 +41,10 @@ module RSMP
       barrier = Async::Barrier.new(parent: @task)
       @accept_task = barrier.async do |task|
         task.annotate 'supervisor accept loop'
-        @endpoint.accept do |socket| # creates fibers
+        @endpoint.accept do |socket|
           handle_connection(socket)
         end
+        task.wait_all
       end
 
       @ready_condition.signal
