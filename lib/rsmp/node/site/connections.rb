@@ -27,6 +27,7 @@ module RSMP
       @endpoint.accept do |socket|
         accept_supervisor_connection socket
       end
+      Async::Task.current.wait_all
     end
 
     def accept_supervisor_connection(socket)
