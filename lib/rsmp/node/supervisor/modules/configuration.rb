@@ -35,21 +35,34 @@ module RSMP
           sites.each do |site_id, settings|
             raise RSMP::ConfigurationError, "Configuration for site '#{site_id}' is empty" unless settings
 
-            sxls = settings['sxls']
-            raise RSMP::ConfigurationError, "Configuration error for site '#{site_id}': No SXLs specified" unless sxls
-
-            sxls.each do |sxl|
-              name = sxl['name']
-              if name.to_s == 'core'
-                raise RSMP::ConfigurationError,
-                      "Configuration error for site '#{site_id}': SXL name cannot be core"
-              end
-
-              RSMP::Schema.find_schema! name, sxl['version'], lenient: true
-            end
+            check_configured_sxls site_id, settings['sxls']
+            check_configured_core_version site_id, settings['core_version']
           rescue RSMP::Schema::UnknownSchemaError => e
             raise RSMP::ConfigurationError, "Configuration error for site '#{site_id}': #{e}"
           end
+        end
+
+        def check_configured_sxls(site_id, sxls)
+          raise RSMP::ConfigurationError, "Configuration error for site '#{site_id}': No SXLs specified" unless sxls
+
+          sxls.each do |sxl|
+            name = sxl['name']
+            if name.to_s == 'core'
+              raise RSMP::ConfigurationError,
+                    "Configuration error for site '#{site_id}': SXL name cannot be core"
+            end
+
+            RSMP::Schema.find_schema! name, sxl['version'], lenient: true
+          end
+        end
+
+        def check_configured_core_version(site_id, core_version)
+          return unless core_version
+          return if %w[all latest].include? core_version
+          return if RSMP::Schema.normalize_core_version core_version
+
+          raise RSMP::ConfigurationError,
+                "Configuration error for site '#{site_id}': Unknown core version: #{core_version}"
         end
 
         def site_id_to_site_setting(site_id)

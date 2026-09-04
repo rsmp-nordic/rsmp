@@ -202,10 +202,9 @@ module RSMP
 
   # Represents a malformed message with invalid attributes.
   class Malformed < Message
-    # rubocop:disable-next Lint/MissingSuper
     def initialize(attributes = {})
-      # don't call super, just copy (potentially invalid) attributes
-      @attributes = {}
+      super({})
+      @attributes.clear
       @invalid_attributes = attributes
     end
   end

@@ -89,6 +89,32 @@ describe 'Connecting' do
     end
   end
 
+  it 'preserves two-part Core and SXL strings throughout a legacy connection' do
+    config[:site_settings]['core_version'] = '3.2'
+    config[:site_settings]['sxls'] = { 'tlc' => '1.2' }
+    config[:supervisor_settings]['default']['core_version'] = '3.2'
+    config[:supervisor_settings]['default']['sxls'] = { 'tlc' => '1.2' }
+
+    with_async_context(context: lambda {
+      supervisor.start
+      supervisor.ready_condition.wait
+      site.start
+    }) do |_task|
+      site_proxy = supervisor.wait_for_site! config[:site_id], timeout: config[:timeout]
+      supervisor_proxy = site.wait_for_supervisor! config[:ip], timeout: config[:timeout]
+
+      site_proxy.wait_for_state! :ready, timeout: config[:timeout]
+      supervisor_proxy.wait_for_state! :ready, timeout: config[:timeout]
+
+      expect(site_proxy.core_version).to be == '3.2.0'
+      expect(supervisor_proxy.core_version).to be == '3.2.0'
+      expect(site_proxy.core_version_string).to be == '3.2'
+      expect(supervisor_proxy.core_version_string).to be == '3.2'
+      expect(site_proxy.sxl_version).to be == '1.2'
+      expect(supervisor_proxy.sxl_version).to be == '1.2'
+    end
+  end
+
   it 'works with a core-only 3.3.0 connection' do
     config[:site_settings]['core_version'] = '3.3.0'
     config[:site_settings]['sxls'] = {}

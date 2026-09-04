@@ -17,6 +17,39 @@ describe RSMP::Schema do
     }
   end
 
+  with 'version formats' do
+    it 'normalizes only unambiguous legacy Core versions' do
+      expect(subject.normalize_core_version('3.2')).to be == '3.2.0'
+      subject.core_versions.each do |version|
+        expect(subject.normalize_core_version(version)).to be == version
+      end
+      expect(subject.normalize_core_version('3.1')).to be_nil
+      expect(subject.normalize_core_version('3.2.0-preview')).to be_nil
+      expect(subject.normalize_core_version('9.9.9')).to be_nil
+    end
+
+    it 'requires three-part Core versions from 3.3' do
+      expect(subject.normalize_core_version('3.3.0')).to be == '3.3.0'
+      expect(subject.normalize_core_version('3.3')).to be_nil
+    end
+
+    it 'recognizes strict numeric three-part versions' do
+      expect(subject.strict_version?('3.3.0')).to be == true
+      expect(subject.strict_version?('1.2.0')).to be == true
+      expect(subject.strict_version?('1.2')).to be == false
+      expect(subject.strict_version?('01.2.0')).to be == false
+      expect(subject.strict_version?('1.2.0-preview')).to be == false
+      expect(subject.strict_version?('1.2.0+build')).to be == false
+    end
+
+    it 'continues accepting two-part SXL versions for legacy Core connections' do
+      expect(subject.sanitize_version('1.1')).to be == '1.1.0'
+      expect(subject.sanitize_version('1.2')).to be == '1.2.0'
+      expect(subject.find_schema(:tlc, '1.1', lenient: true)).not.to be_nil
+      expect(subject.find_schema(:tlc, '1.2', lenient: true)).not.to be_nil
+    end
+  end
+
   it 'validates core messages without an SXL schema' do
     version_request = {
       'mType' => 'rSMsg',
@@ -276,6 +309,35 @@ describe RSMP::Schema do
     ensure
       subject.remove_schema_type(:prefixed)
     end
+  end
+
+  it 'uses canonical SXL versions in 3.3 request items while preserving the legacy field' do
+    proxy = Class.new do
+      include RSMP::Proxy::Modules::Versions
+    end.new
+    proxy.instance_variable_set(:@site_settings, {
+                                  'sxls' => [{ 'name' => 'tlc', 'version' => '1.2' }]
+                                })
+
+    expect(proxy.sxl_request_items).to be == [{ 'name' => 'tlc', 'version' => '1.2.0' }]
+    expect(proxy.version_message_attributes('RN+SI0001', ['3.2'])).to be == {
+      'RSMP' => [{ 'vers' => '3.2' }],
+      'siteId' => [{ 'sId' => 'RN+SI0001' }],
+      'SXL' => '1.2'
+    }
+  end
+
+  it 'advertises both spellings of the historical Core 3.2 release' do
+    proxy = Class.new do
+      include RSMP::Proxy::Modules::Versions
+    end.new
+    proxy.instance_variable_set(:@site_settings, {
+                                  'core_version' => '3.2',
+                                  'sxls' => []
+                                })
+
+    expect(proxy.core_versions).to be == ['3.2.0']
+    expect(proxy.advertised_core_versions).to be == ['3.2', '3.2.0']
   end
 
   def write_sxl_index(schema_dir, meta:, statuses: {}, commands: {}, alarms: {})
