@@ -19,7 +19,7 @@ describe RSMP::TLC::InputStates do
 
   it 'can report inputs' do
     (1..4).each do |i|
-      expect(inputs.report(i)).to be == ({ value: false, forced: false, forced_value: false, actual: false })
+      expect(inputs.report(i)).to be == { value: false, forced: false, forced_value: false, actual: false }
     end
   end
 
@@ -62,29 +62,29 @@ describe RSMP::TLC::InputStates do
     (1..4).each do |i|
       # when status is false
       inputs.set(i, false)
-      expect(inputs.report(i)).to be == ({ value: false, forced: false, forced_value: false, actual: false })
+      expect(inputs.report(i)).to be == { value: false, forced: false, forced_value: false, actual: false }
 
       inputs.force(i, forced_value: true)
-      expect(inputs.report(i)).to be == ({ value: false, forced: true, forced_value: true, actual: true })
+      expect(inputs.report(i)).to be == { value: false, forced: true, forced_value: true, actual: true }
 
       inputs.force(i, forced_value: false)
-      expect(inputs.report(i)).to be == ({ value: false, forced: true, forced_value: false, actual: false })
+      expect(inputs.report(i)).to be == { value: false, forced: true, forced_value: false, actual: false }
 
       inputs.release(i)
-      expect(inputs.report(i)).to be == ({ value: false, forced: false, forced_value: false, actual: false })
+      expect(inputs.report(i)).to be == { value: false, forced: false, forced_value: false, actual: false }
 
       # when status is true
       inputs.set(i, true)
-      expect(inputs.report(i)).to be == ({ value: true, forced: false, forced_value: false, actual: true })
+      expect(inputs.report(i)).to be == { value: true, forced: false, forced_value: false, actual: true }
 
       inputs.force(i, forced_value: true)
-      expect(inputs.report(i)).to be == ({ value: true, forced: true, forced_value: true, actual: true })
+      expect(inputs.report(i)).to be == { value: true, forced: true, forced_value: true, actual: true }
 
       inputs.force(i, forced_value: false)
-      expect(inputs.report(i)).to be == ({ value: true, forced: true, forced_value: false, actual: false })
+      expect(inputs.report(i)).to be == { value: true, forced: true, forced_value: false, actual: false }
 
       inputs.release(i)
-      expect(inputs.report(i)).to be == ({ value: true, forced: false, forced_value: false, actual: true })
+      expect(inputs.report(i)).to be == { value: true, forced: false, forced_value: false, actual: true }
     end
   end
 

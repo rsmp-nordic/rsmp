@@ -129,7 +129,7 @@ describe RSMP::Supervisor do
 
     def receive_version_response(protocol, core_version, sxls)
       version = JSON.parse protocol.read_line
-      expect(version).to be == ({
+      expect(version).to be == {
         'RSMP' => [{ 'vers' => core_version }],
         'SXLS' => sxls,
         'mId' => '1b206e56-31be-4739-9164-3a24d47b0aa2',
@@ -138,7 +138,7 @@ describe RSMP::Supervisor do
         'step' => 'Response',
         'supervisorId' => 'RN+SI0001',
         'type' => 'Version'
-      })
+      }
     end
 
     def receive_legacy_version(protocol, sxl_version)
