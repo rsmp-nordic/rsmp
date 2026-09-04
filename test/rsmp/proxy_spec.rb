@@ -175,6 +175,23 @@ describe RSMP::Proxy do
     end
   end
 
+  with 'timer termination' do
+    it 'returns a missing acknowledgement failure without closing from the timer task' do
+      message = Struct.new(:timestamp, :type, :m_id_short).new(0, 'Watchdog', '1234')
+      proxy.instance_variable_set(:@site_settings, { 'timeouts' => { 'acknowledgement' => 0.5 } })
+      proxy.instance_variable_set(:@awaiting_acknowledgement, 'id' => message)
+      proxy.define_singleton_method(:log) { |_message, **_options| nil }
+      proxy.define_singleton_method(:distribute_event) { |_event| nil }
+      proxy.define_singleton_method(:close) { |**| raise 'timer must not own connection teardown' }
+
+      result = proxy.check_ack_timeout(1)
+
+      expect(result.failure?).to be == true
+      expect(result.failure.code).to be == :missing_acknowledgement
+      expect(result.failure.context[:reason]).to be == :missing_acknowledgement
+    end
+  end
+
   with 'version_meets_requirement?' do
     it 'is equal to' do
       expect(subject.version_meets_requirement?('1.0.9', '1.0.10')).to be == false

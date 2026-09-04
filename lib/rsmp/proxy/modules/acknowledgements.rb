@@ -49,7 +49,7 @@ module RSMP
               code: :missing_acknowledgement,
               message: str,
               source: :peer,
-              context: { message: message, session_id: session_id }
+              context: { message: message, reason: :missing_acknowledgement, session_id: session_id }
             )
             distribute_event(
               Event.new(
@@ -60,8 +60,10 @@ module RSMP
                 failure: failure
               )
             )
-            close(reason: :missing_acknowledgement, failure: failure)
+            return Result.failure(failure: failure)
           end
+
+          Result.success
         end
 
         def find_original_for_message(message)

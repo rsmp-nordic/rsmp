@@ -60,6 +60,7 @@ module RSMP
           observed = session_tasks.wait do |finished|
             result = finished.wait
             break result if finished.equal?(reader)
+            break result if result.is_a?(Result::Failure)
             next if finished.cancelled? || !session_active?
 
             raise "#{finished.annotation} ended while its connection session was active"
@@ -107,7 +108,9 @@ module RSMP
         def run_timer(task, interval, id)
           next_time = Time.now.to_f
           while session_active?(id)
-            timer(Clock.now)
+            result = timer(Clock.now)
+            return result if result.failure?
+
             next_time += interval
             task.sleep([next_time - Time.now.to_f, 0].max) if session_active?(id)
           end
@@ -116,8 +119,11 @@ module RSMP
 
         def timer(now)
           watchdog_send_timer(now)
-          check_ack_timeout(now)
+          acknowledgement = check_ack_timeout(now)
+          return acknowledgement if acknowledgement.failure?
+
           check_watchdog_timeout(now)
+          Result.success
         end
       end
     end
