@@ -77,7 +77,7 @@ describe RSMP::Message do
       expect(subject.parse_attributes('123')).to be == 123
       expect(subject.parse_attributes('3.14')).to be_within(Float::EPSILON).of(3.14)
       expect(subject.parse_attributes('[1,2,3]')).to be == [1, 2, 3]
-      expect(subject.parse_attributes('{"a":"1","b":"2"}')).to be == ({ 'a' => '1', 'b' => '2' })
+      expect(subject.parse_attributes('{"a":"1","b":"2"}')).to be == { 'a' => '1', 'b' => '2' }
     end
   end
 

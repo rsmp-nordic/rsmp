@@ -37,7 +37,7 @@ describe StatusList do
   with '#to_h' do
     it 'converts the raw wire array to a compact Hash' do
       result = subject.new(raw).to_h
-      expect(result).to be == ({ 'S0014' => %w[status source] })
+      expect(result).to be == { 'S0014' => %w[status source] }
     end
 
     it 'roundtrips from Hash through to_a and back via to_h' do
