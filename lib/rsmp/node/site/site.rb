@@ -81,8 +81,9 @@ module RSMP
     def check_core_versions
       version = @site_settings['core_version']
       return unless version
+      return if %w[all latest].include? version
 
-      return if RSMP::Schema.core_versions.include? version
+      return if RSMP::Schema.normalize_core_version version
 
       error_str = "Unknown core version: #{version}"
       raise RSMP::ConfigurationError, error_str

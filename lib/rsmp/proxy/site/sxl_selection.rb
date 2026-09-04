@@ -34,8 +34,13 @@ module RSMP
       configured = configured_sxls.find { |item| item['name'] == requested['name'] }
       return rejected_sxl(requested, 1, 'SXL not supported') unless configured
 
-      if configured['version'].to_s == requested['version'].to_s
-        RSMP::Schema.find_schema! requested['name'], requested['version'], lenient: true
+      unless RSMP::Schema.strict_version?(requested['version'])
+        return rejected_sxl(requested, 2, 'Core 3.3 requires SXL versions to use MAJOR.MINOR.PATCH')
+      end
+
+      configured_version = RSMP::Schema.sanitize_version(configured['version'].to_s)
+      if configured_version == requested['version']
+        RSMP::Schema.find_schema! requested['name'], requested['version']
         requested.slice('name', 'version', 'prefix')
       else
         rejected_sxl(requested, 2, "Supervisor only supports #{configured['version']}")

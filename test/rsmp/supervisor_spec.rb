@@ -36,6 +36,14 @@ describe RSMP::Supervisor do
         )
       end.not.to raise_exception
     end
+
+    it 'rejects an unsupported Core version in site settings' do
+      supervisor_settings['default']['core_version'] = '3.3'
+
+      expect do
+        subject.new(supervisor_settings: supervisor_settings, log_settings: log_settings)
+      end.to raise_exception(RSMP::ConfigurationError, message: be(:include?, 'Unknown core version: 3.3'))
+    end
   end
 
   with 'connection handshake' do
@@ -89,7 +97,7 @@ describe RSMP::Supervisor do
 
       send_legacy_version(protocol, core_versions_array, sxl_version)
       receive_version_ack(protocol)
-      receive_legacy_version(protocol, RSMP::Schema.latest_version(:tlc))
+      receive_legacy_version(protocol, core_versions, sxl_version)
       send_version_ack(protocol)
       perform_watchdog_handshake(protocol, component_list: false)
       wait_for_proxy_creation
@@ -141,8 +149,9 @@ describe RSMP::Supervisor do
       }
     end
 
-    def receive_legacy_version(protocol, sxl_version)
+    def receive_legacy_version(protocol, requested_core_versions, sxl_version)
       version = JSON.parse protocol.read_line
+      expected_versions = expected_legacy_core_versions requested_core_versions
       expect(version.slice('mType', 'type', 'mId', 'siteId', 'SXL')).to be == {
         'mType' => 'rSMsg',
         'type' => 'Version',
@@ -150,7 +159,24 @@ describe RSMP::Supervisor do
         'siteId' => [{ 'sId' => 'RN+SI0001' }],
         'SXL' => sxl_version
       }
+      expect(version['RSMP']).to be == expected_versions.map { |item| { 'vers' => item } }
       expect(version.values_at('step', 'SXLS')).to be == [nil, nil]
+    end
+
+    def expected_legacy_core_versions(requested_core_versions)
+      selected_string = requested_core_versions.max_by do |item|
+        Gem::Version.new(RSMP::Schema.normalize_core_version(item))
+      end
+      selected_version = RSMP::Schema.normalize_core_version(selected_string)
+      configured_version = supervisor.supervisor_settings.dig('default', 'core_version')
+      supported_versions = if configured_version
+                             [RSMP::Schema.normalize_core_version(configured_version)]
+                           else
+                             RSMP::Schema.core_versions
+                           end
+      supported_versions.map do |item|
+        item == selected_version ? selected_string : item
+      end
     end
 
     def send_version_ack(protocol)
@@ -298,6 +324,7 @@ describe RSMP::Supervisor do
 
         expect(proxy).to be_a(RSMP::SiteProxy)
         expect(proxy.state).to be == :ready
+        expect(proxy.sxl_version).to be == '1.2'
       end
     end
 
@@ -312,6 +339,62 @@ describe RSMP::Supervisor do
 
         expect(proxy).to be_a(RSMP::SiteProxy)
         expect(proxy.state).to be == :ready
+        expect(proxy.sxl_version).to be == '1.2.1'
+      end
+    end
+
+    it 'accepts legacy Core 3.2 and returns the same version string' do
+      supervisor_settings['default']['core_version'] = '3.2'
+
+      with_async_context(context: lambda {
+        supervisor.start
+      }) do |_task|
+        protocol = site_connect
+        proxy = handshake_legacy(protocol, core_versions: ['3.2'], sxl_version: '1.2')
+
+        expect(proxy.core_version).to be == '3.2.0'
+        expect(proxy.core_version_string).to be == '3.2'
+      end
+    end
+
+    it 'rejects a 2-part Core 3.3 version' do
+      with_async_context(context: lambda {
+        supervisor.start
+      }) do |_task|
+        protocol = site_connect
+        send_legacy_version(protocol, [{ 'vers' => '3.3' }], '1.3.0')
+
+        response = JSON.parse protocol.read_line
+        expect(response['type']).to be == 'MessageNotAck'
+        expect(response['rea']).to be(:include?, 'RSMP versions [3.3] requested')
+      end
+    end
+
+    it 'rejects a 2-part SXL version when using Core 3.3.0' do
+      supervisor_settings['default']['core_version'] = '3.3.0'
+      supervisor_settings['default']['sxls'] = { 'tlc' => '1.2.0' }
+      requested_sxls = [{ 'name' => 'tlc', 'version' => '1.2' }]
+      response_sxls = [{
+        'name' => 'tlc',
+        'version' => '1.2',
+        'rejected' => 2,
+        'reason' => 'Core 3.3 requires SXL versions to use MAJOR.MINOR.PATCH'
+      }]
+
+      with_async_context(context: lambda {
+        supervisor.start
+      }) do |_task|
+        protocol = site_connect
+        proxy = handshake(
+          protocol,
+          core_versions: ['3.3.0'],
+          sxl_version: '1.2',
+          sxls: requested_sxls,
+          expected_response_sxls: response_sxls
+        )
+
+        expect(proxy.accepted_sxls).to be == []
+        expect(proxy.rejected_sxls).to be == response_sxls
       end
     end
   end

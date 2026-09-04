@@ -299,4 +299,5 @@ end
 
 require_relative 'schema/core_sxl_resolution'
 require_relative 'schema/message_resolution'
+require_relative 'schema/version'
 require_relative 'schema/validation'

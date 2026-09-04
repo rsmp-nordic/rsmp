@@ -4,13 +4,12 @@ module RSMP
       # Converts SXL definitions to JSON Schema files.
       module JSONSchema
         def self.output_sxl_index(out, sxl)
+          legacy_types = legacy_types?(sxl)
           out['sxl_index.json'] = output_json({
                                                 'meta' => sxl[:meta],
-                                                'statuses' => index_items(sxl[:statuses],
-                                                                          legacy_types: legacy_types?(sxl)),
-                                                'commands' => index_items(sxl[:commands],
-                                                                          legacy_types: legacy_types?(sxl)),
-                                                'alarms' => index_items(sxl[:alarms], legacy_types: legacy_types?(sxl))
+                                                'statuses' => index_items(sxl[:statuses], legacy_types: legacy_types),
+                                                'commands' => index_items(sxl[:commands], legacy_types: legacy_types),
+                                                'alarms' => index_items(sxl[:alarms], legacy_types: legacy_types)
                                               })
         end
 

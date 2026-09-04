@@ -47,6 +47,22 @@ describe RSMP::Site do
         )
       end.not.to raise_exception
     end
+
+    it 'accepts the historical two-part Core 3.2 version' do
+      settings = site_settings.merge('core_version' => '3.2')
+
+      site = subject.new(site_settings: settings, log_settings: log_settings)
+
+      expect(site.site_settings['core_version']).to be == '3.2'
+    end
+
+    it 'rejects an ambiguous two-part Core 3.1 version' do
+      settings = site_settings.merge('core_version' => '3.1')
+
+      expect do
+        subject.new(site_settings: settings, log_settings: log_settings)
+      end.to raise_exception(RSMP::ConfigurationError, message: be(:include?, 'Unknown core version: 3.1'))
+    end
   end
 
   with 'connection handshake' do
@@ -80,7 +96,10 @@ describe RSMP::Site do
           # read version
           message = JSON.parse protocol.read_line
           core_versions = RSMP::Schema.core_versions
-          core_versions_array = core_versions.map { |version| { 'vers' => version } }
+          core_version_strings = core_versions.flat_map do |version|
+            version == '3.2.0' ? ['3.2.0', '3.2'] : [version]
+          end
+          core_versions_array = core_version_strings.map { |version| { 'vers' => version } }
           sxl_version = site.sxl_version
           expect(message['mType']).to be == 'rSMsg'
           expect(message['type']).to be == 'Version'

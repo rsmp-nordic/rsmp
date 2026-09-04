@@ -63,7 +63,7 @@ module RSMP
     end
 
     def start_handshake
-      send_version_request @site_settings['site_id'], core_versions
+      send_version_request @site_settings['site_id'], advertised_core_versions
     end
 
     def close(...)
@@ -213,6 +213,7 @@ module RSMP
     def check_sxl_version(message)
       if core_3_3?
         @rejected_sxls, @accepted_sxls = message.sxls.partition { |item| item['rejected'] }
+        validate_sxl_response! @accepted_sxls
         @receive_alarms = message.attributes.fetch('receiveAlarms', true)
       else
         primary = primary_configured_sxl

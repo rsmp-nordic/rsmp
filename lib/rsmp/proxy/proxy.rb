@@ -19,7 +19,7 @@ module RSMP
     include Modules::Lifecycle
 
     attr_reader :state, :archive, :connection_info, :sxls, :accepted_sxls, :rejected_sxls,
-                :collector, :ip, :port, :node, :core_version, :sxl_interfaces,
+                :collector, :ip, :port, :node, :core_version, :core_version_string, :sxl_interfaces,
                 :site_settings, :session_id
 
     def initialize(options)
@@ -190,8 +190,8 @@ module RSMP
     end
 
     # Use Gem class to check version requirement
-    # Requirement must be a string like '1.1', '>=1.0.3' or '<2.1.4',
-    # or list of strings, like ['<=1.4','<1.5']
+    # Requirement must be a string like '1.1.0', '>=1.0.3' or '<2.1.4',
+    # or list of strings, like ['<=1.4.0','<1.5.0']
     def self.version_meets_requirement?(version, requirement)
       Modules::Versions.version_meets_requirement?(version, requirement)
     end

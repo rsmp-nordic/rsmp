@@ -711,3 +711,8 @@ Initial release.
 - publish typed events for expected peer and connection failures
 - preserve unexpected exceptions and backtraces through structured Async task trees
 - add explicit bang variants for callers that prefer exception-based handling
+
+## Unreleased
+- preserve historical two-part Core and SXL strings in legacy Version responses while using canonical schema versions internally
+- require exact three-part Core and SXL versions when negotiating Core 3.3.0 or later
+- validate supervisor Core version configuration consistently with site configuration

@@ -231,6 +231,47 @@ describe RSMP::Proxy do
     end
   end
 
+  with 'Core 3.3 SXL response negotiation' do
+    def build_sxl_negotiating_supervisor_proxy
+      site = RSMP::Site.new(
+        site_settings: {
+          'site_id' => 'TLC001',
+          'supervisors' => [],
+          'core_version' => '3.3.0',
+          'sxls' => { 'tlc' => '1.2' }
+        },
+        log_settings: { 'active' => false }
+      )
+      proxy = RSMP::SupervisorProxy.new(site: site, ip: '127.0.0.1', port: 12_345)
+      proxy.instance_variable_set(:@core_version, '3.3.0')
+      proxy
+    end
+
+    it 'accepts the exact canonical SXL version requested by the site' do
+      proxy = build_sxl_negotiating_supervisor_proxy
+      message = RSMP::Version.new(
+        'SXLS' => [{ 'name' => 'tlc', 'version' => '1.2.0' }],
+        'receiveAlarms' => true
+      )
+
+      proxy.check_sxl_version message
+
+      expect(proxy.accepted_sxls).to be == [{ 'name' => 'tlc', 'version' => '1.2.0' }]
+    end
+
+    it 'rejects a noncanonical SXL version returned by the supervisor' do
+      proxy = build_sxl_negotiating_supervisor_proxy
+      message = RSMP::Version.new(
+        'SXLS' => [{ 'name' => 'tlc', 'version' => '1.2' }],
+        'receiveAlarms' => true
+      )
+
+      expect do
+        proxy.check_sxl_version message
+      end.to raise_exception(RSMP::HandshakeError, message: be(:include?, 'exact MAJOR.MINOR.PATCH match'))
+    end
+  end
+
   with 'SXL interfaces' do
     let(:supervisor_settings) do
       {
