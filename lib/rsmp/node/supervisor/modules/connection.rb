@@ -147,12 +147,22 @@ module RSMP
         end
 
         def close(socket, info)
+          shutdown_socket(socket)
+
           if info
             log "Connection to #{format_ip_and_port(info)} closed", ip: info[:ip], level: :info, timestamp: Clock.now
           else
             log 'Connection closed', level: :info, timestamp: Clock.now
           end
+        end
 
+        def shutdown_socket(socket)
+          # A reader may still be waiting on this socket during task cancellation.
+          # Explicitly shut down TCP before close so the peer sees EOF immediately.
+          socket.shutdown(Socket::SHUT_RDWR) unless socket.closed?
+        rescue Errno::ENOTCONN, Errno::ECONNRESET
+          # The peer has already disconnected; still release the local descriptor.
+        ensure
           socket.close
         end
       end
