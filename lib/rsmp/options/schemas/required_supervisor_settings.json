@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Validate each site after merging supervisor defaults, without changing the stored overrides.",
+  "type": "object",
+  "properties": {
+    "default": { "$ref": "required_settings.json" },
+    "sites": {
+      "type": "object",
+      "additionalProperties": { "$ref": "required_settings.json" }
+    }
+  }
+}

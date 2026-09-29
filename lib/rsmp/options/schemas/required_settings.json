@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Validate after applying defaults and inherited site settings; structural validation uses the other config schemas.",
+  "type": "object",
+  "properties": {
+    "components": {
+      "type": "object",
+      "required": ["main"],
+      "properties": {
+        "main": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 1
+        }
+      }
+    },
+    "signal_plans": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["cycle_time"]
+      }
+    }
+  },
+  "if": {
+    "required": ["connection_role"],
+    "properties": { "connection_role": { "const": "server" } }
+  },
+  "then": { "required": ["port"] }
+}
