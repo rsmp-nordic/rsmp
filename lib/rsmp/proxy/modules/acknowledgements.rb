@@ -103,6 +103,8 @@ module RSMP
               component_list_acknowledged
             when 'StatusSubscribe'
               status_subscribe_acknowledged original
+            when 'StatusUnsubscribe'
+              status_unsubscribe_acknowledged original
             end
 
             check_outgoing_acknowledged original
