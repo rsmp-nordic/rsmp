@@ -190,6 +190,8 @@ module RSMP
         end
 
         def programming_hash_to_array(normalized)
+          return [] if normalized.empty?
+
           max_key = normalized.keys.max
           program_array = Array.new(max_key + 1)
           normalized.each do |index, value|
