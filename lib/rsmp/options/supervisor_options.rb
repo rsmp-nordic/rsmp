@@ -28,6 +28,15 @@ module RSMP
       def schema_file
         'supervisor.json'
       end
+
+      private
+
+      def validate_effective!(config)
+        base = config['default'] || {}
+        sites = (config['sites'] || {}).transform_values { |settings| base.deep_merge(settings) }
+        effective = config.merge('sites' => sites)
+        validate!(effective, path: File.join(SCHEMAS_PATH, 'required_supervisor_settings.json'))
+      end
     end
   end
 end

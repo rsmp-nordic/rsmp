@@ -23,6 +23,10 @@ module RSMP
 
       private
 
+      def validate_effective!(config)
+        validate!(config, path: File.join(SCHEMAS_PATH, 'required_settings.json'))
+      end
+
       def default_message_buffer
         {
           'max_messages' => 10_000,
@@ -54,7 +58,8 @@ module RSMP
         defaults = defaults()
         defaults['components']['main'] = options['components']['main'] if options.dig('components', 'main')
         data = defaults.deep_merge(options)
-        data['port'] ||= data.dig('supervisors', 0, 'port')
+        port = data.dig('supervisors', 0, 'port')
+        data['port'] ||= port if port
         data
       end
     end

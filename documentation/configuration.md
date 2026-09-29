@@ -16,6 +16,18 @@ RSMP uses option classes to handle configuration for sites and supervisors. Thes
 
 Each class applies defaults and validates the configuration against a JSON Schema located in `lib/rsmp/options/schemas/`.
 
+Field types and unknown keys are checked before defaults are applied. The `required_settings.json`
+and `required_supervisor_settings.json` schemas then check required settings after defaults and
+supervisor site inheritance are resolved:
+
+- Every configured signal plan must have a `cycle_time`.
+- Configured components must include exactly one `main` component. Sites supply a default main
+  component when omitted; supervisor site settings can inherit it from `default`.
+- A site in `server` role must have a `port`, either explicitly or from its first supervisor endpoint.
+  With `supervisors: []`, the port must be explicit.
+
+`inputs.programming: {}` is allowed and means no programmed input actions.
+
 ## Version strings
 
 Core 3.3.0 and later use exact `MAJOR.MINOR.PATCH` version strings for both Core and SXL negotiation.

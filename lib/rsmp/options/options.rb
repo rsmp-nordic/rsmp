@@ -34,7 +34,9 @@ module RSMP
       validate_log_settings! if validate
       config = normalize_config(options || {})
       validate!(config) if validate
-      @data = normalize(apply_defaults(config))
+      config = apply_defaults(config)
+      validate_effective!(config) if validate
+      @data = normalize(config)
     end
 
     def defaults = {}
@@ -56,10 +58,10 @@ module RSMP
       raise RSMP::ConfigurationError, "Invalid log configuration#{source_suffix}:\n#{message}"
     end
 
-    def validate!(data = @data)
-      return unless schema_path && File.exist?(schema_path)
+    def validate!(data = @data, path: schema_path)
+      return unless path && File.exist?(path)
 
-      schemer = JSONSchemer.schema(Pathname.new(schema_path))
+      schemer = JSONSchemer.schema(Pathname.new(path))
       errors = schemer.validate(data).to_a
       return if errors.empty?
 
@@ -85,6 +87,8 @@ module RSMP
     end
 
     private
+
+    def validate_effective!(_config); end
 
     def apply_defaults(options)
       defaults.deep_merge(options)
