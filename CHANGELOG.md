@@ -719,3 +719,9 @@ Initial release.
 
 ## 0.51.1
 - cleanup semantic versioning handling of version strings and use canonical schema versions internally
+
+## 0.51.2
+- bumb patch version for test purposes, no changes othewise
+
+## 0.51.3
+- ensure socket shutdown when stopping node
