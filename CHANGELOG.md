@@ -725,3 +725,7 @@ Initial release.
 
 ## 0.51.3
 - ensure socket shutdown when stopping node
+
+## 0.51.4
+- don't update subscription list until unsubscribe is acknowledged
+

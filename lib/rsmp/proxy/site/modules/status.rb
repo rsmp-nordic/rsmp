@@ -3,6 +3,16 @@ module RSMP
     module Modules
       # Handles status requests, responses, subscriptions and updates
       module Status
+        def clear
+          super
+          @pending_status_unsubscriptions = {}
+        end
+
+        def process_not_ack(message)
+          @pending_status_unsubscriptions.delete(message.attribute('oMId'))
+          super
+        end
+
         # Build and send a StatusRequest. Returns Result<StatusRequest>.
         def request_status(status_list, component: nil, m_id: nil, validate: true)
           readiness = validate_ready 'request status'
@@ -75,9 +85,9 @@ module RSMP
           subscribe_list.each do |item|
             code = item['sCI']
             name = item['n']
-            sub = ensure_subscription_path(component_id, code, name)
-            sub['uRt'] = item['uRt']
-            sub['sOc'] = item['sOc']
+            ensure_subscription_path(component_id, code, name)
+            # Replace the record so an older unsubscribe ACK cannot remove it.
+            @status_subscriptions[component_id][code][name] = item.slice('uRt', 'sOc')
           end
         end
 
@@ -147,20 +157,46 @@ module RSMP
         def unsubscribe_to_status(status_list, component: nil, validate: nil)
           component ||= main.c_id
 
-          status_list.each do |item|
-            remove_subscription_item(component, item['sCI'], item['n'])
-          end
-
           # Local subscription state must be cleaned up even when the peer has
           # already disconnected. In that case there is nothing left to send.
-          return Result.success(nil) unless ready?
+          unless ready?
+            status_list.each do |item|
+              remove_subscription_item(component, item['sCI'], item['n'])
+            end
+            return Result.success(nil)
+          end
 
           message = RSMP::StatusUnsubscribe.new({
                                                   'cId' => component,
                                                   'sS' => status_list
                                                 })
           apply_nts_message_attributes message
-          send_message(message, validate: validate).map(&:message)
+          track_status_unsubscribe(message)
+          delivery = send_message(message, validate: validate)
+          delivery.map(&:message)
+        ensure
+          @pending_status_unsubscriptions.delete(message.m_id) if message && !delivery&.success?
+        end
+
+        def track_status_unsubscribe(message)
+          component = message.attribute('cId')
+          @pending_status_unsubscriptions[message.m_id] = message.attribute('sS').map do |item|
+            code = item['sCI']
+            name = item['n']
+            [code, name, @status_subscriptions.dig(component, code, name)]
+          end
+        end
+
+        def status_unsubscribe_acknowledged(original)
+          component = original.attribute('cId')
+          subscriptions = @pending_status_unsubscriptions.delete(original.m_id)
+          return unless subscriptions
+
+          subscriptions.each do |code, name, subscription|
+            next unless @status_subscriptions.dig(component, code, name).equal?(subscription)
+
+            remove_subscription_item(component, code, name)
+          end
         end
 
         def unsubscribe_to_status!(...)
