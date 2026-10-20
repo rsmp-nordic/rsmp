@@ -60,7 +60,7 @@ module RSMP
         def add_status_subscription(component_id, subs, update_list, arg, now)
           sci = arg['sCI']
           name = arg['n']
-          subcription = { interval: arg['uRt'].to_i, last_sent_at: now }
+          subcription = { interval: arg['uRt'].to_f, last_sent_at: now }
           subs[sci] ||= {}
           subs[sci][name] = subcription
           update_list[component_id][sci] ||= []
