@@ -121,9 +121,9 @@ module RSMP
       raise TimestampError, "timestamp is earlier than previous alarm #{message.m_id_short}" if older_message? message
     ensure
       @timestamp = RSMP::Clock.parse message.attribute('aTs')
-      @acknowledged = message.attribute('ack').downcase == 'acknowledged'
-      @suspended = message.attribute('sS').downcase == 'suspended'
-      @active = message.attribute('aS').downcase == 'active'
+      @acknowledged = message.attribute('ack') == 'Acknowledged'
+      @suspended = message.attribute('sS') == 'Suspended'
+      @active = message.attribute('aS') == 'Active'
       @category = message.attribute('cat')
       @priority = message.attribute('pri').to_i
       @rvs = message.attribute('rvs')
