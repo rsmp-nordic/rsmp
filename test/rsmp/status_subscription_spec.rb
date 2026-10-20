@@ -11,11 +11,12 @@ describe RSMP::SiteProxy do
     end
   end
 
+  let(:core_version) { '3.3.0' }
   let(:protocol) { SubscriptionProtocol.new }
   let(:proxy) do
     supervisor = RSMP::Supervisor.new(log_settings: { 'active' => false })
     proxy = subject.new(supervisor: supervisor, protocol: protocol, site_id: 'TLC001')
-    proxy.instance_variable_set(:@core_version, '3.3.0')
+    proxy.instance_variable_set(:@core_version, core_version)
     proxy.instance_variable_set(:@state, :ready)
     proxy.instance_variable_set(:@site_settings, { 'timeouts' => { 'acknowledgement' => 1 } })
     proxy
@@ -68,6 +69,53 @@ describe RSMP::SiteProxy do
     expect do
       component.check_repeat_values(update, subscriptions)
     end.to raise_exception(RSMP::RepeatedStatusError)
+  end
+
+  RSMP::Schema.core_versions.each do |version|
+    with "Core #{version} fractional subscriptions" do
+      let(:core_version) { version }
+
+      it 'accepts repeated values for fractional periodic subscriptions' do
+        subscribe([{ 'sCI' => 'S0001', 'n' => 'cyclecounter', 'uRt' => '0.5' }])
+        component.store_status(update)
+        component.check_repeat_values(update, subscriptions)
+        expect(component.update_rate_set?(subscriptions, 'S0001', 'cyclecounter')).to be == true
+      end
+
+      it 'still rejects unchanged values for change-only subscriptions' do
+        subscribe([{ 'sCI' => 'S0001', 'n' => 'cyclecounter', 'uRt' => '0' }])
+        component.store_status(update)
+        expect do
+          component.check_repeat_values(update, subscriptions)
+        end.to raise_exception(RSMP::RepeatedStatusError)
+      end
+
+      %w[0.5 2.5].each do |interval|
+        it "schedules periodic updates every #{interval} seconds" do
+          site = RSMP::Site.new(
+            site_settings: { 'core_version' => core_version, 'supervisors' => [],
+                             'sxls' => { 'tlc' => '1.3.0' }, 'components' => { 'device' => { 'a' => {} } } },
+            log_settings: { 'active' => false }
+          )
+          connection = RSMP::SupervisorProxy.new(site: site, ip: '127.0.0.1', port: 12_345, protocol: protocol)
+          connection.instance_variable_set(:@core_version, core_version)
+          connection.instance_variable_set(:@state, :ready)
+          connection.instance_variable_set(:@version_determined, true)
+          connection.build_sxl_interfaces
+          site.components['a'].define_singleton_method(:get_status) { |*_args| %w[A recent] }
+          arg = { 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'uRt' => interval }
+          arg['sOc'] = false if Gem::Version.new(core_version) >= Gem::Version.new('3.1.5')
+          connection.process_status_subcribe(RSMP::StatusSubscribe.new('cId' => 'a', 'sS' => [arg]))
+          subscription = connection.get_status_subscribe_interval('a', 'S0001', 'signalgroupstatus')
+          start = subscription[:last_sent_at]
+          period = interval.to_f
+          expect(connection.status_updates_due(start + (period / 2))).to be == {}
+          expect(connection.status_updates_due(start + period).keys).to be == ['a']
+          expect(connection.status_updates_due(start + (period * 1.5))).to be == {}
+          expect(connection.status_updates_due(start + (period * 2)).keys).to be == ['a']
+        end
+      end
+    end
   end
 
   it 'removes only the acknowledged attributes and component' do

@@ -729,3 +729,5 @@ Initial release.
 ## 0.51.4
 - don't update subscription list until unsubscribe is acknowledged
 
+## Unreleased
+- Fix fractional status subscription intervals across all supported Core versions.

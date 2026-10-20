@@ -17,6 +17,30 @@ describe RSMP::Schema do
     }
   end
 
+  RSMP::Schema.core_versions.each do |core_version|
+    with "Core #{core_version} subscription intervals" do
+      let(:subscription) do
+        arg = { 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'uRt' => '1' }
+        arg['sOc'] = true if Gem::Version.new(core_version) >= Gem::Version.new('3.1.5')
+        RSMP::StatusSubscribe.new('cId' => 'KK+AG4034=00DL001', 'ntsOId' => '', 'xNId' => '', 'sS' => [arg])
+      end
+
+      it 'accepts integer and fractional intervals, including zero for change-only subscriptions' do
+        %w[0 0.0 1 0.5 2.5 0.001].each do |interval|
+          subscription.attributes['sS'].first['uRt'] = interval
+          expect(subscription.validate(core: core_version, tlc: '1.3.0').valid?).to be == true
+        end
+      end
+
+      it 'rejects malformed intervals and JSON numbers' do
+        ['NaN', 'Infinity', '0.5s', '0,5', '', 1, 0.5, nil].each do |interval|
+          subscription.attributes['sS'].first['uRt'] = interval
+          expect(subscription.validate(core: core_version, tlc: '1.3.0').invalid?).to be == true
+        end
+      end
+    end
+  end
+
   with 'version formats' do
     it 'normalizes only unambiguous legacy Core versions' do
       expect(subject.normalize_core_version('3.2')).to be == '3.2.0'

@@ -39,7 +39,7 @@ module RSMP
 
     def update_rate_set?(subscription_list, status_code, status_name)
       urt = subscription_list.dig(c_id, status_code, status_name, 'uRt')
-      urt.to_i.positive?
+      urt.to_f.positive?
     end
 
     def should_check_repeats?(subscription_list, status_code, status_name)
