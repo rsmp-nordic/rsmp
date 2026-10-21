@@ -49,7 +49,7 @@ module RSMP
         end
 
         def check_required_command_arguments(message)
-          return unless core_3_3?
+          return unless core_3_3_0_or_newer?
 
           command_codes(message).each do |command_code|
             provided = message.attributes['arg'].select { |item| item['cCI'] == command_code }.map { |item| item['n'] }
@@ -93,11 +93,12 @@ module RSMP
         end
 
         def process_command_request(message)
-          return reject_multiple_command_codes(message) if core_3_3? && multiple_command_codes?(message)
+          return reject_multiple_command_codes(message) if core_3_3_0_or_newer? && multiple_command_codes?(message)
 
           check_required_command_arguments message
           component_id = message.attributes['cId']
           rvs = build_command_rvs(message.attributes['arg'])
+          acknowledge message if core_3_3_0_or_newer?
           execute_commands(message, component_id, rvs)
 
           response = CommandResponse.new({
@@ -106,7 +107,7 @@ module RSMP
                                            'rvs' => rvs
                                          })
           apply_nts_message_attributes response
-          acknowledge message
+          acknowledge message unless core_3_3_0_or_newer?
           send_generated_message response
         end
       end

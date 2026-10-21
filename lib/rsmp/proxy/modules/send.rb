@@ -38,8 +38,24 @@ module RSMP
           write_protocol(message)
         end
 
+        def core_3_3_send_failure(message)
+          return unless core_3_3_0_or_newer?
+          return 'Alarm exchange is disabled' if message.is_a?(Alarm) && !use_alarms?
+
+          'Communication establishment is incomplete' if !ready? && application_message?(message)
+        end
+
+        def nts_attributes?(message)
+          message.attributes.key?('cId') || message.is_a?(Alarm) ||
+            message.is_a?(AggregatedStatus) || message.is_a?(AggregatedStatusRequest)
+        end
+
         def prepare_message(message, validate:)
+          permission = core_3_3_send_failure(message)
+          return invalid_outbound_result(message, permission) if permission
+
           message.direction = :out
+          apply_nts_message_attributes(message) if core_3_3_0_or_newer? && nts_attributes?(message)
           message.encode_for(schemas) unless validate == false
           message.generate_json
           unless validate == false
@@ -135,10 +151,14 @@ module RSMP
         end
 
         def apply_nts_message_attributes(message)
-          return if core_3_3?
+          if core_3_3_0_or_newer?
+            message.attributes['ntsOId'] = ''
+            message.attributes['xNId'] = ''
+            return
+          end
 
-          message.attributes['ntsOId'] = main && main.ntsoid ? main.ntsoid : ''
-          message.attributes['xNId'] = main && main.xnid ? main.xnid : ''
+          message.attributes['ntsOId'] = main&.ntsoid || ''
+          message.attributes['xNId'] = main&.xnid || ''
         end
       end
     end

@@ -1,19 +1,8 @@
+require_relative '../support/proxy_helper'
 require_relative '../support/site_proxy_stub'
 
 describe RSMP::Proxy do
-  class CapturingProtocol
-    attr_reader :lines
-
-    def initialize(&on_write)
-      @lines = []
-      @on_write = on_write
-    end
-
-    def write_lines(line)
-      @lines << line
-      @on_write&.call(line)
-    end
-  end
+  include ProxyHelper
 
   class RejectingSxlInterface
     def validate_message!(_message)
@@ -260,6 +249,26 @@ describe RSMP::Proxy do
     end
   end
 
+  with '#core_3_3_0_or_newer?' do
+    it 'is false before version negotiation' do
+      expect(proxy.core_3_3_0_or_newer?).to be == false
+    end
+
+    it 'is false for older Core versions' do
+      %w[3.1.2 3.2.2 3.2.10].each do |version|
+        proxy.instance_variable_set(:@core_version, version)
+        expect(proxy.core_3_3_0_or_newer?).to be == false
+      end
+    end
+
+    it 'includes later patch, minor and major versions' do
+      %w[3.3.0 3.3.1 3.3.10 3.4.0 3.10.0 4.0.0].each do |version|
+        proxy.instance_variable_set(:@core_version, version)
+        expect(proxy.core_3_3_0_or_newer?).to be == true
+      end
+    end
+  end
+
   with 'version_meets_requirement?' do
     it 'is equal to' do
       expect(subject.version_meets_requirement?('1.0.9', '1.0.10')).to be == false
@@ -299,6 +308,65 @@ describe RSMP::Proxy do
     end
   end
 
+  RSMP::Schema.core_versions.reject { |version| Gem::Version.new(version) >= Gem::Version.new('3.3.0') }.each do |version|
+    with "Core #{version} initial Version validation" do
+      let(:version_attributes) do
+        { 'RSMP' => [{ 'vers' => '3.3.0' }, { 'vers' => version }],
+          'SXL' => '1.3.0', 'siteId' => [{ 'sId' => 'TLC001' }] }
+      end
+
+      def negotiating_proxy(direction, version)
+        connection = if direction == 'Request'
+                       build_site_proxy(core_version: nil, state: :connected, version_determined: false, session_closed: false,
+                                        settings: { 'core_version' => version, 'sxls' => { 'tlc' => '1.3.0' } })
+                     else
+                       site = build_site(core_version: version, 'sxls' => { 'tlc' => '1.3.0' })
+                       build_supervisor_proxy(site, core_version: nil, state: :connected, version_determined: false, session_closed: false)
+                     end
+        connection.setup_site_settings if direction == 'Request'
+        connection.define_singleton_method(:version_accepted) { |_message| nil }
+        connection
+      end
+
+      %w[Request Response].each do |direction|
+        it "validates a #{direction} using the selected legacy version and ignores newer fields" do
+          connection = negotiating_proxy(direction, version)
+          attributes = version_attributes.merge('step' => 'unknown-to-legacy', 'SXLS' => 'unknown-to-legacy',
+                                                'futureField' => { 'anything' => true })
+          message = RSMP::Version.new(attributes)
+          result = connection.process_packet(JSON.generate(message.attributes))
+          expect(result.success?).to be == true
+          expect(connection.core_version).to be == version
+          expect(connection.accepted_sxls.first['version']).to be == '1.3.0'
+        end
+
+        it "rejects malformed fields in a #{direction} before legacy handlers access them" do
+          [
+            { 'siteId' => nil }, { 'siteId' => [] }, { 'siteId' => ['TLC001'] },
+            { 'siteId' => [{ 'sId' => 123 }] }, { 'SXL' => [] }, { 'SXL' => 'invalid' }
+          ].each do |invalid|
+            connection = negotiating_proxy(direction, version)
+            message = RSMP::Version.new(version_attributes.merge(invalid))
+            result = connection.process_packet(JSON.generate(message.attributes))
+            expect(result.failure.code).to be == :protocol_failure
+            expect(connection.disconnected?).to be == true
+            expect(messages(connection).last['type']).to be == 'MessageNotAck'
+          end
+        end
+
+        it "rejects missing required fields in a #{direction}" do
+          %w[siteId SXL].each do |field|
+            connection = negotiating_proxy(direction, version)
+            message = RSMP::Version.new(version_attributes.except(field))
+            result = connection.process_packet(JSON.generate(message.attributes))
+            expect(result.failure.code).to be == :protocol_failure
+            expect(connection.disconnected?).to be == true
+          end
+        end
+      end
+    end
+  end
+
   with 'Core 3.3 SXL response negotiation' do
     def build_sxl_negotiating_supervisor_proxy
       site = RSMP::Site.new(
@@ -318,25 +386,25 @@ describe RSMP::Proxy do
     it 'accepts the exact canonical SXL version requested by the site' do
       proxy = build_sxl_negotiating_supervisor_proxy
       message = RSMP::Version.new(
-        'SXLS' => [{ 'name' => 'tlc', 'version' => '1.2.0' }],
-        'receiveAlarms' => true
+        'SXLS' => [{ 'name' => 'tlc', 'status' => 'ok', 'version' => '1.2.0' }],
+        'useAlarms' => true
       )
 
       proxy.check_sxl_version message
 
-      expect(proxy.accepted_sxls).to be == [{ 'name' => 'tlc', 'version' => '1.2.0' }]
+      expect(proxy.accepted_sxls).to be == [{ 'name' => 'tlc', 'status' => 'ok', 'version' => '1.2.0' }]
     end
 
     it 'rejects a noncanonical SXL version returned by the supervisor' do
       proxy = build_sxl_negotiating_supervisor_proxy
       message = RSMP::Version.new(
-        'SXLS' => [{ 'name' => 'tlc', 'version' => '1.2' }],
-        'receiveAlarms' => true
+        'SXLS' => [{ 'name' => 'tlc', 'status' => 'ok', 'version' => '1.2' }],
+        'useAlarms' => true
       )
 
       expect do
         proxy.check_sxl_version message
-      end.to raise_exception(RSMP::HandshakeError, message: be(:include?, 'exact MAJOR.MINOR.PATCH match'))
+      end.to raise_exception(RSMP::HandshakeError, message: be(:include?, 'match the request exactly'))
     end
   end
 
@@ -398,9 +466,9 @@ describe RSMP::Proxy do
     end
 
     it 'sends MessageNotAck when an SXL interface rejects an incoming message before generic acknowledgement' do
-      protocol = CapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       site_proxy.instance_variable_set(:@protocol, protocol)
-      site_proxy.instance_variable_set(:@state, :connected)
+      site_proxy.instance_variable_set(:@state, :ready)
       site_proxy.instance_variable_set(:@core_version, '3.3.0')
       site_proxy.instance_variable_set(:@version_determined, true)
       site_proxy.instance_variable_set(
@@ -427,9 +495,9 @@ describe RSMP::Proxy do
     end
 
     it 'sends MessageNotAck when no accepted SXL defines an incoming message code' do
-      protocol = CapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       site_proxy.instance_variable_set(:@protocol, protocol)
-      site_proxy.instance_variable_set(:@state, :connected)
+      site_proxy.instance_variable_set(:@state, :ready)
       site_proxy.instance_variable_set(:@core_version, '3.3.0')
       site_proxy.instance_variable_set(:@version_determined, true)
       site_proxy.instance_variable_set(
@@ -463,14 +531,14 @@ describe RSMP::Proxy do
         },
         log_settings: { 'active' => false }
       )
-      protocol = CapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       supervisor_proxy = RSMP::SupervisorProxy.new(
         site: site,
         ip: '127.0.0.1',
         port: 12_345,
         protocol: protocol
       )
-      supervisor_proxy.instance_variable_set(:@state, :connected)
+      supervisor_proxy.instance_variable_set(:@state, :ready)
       supervisor_proxy.instance_variable_set(:@core_version, '3.3.0')
       supervisor_proxy.instance_variable_set(:@version_determined, true)
       supervisor_proxy.instance_variable_set(
@@ -500,7 +568,7 @@ describe RSMP::Proxy do
     end
 
     it 'does not relabel an implementation defect as a peer failure' do
-      site_proxy.instance_variable_set(:@state, :connected)
+      site_proxy.instance_variable_set(:@state, :ready)
       site_proxy.instance_variable_set(:@core_version, '3.3.0')
       site_proxy.instance_variable_set(:@version_determined, true)
       site_proxy.instance_variable_set(
@@ -594,6 +662,7 @@ describe RSMP::Proxy do
       supervisor_proxy = RSMP::SupervisorProxy.new(site: site, ip: '127.0.0.1', port: 12_345)
       supervisor_proxy.instance_variable_set(:@core_version, '3.3.0')
       supervisor_proxy.instance_variable_set(:@version_determined, true)
+      supervisor_proxy.instance_variable_set(:@state, :ready)
       supervisor_proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
       interface = CapturingSxlInterface.new
       supervisor_proxy.instance_variable_set(:@sxl_interfaces, { 'tlc' => interface })
@@ -632,6 +701,7 @@ describe RSMP::Proxy do
       supervisor_proxy.instance_variable_get(:@site_settings)['skip_validation'] = ['CommandRequest']
       supervisor_proxy.instance_variable_set(:@core_version, '3.3.0')
       supervisor_proxy.instance_variable_set(:@version_determined, true)
+      supervisor_proxy.instance_variable_set(:@state, :ready)
       supervisor_proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
       interface = CapturingSxlInterface.new
       supervisor_proxy.instance_variable_set(:@sxl_interfaces, { 'tlc' => interface })
@@ -650,51 +720,19 @@ describe RSMP::Proxy do
 
   with 'core 3.3.0 message semantics' do
     def build_core_3_3_supervisor_proxy
-      site = RSMP::Site.new(
-        site_settings: {
-          'site_id' => 'TLC001',
-          'supervisors' => [],
-          'sxls' => { 'tlc' => '1.3.0' },
-          'core_version' => '3.3.0'
-        },
-        log_settings: { 'active' => false }
-      )
-      protocol = CapturingProtocol.new
-      proxy = RSMP::SupervisorProxy.new(
-        site: site,
-        ip: '127.0.0.1',
-        port: 12_345
-      )
-      proxy.instance_variable_set(:@protocol, protocol)
-      proxy.instance_variable_set(:@state, :connected)
-      proxy.instance_variable_set(:@core_version, '3.3.0')
-      proxy.instance_variable_set(:@version_determined, true)
-      proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
+      site = build_site(core_version: '3.3.0', 'site_id' => 'TLC001', 'sxls' => { 'tlc' => '1.3.0' },
+                        'components' => { 'device' => { 'C1' => {} } })
+      protocol = ProxyHelper::CapturingProtocol.new
+      proxy = build_supervisor_proxy(site, core_version: '3.3.0', protocol: protocol,
+                                           accepted_sxls: [{ 'name' => 'tlc', 'version' => '1.3.0' }])
       [proxy, protocol]
     end
 
     def build_core_3_3_site_proxy
-      supervisor = RSMP::Supervisor.new(
-        supervisor_settings: {
-          'default' => {
-            'sxls' => { 'tlc' => '1.3.0' },
-            'core_version' => '3.3.0'
-          }
-        },
-        log_settings: { 'active' => false }
-      )
-      protocol = CapturingProtocol.new
-      proxy = RSMP::SiteProxy.new(
-        supervisor: supervisor,
-        ip: '127.0.0.1',
-        port: 12_345,
-        site_id: 'TLC001'
-      )
-      proxy.instance_variable_set(:@protocol, protocol)
-      proxy.instance_variable_set(:@state, :connected)
-      proxy.instance_variable_set(:@core_version, '3.3.0')
-      proxy.instance_variable_set(:@version_determined, true)
-      proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
+      protocol = ProxyHelper::CapturingProtocol.new
+      proxy = build_site_proxy(core_version: '3.3.0', protocol: protocol,
+                               settings: { 'sxls' => { 'tlc' => '1.3.0' }, 'core_version' => '3.3.0' },
+                               accepted_sxls: [{ 'name' => 'tlc', 'version' => '1.3.0' }])
       [proxy, protocol]
     end
 
@@ -883,41 +921,26 @@ describe RSMP::Proxy do
       end.to raise_exception(Errno::ENOENT, message: be =~ /receiver defect/)
     end
 
-    it 'does not add legacy NTS attributes for 3.3.0 messages' do
+    it 'sends empty deprecated NTS attributes for 3.3.0 messages' do
       proxy, = build_core_3_3_supervisor_proxy
       message = RSMP::StatusRequest.new
 
       proxy.apply_nts_message_attributes message
 
-      expect(message.attributes.key?('ntsOId')).to be == false
-      expect(message.attributes.key?('xNId')).to be == false
+      expect(message.attributes['ntsOId']).to be == ''
+      expect(message.attributes['xNId']).to be == ''
     end
   end
 
   with 'finite request operations' do
     def ready_site_proxy(protocol)
-      supervisor = RSMP::Supervisor.new(
-        supervisor_settings: {
-          'default' => { 'sxls' => { 'tlc' => '1.3.0' }, 'core_version' => '3.3.0' }
-        },
-        log_settings: { 'active' => false }
-      )
-      proxy = RSMP::SiteProxy.new(
-        supervisor: supervisor,
-        ip: '127.0.0.1',
-        port: 12_345,
-        site_id: 'TLC001'
-      )
-      proxy.instance_variable_set(:@protocol, protocol)
-      proxy.instance_variable_set(:@state, :ready)
-      proxy.instance_variable_set(:@core_version, '3.3.0')
-      proxy.instance_variable_set(:@version_determined, true)
-      proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.3.0' }])
-      proxy
+      build_site_proxy(core_version: '3.3.0', protocol: protocol,
+                       settings: { 'sxls' => { 'tlc' => '1.3.0' }, 'core_version' => '3.3.0' },
+                       accepted_sxls: [{ 'name' => 'tlc', 'version' => '1.3.0' }])
     end
 
     it 'returns the sent high-level message in a successful Result' do
-      result = ready_site_proxy(CapturingProtocol.new).send_command(
+      result = ready_site_proxy(ProxyHelper::CapturingProtocol.new).send_command(
         [{ 'cCI' => 'M0001', 'cO' => 'setValue', 'n' => 'status', 'v' => 'NormalControl' }],
         component: 'C1',
         validate: false
@@ -929,7 +952,7 @@ describe RSMP::Proxy do
 
     it 'starts collection before sending and returns an immutable Exchange' do
       proxy = nil
-      protocol = CapturingProtocol.new do |_line|
+      protocol = ProxyHelper::CapturingProtocol.new do |_line|
         response = RSMP::CommandResponse.new(
           'cId' => 'C1',
           'cTS' => '2024-01-01T10:00:00.000Z',
@@ -955,7 +978,7 @@ describe RSMP::Proxy do
   end
 
   with 'message buffering' do
-    def build_supervisor_proxy(message_buffer: {}, core_version: '3.2.2')
+    def build_buffering_proxy(message_buffer: {}, core_version: '3.2.2')
       site = RSMP::Site.new(
         site_settings: {
           'site_id' => 'TLC001',
@@ -968,17 +991,12 @@ describe RSMP::Proxy do
         },
         log_settings: { 'active' => false }
       )
-      proxy = RSMP::SupervisorProxy.new(
-        site: site,
-        ip: '127.0.0.1',
-        port: 12_345
-      )
-      proxy.instance_variable_set(:@core_version, core_version)
-      proxy
+      build_supervisor_proxy(site, core_version: core_version, state: :disconnected,
+                                   protocol: nil, version_determined: false)
     end
 
     it 'buffers site-originated aggregated status while disconnected' do
-      proxy = build_supervisor_proxy
+      proxy = build_buffering_proxy
       message = RSMP::AggregatedStatus.new(
         'cId' => 'C1',
         'aSTS' => '2024-01-01T10:00:00.000Z',
@@ -994,7 +1012,7 @@ describe RSMP::Proxy do
     end
 
     it 'buffers aggregated status before a core version has been negotiated' do
-      proxy = build_supervisor_proxy(core_version: nil)
+      proxy = build_buffering_proxy(core_version: nil)
       component = RSMP::Component.new(id: 'C1', node: proxy.site, grouped: true)
 
       proxy.send_aggregated_status component
@@ -1004,7 +1022,7 @@ describe RSMP::Proxy do
     end
 
     it 'does not buffer command messages while disconnected' do
-      proxy = build_supervisor_proxy
+      proxy = build_buffering_proxy
       message = RSMP::CommandResponse.new(
         'cId' => 'C1',
         'cTS' => '2024-01-01T10:00:00.000Z',
@@ -1021,7 +1039,7 @@ describe RSMP::Proxy do
     end
 
     it 'filters buffered status updates by configured selector' do
-      proxy = build_supervisor_proxy(
+      proxy = build_buffering_proxy(
         message_buffer: { 'statuses' => [{ 'sCI' => 'S0001', 'n' => 'status' }] }
       )
       message = RSMP::StatusUpdate.new(
@@ -1042,7 +1060,7 @@ describe RSMP::Proxy do
     end
 
     it 'marks buffered status updates as old when flushing with core 3.2 or newer' do
-      proxy = build_supervisor_proxy(
+      proxy = build_buffering_proxy(
         message_buffer: { 'statuses' => true },
         core_version: '3.1.5'
       )
@@ -1052,7 +1070,7 @@ describe RSMP::Proxy do
         'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '1', 'q' => 'recent' }]
       )
 
-      protocol = CapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       proxy.instance_variable_set(:@protocol, protocol)
       proxy.instance_variable_set(:@state, :connected)
       proxy.instance_variable_set(:@core_version, '3.2.2')
@@ -1064,14 +1082,14 @@ describe RSMP::Proxy do
     end
 
     it 'preserves buffered status update timestamps when flushing' do
-      proxy = build_supervisor_proxy(message_buffer: { 'statuses' => true })
+      proxy = build_buffering_proxy(message_buffer: { 'statuses' => true })
       proxy.send_message RSMP::StatusUpdate.new(
         'cId' => 'C1',
         'sTs' => '2024-01-01T10:00:00.000Z',
         'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '1', 'q' => 'recent' }]
       )
 
-      protocol = CapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       proxy.instance_variable_set(:@protocol, protocol)
       proxy.instance_variable_set(:@state, :connected)
       proxy.flush_message_buffer
@@ -1081,7 +1099,7 @@ describe RSMP::Proxy do
     end
 
     it 'uses the reconnect core version when flushing buffered aggregated status' do
-      proxy = build_supervisor_proxy(core_version: '3.1.2')
+      proxy = build_buffering_proxy(core_version: '3.1.2')
       proxy.send_message RSMP::AggregatedStatus.new(
         'cId' => 'C1',
         'aSTS' => '2024-01-01T10:00:00.000Z',
@@ -1090,7 +1108,7 @@ describe RSMP::Proxy do
         'se' => %w[false false false false false true false false]
       )
 
-      protocol = CapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       proxy.instance_variable_set(:@protocol, protocol)
       proxy.instance_variable_set(:@state, :connected)
       proxy.instance_variable_set(:@core_version, '3.2.2')
@@ -1101,7 +1119,7 @@ describe RSMP::Proxy do
     end
 
     it 'preserves buffered aggregated status timestamps when flushing' do
-      proxy = build_supervisor_proxy
+      proxy = build_buffering_proxy
       proxy.send_message RSMP::AggregatedStatus.new(
         'cId' => 'C1',
         'aSTS' => '2024-01-01T10:00:00.000Z',
@@ -1110,7 +1128,7 @@ describe RSMP::Proxy do
         'se' => [false, false, false, false, false, true, false, false]
       )
 
-      protocol = CapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       proxy.instance_variable_set(:@protocol, protocol)
       proxy.instance_variable_set(:@state, :connected)
       proxy.flush_message_buffer
@@ -1120,7 +1138,7 @@ describe RSMP::Proxy do
     end
 
     it 'preserves buffered alarm timestamps when flushing' do
-      proxy = build_supervisor_proxy
+      proxy = build_buffering_proxy
       proxy.send_message RSMP::AlarmIssue.new(
         'cId' => 'C1',
         'aCId' => 'A0001',
@@ -1136,7 +1154,7 @@ describe RSMP::Proxy do
         'rvs' => []
       )
 
-      protocol = CapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       proxy.instance_variable_set(:@protocol, protocol)
       proxy.instance_variable_set(:@state, :connected)
       proxy.flush_message_buffer
@@ -1146,7 +1164,7 @@ describe RSMP::Proxy do
     end
 
     it 'drops the oldest buffered message when the buffer is full' do
-      proxy = build_supervisor_proxy(message_buffer: { 'max_messages' => 1 })
+      proxy = build_buffering_proxy(message_buffer: { 'max_messages' => 1 })
 
       first = RSMP::AlarmIssue.new('cId' => 'C1', 'aCId' => 'A1')
       second = RSMP::AlarmIssue.new('cId' => 'C1', 'aCId' => 'A2')
@@ -1158,7 +1176,7 @@ describe RSMP::Proxy do
     end
 
     it 'prunes subscriptions that are not configured for buffering' do
-      proxy = build_supervisor_proxy(
+      proxy = build_buffering_proxy(
         message_buffer: { 'statuses' => [{ 'sCI' => 'S0001', 'n' => 'keep' }] }
       )
       proxy.instance_variable_set(
@@ -1177,6 +1195,84 @@ describe RSMP::Proxy do
 
       subscriptions = proxy.instance_variable_get(:@status_subscriptions)
       expect(subscriptions['C1']['S0001'].keys).to be == ['keep']
+    end
+  end
+
+  with 'Core 3.3.0 version negotiation' do
+    let(:core_version) { '3.3.0' }
+    let(:site) do
+      build_site(core_version: core_version, 'sxls' => { 'tlc' => '1.3.0' },
+                 'components' => { 'device' => { 'a' => {}, 'b' => {} } })
+    end
+
+    def version_response(sxls)
+      RSMP::Version.new('step' => 'Response', 'RSMP' => [{ 'vers' => core_version }],
+                        'supervisorId' => 'informational', 'SXLS' => sxls)
+    end
+
+    it 'closes invalid Version responses and only rejects valid received message IDs' do
+      [nil, 'invalid', RSMP::Message.make_m_id].each do |id|
+        proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+        proxy.instance_variable_set(:@version_determined, false)
+        proxy.instance_variable_set(:@session_closed, false)
+        packet = version_response([]).attributes.merge('mId' => id, 'RSMP' => [])
+        packet.delete('mId') unless id
+        expect(proxy.process_packet(JSON.generate(packet)).failure?).to be == true
+        expect(proxy.disconnected?).to be == true
+        expected = id && id != 'invalid' ? ['MessageNotAck'] : []
+        expect(messages(proxy).map { |message| message['type'] }).to be == expected
+      end
+    end
+
+    it 'does not treat a response version outside the original offer as a match' do
+      proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      proxy.instance_variable_set(:@offered_core_versions, ['3.2.2'])
+      expect { proxy.check_core_version(version_response([])) }.to raise_exception(RSMP::HandshakeError)
+    end
+
+    it 'accepts nonfatal SXL statuses and never falls back to supported versions' do
+      proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      response = version_response([
+                                    { 'name' => 'tlc', 'status' => 'mismatch', 'supported' => ['1.2.1'] },
+                                    { 'name' => 'vms', 'status' => 'expected' }
+                                  ])
+      proxy.validate_version!(response, step: 'Response')
+      proxy.check_sxl_version(response)
+      expect(proxy.accepted_sxls).to be == []
+      expect(proxy.rejected_sxls).to be == response.sxls
+      expect(proxy.use_alarms?).to be == true
+    end
+
+    it 'rejects duplicate, missing and unsolicited accepted SXLs' do
+      proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      ok = { 'name' => 'tlc', 'status' => 'ok', 'version' => '1.3.0' }
+      expect do
+        proxy.validate_version!(version_response([ok, ok]), step: 'Response')
+      end.to raise_exception(RSMP::HandshakeError)
+      [[], [ok.merge('name' => 'vms')], [ok.merge('version' => '1.2.1')]].each do |items|
+        expect { proxy.check_sxl_version(version_response(items)) }.to raise_exception(RSMP::HandshakeError)
+      end
+    end
+  end
+
+  with 'Core 3.3.0 buffered messages' do
+    let(:core_version) { '3.3.0' }
+    let(:site) do
+      build_site(core_version: core_version, 'sxls' => { 'tlc' => '1.3.0' },
+                 'components' => { 'device' => { 'a' => {}, 'b' => {} } })
+    end
+
+    it 'skips rejected-SXL buffered traffic without blocking later core messages' do
+      proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      proxy.instance_variable_set(:@accepted_sxls, [])
+      update = RSMP::StatusUpdate.new('cId' => 'a', 'sTs' => RSMP::Clock.to_s,
+                                      'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus',
+                                                 's' => 'R', 'q' => 'recent' }])
+      status = RSMP::AggregatedStatus.new('aSTS' => RSMP::Clock.to_s, 'se' => Array.new(8, false))
+      proxy.message_buffer.push(update, status)
+      proxy.flush_message_buffer
+      expect(messages(proxy).map { |message| message['type'] }).to be == ['AggregatedStatus']
+      expect(proxy.message_buffer).to be == []
     end
   end
 end

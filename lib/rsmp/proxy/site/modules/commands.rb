@@ -66,7 +66,7 @@ module RSMP
         end
 
         def process_command_response(message)
-          return reject_multiple_command_codes(message) if core_3_3? && multiple_command_codes?(message)
+          return reject_multiple_command_codes(message) if core_3_3_0_or_newer? && multiple_command_codes?(message)
 
           log "Received #{message.type}", message: message, level: :log
           acknowledge message

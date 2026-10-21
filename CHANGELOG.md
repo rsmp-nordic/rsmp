@@ -736,4 +736,4 @@ Initial release.
 - fix status collectors to honor `component:` and `responses:`; the misspelled `reponses:` option is no longer used
 
 ## Unreleased
-- Fix fractional status subscription intervals across all supported Core versions.
+- Allow fractional status subscription intervals to align with core spec.

@@ -22,7 +22,8 @@ module RSMP
         end
 
         def check_on_change_update(subscription, component, code, name)
-          return [nil, false] unless subscription[:interval].zero?
+          enabled = core_3_3_0_or_newer? ? subscription[:on_change] : subscription[:interval].zero?
+          return [nil, false] unless enabled
 
           current = current_status_value(component, code, name)
           last_sent = fetch_last_sent_status component.c_id, code, name
@@ -34,6 +35,10 @@ module RSMP
 
           value, quality = *(component.get_status code, name)
           rsmpify_value(value, quality)
+        rescue UnknownStatus
+          raise unless core_3_3_0_or_newer?
+
+          nil
         end
 
         def encode_status_value(code, name, value)
@@ -59,6 +64,8 @@ module RSMP
         end
 
         def status_update_timer(now)
+          return if core_3_3_0_or_newer? && connected? && !ready?
+
           send_status_updates status_updates_due(now)
         end
 
@@ -71,8 +78,15 @@ module RSMP
         end
 
         def collect_component_status_updates(update_list, component_id, by_code, now)
+          if core_3_3_0_or_newer? && !@site.components.key?(component_id)
+            @status_subscriptions.delete(component_id)
+            return
+          end
           component = @site.find_component component_id
           by_code.each_pair do |code, by_name|
+            probe = StatusUpdate.new('sS' => [{ 'sCI' => code }])
+            next if core_3_3_0_or_newer? && !sxl_message_allowed?(probe)
+
             by_name.each_pair do |name, subscription|
               current, should_send = check_status_subscription(subscription, component, code, name, now)
               next unless should_send
@@ -90,6 +104,8 @@ module RSMP
         end
 
         def precomputed_status_value(subscription, current)
+          return if core_3_3_0_or_newer? # Fetch value and quality together; do not replace quality with recent.
+
           PrecomputedStatusValue.new(current) if subscription[:interval].zero?
         end
 

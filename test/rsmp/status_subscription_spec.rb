@@ -1,25 +1,13 @@
+require_relative '../support/proxy_helper'
+
 describe RSMP::SiteProxy do
-  class SubscriptionProtocol
-    attr_reader :messages
-
-    def initialize
-      @messages = []
-    end
-
-    def write_lines(line)
-      @messages << JSON.parse(line)
-    end
-  end
+  include ProxyHelper
 
   let(:core_version) { '3.3.0' }
-  let(:protocol) { SubscriptionProtocol.new }
+  let(:protocol) { ProxyHelper::CapturingProtocol.new }
   let(:proxy) do
-    supervisor = RSMP::Supervisor.new(log_settings: { 'active' => false })
-    proxy = subject.new(supervisor: supervisor, protocol: protocol, site_id: 'TLC001')
-    proxy.instance_variable_set(:@core_version, core_version)
-    proxy.instance_variable_set(:@state, :ready)
-    proxy.instance_variable_set(:@site_settings, { 'timeouts' => { 'acknowledgement' => 1 } })
-    proxy
+    build_site_proxy(core_version: core_version, protocol: protocol, version_determined: false,
+                     site_settings: { 'timeouts' => { 'acknowledgement' => 1 } })
   end
   let(:status_list) { [{ 'sCI' => 'S0001', 'n' => 'cyclecounter', 'uRt' => '1' }] }
   let(:unsubscribe_list) { status_list.map { |item| item.slice('sCI', 'n') } }
@@ -218,5 +206,62 @@ describe RSMP::SiteProxy do
     expect do
       component.check_repeat_values(update, subscriptions)
     end.to raise_exception(RSMP::RepeatedStatusError)
+  end
+
+  with 'Core 3.3.0 subscription scheduling' do
+    let(:core_version) { '3.3.0' }
+    let(:site) do
+      build_site(core_version: core_version, 'sxls' => { 'tlc' => '1.3.0' },
+                 'components' => { 'device' => { 'a' => {}, 'b' => {} } })
+    end
+
+    it 'replies immediately to repeated subscriptions and keeps both scheduling options' do
+      proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      component = site.components['a']
+      component.define_singleton_method(:get_status) { |*_args| %w[A recent] }
+      request = RSMP::StatusSubscribe.new('cId' => 'a', 'sS' => [
+                                            { 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'uRt' => '5', 'sOc' => true }
+                                          ])
+      2.times { proxy.process_status_subcribe(request) }
+      expect(messages(proxy).map { |message| message['type'] }).to be ==
+                                                                   %w[MessageAck StatusUpdate MessageAck StatusUpdate]
+      subscription = proxy.get_status_subscribe_interval('a', 'S0001', 'signalgroupstatus')
+      expect(subscription[:interval]).to be == 5
+      expect(subscription[:on_change]).to be == true
+      request.attributes['sS'].first.merge!('uRt' => '0', 'sOc' => false)
+      expect { proxy.process_status_subcribe(request) }.to raise_exception(RSMP::MessageRejected)
+    end
+
+    it 'preserves fractional intervals when scheduling periodic updates' do
+      proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      site.components['a'].define_singleton_method(:get_status) { |*_args| %w[A recent] }
+      request = RSMP::StatusSubscribe.new('cId' => 'a', 'sS' => [
+                                            { 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'uRt' => '0.5', 'sOc' => false }
+                                          ])
+      proxy.process_status_subcribe(request)
+      subscription = proxy.get_status_subscribe_interval('a', 'S0001', 'signalgroupstatus')
+      expect(subscription[:interval]).to be_within(Float::EPSILON).of(0.5)
+      start = subscription[:last_sent_at]
+      expect(proxy.status_updates_due(start + 0.25)).to be == {}
+      expect(proxy.status_updates_due(start + 0.5).keys).to be == ['a']
+      expect(proxy.status_updates_due(start + 0.75)).to be == {}
+      expect(proxy.status_updates_due(start + 1).keys).to be == ['a']
+      request.attributes['sS'].first.merge!('uRt' => '-0.5', 'sOc' => true)
+      expect { proxy.process_status_subcribe(request) }.to raise_exception(RSMP::MessageRejected)
+      expect(proxy.get_status_subscribe_interval('a', 'S0001', 'signalgroupstatus')[:interval]).to be_within(Float::EPSILON).of(0.5)
+    end
+
+    it 'honors on-change alongside intervals and resets the interval after a change' do
+      proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      proxy.define_singleton_method(:check_on_change_update) do |subscription, *_args|
+        [42, subscription[:on_change]]
+      end
+      subscription = { interval: 5, on_change: true, last_sent_at: Time.at(0) }
+      expect(proxy.check_status_subscription(subscription, nil, 'S0001', 'n', Time.at(2)).last).to be == true
+      expect(subscription[:last_sent_at]).to be == Time.at(2)
+      subscription[:on_change] = false
+      expect(proxy.check_status_subscription(subscription, nil, 'S0001', 'n', Time.at(6)).last).to be == false
+      expect(proxy.check_status_subscription(subscription, nil, 'S0001', 'n', Time.at(7)).last).to be == true
+    end
   end
 end

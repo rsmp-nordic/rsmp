@@ -4,7 +4,7 @@ module RSMP
       # Handles aggregated status requests and responses
       module AggregatedStatus
         # Build and send an AggregatedStatusRequest. Returns Result<AggregatedStatusRequest>.
-        def request_aggregated_status(component, m_id: nil, validate: true)
+        def request_aggregated_status(component = nil, m_id: nil, validate: true)
           readiness = validate_ready 'request aggregated status'
           return readiness if readiness.failure?
 
@@ -13,6 +13,7 @@ module RSMP
                                                         'cId' => component,
                                                         'mId' => m_id
                                                       })
+          message.attributes.delete('cId') if core_3_3_0_or_newer?
           apply_nts_message_attributes message
           send_message(message, validate: validate).map(&:message)
         end
@@ -22,7 +23,7 @@ module RSMP
         end
 
         # Build, send an AggregatedStatusRequest and collect the response. Returns Result<Exchange>.
-        def request_aggregated_status_and_collect(component, within:, m_id: nil, validate: true)
+        def request_aggregated_status_and_collect(component = nil, within:, m_id: nil, validate: true)
           readiness = validate_ready 'request aggregated status'
           return readiness if readiness.failure?
 
@@ -31,6 +32,7 @@ module RSMP
                                                         'cId' => component,
                                                         'mId' => m_id
                                                       })
+          message.attributes.delete('cId') if core_3_3_0_or_newer?
           apply_nts_message_attributes message
           collector = AggregatedStatusCollector.new(self, timeout: within, m_id: m_id, num: 1)
           send_message_and_collect(message, collector, validate: validate)
@@ -48,6 +50,8 @@ module RSMP
         end
 
         def process_aggregated_status(message)
+          return process_site_aggregated_status(message) if core_3_3_0_or_newer?
+
           status_elements = message.attribute('se')
           validate_aggregated_status(message, status_elements)
           c_id = message.attributes['cId']
@@ -62,6 +66,22 @@ module RSMP
           log "Received #{message.type} status for component #{c_id} [#{component.aggregated_status.join(', ')}]",
               message: message
           acknowledge message
+        end
+
+        def process_site_aggregated_status(message)
+          @site_aggregated_status = message.attribute('se').dup.freeze
+          acknowledge message
+          @supervisor.site_aggregated_status_changed(self)
+          complete_initial_status(message)
+        end
+
+        attr_reader :site_aggregated_status
+
+        def complete_initial_status(message)
+          return unless core_3_3_0_or_newer? && !ready? && @component_list_received && @outgoing_watchdog_acknowledged
+          return unless message.is_a?(RSMP::AggregatedStatus)
+
+          handshake_complete
         end
 
         def aggregated_status_changed(component, _options = {})

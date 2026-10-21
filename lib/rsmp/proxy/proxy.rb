@@ -80,6 +80,10 @@ module RSMP
       @ingoing_acknowledged = {}
       @outgoing_acknowledged = {}
       @latest_watchdog_send_at = nil
+      @last_site_status = nil
+      @last_component_list = nil
+      @initial_aggregated_status_id = nil
+      @site_aggregated_status = nil
       @component_list_received = false
       @outgoing_watchdog_acknowledged = false
       @sxl_interfaces = {}
@@ -104,7 +108,7 @@ module RSMP
       @sxls = []
       @accepted_sxls = []
       @rejected_sxls = []
-      @receive_alarms = true
+      @use_alarms = true
       @site_settings = nil # can't pick until we know the site id
       collect = options[:collect]
       return unless collect
@@ -135,8 +139,22 @@ module RSMP
       schemas
     end
 
-    def receive_alarms?
-      @receive_alarms != false
+    def application_message?(message)
+      !%w[Version Watchdog MessageAck MessageNotAck ComponentList AggregatedStatus].include?(message.type)
+    end
+
+    def sxl_message_allowed?(message)
+      return true unless core_3_3_0_or_newer?
+      return false if message.is_a?(Alarm) && !use_alarms?
+      return true if RSMP::Schema.core_message_type?(message.attributes)
+
+      !RSMP::Schema.resolve_sxl(message.attributes, schemas: schemas).nil?
+    rescue RSMP::Schema::UnknownMessageCodeError
+      false
+    end
+
+    def use_alarms?
+      !core_3_3_0_or_newer? || @use_alarms != false
     end
 
     def primary_sxl

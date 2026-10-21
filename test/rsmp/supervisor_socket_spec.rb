@@ -52,8 +52,8 @@ describe RSMP::Supervisor do
         'step' => 'Response',
         'RSMP' => [{ 'vers' => rsmp_version }],
         'supervisorId' => site_id,
-        'SXLS' => test_data[:sxls],
-        'receiveAlarms' => true,
+        'SXLS' => test_data[:sxls].map { |item| item.merge('status' => 'ok') },
+        'useAlarms' => true,
         'mId' => message_id
       )
     end
@@ -117,12 +117,12 @@ describe RSMP::Supervisor do
     end
 
     def expect_supervisor_version_message_body(message)
-      expect(message.slice('RSMP', 'step', 'supervisorId', 'SXLS', 'receiveAlarms')).to be == {
+      expect(message.slice('RSMP', 'step', 'supervisorId', 'SXLS', 'useAlarms')).to be == {
         'RSMP' => [{ 'vers' => test_data[:core_versions].last }],
         'step' => 'Response',
         'supervisorId' => test_data[:site_id],
-        'SXLS' => test_data[:sxls],
-        'receiveAlarms' => true
+        'SXLS' => test_data[:sxls].map { |item| item.merge('status' => 'ok') },
+        'useAlarms' => true
       }
     end
 
@@ -186,6 +186,13 @@ describe RSMP::Supervisor do
       expect(component_list['type']).to be == 'ComponentList'
       expect(component_list['components']).to be == [{ 'id' => 'C1', 'type' => 'main', 'name' => 'C1' }]
       send_message_ack(protocol, component_list['mId'])
+      acknowledge_initial_status(protocol)
+    end
+
+    def acknowledge_initial_status(protocol)
+      status = parse_message(protocol)
+      expect(status['type']).to be == 'AggregatedStatus'
+      send_message_ack(protocol, status['mId'])
     end
 
     def site_interaction_logic(site_protocol)
@@ -208,6 +215,13 @@ describe RSMP::Supervisor do
       send_component_list_message(site_protocol, test_data[:message_ids][:component_list_from_site])
       message = parse_message(site_protocol)
       expect_message_ack(message, test_data[:message_ids][:component_list_from_site])
+      send_initial_status(site_protocol)
+    end
+
+    def send_initial_status(site_protocol)
+      status = RSMP::AggregatedStatus.new('aSTS' => RSMP::Clock.to_s, 'se' => Array.new(8, false))
+      site_protocol.write_lines JSON.generate(status.attributes)
+      expect_message_ack(parse_message(site_protocol), status.m_id)
     end
 
     def send_site_watchdog(site_protocol)

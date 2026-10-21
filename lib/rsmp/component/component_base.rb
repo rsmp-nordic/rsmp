@@ -41,8 +41,10 @@ module RSMP
     end
 
     def update_metadata(type: nil, name: nil)
+      changed = (type && type != @component_type) || (name && name != @name)
       @component_type = type if type
       @name = name if name
+      @node.component_list_changed if changed
     end
 
     def now
@@ -73,7 +75,14 @@ module RSMP
       raise ArgumentError, 'aggregated status must be an Array' unless status.is_a? Array
 
       input = status & AGGREGATED_STATUS_KEYS
-      return unless input != @aggregated_status
+      if @node.respond_to?(:site_wide_aggregated_status?) && @node.site_wide_aggregated_status?
+        bits = AGGREGATED_STATUS_KEYS.map { |key| input.include?(key) }
+        return if bits == @aggregated_status_bools
+
+        @aggregated_status = input
+      else
+        return unless input != @aggregated_status
+      end
 
       AGGREGATED_STATUS_KEYS.each_with_index do |key, index|
         @aggregated_status_bools[index] = status.include?(key)

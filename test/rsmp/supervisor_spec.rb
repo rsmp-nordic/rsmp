@@ -77,7 +77,7 @@ describe RSMP::Supervisor do
 
     def handshake(protocol, core_versions:, sxl_version:, sxls: nil, expected_response_sxls: nil)
       sxls ||= [{ 'name' => 'tlc', 'version' => sxl_version }]
-      expected_response_sxls ||= sxls
+      expected_response_sxls ||= sxls.map { |item| item.merge('status' => 'ok') }
       core_versions_array = core_versions.map { |version| { 'vers' => version } }
 
       send_version_request(protocol, core_versions_array, sxl_version, sxls)
@@ -142,7 +142,7 @@ describe RSMP::Supervisor do
         'SXLS' => sxls,
         'mId' => '1b206e56-31be-4739-9164-3a24d47b0aa2',
         'mType' => 'rSMsg',
-        'receiveAlarms' => true,
+        'useAlarms' => true,
         'step' => 'Response',
         'supervisorId' => 'RN+SI0001',
         'type' => 'Version'
@@ -209,6 +209,13 @@ describe RSMP::Supervisor do
       expect(component_list_ack['mType']).to be == 'rSMsg'
       expect(component_list_ack['type']).to be == 'MessageAck'
       expect(component_list_ack['oMId']).to be == '89170d40-2d0c-42a3-8e6f-96ff4e0ae821'
+      perform_initial_status_exchange(protocol)
+    end
+
+    def perform_initial_status_exchange(protocol)
+      status = RSMP::AggregatedStatus.new('aSTS' => RSMP::Clock.to_s, 'se' => Array.new(8, false))
+      protocol.write_lines JSON.generate(status.attributes)
+      expect(JSON.parse(protocol.read_line)['oMId']).to be == status.m_id
     end
 
     def wait_for_proxy_creation
@@ -228,7 +235,7 @@ describe RSMP::Supervisor do
 
         expect(proxy).to be_a(RSMP::SiteProxy)
         expect(proxy.site_id).to be == 'RN+SI0001'
-        expect(proxy.accepted_sxls).to be == [{ 'name' => 'tlc', 'version' => sxl_version }]
+        expect(proxy.accepted_sxls).to be == [{ 'name' => 'tlc', 'version' => sxl_version, 'status' => 'ok' }]
         expect(proxy.rejected_sxls).to be == []
         expect(proxy.components.keys).to be == ['C1']
       end
@@ -245,8 +252,8 @@ describe RSMP::Supervisor do
           { 'name' => 'vms', 'version' => '1.5.4' }
         ]
         response_sxls = [
-          { 'name' => 'tlc', 'version' => sxl_version },
-          { 'name' => 'vms', 'version' => '1.5.4', 'rejected' => 1, 'reason' => 'SXL not supported' }
+          { 'name' => 'tlc', 'version' => sxl_version, 'status' => 'ok' },
+          { 'name' => 'vms', 'status' => 'unsupported' }
         ]
 
         protocol = site_connect
@@ -258,9 +265,9 @@ describe RSMP::Supervisor do
           expected_response_sxls: response_sxls
         )
 
-        expect(proxy.accepted_sxls).to be == [{ 'name' => 'tlc', 'version' => sxl_version }]
+        expect(proxy.accepted_sxls).to be == [{ 'name' => 'tlc', 'version' => sxl_version, 'status' => 'ok' }]
         expect(proxy.rejected_sxls).to be == [
-          { 'name' => 'vms', 'version' => '1.5.4', 'rejected' => 1, 'reason' => 'SXL not supported' }
+          { 'name' => 'vms', 'status' => 'unsupported' }
         ]
       end
     end
@@ -291,7 +298,9 @@ describe RSMP::Supervisor do
           'Sent MessageAck for ComponentList 8917',
           "Connection to site RN+SI0001 established, using core #{core_versions.last}, SXLs [tlc #{sxl_version}]"
         ]
-        expect(got.sort).to be == expected.sort
+        status_ack = got.find { |text| text.start_with?('Sent MessageAck for AggregatedStatus') }
+        expect(status_ack).not.to be_nil
+        expect((got - [status_ack]).sort).to be == expected.sort
       end
     end
 
@@ -366,7 +375,7 @@ describe RSMP::Supervisor do
 
         response = JSON.parse protocol.read_line
         expect(response['type']).to be == 'MessageNotAck'
-        expect(response['rea']).to be(:include?, 'RSMP versions [3.3] requested')
+        expect(response['rea']).to be(:include?, 'Invalid RSMP version array')
       end
     end
 
@@ -374,27 +383,12 @@ describe RSMP::Supervisor do
       supervisor_settings['default']['core_version'] = '3.3.0'
       supervisor_settings['default']['sxls'] = { 'tlc' => '1.2.0' }
       requested_sxls = [{ 'name' => 'tlc', 'version' => '1.2' }]
-      response_sxls = [{
-        'name' => 'tlc',
-        'version' => '1.2',
-        'rejected' => 2,
-        'reason' => 'Core 3.3 requires SXL versions to use MAJOR.MINOR.PATCH'
-      }]
-
-      with_async_context(context: lambda {
-        supervisor.start
-      }) do |_task|
+      with_async_context(context: -> { supervisor.start }) do |_task|
         protocol = site_connect
-        proxy = handshake(
-          protocol,
-          core_versions: ['3.3.0'],
-          sxl_version: '1.2',
-          sxls: requested_sxls,
-          expected_response_sxls: response_sxls
-        )
-
-        expect(proxy.accepted_sxls).to be == []
-        expect(proxy.rejected_sxls).to be == response_sxls
+        send_version_request(protocol, [{ 'vers' => '3.3.0' }], '1.2', requested_sxls)
+        response = JSON.parse protocol.read_line
+        expect(response['type']).to be == 'MessageNotAck'
+        expect(protocol.read_line).to be_nil
       end
     end
   end

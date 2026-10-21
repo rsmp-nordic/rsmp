@@ -56,6 +56,7 @@ module RSMP
 
       def apply_defaults(options)
         defaults = defaults()
+        defaults['components'] = {} if options['core_version'] == '3.3.0'
         defaults['components']['main'] = options['components']['main'] if options.dig('components', 'main')
         data = defaults.deep_merge(options)
         port = data.dig('supervisors', 0, 'port')

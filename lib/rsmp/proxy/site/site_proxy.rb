@@ -86,8 +86,9 @@ module RSMP
       log "Received Version message for site #{@site_id}", message: message, level: :log
       start_timer
       acknowledge message
-      response_id = core_3_3? ? (@supervisor.site_id || @site_id) : @site_id
+      response_id = core_3_3_0_or_newer? ? (@supervisor.site_id || @site_id) : @site_id
       send_version_response response_id, core_versions
+      @use_alarms = @site_settings['use_alarms'] != false if core_3_3_0_or_newer?
       @version_determined = true
     end
 
@@ -101,9 +102,9 @@ module RSMP
     def acknowledged_first_outgoing(message)
       case message.type
       when 'Watchdog'
-        if core_3_3?
+        if core_3_3_0_or_newer?
           @outgoing_watchdog_acknowledged = true
-          handshake_complete if @component_list_received
+
         else
           handshake_complete
         end
@@ -130,28 +131,33 @@ module RSMP
     def process_component_list(message)
       log "Received #{message.type}", message: message, level: :log
       rebuild_components_from_list message.attributes['components']
-      build_sxl_interfaces
       acknowledge message
       @component_list_received = true
-      handshake_complete if @outgoing_watchdog_acknowledged
     end
 
     def rebuild_components_from_list(items)
       main_id = @site_settings.dig('components', 'main')&.keys&.first
+      ids = items.map { |item| item['id'] }
+      raise MessageRejected, 'Duplicate component IDs' unless ids.uniq == ids
+
+      previous = @components
       @components = {}
       @main = nil
       items.each do |item|
         grouped = item['id'] == main_id
-        component = ComponentProxy.new(
-          id: item['id'],
-          node: self,
-          type: item['type'],
-          name: item['name'],
-          grouped: grouped
-        )
+        component = listed_component(item, previous[item['id']], grouped)
         @components[component.c_id] = component
         @main = component if grouped
       end
+    end
+
+    def listed_component(item, previous, grouped)
+      if previous && previous.component_type == item['type']
+        previous.update_metadata(name: item['name'] || item['id'])
+        return previous
+      end
+
+      ComponentProxy.new(id: item['id'], node: self, type: item['type'], name: item['name'], grouped: grouped)
     end
 
     def site_ids_changed
@@ -165,8 +171,9 @@ module RSMP
     def process_version(message)
       return extraneous_version message if @version_determined
 
-      check_site_ids message
       check_core_version message
+      validate_version! message, step: 'Request'
+      check_site_ids message
       check_sxl_version message
       version_accepted message
     end
@@ -174,6 +181,8 @@ module RSMP
     def check_site_ids(message)
       # RSMP support multiple site ids. we don't support this yet. instead we use the first id only
       site_id = message.attribute('siteId').map { |item| item['sId'] }.first
+      raise HandshakeError, 'Unexpected site identity' if core_3_3_0_or_newer? && @site_id && @site_id != site_id
+
       @site_id ||= site_id
       @supervisor.check_site_id site_id
       site_ids_changed

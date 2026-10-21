@@ -3,17 +3,7 @@
   "$comment": "Validate after applying defaults and inherited site settings; structural validation uses the other config schemas.",
   "type": "object",
   "properties": {
-    "components": {
-      "type": "object",
-      "required": ["main"],
-      "properties": {
-        "main": {
-          "type": "object",
-          "minProperties": 1,
-          "maxProperties": 1
-        }
-      }
-    },
+    "components": { "type": "object" },
     "signal_plans": {
       "type": "object",
       "additionalProperties": {
@@ -26,5 +16,23 @@
     "required": ["connection_role"],
     "properties": { "connection_role": { "const": "server" } }
   },
-  "then": { "required": ["port"] }
+  "then": { "required": ["port"] },
+  "allOf": [
+    {
+      "if": {
+        "required": ["core_version"],
+        "properties": { "core_version": { "const": "3.3.0" } }
+      },
+      "else": {
+        "properties": {
+          "components": {
+            "required": ["main"],
+            "properties": {
+              "main": { "type": "object", "minProperties": 1, "maxProperties": 1 }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

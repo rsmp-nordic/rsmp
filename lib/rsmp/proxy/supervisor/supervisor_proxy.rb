@@ -127,11 +127,14 @@ module RSMP
           level: :info
       self.state = :ready
       start_watchdog
-      if @site_settings['send_after_connect']
-        send_all_aggregated_status
-        send_active_alarms if receive_alarms?
+      @initial_alarm_events = [] if core_3_3_0_or_newer?
+      if core_3_3_0_or_newer? || @site_settings['send_after_connect']
+        send_all_aggregated_status unless core_3_3_0_or_newer?
+        send_active_alarms if use_alarms?
       end
       flush_message_buffer
+      @initial_alarm_events = nil
+      synchronize_site_state if core_3_3_0_or_newer?
       super
     end
 
@@ -175,7 +178,7 @@ module RSMP
     def acknowledged_first_ingoing(message)
       case message.type
       when 'Watchdog'
-        if core_3_3?
+        if core_3_3_0_or_newer?
           send_component_list
         else
           handshake_complete
@@ -205,16 +208,17 @@ module RSMP
       return extraneous_version message if @version_determined
 
       check_core_version message
+      validate_version! message, step: 'Response'
       check_sxl_version message
       @site_id = Supervisor.build_id_from_ip_port @ip, @port
       version_accepted message
     end
 
     def check_sxl_version(message)
-      if core_3_3?
-        @rejected_sxls, @accepted_sxls = message.sxls.partition { |item| item['rejected'] }
-        validate_sxl_response! @accepted_sxls
-        @receive_alarms = message.attributes.fetch('receiveAlarms', true)
+      if core_3_3_0_or_newer?
+        validate_sxl_response! message.sxls
+        @accepted_sxls, @rejected_sxls = message.sxls.partition { |item| item['status'] == 'ok' }
+        @use_alarms = message.attributes.fetch('useAlarms', true)
       else
         primary = primary_configured_sxl
         raise HandshakeError, 'Legacy Version response received, but no SXL is configured' unless primary
@@ -223,14 +227,6 @@ module RSMP
         @rejected_sxls = []
       end
       build_sxl_interfaces
-    end
-
-    def send_component_list
-      send_generated_message ComponentList.new('components' => @site.component_list)
-    end
-
-    def component_list_acknowledged
-      handshake_complete
     end
 
     def main

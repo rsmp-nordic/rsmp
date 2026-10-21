@@ -21,8 +21,11 @@ and `required_supervisor_settings.json` schemas then check required settings aft
 supervisor site inheritance are resolved:
 
 - Every configured signal plan must have a `cycle_time`.
-- Configured components must include exactly one `main` component. Sites supply a default main
-  component when omitted; supervisor site settings can inherit it from `default`.
+- Before Core 3.3.0, exactly one `main` component is required. Sites supply a default main component
+  when omitted; supervisor site settings can inherit it from `default`. From Core 3.3.0, a main
+  component is not used. With `core_version: "3.3.0"`, no default components are added, even if
+  `components` is omitted. Configurations that allow older Core versions (including an omitted
+  `core_version` or `"all"`) retain the default main component.
 - A site in `server` role must have a `port`, either explicitly or from its first supervisor endpoint.
   With `supervisors: []`, the port must be explicit.
 
@@ -35,6 +38,54 @@ Core 3.3.0 and later use exact `MAJOR.MINOR.PATCH` version strings for both Core
 Earlier Core versions retain their historical wire formats for compatibility. In particular, the Core 3.2 release may be written as either `3.2` or `3.2.0`. The library resolves both to the `3.2.0` schema internally, but a supervisor responding to a legacy Version message uses the exact Core and SXL strings sent by the site. Ambiguous versions such as `3.1` are rejected because they do not identify one of the supported 3.1.x releases.
 
 Legacy SXL strings such as `1.1` and `1.2` remain supported for connections using a Core version before 3.3.0. Their three-part equivalents are used only for internal schema lookup.
+
+## Core 3.3.0
+
+Preliminary Core 3.3.0 support follows `rsmp_core` branch `3.3.0` at commit
+`1aa02faf82da4f47fee57c43c546c092420aa576`, including PR #318. These rules apply only
+when Core 3.3.0 is selected. Earlier Core versions retain their existing behavior.
+
+SXL responses use `ok`, `unsupported`, `mismatch` and `expected`. Only `ok` enables
+an SXL, at the exact offered version. `supported` is diagnostic and does not trigger
+fallback. A connection can become ready even if no SXL is accepted.
+
+Set `use_alarms: false` in the supervisor's `default` or per-site configuration to
+disable every Alarm message in both directions on a 3.3.0 connection. The default
+is true.
+
+The 3.3.0 handshake ends with ComponentList followed by a site-wide AggregatedStatus.
+Readiness follows acknowledgement of that status; either MessageAck or MessageNotAck
+completes this step. The initial status is mandatory even with `send_after_connect: false`.
+
+AggregatedStatus has no `cId`, `fP` or `fS`. All false bits mean normal operation;
+bits 2, 6 and 8 are always false in site messages. Site-wide conditions include all
+components and active alarm priorities, including SXLs rejected on a connection.
+Read received bits through `SiteProxy#site_aggregated_status` and override
+`Supervisor#site_aggregated_status_changed(site_proxy)` for notifications.
+For 3.3.0, call `request_aggregated_status` or `request_aggregated_status_and_collect`
+without a component. A supplied component argument is ignored on the wire. Legacy
+requests remain component-addressed.
+
+Use `add_component`, `remove_component` and `ComponentBase#update_metadata` to update
+the inventory. Ready 3.3.0 connections receive a complete ComponentList after a change;
+disconnected connections receive the current list in their next handshake. The
+supervisor preserves received ordering and retains unchanged component objects.
+Component names are optional on the wire but must be nonempty strings when supplied.
+The supervisor uses the component ID when a list entry omits its name, including
+when a later list removes a previously supplied name.
+Removing the last component is prohibited because the Core 3.3.0 schema requires a
+nonempty ComponentList.
+
+Subscription intervals use `uRt`, an integer or decimal
+number represented as a string, e.g. `"2"` or `"0.5"`. Negative intervals are invalid.
+Zero disables periodic updates and is valid only with `sOc: true`.
+The Core source and vendored 3.3.0 schemas include this correction to the pinned baseline.
+The isolated main-component requirement in `site_configuration.rst` is treated as
+obsolete for 3.3.0 in favor of the component model and site-wide status definitions.
+
+Validator follow-up should cover the new Version statuses and failures, both alarm
+directions, site-wide status bits and fields, final-handshake ACK/NotAck, component
+changes, and accepted-SXL filtering during initial synchronization and buffer replay.
 
 ## Loading a configuration file
 

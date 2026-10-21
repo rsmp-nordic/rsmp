@@ -92,11 +92,28 @@ module RSMP
             site_id: site_id,
             site_settings: site_settings
           }
+        rescue HandshakeError => e
+          reject_initial_version(protocol, e)
+          raise
+        end
+
+        def reject_initial_version(protocol, error)
+          attributes = Message.parse_attributes(protocol.peek_line)
+          id = attributes['mId']
+          if id.is_a?(String) && /\A[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/i.match?(id)
+            protocol.write_lines(JSON.generate('mType' => 'rSMsg', 'type' => 'MessageNotAck',
+                                               'oMId' => id, 'rea' => error.message))
+          end
         end
 
         def retrieve_site_id(protocol)
           version_message = peek_version_message protocol
-          version_message.attribute('siteId').first['sId']
+          ids = version_message.attributes['siteId']
+          unless ids.is_a?(Array) && ids.first.is_a?(Hash) && ids.first['sId'].is_a?(String)
+            raise HandshakeError, 'Invalid siteId in Version request'
+          end
+
+          ids.first['sId']
         end
 
         def setup_proxy(proxy, settings, id)
@@ -112,10 +129,9 @@ module RSMP
           proxy
         end
 
-        def validate_and_start_proxy(proxy, protocol)
+        def validate_and_start_proxy(proxy, _protocol)
           proxy.setup_site_settings
-          proxy.check_core_version peek_version_message(protocol)
-          log "Validating using core version #{proxy.core_version}", level: :debug
+
           proxy.start
           proxy.wait
         ensure

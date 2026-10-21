@@ -26,11 +26,12 @@ module RSMP
         def process_packet(json)
           attributes = Message.parse_attributes(json)
           message = Message.build(attributes, json)
+          message.attributes['mId'] = attributes['mId'] if message.is_a?(Version)
           process_incoming_message(message)
         rescue InvalidPacket => e
           reject_invalid_packet(json, e)
         rescue MalformedMessage => e
-          reject_malformed_packet(json, attributes, e)
+          reject_malformed_version_or_packet(json, attributes, e)
         rescue PeerMessageError => e
           reject_processed_message(message, e)
         rescue HandshakeError, FatalError => e
@@ -39,7 +40,28 @@ module RSMP
           @node&.clear_deferred
         end
 
+        def reject_malformed_version_or_packet(json, attributes, error)
+          if attributes.is_a?(Hash) && attributes['type'] == 'Version' && core_3_3_0_or_newer?
+            message = Version.new(attributes)
+            message.attributes['mId'] = attributes['mId']
+            reject_fatal_message(message, error)
+          else
+            reject_malformed_packet(json, attributes, error)
+          end
+        end
+
+        def check_core_3_3_permissions!(message)
+          if core_3_3_0_or_newer? && message.is_a?(Alarm) && !use_alarms?
+            raise MessageRejected,
+                  'Alarm exchange is disabled'
+          end
+          return unless core_3_3_0_or_newer? && @version_determined && !ready? && application_message?(message)
+
+          raise MessageRejected, 'Communication establishment is incomplete'
+        end
+
         def process_incoming_message(message)
+          check_core_3_3_permissions!(message)
           validate = should_validate_ingoing_message?(message)
           if validate
             validation = message.validate(schemas)
@@ -86,6 +108,7 @@ module RSMP
           publish_peer_failure(failure, message: message)
           log(text, message: message, level: :warning)
           dont_acknowledge(message, text, reason)
+          complete_initial_status(message) if respond_to?(:complete_initial_status)
           Result.failure(failure: failure)
         end
 
@@ -109,9 +132,16 @@ module RSMP
           text = "Rejected #{message&.type || 'message'}: #{error.message}"
           failure = peer_failure(:protocol_failure, text, message: message)
           publish_peer_failure(failure, message: message)
-          dont_acknowledge(message, "Rejected #{message.type}", error.message.to_s) if message
+          if message && (!message.is_a?(Version) || valid_received_message_id?(message))
+            dont_acknowledge(message, "Rejected #{message.type}", error.message.to_s)
+          end
           close(reason: :protocol_failure, failure: failure)
           Result.failure(failure: failure)
+        end
+
+        def valid_received_message_id?(message)
+          id = message.m_id
+          id.is_a?(String) && /\A[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/i.match?(id)
         end
 
         def peer_failure(code, text, message: nil, **context)

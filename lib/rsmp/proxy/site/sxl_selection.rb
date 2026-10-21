@@ -2,7 +2,7 @@ module RSMP
   # Selects the SXL versions accepted by a supervisor-side site proxy.
   module SiteSxlSelection
     def check_sxl_version(message)
-      if core_3_3?
+      if core_3_3_0_or_newer?
         select_sxls message
       else
         select_legacy_sxl message
@@ -26,34 +26,25 @@ module RSMP
     end
 
     def select_sxls(message)
-      selected_sxls = message.sxls.map { |requested| select_sxl(requested) }
-      @accepted_sxls, @rejected_sxls = selected_sxls.partition { |item| item['rejected'].nil? }
+      selected = message.sxls.map { |requested| select_sxl(requested) }
+      offered = message.sxls.map { |item| item['name'] }
+      configured_sxls.each do |item|
+        selected << { 'name' => item['name'], 'status' => 'expected' } unless offered.include?(item['name'])
+      end
+      @accepted_sxls, @rejected_sxls = selected.partition { |item| item['status'] == 'ok' }
     end
 
     def select_sxl(requested)
       configured = configured_sxls.find { |item| item['name'] == requested['name'] }
-      return rejected_sxl(requested, 1, 'SXL not supported') unless configured
+      return { 'name' => requested['name'], 'status' => 'unsupported' } unless configured
 
-      unless RSMP::Schema.strict_version?(requested['version'])
-        return rejected_sxl(requested, 2, 'Core 3.3 requires SXL versions to use MAJOR.MINOR.PATCH')
-      end
-
-      configured_version = RSMP::Schema.sanitize_version(configured['version'].to_s)
-      if configured_version == requested['version']
-        RSMP::Schema.find_schema! requested['name'], requested['version']
-        requested.slice('name', 'version', 'prefix')
+      version = RSMP::Schema.sanitize_version(configured['version'].to_s)
+      if version == requested['version']
+        RSMP::Schema.find_schema! requested['name'], version
+        { 'name' => requested['name'], 'status' => 'ok', 'version' => version }
       else
-        rejected_sxl(requested, 2, "Supervisor only supports #{configured['version']}")
+        { 'name' => requested['name'], 'status' => 'mismatch', 'supported' => [version] }
       end
-    end
-
-    def rejected_sxl(requested, code, reason)
-      {
-        'name' => requested['name'],
-        'version' => requested['version'],
-        'rejected' => code,
-        'reason' => reason
-      }.compact
     end
   end
 end

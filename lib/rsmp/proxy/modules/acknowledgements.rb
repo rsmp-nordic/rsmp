@@ -111,6 +111,7 @@ module RSMP
 
             @acknowledgements[original.m_id] = message
             @acknowledgement_condition.signal message
+            initial_status_acknowledged(original) if respond_to?(:initial_status_acknowledged)
           else
             log_acknowledgement_for_unknown message
           end
@@ -124,6 +125,7 @@ module RSMP
             log_acknowledgement_for_original message, original
             @acknowledgements[original.m_id] = message
             @acknowledgement_condition.signal message
+            initial_status_acknowledged(original) if respond_to?(:initial_status_acknowledged)
           else
             log_acknowledgement_for_unknown message
           end

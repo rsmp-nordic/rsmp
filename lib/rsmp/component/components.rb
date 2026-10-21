@@ -13,7 +13,7 @@ module RSMP
     def setup_components(settings)
       return unless settings
 
-      check_main_component settings
+      check_main_component settings unless core_3_3_components?
       settings.each_pair do |type, components_by_type|
         next unless components_by_type
 
@@ -30,6 +30,10 @@ module RSMP
       end
     end
 
+    def core_3_3_components?
+      @site_settings && @site_settings['core_version'] == '3.3.0'
+    end
+
     def check_main_component(settings)
       raise ConfigurationError, 'main component must be defined' unless settings['main'] && settings['main'].size >= 1
       return unless settings['main'].size > 1
@@ -39,11 +43,29 @@ module RSMP
 
     def add_component(component)
       @components[component.c_id] = component
+      component_list_changed
+      component
+    end
+
+    def component_list_changed; end
+
+    def remove_component(id)
+      raise ConfigurationError, 'Cannot remove the legacy main component' if @main&.c_id == id &&
+                                                                             @site_settings['core_version'] != '3.3.0'
+
+      if core_3_3_components? && @components.size == 1 && @components.key?(id)
+        raise ConfigurationError, 'Core 3.3 ComponentList must not be empty'
+      end
+
+      removed = @components.delete(id)
+      @main = nil if removed == @main
+      component_list_changed if removed
+      removed
     end
 
     def natural_sort_key(value)
       value.to_s.split(/(\d+)/).map do |part|
-        part.match?(/\A\d+\z/) ? part.to_i : part
+        part.match?(/\A\d+\z/) ? [0, part.to_i, part.length] : [1, part]
       end
     end
 
