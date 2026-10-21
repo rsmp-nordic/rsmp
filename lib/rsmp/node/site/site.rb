@@ -1,7 +1,10 @@
+require_relative 'status'
+
 module RSMP
   # RSMP site implementation that manages proxies and components.
   class Site < Node
     include Components
+    include SiteStatus
     include SiteConnections
 
     attr_reader :core_version, :site_settings, :logger, :proxies, :ready_condition
@@ -127,12 +130,6 @@ module RSMP
       start_status_timer(parent: parent)
     end
 
-    def aggregated_status_changed(component, _options = {})
-      @proxies.each do |proxy|
-        proxy.send_aggregated_status component
-      end
-    end
-
     def alarm_acknowledged(alarm_state)
       send_alarm AlarmAcknowledged.new(alarm_state.to_hash)
     end
@@ -143,11 +140,28 @@ module RSMP
 
     def alarm_activated_or_deactivated(alarm_state)
       send_alarm AlarmIssue.new(alarm_state.to_hash)
+      notify_site_status_change
     end
 
     def send_alarm(alarm)
+      # Snapshot before any connection encodes the message for its SXL version.
+      independent = @proxies.any? { |proxy| proxy.respond_to?(:core_3_3_0_or_newer?) && proxy.core_3_3_0_or_newer? }
+      attributes = JSON.parse(JSON.generate(alarm.attributes)) if independent
       @proxies.each do |proxy|
-        proxy.send_generated_message alarm if proxy.receive_alarms?
+        next unless proxy.use_alarms?
+
+        send_connection_alarm(proxy, alarm, attributes)
+      end
+    end
+
+    def send_connection_alarm(proxy, alarm, attributes)
+      return if proxy.core_3_3_0_or_newer? && !proxy.sxl_message_allowed?(alarm)
+
+      alarm = alarm.class.new(JSON.parse(JSON.generate(attributes)).merge('mId' => Message.make_m_id)) if attributes
+      if proxy.core_3_3_0_or_newer? && !proxy.ready?
+        proxy.buffer_message alarm
+      else
+        proxy.send_generated_message alarm
       end
     end
 

@@ -1,17 +1,8 @@
+require_relative '../support/proxy_helper'
 require_relative '../support/async_helper'
 
 describe RSMP::Site do
-  class SiteCapturingProtocol
-    attr_reader :lines
-
-    def initialize
-      @lines = []
-    end
-
-    def write_lines(line)
-      @lines << line
-    end
-  end
+  include ProxyHelper
 
   let(:collect_timeout) { 1 }
 
@@ -119,8 +110,8 @@ describe RSMP::Site do
             'step' => 'Response',
             'RSMP' => [{ 'vers' => core_versions.last }],
             'supervisorId' => 'SUPERVISOR',
-            'SXLS' => [{ 'name' => 'tlc', 'version' => sxl_version }],
-            'receiveAlarms' => true,
+            'SXLS' => [{ 'name' => 'tlc', 'status' => 'ok', 'version' => sxl_version }],
+            'useAlarms' => true,
             'mId' => '51931724-b143-45a3-aa43-171f79ebb337'
           }.to_json)
 
@@ -154,6 +145,9 @@ describe RSMP::Site do
 
           # send component list ack
           protocol.write_lines JSON.generate('mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => message['mId'])
+          status = JSON.parse protocol.read_line
+          expect(status['type']).to be == 'AggregatedStatus'
+          protocol.write_lines JSON.generate('mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => status['mId'])
         end
       }) do |_task|
         site.start
@@ -173,7 +167,7 @@ describe RSMP::Site do
       sent = []
       proxy = Object.new
       proxy.define_singleton_method(:ready?) { true }
-      proxy.define_singleton_method(:receive_alarms?) { false }
+      proxy.define_singleton_method(:use_alarms?) { false }
       proxy.define_singleton_method(:send_message) { |message| sent << message }
       site.instance_variable_set(:@proxies, [proxy])
 
@@ -200,21 +194,14 @@ describe RSMP::Site do
     end
 
     def build_site_supervisor_proxy(site, port:, state:, protocol: nil)
-      proxy = RSMP::SupervisorProxy.new(
-        site: site,
-        ip: '127.0.0.1',
-        port: port
-      )
-      proxy.instance_variable_set(:@core_version, '3.2.2')
-      proxy.instance_variable_set(:@accepted_sxls, [{ 'name' => 'tlc', 'version' => '1.2.1' }])
-      proxy.instance_variable_set(:@state, state)
-      proxy.instance_variable_set(:@protocol, protocol) if protocol
-      proxy
+      build_supervisor_proxy(site, core_version: '3.2.2', port: port, state: state, protocol: protocol,
+                                   version_determined: false,
+                                   accepted_sxls: [{ 'name' => 'tlc', 'version' => '1.2.1' }])
     end
 
     it 'sends aggregated status to connected supervisors and buffers it for disconnected supervisors' do
       site = build_buffering_site
-      protocol = SiteCapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       connected = build_site_supervisor_proxy(site, port: 12_345, state: :connected, protocol: protocol)
       disconnected = build_site_supervisor_proxy(site, port: 12_346, state: :disconnected)
       site.instance_variable_set(:@proxies, [connected, disconnected])
@@ -231,7 +218,7 @@ describe RSMP::Site do
 
     it 'sends alarms to connected supervisors and buffers them for disconnected supervisors' do
       site = build_buffering_site
-      protocol = SiteCapturingProtocol.new
+      protocol = ProxyHelper::CapturingProtocol.new
       connected = build_site_supervisor_proxy(site, port: 12_345, state: :connected, protocol: protocol)
       disconnected = build_site_supervisor_proxy(site, port: 12_346, state: :disconnected)
       site.instance_variable_set(:@proxies, [connected, disconnected])
@@ -276,6 +263,56 @@ describe RSMP::Site do
       site.tick_status_subscriptions now
 
       expect(ticks).to be == [now]
+    end
+  end
+
+  with 'Core 3.3.0 alarm exchange' do
+    let(:core_version) { '3.3.0' }
+    let(:site) do
+      build_site(core_version: core_version, 'sxls' => { 'tlc' => '1.3.0' },
+                 'components' => { 'device' => { 'a' => {}, 'b' => {} } })
+    end
+
+    it 'gives independent alarm broadcasts distinct IDs and keeps the original unchanged' do
+      first = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      second = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      site.instance_variable_set(:@proxies, [first, second])
+      state = site.components['a'].get_alarm_state('A0001')
+      state.activate
+      alarm = RSMP::AlarmIssue.new(state.to_hash)
+      original = JSON.generate(alarm.attributes)
+      site.send_alarm(alarm)
+      expect(messages(first).last['mId']).not.to be == messages(second).last['mId']
+      expect(JSON.generate(alarm.attributes)).to be == original
+    end
+
+    it 'synchronizes inactive alarm states and skips an identical buffered event' do
+      proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      state = site.components['a'].get_alarm_state('A0001')
+      state.activate
+      state.deactivate
+      alarm = RSMP::AlarmIssue.new(state.to_hash)
+      proxy.message_buffer << alarm
+      proxy.instance_variable_set(:@initial_alarm_events, [])
+      proxy.send_active_alarms
+      proxy.flush_message_buffer
+      expect(messages(proxy).size).to be == 1
+      expect(messages(proxy).first['aS']).to be == 'inActive'
+      expect(proxy.message_buffer).to be == []
+    end
+
+    it 'blocks every alarm specialization in both directions when useAlarms is false' do
+      proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
+      proxy.instance_variable_set(:@use_alarms, false)
+      %w[Issue Request Acknowledge Suspend Resume].each do |specialization|
+        alarm = RSMP::Alarm.new('aSp' => specialization, 'aCId' => 'A0001', 'cId' => 'a')
+        expect(proxy.send_message(alarm, validate: false).failure?).to be == true
+        result = proxy.process_packet(JSON.generate(alarm.attributes))
+        expect(result.failure?).to be == true
+        expect(messages(proxy).last['type']).to be == 'MessageNotAck'
+      end
+      proxy.instance_variable_set(:@core_version, '3.2.2')
+      expect(proxy.use_alarms?).to be == true
     end
   end
 end

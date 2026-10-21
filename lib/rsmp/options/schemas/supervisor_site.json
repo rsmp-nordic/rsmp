@@ -24,7 +24,7 @@
     "intervals": { "$ref": "config_common.json#/$defs/intervals" },
     "timeouts": { "$ref": "config_common.json#/$defs/timeouts" },
     "send_after_connect": { "type": "boolean" },
-    "receive_alarms": { "type": "boolean" },
+    "use_alarms": { "type": "boolean" },
     "message_buffer": { "$ref": "config_common.json#/$defs/message_buffer" },
     "skip_validation": { "type": "array", "items": { "type": "string" } },
     "security_codes": { "$ref": "config_common.json#/$defs/security_codes" },

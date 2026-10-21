@@ -61,6 +61,7 @@ module RSMP
           sci = arg['sCI']
           name = arg['n']
           subcription = { interval: arg['uRt'].to_f, last_sent_at: now }
+          subcription[:on_change] = arg['sOc'] if core_3_3_0_or_newer?
           subs[sci] ||= {}
           subs[sci][name] = subcription
           update_list[component_id][sci] ||= []
@@ -69,6 +70,8 @@ module RSMP
 
         def process_status_subcribe(message)
           log "Received #{message.type}", message: message, level: :log
+
+          return process_core_3_3_subscription(message) if core_3_3_0_or_newer?
 
           update_list = {}
           component_id = message.attributes['cId']
@@ -82,6 +85,48 @@ module RSMP
           end
           acknowledge message
           send_status_updates update_list
+        end
+
+        def process_core_3_3_subscription(message)
+          validate_core_3_3_subscription!(message)
+          id = message.attributes['cId']
+          args = message.attributes['sS']
+          component = @site.find_component(id, build: false)
+          values = component ? fetch_status_values(component, args) : build_undefined_statuses(args)
+          subs = (@status_subscriptions[id] ||= {})
+          update_core_3_3_subscriptions(id, args, values, subs)
+          @status_subscriptions.delete(id) if subs.empty?
+          acknowledge message
+          update = core_3_3_subscription_update(id, values)
+          send_generated_message update
+          store_last_sent_status update
+        end
+
+        def core_3_3_subscription_update(id, values)
+          values = values.map { |value| value.except('uRt', 'sOc') }
+          StatusUpdate.new('cId' => id, 'sTs' => clock.to_s, 'sS' => values)
+        end
+
+        def update_core_3_3_subscriptions(id, args, values, subs)
+          updates = { id => {} }
+          values.each_with_index do |value, index|
+            arg = args[index]
+            if %w[unknown undefined].include?(value['q'])
+              remove_status_subscription(subs, arg)
+            else
+              add_status_subscription(id, subs, updates, arg, Time.now)
+            end
+          end
+        end
+
+        def validate_core_3_3_subscription!(message)
+          invalid = message.attributes['sS'].any? do |arg|
+            interval = arg['uRt'].to_f
+            interval.negative? || (interval.zero? && !arg['sOc'])
+          end
+          return unless invalid
+
+          raise MessageRejected, 'Subscription interval must be nonnegative and enable interval or sendOnChange'
         end
 
         def get_status_subscribe_interval(component_id, sci, name)

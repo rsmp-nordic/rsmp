@@ -24,7 +24,8 @@ module RSMP
 
     def self.validate_sxls(message, schemas, options)
       sxl_schemas = schemas.reject { |type, _version| type.to_sym == :core }
-      return [] if sxl_schemas.empty? || core_message_type?(message)
+      return [] if core_message_type?(message)
+      return [] if sxl_schemas.empty? && schema_core_version(schemas) != '3.3.0'
 
       resolved = resolve_sxl(message, schemas: schemas, **options)
       return validate_resolved_sxl(message, resolved, schemas, options) if resolved

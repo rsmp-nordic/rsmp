@@ -1,9 +1,13 @@
+require_relative 'version_validation'
+
 module RSMP
   class Proxy
     module Modules
       # Version negotiation and handling
       # Manages RSMP version handshake between sites and supervisors
       module Versions
+        include VersionValidation
+
         def core_versions
           version = @site_settings['core_version']
           if version == 'latest'
@@ -25,8 +29,10 @@ module RSMP
           versions.uniq
         end
 
-        def core_3_3?
-          core_version && version_meets_requirement?(core_version, '>=3.3.0')
+        def core_3_3_0_or_newer?
+          return false unless core_version
+
+          version_meets_requirement?(core_version, '>=3.3.0')
         end
 
         def configured_sxls
@@ -48,7 +54,8 @@ module RSMP
         end
 
         def check_core_version(message)
-          versions = core_versions
+          validate_version_array!(message)
+          versions = @offered_core_versions || core_versions
           candidates = message.versions.filter_map do |wire_version|
             normalized = RSMP::Schema.normalize_core_version(wire_version)
             [wire_version, normalized] if normalized && versions.include?(normalized)
@@ -60,7 +67,6 @@ module RSMP
           else
             reason = "RSMP versions [#{message.versions.join(', ')}] requested, " \
                      "but only [#{versions.join(', ')}] supported."
-            dont_acknowledge message, 'Version message rejected', reason, force: true
             raise HandshakeError, reason
           end
         end
@@ -80,13 +86,13 @@ module RSMP
         end
 
         def send_version_response(site_id, core_versions)
-          if core_3_3?
+          if core_3_3_0_or_newer?
             send_generated_message Version.new({
                                                  'step' => 'Response',
                                                  'RSMP' => [{ 'vers' => core_version }],
                                                  'supervisorId' => site_id,
                                                  'SXLS' => version_response_sxls,
-                                                 'receiveAlarms' => @site_settings['receive_alarms'] != false
+                                                 'useAlarms' => @site_settings['use_alarms'] != false
                                                }), validate: false
           else
             send_legacy_version_response(site_id, core_versions)
@@ -106,7 +112,14 @@ module RSMP
 
         def send_version_message(site_id, core_versions, step:)
           attributes = version_message_attributes(site_id, core_versions)
-          attributes.merge!(version_request_attributes) if step == 'Request'
+          if step == 'Request'
+            @offered_core_versions = normalized_core_versions(core_versions).filter_map do |version|
+              RSMP::Schema.normalize_core_version(version)
+            end
+            legacy_sxl = attributes['SXL']
+            attributes.merge!(version_request_attributes)
+            attributes['SXL'] = legacy_sxl unless @offered_core_versions.include?('3.3.0')
+          end
           send_generated_message Version.new(attributes), validate: false
         end
 
@@ -151,27 +164,13 @@ module RSMP
         def version_request_attributes
           {
             'step' => 'Request',
+            'SXL' => primary_configured_sxl ? sxl_request_items.first['version'] : '',
             'SXLS' => sxl_request_items
           }
         end
 
         def version_response_sxls
           accepted_sxls + rejected_sxls
-        end
-
-        def validate_sxl_response!(sxls)
-          invalid = sxls.find { |accepted| !valid_sxl_response?(accepted) }
-          return unless invalid
-
-          raise HandshakeError,
-                "Invalid SXL version #{invalid['name']} #{invalid['version']}; " \
-                'Core 3.3 requires an exact MAJOR.MINOR.PATCH match'
-        end
-
-        def valid_sxl_response?(accepted)
-          requested = sxl_request_items.find { |item| item['name'] == accepted['name'] }
-          RSMP::Schema.strict_version?(accepted['version']) && requested &&
-            requested['version'] == accepted['version']
         end
 
         def version_acknowledged; end

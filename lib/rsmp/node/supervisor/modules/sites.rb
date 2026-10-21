@@ -68,6 +68,8 @@ module RSMP
           @site_id_condition.signal
         end
 
+        def site_aggregated_status_changed(site_proxy); end
+
         def aggregated_status_changed(site_proxy, component); end
       end
     end

@@ -41,6 +41,85 @@ describe RSMP::Schema do
     end
   end
 
+  with 'Core 3.3 component identifiers and selectors' do
+    let(:definitions) { JSON.parse(File.read(File.join(schemas_path, 'core', '3.3.0', 'definitions.json'))) }
+    let(:id_schema) { JSONSchemer.schema(definitions.merge('$ref' => '#/component_id')) }
+    let(:selector_schema) { JSONSchemer.schema(definitions.merge('$ref' => '#/component_id_selector')) }
+
+    it 'accepts hierarchical and classic identifiers with the same grammar' do
+      %w[sg/1 dl/north/radar/6 tc KK+AG4034=00DL001 sensor_A-2].each do |id|
+        expect(id_schema.valid?(id)).to be == true
+        expect(selector_schema.valid?(id)).to be == true
+      end
+    end
+
+    it 'reserves subtree, root and no-component forms for selectors' do
+      ['sg/', 'dl/north/', '/', '', nil].each do |selector|
+        expect(id_schema.valid?(selector)).to be == false
+        expect(selector_schema.valid?(selector)).to be == true
+      end
+    end
+
+    it 'rejects leading slashes, empty segments, invalid characters and non-string IDs' do
+      ['/sg/1', '/sg/', '//', 'sg//1', 'sg//', 'sg 1', 'sg.1', 'sg:1', "sg/1\n", "sg\t1", 1, true, [], {}].each do |id|
+        expect(id_schema.valid?(id)).to be == false
+        expect(selector_schema.valid?(id)).to be == false
+      end
+    end
+
+    it 'keeps the earlier Core component ID definition unchanged' do
+      old_definitions = JSON.parse(File.read(File.join(schemas_path, 'core', '3.2.2', 'definitions.json')))
+      old_schema = JSONSchemer.schema(old_definitions.merge('$ref' => '#/component_id'))
+      expect(old_schema.valid?('/sg/1')).to be == true
+      expect(old_schema.valid?('')).to be == true
+    end
+
+    it 'requires single component IDs in messages until selector use is defined' do
+      schema = JSONSchemer.schema(Pathname.new(File.join(schemas_path, 'core', '3.3.0', 'rsmp.json')))
+      status = { 'sCI' => 'S0001', 'n' => 'signalgroupstatus' }
+      command = { 'cCI' => 'M0001', 'n' => 'value', 'v' => '1' }
+      timestamp = '2026-10-02T12:00:00.000Z'
+      payloads = {
+        'StatusRequest' => { 'sS' => [status] },
+        'StatusUnsubscribe' => { 'sS' => [status] },
+        'StatusSubscribe' => { 'sS' => [status.merge('uRt' => '1', 'sOc' => true)] },
+        'StatusResponse' => { 'sTs' => timestamp, 'sS' => [status.merge('s' => 'R', 'q' => 'recent')] },
+        'StatusUpdate' => { 'sTs' => timestamp, 'sS' => [status.merge('s' => 'R', 'q' => 'recent')] },
+        'CommandRequest' => { 'arg' => [command.merge('cO' => 'set')] },
+        'CommandResponse' => { 'cTS' => timestamp, 'rvs' => [command.merge('age' => 'recent')] },
+        'Alarm' => { 'aSp' => 'Request', 'aCId' => 'A0001', 'xACId' => '' }
+      }
+      payloads.each do |type, payload|
+        message = payload.merge('mType' => 'rSMsg', 'type' => type, 'mId' => RSMP::Message.make_m_id)
+        %w[sg/1 KK+AG4034=00DL001].each do |id|
+          expect(schema.valid?(message.merge('cId' => id))).to be == true
+        end
+        ['sg/', '/', '', nil, '/sg/1', 'sg//1', 'sg 1'].each do |selector|
+          expect(schema.valid?(message.merge('cId' => selector))).to be == false
+        end
+        expect(schema.valid?(message)).to be == false
+      end
+    end
+
+    it 'rejects selectors as ComponentList IDs and forbids cId on aggregated status messages' do
+      entry = { 'id' => 'sg/1', 'type' => 'tlc/sg', 'name' => 'Signal group' }
+      list = RSMP::ComponentList.new('components' => [entry])
+      expect(list.validate(core: '3.3.0').valid?).to be == true
+      ['sg/', '/', '', nil].each do |selector|
+        entry['id'] = selector
+        expect(list.validate(core: '3.3.0').invalid?).to be == true
+      end
+      aggregate = RSMP::AggregatedStatus.new('aSTS' => RSMP::Clock.to_s, 'se' => Array.new(8, false))
+      [aggregate, RSMP::AggregatedStatusRequest.new].each do |message|
+        expect(message.validate(core: '3.3.0').valid?).to be == true
+        ['sg/1', 'sg/', '/', '', nil].each do |selector|
+          message.attributes['cId'] = selector
+          expect(message.validate(core: '3.3.0').invalid?).to be == true
+        end
+      end
+    end
+  end
+
   with 'version formats' do
     it 'normalizes only unambiguous legacy Core versions' do
       expect(subject.normalize_core_version('3.2')).to be == '3.2.0'
@@ -81,6 +160,7 @@ describe RSMP::Schema do
       'step' => 'Request',
       'RSMP' => [{ 'vers' => '3.3.0' }],
       'siteId' => [{ 'sId' => 'RN+SI0001' }],
+      'SXL' => '',
       'SXLS' => [],
       'mId' => '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
     }
@@ -463,5 +543,59 @@ describe RSMP::Schema do
         's' => { '$ref' => '../defs/definitions.json#/string_list' }
       }
     }.to_json)
+  end
+
+  with 'Core 3.3.0 message validation' do
+    let(:core_version) { '3.3.0' }
+
+    it 'allows omitted component names but rejects empty and non-string names' do
+      item = { 'id' => 'g/1', 'type' => 'sg' }
+      list = RSMP::ComponentList.new('components' => [item])
+      expect(list.validate(core: core_version).valid?).to be == true
+      item['name'] = 'Signal group 1'
+      expect(list.validate(core: core_version).valid?).to be == true
+      ['', nil, 42].each do |name|
+        item['name'] = name
+        expect(list.validate(core: core_version).invalid?).to be == true
+      end
+    end
+
+    it 'validates nonnegative numeric subscription strings and the change-only zero exception' do
+      request = RSMP::StatusSubscribe.new('cId' => 'a', 'sS' => [
+                                            { 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 'uRt' => '2', 'sOc' => false }
+                                          ])
+      arg = request.attributes['sS'].first
+      %w[2 2.5 0.5 0.001].each do |rate|
+        [false, true].each do |on_change|
+          arg.merge!('uRt' => rate, 'sOc' => on_change)
+          expect(request.validate(core: core_version, tlc: '1.3.0').valid?).to be == true
+        end
+      end
+      %w[0 0.0 0.00].each do |rate|
+        arg.merge!('uRt' => rate, 'sOc' => true)
+        expect(request.validate(core: core_version, tlc: '1.3.0').valid?).to be == true
+        arg['sOc'] = false
+        expect(request.validate(core: core_version, tlc: '1.3.0').invalid?).to be == true
+      end
+      ['-1', '-0.5', 'NaN', 'Infinity', '2.5s', '2,5', '', 2, 2.5, nil].each do |rate|
+        arg.merge!('uRt' => rate, 'sOc' => true)
+        expect(request.validate(core: core_version, tlc: '1.3.0').invalid?).to be == true
+      end
+    end
+
+    it 'rejects component-addressed aggregated-status fields and reserved site bits' do
+      status = RSMP::AggregatedStatus.new('aSTS' => RSMP::Clock.to_s, 'se' => Array.new(8, false))
+      expect(status.validate(core: core_version).valid?).to be == true
+      %w[cId fP fS].each do |key|
+        bad = RSMP::AggregatedStatus.new(status.attributes.merge(key => nil))
+        expect(bad.validate(core: core_version).invalid?).to be == true
+      end
+      [1, 5, 7].each do |index|
+        bits = Array.new(8, false)
+        bits[index] = true
+        bad = RSMP::AggregatedStatus.new(status.attributes.merge('se' => bits))
+        expect(bad.validate(core: core_version).invalid?).to be == true
+      end
+    end
   end
 end

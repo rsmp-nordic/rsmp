@@ -1,3 +1,4 @@
+require_relative '../support/proxy_helper'
 require 'rsmp'
 
 describe 'Required configuration settings' do
@@ -23,6 +24,14 @@ describe 'Required configuration settings' do
   it 'retains the default main component when only other groups are configured' do
     options = RSMP::Config.validate({ 'components' => { 'signal_group' => { 'G1' => {} } } }, type: 'tlc')
     expect(options.to_h.dig('components', 'main').keys).to be == ['C1']
+  end
+
+  [nil, 'all', '3.2.2'].each do |version|
+    it "retains the default main component for core_version #{version.inspect}" do
+      settings = version ? { 'core_version' => version } : {}
+      options = RSMP::Site::Options.new(settings)
+      expect(options.to_h['components']).to be == { 'main' => { 'C1' => {} } }
+    end
   end
 
   it 'requires a main component for explicitly configured supervisor components' do
@@ -101,5 +110,35 @@ describe 'Required configuration settings' do
     site.main.input_logic(1, true)
     site.main.input_logic(1, false)
     expect(site.main.handle_s0003('S0003', 'inputstatus')).to be == %w[00000000 recent]
+  end
+
+  with 'Core 3.3.0 component configuration' do
+    include ProxyHelper
+
+    let(:core_version) { '3.3.0' }
+    let(:site) do
+      build_site(core_version: core_version, 'sxls' => { 'tlc' => '1.3.0' },
+                 'components' => { 'device' => { 'a' => {}, 'b' => {} } })
+    end
+
+    it 'does not add components when the component configuration is omitted' do
+      site = build_site(core_version: core_version)
+      expect(site.site_settings['components']).to be == {}
+      expect(site.components).to be == {}
+      expect(site.main).to be_nil
+    end
+
+    it 'keeps an explicitly empty component configuration empty' do
+      options = RSMP::Site::Options.new('core_version' => core_version, 'components' => {})
+      expect(options.to_h['components']).to be == {}
+    end
+
+    it 'allows a 3.3-only site without a main component and keeps legacy requirements' do
+      expect(site.components.keys).to be == %w[a b]
+      expect(site.main).to be_nil
+      expect do
+        RSMP::Site::Options.new('core_version' => '3.2.2', 'components' => { 'main' => {} })
+      end.to raise_exception(RSMP::ConfigurationError)
+    end
   end
 end

@@ -6,12 +6,19 @@ module RSMP
         def send_active_alarms
           @site.components.each_pair do |_c_id, component|
             component.alarms.each_pair do |_alarm_code, alarm_state|
-              if alarm_state.active
-                alarm = AlarmIssue.new(alarm_state.to_hash.merge('aSp' => 'Issue'))
-                send_generated_message alarm
-              end
+              next unless alarm_state.active || core_3_3_0_or_newer?
+
+              alarm = AlarmIssue.new(alarm_state.to_hash.merge('aSp' => 'Issue'))
+              next if core_3_3_0_or_newer? && !sxl_message_allowed?(alarm)
+
+              send_generated_message alarm
+              @initial_alarm_events << alarm_event_key(alarm) if core_3_3_0_or_newer? && @initial_alarm_events
             end
           end
+        end
+
+        def alarm_event_key(message)
+          message.attributes.except('mId', 'ntsOId', 'xNId')
         end
 
         def process_alarm(message)

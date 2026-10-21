@@ -76,8 +76,9 @@ module RSMP
 
         def prepare_message_for_buffer(message, core_version: @core_version, for_send: false)
           return unless site_originated_buffer_candidate? message
+          return unless sxl_message_allowed?(message)
           return false if message.is_a?(RSMP::StatusUpdate) && status_buffer_selectors == false
-          return false if message.is_a?(RSMP::Alarm) && !receive_alarms?
+          return false if message.is_a?(RSMP::Alarm) && !use_alarms?
 
           if message.is_a? RSMP::AggregatedStatus
             prepare_aggregated_status_for_buffer message, core_version: core_version, for_send: for_send
@@ -121,6 +122,10 @@ module RSMP
         end
 
         def flush_buffered_message?(message, queued, index)
+          if core_3_3_0_or_newer? && message.is_a?(Alarm) && @initial_alarm_events&.include?(alarm_event_key(message))
+            return true
+          end
+
           prepared = prepare_message_for_buffer message, core_version: @core_version, for_send: true
           return true unless prepared
 
