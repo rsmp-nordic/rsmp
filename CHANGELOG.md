@@ -738,3 +738,6 @@ Initial release.
 ## 0.53.0
 - update core 3.3.0 support to sync with latest core 3.3.0 draft
 - allow fractional status subscription intervals for all older core versions to align with their specs.
+
+## 0.53.1
+- skip repeated status value checks for buffered values (`q=old`) and unknown subscription settings

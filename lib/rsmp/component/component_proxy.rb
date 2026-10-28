@@ -18,8 +18,8 @@ module RSMP
       end
     end
 
-    # Check that were not receiving repeated update values.
-    # The check is not performed for item with an update interval.
+    # Check live values only for known change-only subscriptions. Buffered
+    # values may have been generated under different subscription settings.
     def check_repeat_values(message, subscription_list)
       message.attribute('sS').each do |item|
         check_status_item_for_repeats(item, subscription_list)
@@ -27,6 +27,8 @@ module RSMP
     end
 
     def check_status_item_for_repeats(item, subscription_list)
+      return if item['q'] == 'old'
+
       status_code = item['sCI']
       status_name = item['n']
       return if update_rate_set?(subscription_list, status_code, status_name)
@@ -43,8 +45,9 @@ module RSMP
     end
 
     def should_check_repeats?(subscription_list, status_code, status_name)
-      soc = subscription_list.dig(c_id, status_code, status_name, 'sOc')
-      return false if soc == false
+      subscription = subscription_list.dig(c_id, status_code, status_name)
+      return false unless subscription
+      return false if subscription['sOc'] == false
       return false if @allow_repeat_updates[status_code]&.include?(status_name)
 
       true

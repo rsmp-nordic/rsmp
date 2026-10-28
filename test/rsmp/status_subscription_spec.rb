@@ -40,7 +40,7 @@ describe RSMP::SiteProxy do
     )
   end
 
-  it 'accepts repeated periodic values until the matching unsubscribe ACK' do
+  it 'keeps periodic settings until the matching unsubscribe ACK and accepts updates afterwards' do
     subscribe
     component.store_status(update)
     request = unsubscribe
@@ -54,14 +54,33 @@ describe RSMP::SiteProxy do
     acknowledge(request)
     expect(subscriptions).to be == {}
     expect(pending_unsubscriptions).to be == {}
-    expect do
-      component.check_repeat_values(update, subscriptions)
-    end.to raise_exception(RSMP::RepeatedStatusError)
+    component.check_repeat_values(update, subscriptions)
+  end
+
+  it 'accepts repeated buffered values even with a known change-only subscription' do
+    subscribe([{ 'sCI' => 'S0001', 'n' => 'cyclecounter', 'uRt' => '0', 'sOc' => true }])
+    protocol.messages.clear
+    buffered = update
+    buffered.attributes['sS'].first['q'] = 'old'
+
+    2.times { proxy.process_status_update(buffered) }
+
+    expect(protocol.messages.map { |message| message['type'] }).to be == %w[MessageAck MessageAck]
+    expect(component.statuses.dig('S0001', 'cyclecounter', 'q')).to be == 'old'
   end
 
   RSMP::Schema.core_versions.each do |version|
     with "Core #{version} fractional subscriptions" do
       let(:core_version) { version }
+
+      it 'accepts repeated values when the subscription settings are unknown after reconnect' do
+        # A new proxy has no subscription history, and older Core versions may
+        # deliver buffered values without marking them old.
+        expect(subscriptions).to be == {}
+        2.times { proxy.process_status_update(update) }
+
+        expect(protocol.messages.map { |message| message['type'] }).to be == %w[MessageAck MessageAck]
+      end
 
       it 'accepts repeated values for fractional periodic subscriptions' do
         subscribe([{ 'sCI' => 'S0001', 'n' => 'cyclecounter', 'uRt' => '0.5' }])
