@@ -7,6 +7,10 @@ module RSMP
 
     attr_reader :messages
 
+    # Allow queues to be started by a proxy's collect factory, like collectors.
+    alias start start_receiving
+    alias stop stop_receiving
+
     def initialize(distributor, filter: nil)
       initialize_receiver distributor, filter: filter
       @condition = Async::Notification.new
@@ -27,8 +31,6 @@ module RSMP
       end
       Result.success(@messages.shift)
     rescue Async::TimeoutError => e
-      raise unless timeout # Let the caller handle its own deadline.
-
       Result.failure(
         :timeout,
         message: "No message was received within #{timeout}s",
