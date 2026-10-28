@@ -4,11 +4,11 @@ module RSMP
     def initialize(proxy, want, options = {})
       type = []
       type << 'StatusUpdate' unless options[:updates] == false
-      type << 'StatusResponse' unless options[:reponses] == false
+      type << 'StatusResponse' unless options[:responses] == false
 
       super(proxy, want, options.merge(
         title: 'status response',
-        filter: RSMP::Filter.new(ingoing: true, outgoing: false, type: type)
+        filter: RSMP::Filter.new(ingoing: true, outgoing: false, type: type, component: options[:component])
       ))
     end
 

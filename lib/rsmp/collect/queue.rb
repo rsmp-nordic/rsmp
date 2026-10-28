@@ -27,6 +27,8 @@ module RSMP
       end
       Result.success(@messages.shift)
     rescue Async::TimeoutError => e
+      raise unless timeout # Let the caller handle its own deadline.
+
       Result.failure(
         :timeout,
         message: "No message was received within #{timeout}s",
