@@ -64,6 +64,16 @@ describe RSMP::Schema do
     expect(subject.validate(version_request, { core: '3.3.0' }).valid?).to be == true
   end
 
+  %w[3.1.2 3.1.3 3.1.4 3.1.5 3.2.0 3.2.1 3.2.2].each do |version|
+    it "accepts fractional status update intervals with Core #{version}" do
+      message = status_request.merge('type' => 'StatusSubscribe')
+      message['sS'].first['uRt'] = '0.1'
+      message['sS'].first['sOc'] = false if Gem::Version.new(version) >= Gem::Version.new('3.1.5')
+
+      expect(subject.validate(message, { core: version }).valid?).to be == true
+    end
+  end
+
   it 'validates SXL messages using the matching flat SXL schema' do
     validation = subject.validate(status_request, {
                                     core: '3.3.0',
