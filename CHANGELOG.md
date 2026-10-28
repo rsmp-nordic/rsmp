@@ -735,5 +735,6 @@ Initial release.
 - add `start` and `stop` aliases to queues for use with proxy collection factories
 - fix status collectors to honor `component:` and `responses:`; the misspelled `reponses:` option is no longer used
 
-## Unreleased
-- Allow fractional status subscription intervals to align with core spec.
+## 0.53.0
+- update core 3.3.0 support to sync with latest core 3.3.0 draft
+- allow fractional status subscription intervals for all older core versions to align with their specs.
