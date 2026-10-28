@@ -50,5 +50,14 @@ describe RSMP::Queue do
       expect(result.failure.code).to be == :timeout
       expect { queue.wait_for_message!(timeout: collect_timeout) }.to raise_exception(RSMP::OperationError)
     end
+
+    it 'propagates an outer timeout when no queue timeout was supplied' do
+      queue = subject.new nil
+      %i[wait_for_message wait_for_message!].each do |method|
+        expect do
+          Async::Task.current.with_timeout(collect_timeout) { queue.public_send(method) }
+        end.to raise_exception(Async::TimeoutError)
+      end
+    end
   end
 end
