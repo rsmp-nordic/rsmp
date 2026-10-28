@@ -135,6 +135,50 @@ describe RSMP::StatusCollector do
     end
   end
 
+  with 'message predicate' do
+    it 'ignores fresh updates until matching statuses arrive within the timestamp window' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      window = Time.utc(2026, 1, 1, 12, 0, 1)...Time.utc(2026, 1, 1, 12, 0, 5)
+      seen = []
+      predicate = proc do |message|
+        seen << message
+        window.cover?(Time.parse(message.attribute('sTs')))
+      end
+      collector = subject.new(proxy, want.values, predicate: predicate, timeout: collect_timeout)
+      collector.start
+
+      fresh = build_status_message(ok.values)
+      fresh.attributes['sTs'] = '2026-01-01T12:00:05.000Z'
+      proxy.distribute fresh
+      expect(collector.summary).to be == [false, false, false]
+      expect(collector.active?).to be == true
+
+      buffered = build_status_message(ok.values)
+      buffered.attributes['sTs'] = '2026-01-01T12:00:02.000Z'
+      proxy.distribute buffered
+      expect(collector.wait!).to be == [buffered]
+      expect(seen).to be == [fresh, buffered]
+    end
+
+    it 'does not clear earlier item matches when the predicate rejects a message' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      predicate = ->(message) { message.attribute('cId') == 'C1' }
+      collector = subject.new(proxy, want.values, predicate: predicate, timeout: collect_timeout)
+      collector.start
+      first = build_status_message(ok[:s5])
+      proxy.distribute first
+
+      rejected = build_status_message(reject[:s5])
+      rejected.attributes['cId'] = 'C2'
+      proxy.distribute rejected
+      expect(collector.summary).to be == [true, false, false]
+
+      remaining = build_status_message([ok[:s7], ok[:s11]])
+      proxy.distribute remaining
+      expect(collector.wait!).to be == [first, remaining]
+    end
+  end
+
   with '#collect with block' do
     it 'gets message and each item' do
       task = Async::Task.current

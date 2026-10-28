@@ -106,9 +106,15 @@ module RSMP
       @rejected_sxls = []
       @receive_alarms = true
       @site_settings = nil # can't pick until we know the site id
-      return unless options[:collect]
+      collect = options[:collect]
+      return unless collect
 
-      @collector = RSMP::Collector.new self, options[:collect]
+      @collector = if collect.is_a?(Proc)
+                     collect.call(self)
+                   else
+                     RSMP::Collector.new self, collect
+                   end
+
       @collector.start
     end
 

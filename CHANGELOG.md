@@ -729,3 +729,9 @@ Initial release.
 ## 0.51.4
 - don't update subscription list until unsubscribe is acknowledged
 
+## 0.52.0
+- allow the proxy's `collect:` option to accept a Proc that builds a collector or queue before the handshake
+- add optional `predicate:` filtering to collectors, including status collectors
+- add `start` and `stop` aliases to queues for use with proxy collection factories
+- fix status collectors to honor `component:` and `responses:`; the misspelled `reponses:` option is no longer used
+

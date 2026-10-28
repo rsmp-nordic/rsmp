@@ -187,6 +187,89 @@ describe RSMP::Collector do
     end
   end
 
+  with 'message predicate' do
+    it 'applies the filter before the predicate and skips rejected messages before callbacks' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      seen = []
+      callbacks = []
+      predicate = proc do |message|
+        seen << message
+        message.attribute('cId') == 'C1'
+      end
+      collector = subject.new(
+        proxy,
+        filter: RSMP::Filter.new(type: 'StatusUpdate'),
+        predicate: predicate, num: 1, timeout: collect_timeout
+      )
+      collector.start do |message|
+        callbacks << message
+        :keep
+      end
+
+      proxy.distribute RSMP::Watchdog.new
+      rejected = RSMP::StatusUpdate.new('cId' => 'C2')
+      proxy.distribute rejected
+      expect(seen).to be == [rejected]
+      expect(callbacks).to be == []
+      expect(collector.messages).to be == []
+      expect(collector.active?).to be == true
+
+      accepted = RSMP::StatusUpdate.new('cId' => 'C1')
+      proxy.distribute accepted
+      expect(collector.wait!).to be == [accepted]
+      expect(callbacks).to be == [accepted]
+      expect(collector.active?).to be == false
+    end
+
+    it 'times out when the predicate rejects every message' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      collector = subject.new(proxy, predicate: ->(_message) { false }, num: 1, timeout: collect_timeout)
+      collector.start
+      proxy.distribute RSMP::Watchdog.new
+
+      result = collector.wait
+      expect(result.failure.code).to be == :timeout
+      expect(collector.messages).to be == []
+    end
+
+    it 'preserves exceptions raised by the predicate' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      predicate = ->(_message) { raise 'predicate bug' }
+      collector = subject.new(proxy, predicate: predicate, num: 1, timeout: collect_timeout)
+      collector.start
+      proxy.distribute RSMP::Watchdog.new
+
+      expect do
+        collector.wait!
+      end.to raise_exception(RuntimeError, message: be == 'predicate bug')
+      expect(collector.active?).to be == false
+    end
+
+    it 'handles a related MessageNotAck before evaluating the predicate' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      request = RSMP::StatusRequest.new
+      predicate = ->(_message) { raise 'predicate must not inspect a related MessageNotAck' }
+      collector = subject.new(proxy, m_id: request.m_id, predicate: predicate, num: 1, timeout: collect_timeout)
+      collector.start
+      proxy.distribute RSMP::MessageNotAck.new('oMId' => request.m_id)
+
+      expect(collector.wait.failure.code).to be == :message_rejected
+    end
+
+    it 'does not hide invalid-message failures with the predicate' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      collector = subject.new(proxy, predicate: ->(_message) { false }, num: 1, timeout: collect_timeout)
+      collector.start
+      message = RSMP::StatusUpdate.new
+      failure = RSMP::Failure.new(code: :invalid_peer_message, message: 'schema error', source: :peer)
+      proxy.distribute_event RSMP::Event.new(
+        type: :invalid_message, source: proxy, message: message, failure: failure
+      )
+
+      expect(collector.wait.failure.code).to be == :invalid_peer_message
+    end
+  end
+
   with '#collect with block' do
     it 'can keep or skip messages' do
       task = Async::Task.current

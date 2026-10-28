@@ -7,6 +7,9 @@ module RSMP
 
     attr_reader :messages, :m_id, :initiator
 
+    # :predicate optionally receives each message accepted by the filter. A falsey
+    # result skips the message before collection callbacks or item matching.
+    # Rejection and invalid-message failures are handled independently of it.
     def initialize(distributor, options = {})
       initialize_receiver distributor, filter: options[:filter]
       @options = {
@@ -17,6 +20,7 @@ module RSMP
       }.deep_merge(options)
       @timeout = options[:timeout]
       @num = options[:num]
+      @predicate = options[:predicate]
       @initiator = options[:initiator]
       @m_id = options[:m_id] || @initiator&.attributes&.dig('mId')
       make_title(options[:title])
@@ -131,6 +135,8 @@ module RSMP
     def perform_match?(message)
       return false if reject_not_ack?(message)
       return false unless acceptable?(message)
+      return false if @predicate && !@predicate.call(message)
+      return false unless active?
 
       if @block
         status = Array(@block.call(message))

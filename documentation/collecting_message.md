@@ -112,6 +112,118 @@ result = collector.collect do |message|
 end
 ```
 
+### Message predicates
+
+Use `predicate:` for conditions beyond the message type, direction, and component
+handled by `RSMP::Filter`. The Proc receives a whole message after the filter
+accepts it. Returning `false` or `nil` skips the message before collection
+callbacks or state-item matching; earlier item matches remain intact.
+
+```ruby
+collector = RSMP::Collector.new(
+  proxy,
+  filter: RSMP::Filter.new(type: 'StatusUpdate', ingoing: true, outgoing: false),
+  predicate: ->(message) { message.is_a?(RSMP::StatusUpdate) && message.attribute('sS').any? },
+  num: 1,
+  timeout: 5
+)
+```
+
+Predicates also work with `StatusCollector`. They do not suppress failures such
+as a rejection of the initiating request or an invalid peer message. `Filter`
+admits `MessageNotAck` even when a different message type is requested, so a
+predicate that accesses type-specific attributes should check the message type.
+
+### Status collection
+
+`StatusCollector` matches wanted status items within incoming messages. Both
+`StatusUpdate` and `StatusResponse` are accepted by default. Set `responses: false`
+to accept updates only, or `updates: false` to accept responses only.
+
+```ruby
+want = [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus' }]
+collector = RSMP::StatusCollector.new(
+  proxy, want, component: 'C1', responses: false, timeout: 5
+)
+```
+
+`component:` filters the message's `cId`; the wanted items describe entries in
+`sS`, which do not have their own component ID. Collection completes when all
+wanted items match, rather than after a fixed number of messages.
+
+### Collection during proxy setup
+
+The proxy's `collect:` option accepts the existing collector options hash:
+
+```ruby
+proxy_options = {
+  collect: {
+    filter: RSMP::Filter.new(type: 'StatusUpdate', ingoing: true, outgoing: false),
+    num: 1,
+    timeout: 5
+  }
+}
+```
+
+It also accepts a Proc that receives the new proxy and returns a collector or
+queue. The proxy calls `start` on the returned object and exposes it through
+`proxy.collector`. This starts receiving before the handshake can deliver
+messages. Return an unstarted object; the factory runs before version negotiation
+and should not rely on the proxy being fully initialized or connected.
+
+```ruby
+proxy_options = {
+  collect: proc do |proxy|
+    RSMP::StatusCollector.new(
+      proxy,
+      [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus' }],
+      component: 'C1', responses: false, timeout: 5
+    )
+  end
+}
+```
+
+Pass these options when creating the proxy. Use `proxy.collector.wait` or
+`wait!` for a collector, or `wait_for_message` or `wait_for_message!` for a queue.
+
+## Queues
+
+`RSMP::Queue` retains accepted messages until consumed, including messages that
+arrive before the caller starts waiting. Each wait returns one message, rather
+than a collection. `start` and `stop` are aliases for `start_receiving` and
+`stop_receiving`, so a queue can also be returned by a proxy's `collect:` factory.
+
+```ruby
+queue = RSMP::Queue.new(proxy, filter: RSMP::Filter.new(type: 'StatusUpdate'))
+queue.start
+begin
+  result = queue.wait_for_message(timeout: 5)
+  puts result.value if result.success?
+ensure
+  queue.stop
+end
+```
+
+A queue stays registered until stopped. Its `timeout:` applies to an individual
+wait: expiry returns a failure with code `:timeout`, or raises
+`RSMP::OperationError` through `wait_for_message!`.
+
+An enclosing Async timeout raised while waiting in the queue is converted in
+the same way, even when no queue timeout is supplied:
+
+```ruby
+begin
+  message = Async::Task.current.with_timeout(5) { queue.wait_for_message! }
+rescue RSMP::OperationError => error
+  raise unless error.failure.code == :timeout
+
+  warn 'The caller deadline expired'
+end
+```
+
+This example assumes the queue is already started. Both timeout sources use the
+same failure code; `failure.cause` retains the original Async exception.
+
 ## Sending and collecting atomically
 
 High-level send methods follow the same non-bang/bang convention:

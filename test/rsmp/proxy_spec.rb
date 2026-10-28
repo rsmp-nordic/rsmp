@@ -44,6 +44,74 @@ describe RSMP::Proxy do
   let(:options) { {} }
   let(:proxy) { subject.new options }
 
+  with 'collect option' do
+    let(:collect_timeout) { 0.01 }
+    let(:node) do
+      RSMP::Site.new(site_settings: { 'supervisors' => [] }, log_settings: { 'active' => false })
+    end
+
+    it 'starts a collector using a filter options hash' do
+      filter = RSMP::Filter.new(type: 'StatusUpdate', component: 'C1')
+      proxy = subject.new(
+        node: node,
+        collect: { filter: filter, num: 1, timeout: collect_timeout },
+        log_settings: { 'active' => false }
+      )
+
+      expect(proxy.collector.active?).to be == true
+      proxy.distribute RSMP::Watchdog.new
+      proxy.distribute RSMP::StatusUpdate.new('cId' => 'C2')
+      expect(proxy.collector.messages).to be == []
+      expect(proxy.collector.active?).to be == true
+
+      message = RSMP::StatusUpdate.new('cId' => 'C1')
+      proxy.distribute message
+
+      expect(proxy.collector.wait!).to be == [message]
+      expect(proxy.collector.active?).to be == false
+    end
+
+    it 'starts a queue returned by a Proc before messages are consumed' do
+      factory = ->(proxy) { RSMP::Queue.new(proxy, filter: RSMP::Filter.new(type: 'StatusUpdate')) }
+      proxy = subject.new(node: node, collect: factory)
+      message = RSMP::StatusUpdate.new
+      proxy.distribute RSMP::Watchdog.new
+      proxy.distribute message
+
+      expect(proxy.collector.wait_for_message!(timeout: collect_timeout)).to be == message
+      proxy.collector.stop
+      expect(proxy.receivers).to be == []
+    end
+
+    it 'passes the proxy to a Proc and starts the returned collector' do
+      factory_proxy = nil
+      collector = nil
+      want = [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus' }]
+      factory = proc do |proxy|
+        factory_proxy = proxy
+        collector = RSMP::StatusCollector.new(proxy, want, responses: false, timeout: 0.1)
+      end
+      proxy = subject.new(node: node, collect: factory, log_settings: { 'active' => false })
+
+      expect(factory_proxy).to be == proxy
+      expect(proxy.collector).to be == collector
+      expect(collector.active?).to be == true
+
+      recent = RSMP::StatusUpdate.new('sS' => [want.first.merge('n' => 'cyclecounter')])
+      recent.direction = :in
+      proxy.distribute recent
+      expect(collector.messages).to be == []
+      expect(collector.active?).to be == true
+
+      buffered = RSMP::StatusUpdate.new('sS' => want)
+      buffered.direction = :in
+      proxy.distribute buffered
+
+      expect(collector.wait!).to be == [buffered]
+      expect(collector.active?).to be == false
+    end
+  end
+
   with '#wait_for_state' do
     it 'wakes up' do
       task = Async::Task.current
