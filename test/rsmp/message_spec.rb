@@ -155,6 +155,23 @@ describe RSMP::Message do
       expect(build(message_config[:alarm_acknowledged])).to be_a(RSMP::AlarmAcknowledged)
     end
 
+    %w[3.2.0 3.2.1 3.2.2 3.3.0].each do |version|
+      it "constructs an acknowledged alarm valid for Core #{version}" do
+        attributes = JSON.parse(message_config[:alarm_acknowledged]).except('ack')
+        message = RSMP::AlarmAcknowledged.new(attributes)
+
+        expect(message.validate(core: version, tlc: '1.3.0').valid?).to be == true
+        expect(JSON.parse(message.generate_json)['ack']).to be == 'Acknowledged'
+      end
+
+      it "rejects lowercase acknowledgment in Core #{version}" do
+        attributes = JSON.parse(message_config[:alarm_acknowledged]).merge('ack' => 'acknowledged')
+        message = RSMP::AlarmAcknowledged.new(attributes)
+
+        expect(message.validate(core: version, tlc: '1.3.0').invalid?).to be == true
+      end
+    end
+
     it 'builds StatusUpdate when parsing JSON' do
       expect(build(message_config[:status_update_str])).to be_a(RSMP::StatusUpdate)
     end
