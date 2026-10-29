@@ -21,6 +21,72 @@ describe RSMP::AlarmState do
     RSMP::AlarmState.new component: component, code: 'A0301', **options
   end
 
+  def alarm_message(ack:, suspended:, active:)
+    RSMP::AlarmIssue.new(
+      'cId' => 'C1',
+      'aCId' => 'A0301',
+      'aTs' => times[:now_str],
+      'ack' => ack,
+      'sS' => suspended,
+      'aS' => active,
+      'cat' => 'D',
+      'pri' => '2',
+      'rvs' => []
+    )
+  end
+
+  [
+    ['notAcknowledged', 'notSuspended', 'inActive', [false, false, false]],
+    ['Acknowledged', 'Suspended', 'Active', [true, true, true]],
+    ['Acknowledged', 'notSuspended', 'inActive', [true, false, false]],
+    ['notAcknowledged', 'Suspended', 'inActive', [false, true, false]],
+    ['notAcknowledged', 'notSuspended', 'Active', [false, false, true]]
+  ].each do |ack, suspended, active, expected|
+    %i[itself downcase].each do |casing|
+      with "incoming #{ack}, #{suspended}, #{active} (#{casing})" do
+        let(:message) do
+          alarm_message(
+            ack: ack.public_send(casing),
+            suspended: suspended.public_send(casing),
+            active: active.public_send(casing)
+          )
+        end
+
+        it 'creates the reported state from a message' do
+          alarm = subject.create_from_message(component, message)
+
+          expect([alarm.acknowledged, alarm.suspended, alarm.active]).to be == expected
+        end
+
+        it 'updates each flag from its opposite state' do
+          alarm = create_state(
+            acknowledged: !expected[0], suspended: !expected[1], active: !expected[2],
+            timestamp: times[:now] - 1
+          )
+
+          alarm.update_from_message(message)
+
+          expect([alarm.acknowledged, alarm.suspended, alarm.active]).to be == expected
+          expect(alarm.timestamp).to be == times[:now]
+          expect(alarm.differ_from_message?(message)).to be == false
+        end
+      end
+    end
+  end
+
+  with 'incoming component alarms' do
+    let(:component) { RSMP::ComponentProxy.new node: node, id: 'C1' }
+
+    it 'stores an active, acknowledged and suspended alarm' do
+      component.handle_alarm(alarm_message(ack: 'Acknowledged', suspended: 'Suspended', active: 'Active'))
+
+      alarm = component.alarms.fetch('A0301')
+      expect(alarm.active).to be == true
+      expect(alarm.acknowledged).to be == true
+      expect(alarm.suspended).to be == true
+    end
+  end
+
   with '#initialize' do
     it 'sets defaults' do
       expect(state.component_id).to be == 'C1'
