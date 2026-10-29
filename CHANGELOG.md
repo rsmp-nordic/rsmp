@@ -741,3 +741,7 @@ Initial release.
 
 ## 0.53.1
 - skip repeated status value checks for buffered values (`q=old`) and unknown subscription settings
+
+## 0.53.2
+- fix issues with Alarm enum casing
+- update TLC schemas
