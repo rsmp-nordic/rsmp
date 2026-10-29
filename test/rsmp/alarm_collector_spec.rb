@@ -31,6 +31,81 @@ describe RSMP::AlarmCollector do
     )
   end
 
+  with 'casing' do
+    let(:proxy) { RSMP::SiteProxyStub.new Async::Task.current }
+    let(:message) do
+      RSMP::AlarmIssue.new(right.attributes.merge(
+                             'aCId' => 'A0301',
+                             'aTs' => '2026-10-29T12:00:00.000Z',
+                             'rvs' => []
+                           ))
+    end
+
+    [
+      %w[aSp Issue issue],
+      %w[ack Acknowledged acknowledged],
+      %w[aS Active active],
+      %w[sS notSuspended NotSuspended]
+    ].each do |field, canonical, variant|
+      it "collects schema-valid Core 3.1.5 #{field}=#{variant}" do
+        message.attributes[field] = variant
+        expect(message.validate(core: '3.1.5', tlc: '1.3.0').valid?).to be == true
+        collector = subject.new proxy, matcher: { field => canonical }, num: 1, timeout: collect_timeout
+
+        collector.start
+        proxy.distribute(message)
+
+        expect(collector.wait.success?).to be == true
+        expect(collector.messages).to be == [message]
+      end
+    end
+
+    it 'collects a lowercase Core 3.1.2 suspend confirmation' do
+      message.attributes.merge!('aSp' => 'suspend', 'sS' => 'suspended')
+      expect(message.validate(core: '3.1.2', tlc: '1.3.0').valid?).to be == true
+      collector = subject.new proxy, matcher: { 'aSp' => 'Suspend', 'sS' => /^Suspended/i },
+                                     num: 1, timeout: collect_timeout
+
+      collector.start
+      proxy.distribute(message)
+
+      expect(collector.wait.success?).to be == true
+      expect(collector.messages).to be == [message]
+    end
+
+    %w[cId aCId].each do |field|
+      it "keeps #{field} matching case-sensitive" do
+        collector = subject.new proxy, matcher: { field => message.attribute(field).downcase }
+
+        expect(collector.acceptable?(message)).to be == false
+      end
+    end
+
+    it 'keeps return value names and values case-sensitive' do
+      message.attributes['rvs'] = [{ 'n' => 'color', 'v' => 'green' }]
+      [{ 'n' => 'Color', 'v' => 'green' }, { 'n' => 'color', 'v' => 'Green' }].each do |item|
+        collector = subject.new proxy, matcher: { 'rvs' => [item] }
+
+        expect(collector.acceptable?(message)).to be == false
+      end
+    end
+
+    it 'preserves explicit regexp case sensitivity' do
+      message.attributes['aS'] = 'active'
+      strict = subject.new proxy, matcher: { 'aS' => /^Active$/ }
+      insensitive = subject.new proxy, matcher: { 'aS' => /^Active$/i }
+
+      expect(strict.acceptable?(message)).to be == false
+      expect(insensitive.acceptable?(message)).to be == true
+    end
+
+    it 'does not match a different enum value' do
+      collector = subject.new proxy, matcher: { 'aS' => 'inActive' }
+
+      expect(collector.acceptable?(message)).to be == false
+    end
+  end
+
   with '#collect' do
     it 'gets any alarm' do
       task = Async::Task.current

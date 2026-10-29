@@ -329,7 +329,7 @@ module RSMP
     def initialize(attributes = {})
       super({
         'aSp' => 'Acknowledge',
-        'ack' => 'acknowledged'
+        'ack' => 'Acknowledged'
       }.merge attributes)
     end
   end

@@ -1,6 +1,8 @@
 module RSMP
   # Class for waiting for specific command responses
   class AlarmCollector < Collector
+    ENUM_ATTRIBUTES = %w[aSp ack aS sS cat pri].freeze
+
     def initialize(proxy, options = {})
       @matcher = options[:matcher] || {}
       super(proxy, options.merge(
@@ -27,10 +29,15 @@ module RSMP
         when Regexp
           return false if got !~ want
         when String
-          return false if got != want
+          return false unless string_attribute_matches?(key, want, got)
         end
       end
       true
+    end
+
+    def string_attribute_matches?(key, want, got)
+      # Schemas enforce wire casing; enum matching also supports older Core versions.
+      ENUM_ATTRIBUTES.include?(key) ? want.casecmp?(got) : want == got
     end
 
     def rvs_attributes_match?(message)
