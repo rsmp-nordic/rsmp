@@ -9,9 +9,9 @@ module RSMP
     def self.create_from_message(component, message)
       options = {
         timestamp: RSMP::Clock.parse(message.attribute('aTs')),
-        acknowledged: message.attribute('ack') == 'Acknowledged',
-        suspended: message.attribute('aS') == 'Suspended',
-        active: message.attribute('sS') == 'Active',
+        acknowledged: message.attribute('ack').downcase == 'acknowledged',
+        suspended: message.attribute('sS').downcase == 'suspended',
+        active: message.attribute('aS').downcase == 'active',
         category: message.attribute('cat'),
         priority: message.attribute('pri').to_i,
         rvs: message.attribute('rvs')
@@ -121,9 +121,9 @@ module RSMP
       raise TimestampError, "timestamp is earlier than previous alarm #{message.m_id_short}" if older_message? message
     ensure
       @timestamp = RSMP::Clock.parse message.attribute('aTs')
-      @acknowledged = message.attribute('ack') == 'True'
-      @suspended = message.attribute('sS') == 'True'
-      @active = message.attribute('aS') == 'True'
+      @acknowledged = message.attribute('ack').downcase == 'acknowledged'
+      @suspended = message.attribute('sS').downcase == 'suspended'
+      @active = message.attribute('aS').downcase == 'active'
       @category = message.attribute('cat')
       @priority = message.attribute('pri').to_i
       @rvs = message.attribute('rvs')
