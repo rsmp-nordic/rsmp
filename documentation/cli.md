@@ -116,7 +116,7 @@ Common options:
 - `--id ID`, `-i ID`: set the site id.
 - `--supervisors LIST`, `-s LIST`: set one or more supervisor endpoints.
 - `--core VERSION`: set the RSMP Core version.
-- `--sxls LIST`: set the SXLs announced by the site as a comma-separated `name:version` list.
+- `--sxls LIST`: set the SXLs announced by the site as a comma-separated `name:version` list, with one `MAJOR.MINOR.PATCH` version per SXL name.
 - `--type tlc`, `-t tlc`: choose the site type. Currently `tlc` is the supported CLI type.
 - `--log PATH`, `-l PATH`: write log output to a file.
 - `--json`, `-j`: include raw JSON messages in the log.
@@ -166,7 +166,7 @@ Common options:
 - `--ip ADDRESS`: set the listen address.
 - `--port PORT`, `-p PORT`: set the listen port.
 - `--core VERSION`: override the accepted RSMP Core version.
-- `--sxls LIST`: override SXL versions as a comma-separated `name:version` list.
+- `--sxls LIST`: override supported SXL versions as a comma-separated `name:version` list, with one `MAJOR.MINOR.PATCH` version per SXL name.
 - `--log PATH`, `-l PATH`: write log output to a file.
 - `--json`, `-j`: include raw JSON messages in the log.
 

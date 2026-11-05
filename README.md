@@ -159,6 +159,9 @@ sxls:
   tlc: '1.3.0'
 ```
 
+Each SXL name has one configured version string in `MAJOR.MINOR.PATCH` form.
+Supervisors accept only matching SXL versions; legacy equipment may use an equivalent spelling such as `1.2` for `1.2.0`.
+
 See [configuration](documentation/configuration.md) for connection-role examples and other YAML settings.
 
 ## Command-line tool
