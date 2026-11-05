@@ -745,3 +745,10 @@ Initial release.
 ## 0.53.2
 - fix issues with Alarm enum casing
 - update TLC schemas
+
+## 0.53.3
+- prevent possible sxl negotiation race
+
+## 0.54.4
+- accept only the sxl version the supervisor has configured
+- require configured sxl versions to use strick SemVer format major.minor.patch
