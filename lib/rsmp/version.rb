@@ -1,3 +1,3 @@
 module RSMP
-  VERSION = '0.53.2'.freeze
+  VERSION = '0.53.3'.freeze
 end
