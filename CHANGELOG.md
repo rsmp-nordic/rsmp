@@ -752,3 +752,11 @@ Initial release.
 ## 0.54.4
 - accept only the sxl version the supervisor has configured
 - require configured sxl versions to use strick SemVer format major.minor.patch
+
+## Unreleased
+
+- support ordered SXL version lists: sites start with the first version; supervisors accept any listed version
+- add optional testing hints in legacy-only initial Version rejections, allowing sites with version lists to reconnect using an allowed hinted version
+- retain hinted selections per supervisor across reconnects and rejections, while fixed-version sites ignore hints
+- clear subscriptions and buffered messages when switching SXL versions
+- document that hint-based switching is a testing convention outside the RSMP Core specification

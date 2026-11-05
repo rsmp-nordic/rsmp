@@ -120,7 +120,9 @@ module RSMP
             attributes.merge!(version_request_attributes)
             attributes['SXL'] = legacy_sxl unless @offered_core_versions.include?('3.3.0')
           end
-          send_generated_message Version.new(attributes), validate: false
+          message = Version.new(attributes)
+          @initial_version_request_id = message.m_id if step == 'Request'
+          send_generated_message message, validate: false
         end
 
         def version_message_attributes(site_id, core_versions)

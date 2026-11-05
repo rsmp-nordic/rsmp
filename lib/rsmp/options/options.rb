@@ -1,9 +1,12 @@
 require 'yaml'
 require 'pathname'
+require_relative 'sxl_options'
 
 module RSMP
   # Base class for configuration options.
   class Options
+    include SxlOptions
+
     SCHEMAS_PATH = File.expand_path('schemas', __dir__)
 
     attr_reader :data, :log_settings, :source
@@ -108,19 +111,6 @@ module RSMP
       end
     end
 
-    def normalize_sxls(value)
-      case value
-      when Hash
-        value.map do |name, details|
-          normalize_sxl_item(name.to_s, details)
-        end
-      when Array
-        value.map { |item| normalize(item) }
-      else
-        value
-      end
-    end
-
     def normalize_config(value)
       case value
       when Hash
@@ -132,30 +122,6 @@ module RSMP
         value.map { |item| normalize_config(item) }
       else
         value
-      end
-    end
-
-    def normalize_config_sxls(value)
-      raise RSMP::ConfigurationError, 'sxls must be a hash of SXL names to versions' unless value.is_a?(Hash)
-
-      value.each_with_object({}) do |(name, details), memo|
-        raise RSMP::ConfigurationError, "sxls/#{name} must be a version string" unless details.is_a?(String)
-        unless details == 'latest' || RSMP::Schema.strict_version?(details)
-          raise RSMP::ConfigurationError, "sxls/#{name} must use MAJOR.MINOR.PATCH"
-        end
-
-        memo[name.to_s] = details
-      end
-    end
-
-    def normalize_sxl_item(name, details)
-      case details
-      when Hash
-        raise RSMP::ConfigurationError, "sxls/#{name} must be a version string"
-      when nil
-        { 'name' => name }
-      else
-        { 'name' => name, 'version' => details.to_s }
       end
     end
 

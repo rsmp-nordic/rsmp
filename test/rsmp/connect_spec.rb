@@ -116,6 +116,50 @@ describe 'Connecting' do
     end
   end
 
+  it 'reconnects using a hinted SXL and retains it on ordinary reconnects' do
+    config[:site_settings]['core_version'] = '3.2.2'
+    config[:site_settings]['sxls'] = { 'tlc' => ['1.2.1', '1.0.15'] }
+    config[:site_settings]['intervals'] = { 'reconnect' => 0.01 }
+    config[:supervisor_settings]['default']['core_version'] = '3.2.2'
+    config[:supervisor_settings]['default']['sxls'] = { 'tlc' => '1.0.15' }
+
+    with_async_context(context: lambda {
+      supervisor.start
+      supervisor.ready_condition.wait
+      site.start
+    }) do |task|
+      connection = site.proxies.first
+      task.with_timeout(config[:timeout]) { task.sleep(0.001) until connection.ready? }
+      expect(connection.session_id).to be == 2
+      expect(connection.sxl_version).to be == '1.0.15'
+      expect(connection.schemas[:tlc]).to be == '1.0.15'
+      expect(supervisor.proxies.first.sxl_version).to be == '1.0.15'
+      expect(site.sxl_version).to be == '1.2.1'
+
+      connection.disconnect
+      task.with_timeout(config[:timeout]) { task.sleep(0.001) until connection.ready? }
+      expect(connection.session_id).to be == 3
+      expect(connection.schemas[:tlc]).to be == '1.0.15'
+    end
+  end
+
+  it 'accepts a non-first supported legacy SXL without requesting a switch' do
+    config[:site_settings]['core_version'] = '3.2.2'
+    config[:site_settings]['sxls'] = { 'tlc' => '1.0.15' }
+    config[:supervisor_settings]['default']['sxls'] = { 'tlc' => ['1.2.1', '1.0.15'] }
+
+    with_async_context(context: lambda {
+      supervisor.start
+      supervisor.ready_condition.wait
+      site.start
+    }) do |task|
+      connection = site.proxies.first
+      task.with_timeout(config[:timeout]) { task.sleep(0.001) until connection.ready? }
+      expect(connection.session_id).to be == 1
+      expect(supervisor.proxies.first.sxl_version).to be == '1.0.15'
+    end
+  end
+
   it 'works with a core-only 3.3.0 connection' do
     config[:site_settings]['core_version'] = '3.3.0'
     config[:site_settings]['sxls'] = {}

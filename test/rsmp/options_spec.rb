@@ -18,6 +18,34 @@ describe RSMP::Options do
   end
 
   with RSMP::Site::Options do
+    it 'preserves ordered SXL lists through option normalization and node construction' do
+      versions = ['1.2.1', '1.0.15']
+      options = RSMP::Site::Options.new('sxls' => { 'tlc' => versions })
+      site = RSMP::Site.new(site_settings: options.to_h)
+      expect(site.sxls).to be == [{ 'name' => 'tlc', 'version' => '1.2.1', 'versions' => versions }]
+
+      supervisor_options = RSMP::Supervisor::Options.new('default' => { 'sxls' => { 'tlc' => versions } })
+      supervisor = RSMP::Supervisor.new(supervisor_settings: supervisor_options.to_h)
+      expect(supervisor.supervisor_settings['default']['sxls']).to be == site.sxls
+    end
+
+    it 'rejects empty, duplicate, noncanonical and non-string SXL list entries' do
+      [[], ['1.2.1', '1.2.1'], ['1.2'], ['latest'], ['1.2.1', nil], [['1.2.1']]].each do |versions|
+        expect { RSMP::Site::Options.new('sxls' => { 'tlc' => versions }) }
+          .to raise_exception(RSMP::ConfigurationError)
+        expect { RSMP::Supervisor::Options.new('default' => { 'sxls' => { 'tlc' => versions } }) }
+          .to raise_exception(RSMP::ConfigurationError)
+      end
+    end
+
+    it 'checks schema availability for every version in the list' do
+      versions = ['1.2.1', '99.0.0']
+      expect { RSMP::Site.new(site_settings: { 'sxls' => { 'tlc' => versions } }) }
+        .to raise_exception(RSMP::Schema::UnknownSchemaError)
+      expect { RSMP::Supervisor.new(supervisor_settings: { 'default' => { 'sxls' => { 'tlc' => versions } } }) }
+        .to raise_exception(RSMP::ConfigurationError)
+    end
+
     it 'applies defaults and preserves overrides for components main' do
       options = RSMP::Site::Options.new(
         'components' => {
@@ -253,14 +281,14 @@ describe RSMP::Options do
     end
 
     it 'rejects non-string SXL versions, including expanded form' do
-      [nil, false, 1, 1.2, ['1.3.0'], { 'version' => '1.3.0' }].each do |version|
+      [nil, false, 1, 1.2, { 'version' => '1.3.0' }].each do |version|
         expect do
           RSMP::Supervisor::Options.new(
             'default' => {
               'sxls' => { 'tlc' => version }
             }
           )
-        end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls/tlc must be a version string')
+        end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls/tlc must be a version string or a non-empty list of version strings')
       end
     end
 
@@ -271,7 +299,7 @@ describe RSMP::Options do
             'sxls' => { 'tlc' => { 'version' => '1.3.0', 'prefix' => 'tlc/' } }
           }
         )
-      end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls/tlc must be a version string')
+      end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls/tlc must be a version string or a non-empty list of version strings')
     end
 
     it 'rejects invalid config files on load' do

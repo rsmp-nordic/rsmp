@@ -14,18 +14,14 @@ module RSMP
 
     def select_legacy_sxl(message)
       primary = configured_sxls.first
-      unless primary
-        reason = 'Legacy Version message received, but no SXL is configured'
-        dont_acknowledge message, "Rejected #{message.type} message,", reason
-        raise HandshakeError, reason
-      end
+      raise HandshakeError, 'Legacy Version message received, but no SXL is configured' unless primary
 
       sanitized_version = RSMP::Schema.sanitize_version(message.attribute('SXL'))
-      configured_version = primary['version']
-      unless sanitized_version == configured_version
+      versions = primary['versions'] || [primary['version']]
+      unless versions.include?(sanitized_version)
         raise HandshakeError,
               "SXL #{primary['name']} version #{message.attribute('SXL')} requested, " \
-              "but only #{primary['version']} supported"
+              "but only #{versions.join(', ')} supported; hint: #{versions.first}"
       end
       RSMP::Schema.find_schema! primary['name'], sanitized_version
       @accepted_sxls = [{ 'name' => primary['name'], 'version' => message.attribute('SXL') }]
@@ -45,12 +41,14 @@ module RSMP
       configured = configured_sxls.find { |item| item['name'] == requested['name'] }
       return { 'name' => requested['name'], 'status' => 'unsupported' } unless configured
 
-      version = configured['version']
-      if version == requested['version']
+      versions = configured['versions'] || [configured['version']]
+      version = requested['version']
+      if versions.include?(version)
         RSMP::Schema.find_schema! requested['name'], version
         { 'name' => requested['name'], 'status' => 'ok', 'version' => version }
       else
-        { 'name' => requested['name'], 'status' => 'mismatch', 'supported' => [version] }
+        { 'name' => requested['name'], 'status' => 'mismatch',
+          'supported' => versions.sort_by { |item| Gem::Version.new(item) } }
       end
     end
   end

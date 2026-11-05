@@ -25,7 +25,7 @@ module RSMP
           return settings unless sxls.is_a?(Array)
 
           settings.merge(
-            'sxls' => sxls.to_h { |sxl| [sxl['name'], sxl['version']] }
+            'sxls' => sxls.to_h { |sxl| [sxl['name'], sxl['versions'] || sxl['version']] }
           )
         end
 
@@ -52,7 +52,7 @@ module RSMP
                     "Configuration error for site '#{site_id}': SXL name cannot be core"
             end
 
-            RSMP::Schema.find_schema! name, sxl['version']
+            (sxl['versions'] || [sxl['version']]).each { |version| RSMP::Schema.find_schema! name, version }
           end
         end
 

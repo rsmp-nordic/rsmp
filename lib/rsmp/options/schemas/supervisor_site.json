@@ -6,7 +6,7 @@
     "sxls": {
       "type": "object",
       "propertyNames": { "not": { "const": "core" } },
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": { "$ref": "config_common.json#/$defs/sxl_versions" }
     },
     "core_version": { "type": "string" },
     "rsmp_versions": {

@@ -65,7 +65,7 @@ module RSMP
       return settings unless sxls.is_a?(Array)
 
       settings.merge(
-        'sxls' => sxls.to_h { |sxl| [sxl['name'], sxl['version']] }
+        'sxls' => sxls.to_h { |sxl| [sxl['name'], sxl['versions'] || sxl['version']] }
       )
     end
 
@@ -74,11 +74,17 @@ module RSMP
 
       sxls.each do |sxl|
         name = sxl['name']
-        version = sxl['version'].to_s
         raise RSMP::ConfigurationError, 'SXL name cannot be core' if name.to_s == 'core'
 
-        RSMP::Schema.find_schema! name, version
+        (sxl['versions'] || [sxl['version']]).each { |version| RSMP::Schema.find_schema! name, version }
       end
+    end
+
+    # Keep testing selections separate from configuration and scoped to the peer.
+    # Incoming connections have changing source ports, so server sites use the IP.
+    def hinted_sxl_versions(ip, port)
+      @hinted_sxl_versions ||= {}
+      @hinted_sxl_versions[[ip, server_role? ? nil : port]] ||= {}
     end
 
     def check_core_versions

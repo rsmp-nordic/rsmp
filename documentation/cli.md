@@ -145,6 +145,19 @@ Use `--sxls` to specify several SXLs for a site:
 $ rsmp site --sxls tlc:1.3.0,vms:1.0.0
 ```
 
+`--sxls` sets one fixed version per SXL name. To enable the optional hint/reconnect testing convention,
+configure ordered version lists in YAML and use `--config` without overriding those SXLs:
+
+```yaml
+core_version: '3.2.2'
+sxls:
+  tlc: ['1.2.1', '1.0.15', '1.2.0']
+```
+
+See [SXL hints for testing](configuration.md#sxl-hints-for-testing). This convention is not part of RSMP Core
+and applies only when the initial handshake offers Core versions before 3.3.0.
+For a supervisor, YAML version lists specify the accepted versions; `--sxls` replaces them with fixed versions.
+
 Example with explicit core and SXL versions:
 
 ```console
