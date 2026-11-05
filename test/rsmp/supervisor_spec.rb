@@ -241,6 +241,96 @@ describe RSMP::Supervisor do
       end
     end
 
+    it 'accepts a legacy status update before the watchdog handshake completes' do
+      with_async_context(context: -> { supervisor.start }) do |task|
+        task.with_timeout(collect_timeout) do
+          protocol = site_connect
+          sxl_version = '1.2.1'
+          send_legacy_version(protocol, [{ 'vers' => '3.2.2' }], sxl_version)
+          receive_version_ack(protocol)
+          receive_legacy_version(protocol, ['3.2.2'], sxl_version)
+          send_version_ack(protocol)
+
+          watchdog_id = '439e5748-0662-4ab2-a0d7-80fc680f04f5'
+          protocol.write_lines JSON.generate('mType' => 'rSMsg', 'type' => 'Watchdog',
+                                             'wTs' => RSMP::Clock.to_s, 'mId' => watchdog_id)
+          expect(JSON.parse(protocol.read_line)['oMId']).to be == watchdog_id
+          watchdog = JSON.parse(protocol.read_line)
+          expect(watchdog['type']).to be == 'Watchdog'
+
+          proxy = supervisor.wait_for_site!('RN+SI0001', timeout: collect_timeout)
+          expect(proxy.state).to be == :connected
+
+          # A retained periodic subscription can send during reconnect. Hold back
+          # the watchdog ACK to reproduce that ordering without relying on timing.
+          update_id = '89170d40-2d0c-42a3-8e6f-96ff4e0ae821'
+          protocol.write_lines JSON.generate(
+            'mType' => 'rSMsg', 'type' => 'StatusUpdate', 'mId' => update_id,
+            'cId' => 'C1', 'ntsOId' => '', 'xNId' => '', 'sTs' => RSMP::Clock.to_s,
+            'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '1NBB', 'q' => 'recent' }]
+          )
+          response = protocol.read_line
+          expect(response).not.to be_nil
+          next unless response
+
+          expect(JSON.parse(response)).to be == { 'mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => update_id }
+          expect(proxy.find_component('C1').statuses.dig('S0001', 'signalgroupstatus')).to be == {
+            's' => '1NBB', 'q' => 'recent'
+          }
+          expect(proxy.state).to be == :connected
+
+          protocol.write_lines JSON.generate('mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => watchdog['mId'])
+          expect(wait_for_proxy_creation).to be == proxy
+        end
+      end
+    end
+
+    it 'rejects a Core 3.3.0 status update until initial synchronization completes' do
+      with_async_context(context: -> { supervisor.start }) do |task|
+        task.with_timeout(collect_timeout) do
+          protocol = site_connect
+          sxl_version = RSMP::Schema.latest_version(:tlc)
+          sxls = [{ 'name' => 'tlc', 'version' => sxl_version }]
+          send_version_request(protocol, [{ 'vers' => '3.2.2' }, { 'vers' => '3.3.0' }], sxl_version, sxls)
+          receive_version_ack(protocol)
+          receive_version_response(protocol, '3.3.0', sxls.map { |item| item.merge('status' => 'ok') })
+          send_version_ack(protocol)
+          perform_watchdog_exchange(protocol)
+
+          # Core 3.3.0 also requires ComponentList and initial AggregatedStatus;
+          # completing the legacy watchdog exchange must not enable SXL traffic.
+          proxy = supervisor.wait_for_site!('RN+SI0001', timeout: collect_timeout)
+          expect(proxy.core_version).to be == '3.3.0'
+          expect(proxy.state).to be == :connected
+          update = {
+            'mType' => 'rSMsg', 'type' => 'StatusUpdate',
+            'mId' => 'e5400cb0-8e31-457a-b8ed-838f71ac1ec1',
+            'cId' => 'C1', 'ntsOId' => '', 'xNId' => '', 'sTs' => RSMP::Clock.to_s,
+            'sS' => [{ 'sCI' => 'S0001', 'n' => 'signalgroupstatus', 's' => '1NBB', 'q' => 'recent' }]
+          }
+          protocol.write_lines JSON.generate(update)
+          expect(JSON.parse(protocol.read_line)).to be == {
+            'mType' => 'rSMsg', 'type' => 'MessageNotAck', 'oMId' => update['mId'],
+            'rea' => 'Communication establishment is incomplete'
+          }
+          expect(proxy.state).to be == :connected
+
+          perform_component_list_exchange(protocol)
+          expect(wait_for_proxy_creation).to be == proxy
+          expect(proxy.find_component('C1').statuses).to be == {}
+
+          update['mId'] = 'ce491d2b-be3e-4d9e-a019-4ec65eb580ba'
+          protocol.write_lines JSON.generate(update)
+          expect(JSON.parse(protocol.read_line)).to be == {
+            'mType' => 'rSMsg', 'type' => 'MessageAck', 'oMId' => update['mId']
+          }
+          expect(proxy.find_component('C1').statuses.dig('S0001', 'signalgroupstatus')).to be == {
+            's' => '1NBB', 'q' => 'recent'
+          }
+        end
+      end
+    end
+
     it 'reports rejected SXLs in a 3.3.0 Version response' do
       with_async_context(context: lambda {
         supervisor.start
