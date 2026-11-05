@@ -77,6 +77,7 @@ module RSMP
       @latest_watchdog_received = nil
       @watchdog_started = false
       @version_determined = false
+      @initial_version_request_id = nil
       @ingoing_acknowledged = {}
       @outgoing_acknowledged = {}
       @latest_watchdog_send_at = nil

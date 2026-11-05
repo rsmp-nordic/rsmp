@@ -1,4 +1,5 @@
 require 'digest'
+require_relative 'modules/sxl_hints'
 
 module RSMP
   # Proxy used by sites to connect to a remote supervisor.
@@ -8,6 +9,7 @@ module RSMP
     include Modules::Alarms
     include Modules::AggregatedStatus
     include Modules::MessageBuffer
+    include Modules::SxlHints
 
     attr_reader :supervisor_id, :site, :message_buffer
 
@@ -60,10 +62,6 @@ module RSMP
     ensure
       close(reason: :internal_failure) if $ERROR_INFO
       close
-    end
-
-    def start_handshake
-      send_version_request @site_settings['site_id'], advertised_core_versions
     end
 
     def close(...)

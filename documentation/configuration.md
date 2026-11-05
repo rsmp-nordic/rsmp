@@ -38,8 +38,8 @@ Core 3.3.0 and later use exact `MAJOR.MINOR.PATCH` version strings for both Core
 Earlier Core versions retain their historical wire formats for compatibility. In particular, the Core 3.2 release may be written as either `3.2` or `3.2.0`. The library resolves both to the `3.2.0` schema internally, but a supervisor responding to a legacy Version message uses the exact Core and SXL strings sent by the site. Ambiguous versions such as `3.1` are rejected because they do not identify one of the supported 3.1.x releases.
 
 Configured SXL versions must use `MAJOR.MINOR.PATCH`, for example `sxls: { tlc: '1.2.0' }`.
-Each SXL name maps to one version string. Lists of versions, abbreviated versions such as `1.2`,
-and versions with suffixes are rejected in configuration and CLI overrides.
+Each SXL name maps to a version string or a non-empty, ordered list of distinct version strings.
+Abbreviated versions such as `1.2` and versions with suffixes are rejected in configuration and CLI overrides.
 For connections using a Core version before 3.3.0, equipment may still send legacy SXL strings such as `1.2`.
 The supervisor compares their three-part equivalents against the configured version and uses the original string in its response.
 
@@ -48,6 +48,60 @@ does not match its effective configuration for that site, even if a schema for t
 For example, with `tlc: '1.2.1'` configured, an offer of `1.0.15` receives `MessageNotAck` and the
 connection closes. Its `rea` field identifies the requested and supported versions.
 Core 3.3.0 uses the SXL response statuses described below.
+
+## SXL hints for testing
+
+**SXL hints and reconnect-based switching are an optional testing convention, not part of the RSMP Core specification.**
+Other equipment is not expected to understand them. Hints apply only to handshakes offering Core versions
+before 3.3.0. Core 3.3.0 uses its standard SXL response statuses.
+
+A site configured with a single version string always uses that version and ignores hints.
+A list enables hint handling for that SXL name:
+
+```yaml
+core_version: '3.2.2'
+sxls:
+  tlc: ['1.2.1', '1.0.15', '1.2.0']
+```
+
+Configure a legacy Core version explicitly. An initial rejection does not identify the selected Core version,
+so hints are ignored if the request offers Core 3.3.0 or later, including mixed-version offers.
+
+The site initially offers the first version, `1.2.1` in this example. It follows a hint only when
+`MessageNotAck.oMId` refers to its outstanding initial Version request, before a Version response has been accepted.
+On rejection, it closes the connection and uses the normal `intervals.reconnect` delay before reconnecting in client role.
+A site in server role waits for the supervisor to reconnect.
+
+The hint is a case-sensitive `hint:` token in `MessageNotAck.rea`. It must start at a word boundary,
+so `thint:` does not count. The value must be a complete version, without extra version parts or suffixes,
+and end at whitespace, a semicolon or the end of the string. For example:
+
+```text
+SXL tlc version 1.2.1 requested, but only 1.0.15 supported; hint: 1.0.15
+```
+
+`hint: 1.0.15` refers to the connection's single legacy `SXL` version. The gem takes this SXL from
+the first entry in its `sxls` configuration. The hinted version must use `MAJOR.MINOR.PATCH` and appear
+in that entry's configured list. Named hints and rejections containing multiple `hint:` tokens are ignored.
+
+The last allowed hinted version is retained across ordinary reconnects and later rejections.
+Missing, malformed or unlisted hints leave it unchanged. Unknown message IDs, rejections of other messages,
+and rejections after Version acceptance cannot change the selection. Creating a new site instance or
+restarting the process restores the first configured version.
+
+Selections are kept separately for each supervisor address and port, without modifying the configuration.
+For sites in server role, selections are keyed by the supervisor's source IP because its source port changes
+on reconnect. When switching versions, the connection's subscriptions and buffered messages are cleared;
+the supervisor must subscribe again after reconnection.
+
+On a supervisor, a version list means that any listed version is supported. A legacy SXL mismatch is rejected
+with a hint for the first version in that list (or the single configured version). A supported offer is accepted
+even if it is not the first entry. All listed versions must have schemas available locally.
+Core 3.3.0 continues to report `mismatch` with a sorted `supported` list; that response does not trigger automatic switching.
+
+For matrix testing, use a separate run with one fixed supervisor version for each matrix entry.
+Wait for a matching handshake before running tests, and serialize runs sharing a physical site.
+A version retained from a previous run will then be rejected with the next run's required version.
 
 ## Core 3.3.0
 

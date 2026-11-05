@@ -159,8 +159,11 @@ sxls:
   tlc: '1.3.0'
 ```
 
-Each SXL name has one configured version string in `MAJOR.MINOR.PATCH` form.
+Each SXL name has a configured version string or an ordered list of versions in `MAJOR.MINOR.PATCH` form.
 Supervisors accept only matching SXL versions; legacy equipment may use an equivalent spelling such as `1.2` for `1.2.0`.
+On sites, a list starts with its first version and enables [SXL hints for testing](documentation/configuration.md#sxl-hints-for-testing)
+when the handshake offers only Core versions before 3.3.0.
+Hint-based reconnects are a testing convention, not part of the RSMP Core specification.
 
 See [configuration](documentation/configuration.md) for connection-role examples and other YAML settings.
 

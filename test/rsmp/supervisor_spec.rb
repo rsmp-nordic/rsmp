@@ -469,7 +469,7 @@ describe RSMP::Supervisor do
         response = JSON.parse protocol.read_line
         expect(response['type']).to be == 'MessageNotAck'
         expect(response['oMId']).to be == '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
-        expect(response['rea']).to be == 'SXL tlc version 1.0.15 requested, but only 1.2.1 supported'
+        expect(response['rea']).to be == 'SXL tlc version 1.0.15 requested, but only 1.2.1 supported; hint: 1.2.1'
         expect(protocol.read_line).to be_nil
       end
     end
