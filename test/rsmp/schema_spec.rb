@@ -425,19 +425,19 @@ describe RSMP::Schema do
     end
   end
 
-  it 'uses canonical SXL versions in 3.3 request items while preserving the legacy field' do
+  it 'uses configured SXL versions in both 3.3.0 request items and the legacy field' do
     proxy = Class.new do
       include RSMP::Proxy::Modules::Versions
     end.new
     proxy.instance_variable_set(:@site_settings, {
-                                  'sxls' => [{ 'name' => 'tlc', 'version' => '1.2' }]
+                                  'sxls' => [{ 'name' => 'tlc', 'version' => '1.2.0' }]
                                 })
 
     expect(proxy.sxl_request_items).to be == [{ 'name' => 'tlc', 'version' => '1.2.0' }]
     expect(proxy.version_message_attributes('RN+SI0001', ['3.2'])).to be == {
       'RSMP' => [{ 'vers' => '3.2' }],
       'siteId' => [{ 'sId' => 'RN+SI0001' }],
-      'SXL' => '1.2'
+      'SXL' => '1.2.0'
     }
   end
 

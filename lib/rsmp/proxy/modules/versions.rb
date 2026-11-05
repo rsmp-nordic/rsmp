@@ -45,7 +45,7 @@ module RSMP
 
         def sxl_request_items
           configured_sxls.map do |sxl|
-            version = RSMP::Schema.sanitize_version(sxl['version'].to_s)
+            version = sxl['version']
             item = { 'name' => sxl['name'], 'version' => version }
             prefix = RSMP::Schema.sxl_prefix(sxl['name'], version)
             item['prefix'] = prefix if prefix

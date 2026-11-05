@@ -242,6 +242,7 @@ describe RSMP::Supervisor do
     end
 
     it 'accepts a legacy status update before the watchdog handshake completes' do
+      supervisor_settings['default']['sxls'] = { 'tlc' => '1.2.1' }
       with_async_context(context: -> { supervisor.start }) do |task|
         task.with_timeout(collect_timeout) do
           protocol = site_connect
@@ -413,6 +414,7 @@ describe RSMP::Supervisor do
     end
 
     it 'accepts a 2-part sxl version like "1.2"' do
+      supervisor_settings['default']['sxls'] = { 'tlc' => '1.2.0' }
       with_async_context(context: lambda {
         supervisor.start
       }) do |_task|
@@ -428,6 +430,7 @@ describe RSMP::Supervisor do
     end
 
     it 'accepts a 3-part sxl version like "1.2.1"' do
+      supervisor_settings['default']['sxls'] = { 'tlc' => '1.2.1' }
       with_async_context(context: lambda {
         supervisor.start
       }) do |_task|
@@ -444,6 +447,7 @@ describe RSMP::Supervisor do
 
     it 'accepts legacy Core 3.2 and returns the same version string' do
       supervisor_settings['default']['core_version'] = '3.2'
+      supervisor_settings['default']['sxls'] = { 'tlc' => '1.2.0' }
 
       with_async_context(context: lambda {
         supervisor.start
@@ -453,6 +457,20 @@ describe RSMP::Supervisor do
 
         expect(proxy.core_version).to be == '3.2.0'
         expect(proxy.core_version_string).to be == '3.2'
+      end
+    end
+
+    it 'rejects a legacy SXL version different from the configured version and closes the connection' do
+      supervisor_settings['default']['sxls'] = { 'tlc' => '1.2.1' }
+      with_async_context(context: -> { supervisor.start }) do |_task|
+        protocol = site_connect
+        send_legacy_version(protocol, [{ 'vers' => '3.2.2' }], '1.0.15')
+
+        response = JSON.parse protocol.read_line
+        expect(response['type']).to be == 'MessageNotAck'
+        expect(response['oMId']).to be == '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
+        expect(response['rea']).to be == 'SXL tlc version 1.0.15 requested, but only 1.2.1 supported'
+        expect(protocol.read_line).to be_nil
       end
     end
 

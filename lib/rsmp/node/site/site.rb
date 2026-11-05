@@ -77,7 +77,7 @@ module RSMP
         version = sxl['version'].to_s
         raise RSMP::ConfigurationError, 'SXL name cannot be core' if name.to_s == 'core'
 
-        RSMP::Schema.find_schema! name, version, lenient: true
+        RSMP::Schema.find_schema! name, version
       end
     end
 

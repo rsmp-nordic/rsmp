@@ -37,7 +37,9 @@ Core 3.3.0 and later use exact `MAJOR.MINOR.PATCH` version strings for both Core
 
 Earlier Core versions retain their historical wire formats for compatibility. In particular, the Core 3.2 release may be written as either `3.2` or `3.2.0`. The library resolves both to the `3.2.0` schema internally, but a supervisor responding to a legacy Version message uses the exact Core and SXL strings sent by the site. Ambiguous versions such as `3.1` are rejected because they do not identify one of the supported 3.1.x releases.
 
-Legacy SXL strings such as `1.1` and `1.2` remain supported for connections using a Core version before 3.3.0. Their three-part equivalents are used only for internal schema lookup.
+Configured SXL versions must use `MAJOR.MINOR.PATCH`, for example `sxls: { tlc: '1.2.0' }`.
+For connections using a Core version before 3.3.0, equipment may still send legacy SXL strings such as `1.2`.
+The supervisor compares their three-part equivalents against the configured version and uses the original string in its response.
 
 ## Core 3.3.0
 

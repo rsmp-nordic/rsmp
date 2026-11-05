@@ -52,7 +52,7 @@ module RSMP
                     "Configuration error for site '#{site_id}': SXL name cannot be core"
             end
 
-            RSMP::Schema.find_schema! name, sxl['version'], lenient: true
+            RSMP::Schema.find_schema! name, sxl['version']
           end
         end
 
