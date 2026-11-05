@@ -90,11 +90,11 @@ describe 'Connecting' do
     end
   end
 
-  it 'preserves two-part Core and SXL strings throughout a legacy connection' do
+  it 'preserves two-part Core strings throughout a legacy connection' do
     config[:site_settings]['core_version'] = '3.2'
-    config[:site_settings]['sxls'] = { 'tlc' => '1.2' }
+    config[:site_settings]['sxls'] = { 'tlc' => '1.2.0' }
     config[:supervisor_settings]['default']['core_version'] = '3.2'
-    config[:supervisor_settings]['default']['sxls'] = { 'tlc' => '1.2' }
+    config[:supervisor_settings]['default']['sxls'] = { 'tlc' => '1.2.0' }
 
     with_async_context(context: lambda {
       supervisor.start
@@ -111,8 +111,8 @@ describe 'Connecting' do
       expect(supervisor_proxy.core_version).to be == '3.2.0'
       expect(site_proxy.core_version_string).to be == '3.2'
       expect(supervisor_proxy.core_version_string).to be == '3.2'
-      expect(site_proxy.sxl_version).to be == '1.2'
-      expect(supervisor_proxy.sxl_version).to be == '1.2'
+      expect(site_proxy.sxl_version).to be == '1.2.0'
+      expect(supervisor_proxy.sxl_version).to be == '1.2.0'
     end
   end
 

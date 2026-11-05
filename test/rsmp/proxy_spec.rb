@@ -328,6 +328,18 @@ describe RSMP::Proxy do
         connection
       end
 
+      it 'rejects an available but unconfigured SXL version in a Request' do
+        connection = negotiating_proxy('Request', version)
+        message = RSMP::Version.new(version_attributes.merge('SXL' => '1.2.1'))
+
+        result = connection.process_packet(JSON.generate(message.attributes))
+
+        expect(result.failure.code).to be == :protocol_failure
+        expect(connection.disconnected?).to be == true
+        expect(messages(connection).map { |item| item['type'] }).to be == ['MessageNotAck']
+        expect(messages(connection).last['oMId']).to be == message.m_id
+      end
+
       %w[Request Response].each do |direction|
         it "validates a #{direction} using the selected legacy version and ignores newer fields" do
           connection = negotiating_proxy(direction, version)
@@ -374,7 +386,7 @@ describe RSMP::Proxy do
           'site_id' => 'TLC001',
           'supervisors' => [],
           'core_version' => '3.3.0',
-          'sxls' => { 'tlc' => '1.2' }
+          'sxls' => { 'tlc' => '1.2.0' }
         },
         log_settings: { 'active' => false }
       )

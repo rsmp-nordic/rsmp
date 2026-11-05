@@ -2,6 +2,21 @@ require 'rsmp'
 require 'tempfile'
 
 describe RSMP::Options do
+  %w[1.2 1.2.0.1 1.2.0suffix 01.2.0].each do |version|
+    it "rejects noncanonical SXL #{version} in site and supervisor configs" do
+      configurations = [
+        [RSMP::Site::Options, { 'sxls' => { 'tlc' => version } }],
+        [RSMP::Supervisor::Options, { 'default' => { 'sxls' => { 'tlc' => version } } }],
+        [RSMP::Supervisor::Options, { 'sites' => { 'TLC001' => { 'sxls' => { 'tlc' => version } } } }]
+      ]
+
+      configurations.each do |options_class, config|
+        expect { options_class.new(config) }
+          .to raise_exception(RSMP::ConfigurationError, message: be == 'sxls/tlc must use MAJOR.MINOR.PATCH')
+      end
+    end
+  end
+
   with RSMP::Site::Options do
     it 'applies defaults and preserves overrides for components main' do
       options = RSMP::Site::Options.new(
@@ -237,14 +252,16 @@ describe RSMP::Options do
       end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls must be a hash of SXL names to versions')
     end
 
-    it 'rejects sxls in expanded form' do
-      expect do
-        RSMP::Supervisor::Options.new(
-          'default' => {
-            'sxls' => { 'tlc' => { 'version' => '1.3.0' } }
-          }
-        )
-      end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls/tlc must be a version string')
+    it 'rejects non-string SXL versions, including expanded form' do
+      [nil, false, 1, 1.2, ['1.3.0'], { 'version' => '1.3.0' }].each do |version|
+        expect do
+          RSMP::Supervisor::Options.new(
+            'default' => {
+              'sxls' => { 'tlc' => version }
+            }
+          )
+        end.to raise_exception(RSMP::ConfigurationError, message: be == 'sxls/tlc must be a version string')
+      end
     end
 
     it 'rejects configured SXL prefix' do

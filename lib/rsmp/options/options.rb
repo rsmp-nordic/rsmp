@@ -139,9 +139,12 @@ module RSMP
       raise RSMP::ConfigurationError, 'sxls must be a hash of SXL names to versions' unless value.is_a?(Hash)
 
       value.each_with_object({}) do |(name, details), memo|
-        raise RSMP::ConfigurationError, "sxls/#{name} must be a version string" if details.is_a?(Hash)
+        raise RSMP::ConfigurationError, "sxls/#{name} must be a version string" unless details.is_a?(String)
+        unless details == 'latest' || RSMP::Schema.strict_version?(details)
+          raise RSMP::ConfigurationError, "sxls/#{name} must use MAJOR.MINOR.PATCH"
+        end
 
-        memo[name.to_s] = details.to_s
+        memo[name.to_s] = details
       end
     end
 

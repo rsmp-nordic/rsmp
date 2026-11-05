@@ -21,6 +21,12 @@ module RSMP
       end
 
       sanitized_version = RSMP::Schema.sanitize_version(message.attribute('SXL'))
+      configured_version = primary['version']
+      unless sanitized_version == configured_version
+        raise HandshakeError,
+              "SXL #{primary['name']} version #{message.attribute('SXL')} requested, " \
+              "but only #{primary['version']} supported"
+      end
       RSMP::Schema.find_schema! primary['name'], sanitized_version
       @accepted_sxls = [{ 'name' => primary['name'], 'version' => message.attribute('SXL') }]
       @rejected_sxls = []
@@ -39,7 +45,7 @@ module RSMP
       configured = configured_sxls.find { |item| item['name'] == requested['name'] }
       return { 'name' => requested['name'], 'status' => 'unsupported' } unless configured
 
-      version = RSMP::Schema.sanitize_version(configured['version'].to_s)
+      version = configured['version']
       if version == requested['version']
         RSMP::Schema.find_schema! requested['name'], version
         { 'name' => requested['name'], 'status' => 'ok', 'version' => version }
