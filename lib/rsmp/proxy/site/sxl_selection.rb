@@ -7,6 +7,7 @@ module RSMP
       else
         select_legacy_sxl message
       end
+      build_sxl_interfaces
     rescue RSMP::Schema::UnknownSchemaError => e
       dont_acknowledge message, "Rejected #{message.type} message,", e.to_s
     end

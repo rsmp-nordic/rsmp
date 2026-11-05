@@ -27,7 +27,6 @@ module RSMP
         end
 
         def handshake_complete
-          build_sxl_interfaces
           self.state = :ready
         end
       end
