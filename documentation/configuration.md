@@ -312,6 +312,7 @@ Common per-site keys
 - `site_id` (string): explicit site identifier (if different from the mapping key).
 - `supervisors` (array): list of supervisor endpoints (objects with `ip` and `port`). Useful for reverse mappings or local-site configs.
 - `components` (object): component definitions (same structure as site `components`), used by the supervisor-side proxies to set up component proxies.
+- `test_hints` (boolean, default disabled): enable the optional [supervisor test hint scenarios](test_hints.md) for this connection. Use only with simulated test sites.
 - `intervals` (object): per-site timer settings - `timer`, `watchdog`, `reconnect`, `after_connect` (numbers, seconds).
 - `timeouts` (object): per-site timeouts - `connect`, `watchdog`, `acknowledgement` (numbers, seconds).
 - `send_after_connect` (boolean): whether to send messages after connect without waiting for additional events.
