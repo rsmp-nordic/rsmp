@@ -3,7 +3,7 @@ module RSMP
   class CommandResponseCollector < StateCollector
     def initialize(proxy, want, options = {})
       super(proxy, want, options.merge(
-        filter: RSMP::Filter.new(ingoing: true, outgoing: false, type: 'CommandResponse'),
+        filter: CommandFilter.new(ingoing: true, outgoing: false, type: 'CommandResponse'),
         title: 'command response'
       ))
     end
@@ -14,7 +14,7 @@ module RSMP
 
     # Get items, in our case the return values
     def get_items(message)
-      message.attributes['rvs'] || []
+      @filter.items(message)
     end
   end
 end
