@@ -10,6 +10,7 @@ module RSMP
 
         def process_not_ack(message)
           return super unless ready? && @site_settings['test_hints'] == true
+          return super unless sxl_interfaces.key?('tlc') && main
 
           case TestHint.scenario(message)
           when 'M0002.set_plan'
@@ -35,7 +36,7 @@ module RSMP
         def subscribe_to_test_plan
           @test_hint_subscription = main.c_id
           item = { 'sCI' => 'S0014', 'n' => 'status', 'uRt' => '1' }
-          item['sOc'] = false if version_meets_requirement?(core_version, '>=3.2.0')
+          item['sOc'] = false if tlc.use_soc?
           subscribe_to_status!([item])
         end
 

@@ -11,6 +11,10 @@ module RSMP
       ))
     end
 
+    def acceptable?(message)
+      message.is_a?(Alarm) && super
+    end
+
     # return a string that describes what we're collecting
     def describe_matcher
       "#{describe_num_and_type} #{{ component: @options[:component] }.merge(@matcher).compact}"

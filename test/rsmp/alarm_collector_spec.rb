@@ -107,6 +107,15 @@ describe RSMP::AlarmCollector do
   end
 
   with '#collect' do
+    it 'continues waiting for the alarm after an unrelated rejection' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      collector = subject.new(proxy, initiator: RSMP::Alarm.new, matcher: { 'aCId' => 'A0302' }, num: 1, timeout: collect_timeout)
+      collector.start
+      proxy.distribute(RSMP::MessageNotAck.new('oMId' => RSMP::Message.make_m_id, 'rea' => 'unrelated'))
+      proxy.distribute(right)
+      expect(collector.wait.value.messages).to be == [right]
+    end
+
     it 'handles a correlated rejection before alarm attribute or value filtering' do
       proxy = RSMP::SiteProxyStub.new Async::Task.current
       original = RSMP::Alarm.new

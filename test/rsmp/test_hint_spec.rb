@@ -5,6 +5,13 @@ describe RSMP::TestHint do
 
   let(:scenario) { 'M0002.set_plan' }
 
+  def build_hint_receiver(core_version: '3.2.2', enabled: true, state: :ready, sxls: [{ 'name' => 'tlc', 'version' => '1.2.1' }], main: true)
+    proxy = build_site_proxy(core_version: core_version, state: state, site_settings: { 'test_hints' => enabled }, accepted_sxls: sxls)
+    proxy.build_sxl_interfaces
+    proxy.setup_components('main' => { 'TC' => nil }) if main
+    proxy
+  end
+
   it 'sends a schema-valid standalone hint without waiting for an acknowledgement' do
     %w[3.1.2 3.2.2 3.3.0].each do |core|
       site = build_site(core_version: core)
@@ -39,16 +46,33 @@ describe RSMP::TestHint do
 
   it 'only runs recognized scenarios when explicitly enabled on a ready connection' do
     [[false, :ready], [nil, :ready], [true, :connected], [true, :ready]].each do |enabled, state|
-      proxy = build_site_proxy(core_version: '3.2.2', state: state, site_settings: { 'test_hints' => enabled })
-      called = []
-      mock(proxy).replace(:send_test_plan_command) { called << :command }
+      proxy = build_hint_receiver(enabled: enabled, state: state)
       proxy.process_not_ack(subject.build(scenario))
-      expect(called).to be == (enabled && state == :ready ? [:command] : [])
+      expect(messages(proxy).map { |m| m['type'] }).to be == (enabled && state == :ready ? ['CommandRequest'] : [])
+    end
+  end
+
+  it 'sends the subscription settings supported by the negotiated Core version' do
+    { '3.1.4' => {}, '3.1.5' => { 'sOc' => false } }.each do |core, settings|
+      proxy = build_hint_receiver(core_version: core)
+      proxy.process_not_ack(subject.build('S0014.subscribe_once'))
+      expect(messages(proxy).last.slice('type', 'cId', 'sS')).to be == {
+        'type' => 'StatusSubscribe', 'cId' => 'TC',
+        'sS' => [{ 'sCI' => 'S0014', 'n' => 'status', 'uRt' => '1' }.merge(settings)]
+      }
+    end
+  end
+
+  it 'ignores TLC scenarios on Core-only connections and connections without a main component' do
+    [{ sxls: [] }, { main: false }].each do |options|
+      proxy = build_hint_receiver(core_version: '3.3.0', **options)
+      [scenario, 'S0014.subscribe_once'].each { |id| proxy.process_not_ack(subject.build(id)) }
+      expect(messages(proxy)).to be == []
     end
   end
 
   it 'keeps normal rejection handling even with test hints enabled' do
-    proxy = build_site_proxy(core_version: '3.2.2', site_settings: { 'test_hints' => true })
+    proxy = build_hint_receiver
     original = RSMP::Watchdog.new
     proxy.expect_acknowledgement(original)
     message = subject.build(scenario)
@@ -61,7 +85,7 @@ describe RSMP::TestHint do
   end
 
   it 'ignores unknown scenarios without issuing a command' do
-    proxy = build_site_proxy(core_version: '3.2.2', site_settings: { 'test_hints' => true })
+    proxy = build_hint_receiver
     proxy.process_not_ack(subject.build('unknown.scenario'))
     expect(messages(proxy)).to be == []
   end

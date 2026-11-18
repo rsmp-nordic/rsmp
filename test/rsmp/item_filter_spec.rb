@@ -111,4 +111,12 @@ describe RSMP::ItemFilter do
     expect(filter.accept?(message('Alarm', attributes.merge('rvs' => [])))).to be == false
     expect(filter.accept?(message('MessageNotAck'))).to be == true
   end
+
+  it 'matches an explicit false alarm return value' do
+    filter = RSMP::AlarmFilter.new(any: [RSMP::AlarmMatcher.new('n' => 'flag', 'v' => false)])
+    [true, false].each do |value|
+      alarm = message('Alarm', 'rvs' => [{ 'n' => 'flag', 'v' => value }])
+      expect(filter.accept?(alarm)).to be == (value == false)
+    end
+  end
 end

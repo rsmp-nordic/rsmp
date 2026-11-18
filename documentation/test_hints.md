@@ -50,7 +50,7 @@ select another site or inject an arbitrary message.
 ## Prototype scenarios
 
 Scenario IDs are stable identifiers, independent of Sus descriptions and paths.
-The supervisor's main component must match the simulated site's main component.
+Both scenarios require a negotiated TLC SXL and a main component matching the simulated site's main component.
 
 | Scenario | Required exchange |
 | --- | --- |
@@ -60,8 +60,8 @@ The supervisor's main component must match the simulated site's main component.
 The Gem supervisor prototype selects plan 1 using security code `2222`, matching
 the validator’s bundled simulated-site configuration. Other supervisors can choose
 any arguments accepted by the configured site. For S0014, the Gem supervisor
-subscribes to `status` with `uRt="1"` and `sOc=false` on Core >=3.2.0 (omitted on
-older Core); the validator does not prescribe those subscription settings.
+subscribes to `status` with `uRt="1"` and includes `sOc=false` starting with Core 3.1.5.
+Other supervisors can choose their own subscription settings.
 
 Values use the wire representation required by the negotiated versions. Both
 scenarios work with the prototype's tested Core 3.1.2–3.3.0/TLC combinations.
