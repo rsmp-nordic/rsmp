@@ -20,6 +20,12 @@ module RSMP
       true
     end
 
+    def describe
+      description = @type&.join('/') || 'message'
+      description += " on #{@component}" if @component
+      description
+    end
+
     private
 
     def direction_matches?(message)

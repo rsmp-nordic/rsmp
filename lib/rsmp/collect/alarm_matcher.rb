@@ -6,7 +6,7 @@ module RSMP
 
       if @want['v'].is_a? Regexp
         return nil if item['v'] !~ @want['v']
-      elsif @want['v']
+      elsif @want.key?('v')
         return nil if item['v'] != @want['v']
       end
       true

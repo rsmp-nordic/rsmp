@@ -107,6 +107,36 @@ describe RSMP::AlarmCollector do
   end
 
   with '#collect' do
+    it 'continues waiting for the alarm after an unrelated rejection' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      collector = subject.new(proxy, initiator: RSMP::Alarm.new, matcher: { 'aCId' => 'A0302' }, num: 1, timeout: collect_timeout)
+      collector.start
+      proxy.distribute(RSMP::MessageNotAck.new('oMId' => RSMP::Message.make_m_id, 'rea' => 'unrelated'))
+      proxy.distribute(right)
+      expect(collector.wait.value.messages).to be == [right]
+    end
+
+    it 'handles a correlated rejection before alarm attribute or value filtering' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      original = RSMP::Alarm.new
+      collector = subject.new(proxy, matcher: { 'aCId' => 'A0301', 'rvs' => [{ 'n' => 'color', 'v' => 'green' }] },
+                                     initiator: original, num: 1, timeout: collect_timeout)
+      collector.start
+      proxy.distribute(RSMP::MessageNotAck.new('oMId' => original.m_id, 'rea' => 'rejected'))
+      expect(collector.wait.failure.code).to be == :message_rejected
+    end
+
+    it 'preserves literal false and nil return-value comparisons' do
+      proxy = RSMP::SiteProxyStub.new Async::Task.current
+      [false, nil].each do |value|
+        collector = subject.new(proxy, matcher: { 'rvs' => [{ 'n' => 'flag', 'v' => value }] })
+        alarm = RSMP::Alarm.new(right.attributes.merge('rvs' => [{ 'n' => 'flag', 'v' => value }]))
+        expect(collector.acceptable?(alarm)).to be == true
+        alarm.attributes['rvs'][0]['v'] = true
+        expect(collector.acceptable?(alarm)).to be == false
+      end
+    end
+
     it 'gets any alarm' do
       task = Async::Task.current
       proxy = RSMP::SiteProxyStub.new task

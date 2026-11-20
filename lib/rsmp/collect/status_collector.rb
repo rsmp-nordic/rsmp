@@ -8,7 +8,7 @@ module RSMP
 
       super(proxy, want, options.merge(
         title: 'status response',
-        filter: RSMP::Filter.new(ingoing: true, outgoing: false, type: type, component: options[:component])
+        filter: StatusFilter.new(ingoing: true, outgoing: false, type: type, component: options[:component])
       ))
     end
 
@@ -18,7 +18,7 @@ module RSMP
 
     # Get items, in our case status values
     def get_items(message)
-      message.attributes['sS'] || []
+      @filter.items(message)
     end
   end
 end

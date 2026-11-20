@@ -1,5 +1,6 @@
 require 'digest'
 require_relative 'modules/sxl_hints'
+require_relative 'modules/test_hints'
 
 module RSMP
   # Proxy used by sites to connect to a remote supervisor.
@@ -10,6 +11,7 @@ module RSMP
     include Modules::AggregatedStatus
     include Modules::MessageBuffer
     include Modules::SxlHints
+    include Modules::TestHints
 
     attr_reader :supervisor_id, :site, :message_buffer
 

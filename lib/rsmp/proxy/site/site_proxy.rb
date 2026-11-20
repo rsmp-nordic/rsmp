@@ -6,6 +6,7 @@ module RSMP
     include Modules::AggregatedStatus
     include Modules::Alarms
     include Modules::Commands
+    include Modules::TestHints
     include SiteProxyConnection
     include SiteSxlSelection
 
