@@ -218,8 +218,13 @@ module RSMP
         @accepted_sxls, @rejected_sxls = message.sxls.partition { |item| item['status'] == 'ok' }
         @use_alarms = message.attributes.fetch('useAlarms', true)
       else
-        primary = primary_configured_sxl
+        primary = @sxls.first
         raise HandshakeError, 'Legacy Version response received, but no SXL is configured' unless primary
+
+        returned = message.attribute('SXL')
+        unless RSMP::Schema.sanitize_version(returned) == primary['version']
+          raise HandshakeError, "Supervisor returned SXL #{returned}, but the site offered #{primary['version']}"
+        end
 
         @accepted_sxls = [primary]
         @rejected_sxls = []
