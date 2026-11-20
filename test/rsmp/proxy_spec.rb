@@ -320,7 +320,7 @@ describe RSMP::Proxy do
                        build_site_proxy(core_version: nil, state: :connected, version_determined: false, session_closed: false,
                                         settings: { 'core_version' => version, 'sxls' => { 'tlc' => '1.3.0' } })
                      else
-                       site = build_site(core_version: version, 'sxls' => { 'tlc' => '1.3.0' })
+                       site = build_site(core_version: version, 'sxls' => { 'tlc' => ['1.3.0', '1.2.1'] })
                        build_supervisor_proxy(site, core_version: nil, state: :connected, version_determined: false, session_closed: false)
                      end
         connection.setup_site_settings if direction == 'Request'
@@ -328,19 +328,27 @@ describe RSMP::Proxy do
         connection
       end
 
-      it 'rejects an available but unconfigured SXL version in a Request' do
-        connection = negotiating_proxy('Request', version)
-        message = RSMP::Version.new(version_attributes.merge('SXL' => '1.2.1'))
+      it 'accepts a two-part Response SXL matching the offered version' do
+        connection = negotiating_proxy('Response', version)
+        message = RSMP::Version.new(version_attributes.merge('SXL' => '1.3'))
 
-        result = connection.process_packet(JSON.generate(message.attributes))
-
-        expect(result.failure.code).to be == :protocol_failure
-        expect(connection.disconnected?).to be == true
-        expect(messages(connection).map { |item| item['type'] }).to be == ['MessageNotAck']
-        expect(messages(connection).last['oMId']).to be == message.m_id
+        expect(connection.process_packet(JSON.generate(message.attributes)).success?).to be == true
+        expect(connection.accepted_sxls.first['version']).to be == '1.3.0'
       end
 
       %w[Request Response].each do |direction|
+        it "rejects a #{direction} with a different SXL version" do
+          connection = negotiating_proxy(direction, version)
+          message = RSMP::Version.new(version_attributes.merge('SXL' => '1.2.1'))
+
+          result = connection.process_packet(JSON.generate(message.attributes))
+
+          expect(result.failure&.code).to be == :protocol_failure
+          expect(connection.disconnected?).to be == true
+          expect(messages(connection).map { |item| item['type'] }).to be == ['MessageNotAck']
+          expect(messages(connection).last&.fetch('oMId')).to be == message.m_id
+        end
+
         it "validates a #{direction} using the selected legacy version and ignores newer fields" do
           connection = negotiating_proxy(direction, version)
           attributes = version_attributes.merge('step' => 'unknown-to-legacy', 'SXLS' => 'unknown-to-legacy',
