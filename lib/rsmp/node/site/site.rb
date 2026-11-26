@@ -40,14 +40,6 @@ module RSMP
       @site_settings['site_id']
     end
 
-    def client_role?
-      @site_settings['connection_role'] != 'server'
-    end
-
-    def server_role?
-      @site_settings['connection_role'] == 'server'
-    end
-
     def handle_site_settings(options = {})
       options_class = self.class.options_class
       settings = options[:site_settings] || {}

@@ -1,6 +1,14 @@
 module RSMP
   # Connection handling for site instances.
   module SiteConnections
+    def client_role?
+      @site_settings['connection_role'] != 'server'
+    end
+
+    def server_role?
+      @site_settings['connection_role'] == 'server'
+    end
+
     def build_proxies
       return if server_role?
 

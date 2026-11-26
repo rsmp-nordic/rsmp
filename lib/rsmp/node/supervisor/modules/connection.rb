@@ -93,7 +93,7 @@ module RSMP
             site_settings: site_settings
           }
         rescue HandshakeError => e
-          reject_initial_version(protocol, e)
+          reject_initial_version(protocol, e) if protocol
           raise
         end
 

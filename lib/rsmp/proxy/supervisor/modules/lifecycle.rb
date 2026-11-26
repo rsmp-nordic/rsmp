@@ -3,10 +3,6 @@ module RSMP
     module Modules
       # Connection lifecycle helpers for supervisor-side proxies.
       module Lifecycle
-        def start_handshake
-          send_version_request @site_settings['site_id'], advertised_core_versions
-        end
-
         def close(...)
           prune_unbuffered_status_subscriptions
           super

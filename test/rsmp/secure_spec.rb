@@ -2838,6 +2838,7 @@ describe RSMP::Secure do
           'site_id' => 'RN+SI0001',
           'core_version' => '3.3.0',
           'sxls' => {},
+          'components' => { 'device' => { 'sensor/1' => {} } },
           'supervisors' => [{ 'ip' => '127.0.0.1', 'port' => port, 'secure' => public_peer_settings(site_peer) }],
           'secure' => site_secure.except('peers').merge('enabled' => true)
         },
@@ -2907,6 +2908,7 @@ describe RSMP::Secure do
           'port' => port,
           'core_version' => '3.3.0',
           'sxls' => {},
+          'components' => { 'device' => { 'sensor/1' => {} } },
           'supervisors' => [
             {
               'ip' => '127.0.0.1',
@@ -2984,6 +2986,7 @@ describe RSMP::Secure do
           'site_id' => 'RN+SI0001',
           'core_version' => '3.3.0',
           'sxls' => {},
+          'components' => { 'device' => { 'sensor/1' => {} } },
           'supervisors' => [{ 'ip' => '127.0.0.1', 'port' => port,
                               'secure' => public_peer_settings(site_peer) }],
           'secure' => site_secure.except('peers').merge('enabled' => true)
@@ -3065,6 +3068,7 @@ describe RSMP::Secure do
           'site_id' => 'RN+SI0001',
           'core_version' => '3.3.0',
           'sxls' => {},
+          'components' => { 'device' => { 'sensor/1' => {} } },
           'supervisors' => [
             {
               'ip' => '127.0.0.1',
@@ -3081,6 +3085,7 @@ describe RSMP::Secure do
           'site_id' => 'RN+SI0002',
           'core_version' => '3.3.0',
           'sxls' => {},
+          'components' => { 'device' => { 'sensor/1' => {} } },
           'supervisors' => [
             {
               'ip' => '127.0.0.1',
@@ -3180,6 +3185,7 @@ describe RSMP::Secure do
           'site_id' => 'RN+SI0001',
           'core_version' => '3.3.0',
           'sxls' => {},
+          'components' => { 'device' => { 'sensor/1' => {} } },
           'supervisors' => [
             {
               'ip' => '127.0.0.1',

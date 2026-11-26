@@ -123,9 +123,9 @@ module RSMP
     end
 
     def log_traffic_stats
-      return if @traffic_stats_logged
+      return if @traffic_stats_logged || !@protocol.respond_to?(:traffic_stats)
 
-      stats = @protocol&.traffic_stats
+      stats = @protocol.traffic_stats
       return unless stats && !stats.empty?
 
       log stats.summary, level: :info

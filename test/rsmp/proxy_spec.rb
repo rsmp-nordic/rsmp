@@ -339,14 +339,15 @@ describe RSMP::Proxy do
       %w[Request Response].each do |direction|
         it "rejects a #{direction} with a different SXL version" do
           connection = negotiating_proxy(direction, version)
+          sent = messages(connection)
           message = RSMP::Version.new(version_attributes.merge('SXL' => '1.2.1'))
 
           result = connection.process_packet(JSON.generate(message.attributes))
 
           expect(result.failure&.code).to be == :protocol_failure
           expect(connection.disconnected?).to be == true
-          expect(messages(connection).map { |item| item['type'] }).to be == ['MessageNotAck']
-          expect(messages(connection).last&.fetch('oMId')).to be == message.m_id
+          expect(sent.map { |item| item['type'] }).to be == ['MessageNotAck']
+          expect(sent.last&.fetch('oMId')).to be == message.m_id
         end
 
         it "validates a #{direction} using the selected legacy version and ignores newer fields" do
@@ -366,11 +367,12 @@ describe RSMP::Proxy do
             { 'siteId' => [{ 'sId' => 123 }] }, { 'SXL' => [] }, { 'SXL' => 'invalid' }
           ].each do |invalid|
             connection = negotiating_proxy(direction, version)
+            sent = messages(connection)
             message = RSMP::Version.new(version_attributes.merge(invalid))
             result = connection.process_packet(JSON.generate(message.attributes))
             expect(result.failure.code).to be == :protocol_failure
             expect(connection.disconnected?).to be == true
-            expect(messages(connection).last['type']).to be == 'MessageNotAck'
+            expect(sent.last['type']).to be == 'MessageNotAck'
           end
         end
 
@@ -1052,7 +1054,7 @@ describe RSMP::Proxy do
     end
 
     it 'reserves status values before a transport write can yield' do
-      proxy = build_supervisor_proxy
+      proxy = build_buffering_proxy
       component = proxy.site.find_component('C1')
       component.define_singleton_method(:get_status) { |_code, _name| %w[1 recent] }
       observed_value = nil
@@ -1070,7 +1072,7 @@ describe RSMP::Proxy do
     end
 
     it 'reserves the encoded status value used for on-change comparisons' do
-      proxy = build_supervisor_proxy
+      proxy = build_buffering_proxy
       component = proxy.site.find_component('C1')
       component.define_singleton_method(:get_status) { |_code, _name| [false, 'recent'] }
       proxy.instance_variable_set(
@@ -1093,7 +1095,7 @@ describe RSMP::Proxy do
     end
 
     it 'does not expose a new subscription while its acknowledgement can yield' do
-      proxy = build_supervisor_proxy
+      proxy = build_buffering_proxy
       component = proxy.site.find_component('C1')
       component.define_singleton_method(:get_status) { |_code, _name| %w[1 recent] }
       updates = 0
@@ -1333,12 +1335,13 @@ describe RSMP::Proxy do
         proxy = build_supervisor_proxy(site, core_version: core_version).tap(&:build_sxl_interfaces)
         proxy.instance_variable_set(:@version_determined, false)
         proxy.instance_variable_set(:@session_closed, false)
+        sent = messages(proxy)
         packet = version_response([]).attributes.merge('mId' => id, 'RSMP' => [])
         packet.delete('mId') unless id
         expect(proxy.process_packet(JSON.generate(packet)).failure?).to be == true
         expect(proxy.disconnected?).to be == true
         expected = id && id != 'invalid' ? ['MessageNotAck'] : []
-        expect(messages(proxy).map { |message| message['type'] }).to be == expected
+        expect(sent.map { |message| message['type'] }).to be == expected
       end
     end
 

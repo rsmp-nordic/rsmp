@@ -39,13 +39,11 @@ module RSMP
       @log_settings = normalize(log_settings || {})
       validate_log_settings! if validate
       raw_options = options || {}
-      internal_settings = internal_settings(raw_options)
-      internal_settings['__config_dir'] ||= File.dirname(File.expand_path(source)) if source
       config = normalize_config(public_settings(raw_options))
       validate!(config) if validate
       config = apply_defaults(config)
       validate_effective!(config) if validate
-      @data = normalize(config).merge(internal_settings)
+      @data = normalize(config).merge(internal_settings(raw_options))
     end
 
     def defaults = {}
@@ -118,12 +116,9 @@ module RSMP
     end
 
     def internal_settings(options)
-      return {} unless options.is_a?(Hash)
-
-      options.each_with_object({}) do |(key, value), settings|
-        normalized_key = key.to_s
-        settings[normalized_key] = value if INTERNAL_KEYS.include?(normalized_key)
-      end
+      settings = options.is_a?(Hash) ? options.transform_keys(&:to_s).slice(*INTERNAL_KEYS) : {}
+      settings['__config_dir'] ||= File.dirname(File.expand_path(source)) if source
+      settings
     end
 
     def public_settings(options)
@@ -145,6 +140,5 @@ module RSMP
         value
       end
     end
-
   end
 end
