@@ -68,16 +68,19 @@ module RSMP
         end
 
         def write_protocol(message)
+          id = session_id
           @protocol.write_lines(message.json)
           Result.success(message)
         rescue IOError, SystemCallError => e
-          Result.failure(
+          result = Result.failure(
             :disconnected,
             message: "Could not send #{message.type}: #{e.message}",
             source: :transport,
-            context: { message: message, session_id: session_id },
+            context: { message: message, session_id: id },
             cause: e
           )
+          close(reason: :transport_failure, failure: result.failure, session_id: id) if session_active?(id)
+          result
         end
 
         def recover_write_failure(message, result, buffer:)
