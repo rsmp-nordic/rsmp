@@ -78,8 +78,8 @@ module RSMP
         attr_reader :site_aggregated_status
 
         def complete_initial_status(message)
-          return unless core_3_3_0_or_newer? && !ready? && @component_list_received && @outgoing_watchdog_acknowledged
-          return unless message.is_a?(RSMP::AggregatedStatus)
+          return unless core_3_3_0_or_newer? && state == :connected && message.is_a?(RSMP::AggregatedStatus)
+          return unless @component_list_received && @outgoing_watchdog_acknowledged
 
           handshake_complete
         end

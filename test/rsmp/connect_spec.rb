@@ -143,6 +143,67 @@ describe 'Connecting' do
     end
   end
 
+  def start_reconnecting_site
+    config[:site_settings]['core_version'] = '3.2.2'
+    config[:site_settings]['intervals'] = { 'reconnect' => 0.01 }
+    supervisor.start
+    supervisor.ready_condition.wait
+    site.start
+  end
+
+  def with_connected_site
+    with_async_context(context: method(:start_reconnecting_site)) do |task|
+      connection = site.proxies.first
+      connection.wait_for_state!(:ready, timeout: config[:timeout])
+      peer = supervisor.proxies.first
+      peer.wait_for_state!(:ready, timeout: config[:timeout])
+      yield(connection, peer, task)
+    end
+  end
+
+  it 'reconnects after a socket write fails while acknowledging a message' do
+    with_connected_site do |connection, peer, task|
+      session = connection.session_id
+      ended = []
+      receiver = Object.new
+      receiver.define_singleton_method(:receive_event) { |event| ended << event if event.type == :connection_ended }
+      site.add_event_receiver(receiver)
+
+      # Break the write side just as the site replies, before its reader can observe EOF.
+      socket = connection.instance_variable_get(:@socket)
+      connection.instance_variable_get(:@protocol).define_singleton_method(:write_lines) do |line|
+        socket.shutdown(Socket::SHUT_WR)
+        super(line)
+      end
+      peer.send_watchdog
+
+      task.with_timeout(config[:timeout]) { task.sleep(0.001) until connection.session_id > session && connection.ready? }
+      expect(ended.map(&:session_id)).to be == [session]
+      expect(ended.first.context[:reason]).to be == :transport_failure
+      expect(ended.first.failure.context[:message]).to be_a(RSMP::MessageAck)
+      expect(ended.first.failure.cause).to be_a(SystemCallError)
+
+      message = RSMP::Watchdog.new('wTs' => connection.clock.to_s)
+      collector = RSMP::AckCollector.new(connection, m_id: message.m_id, timeout: config[:timeout])
+      expect(connection.send_message_and_collect(message, collector).success?).to be == true
+    end
+  end
+
+  it 'ends the session on an outbound write error while the reader is waiting' do
+    with_connected_site do |connection, _peer, _task|
+      session = connection.session_id
+      connection.instance_variable_get(:@protocol).define_singleton_method(:write_lines) { |_line| raise IOError }
+      message = RSMP::Watchdog.new('wTs' => connection.clock.to_s)
+      result = connection.send_message(message)
+
+      expect(result.failure.code).to be == :disconnected
+      expect(result.failure.context[:session_id]).to be == session
+      expect(connection.state).to be == :disconnected
+      connection.wait_for_state!(:ready, timeout: config[:timeout])
+      expect(connection.session_id).to be == session + 1
+    end
+  end
+
   it 'accepts a non-first supported legacy SXL without requesting a switch' do
     config[:site_settings]['core_version'] = '3.2.2'
     config[:site_settings]['sxls'] = { 'tlc' => '1.0.15' }

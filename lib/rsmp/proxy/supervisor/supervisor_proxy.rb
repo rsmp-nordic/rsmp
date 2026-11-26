@@ -123,7 +123,7 @@ module RSMP
       sxl_summary = accepted_sxls.map { |item| "#{item['name']} #{item['version']}" }.join(', ')
       log "Connection to supervisor established, using core #{@core_version}, SXLs [#{sxl_summary}]",
           level: :info
-      self.state = :ready
+      super
       start_watchdog
       @initial_alarm_events = [] if core_3_3_0_or_newer?
       if core_3_3_0_or_newer? || @site_settings['send_after_connect']
@@ -133,7 +133,6 @@ module RSMP
       flush_message_buffer
       @initial_alarm_events = nil
       synchronize_site_state if core_3_3_0_or_newer?
-      super
     end
 
     def process_message(message)

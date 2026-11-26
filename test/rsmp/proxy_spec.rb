@@ -997,6 +997,42 @@ describe RSMP::Proxy do
     end
   end
 
+  with 'write failures' do
+    let(:site) { build_site(core_version: '3.2.2') }
+    let(:connection) { build_supervisor_proxy(site, core_version: '3.2.2', session_closed: false) }
+
+    it 'reports a closed transport and does not advance the handshake on a failed Watchdog acknowledgement' do
+      reader, writer = IO.pipe
+      stream = IO::Stream::Buffered.new(writer)
+      configure_proxy(connection, core_version: '3.2.2', state: :connected, protocol: RSMP::Protocol.new(stream))
+      stream.close
+      result = connection.acknowledge(RSMP::Watchdog.new)
+
+      expect(connection.state).to be == :disconnected
+      expect(result.failure.code).to be == :disconnected
+      expect(result.failure.cause).to be_a(IOError)
+    ensure
+      reader&.close
+      writer&.close
+    end
+
+    it 'attributes a delayed write error to the old session and keeps the replacement connected' do
+      session = connection.session_id
+      protocol = ProxyHelper::CapturingProtocol.new do
+        connection.disconnect
+        connection.begin_session
+        configure_proxy(connection, core_version: '3.2.2')
+        raise Errno::EPIPE
+      end
+      configure_proxy(connection, core_version: '3.2.2', protocol: protocol)
+      result = connection.send_message(RSMP::Watchdog.new('wTs' => connection.clock.to_s))
+
+      expect(result.failure.context[:session_id]).to be == session
+      expect(connection.session_active?).to be == true
+      expect(connection.ready?).to be == true
+    end
+  end
+
   with 'message buffering' do
     def build_buffering_proxy(message_buffer: {}, core_version: '3.2.2')
       site = RSMP::Site.new(

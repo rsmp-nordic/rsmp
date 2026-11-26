@@ -9,7 +9,9 @@ module RSMP
 
           ack = MessageAck.build_from(original)
           ack.original = original.clone
-          send_generated_message ack, "for #{ack.original.type} #{original.m_id_short}"
+          delivery = send_generated_message ack, "for #{ack.original.type} #{original.m_id_short}"
+          return delivery if delivery.failure?
+
           check_ingoing_acknowledged original
         end
 
