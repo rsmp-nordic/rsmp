@@ -54,6 +54,16 @@ describe RSMP::Supervisor do
       )
     end
 
+    it 'preserves an EDHOC handshake failure before an RSMP protocol is available' do
+      mock(supervisor).replace(:build_accepted_protocol) do |_stream, rate_limit_key:|
+        raise RSMP::HandshakeError, "Handshake failed for #{rate_limit_key}"
+      end
+
+      expect do
+        supervisor.build_proxy_settings(StringIO.new, { ip: '127.0.0.1' })
+      end.to raise_exception(RSMP::HandshakeError, message: be == 'Handshake failed for 127.0.0.1')
+    end
+
     def site_connect
       # mock SecureRandom.uuid() so we get known message ids
       uuids = %w[
@@ -410,6 +420,35 @@ describe RSMP::Supervisor do
         expect(proxy.site_id).to be == 'RN+SI0001'
 
         expect(proxy.core_version).to be == core_version
+      end
+    end
+
+    it 'closes when the initial Version does not match the selected Core schema' do
+      events = Async::Queue.new
+      receiver = Object.new
+      receiver.define_singleton_method(:receive_event) { |event| events.enqueue(event) }
+      supervisor.add_event_receiver(receiver)
+
+      with_async_context(context: lambda {
+        supervisor.start
+      }) do |_task|
+        protocol = site_connect
+        send_legacy_version(
+          protocol,
+          [{ 'vers' => '3.3.0' }],
+          RSMP::Schema.latest_version(:tlc).to_s
+        )
+
+        event = Async::Task.current.with_timeout(collect_timeout) do
+          events.dequeue
+        end
+        expect(event.type).to be == :invalid_message
+        expect(event.failure.code).to be == :protocol_failure
+        expect(event.failure.message).to be(:include?, 'does not conform to negotiated RSMP 3.3.0')
+        response = JSON.parse(protocol.read_line)
+        expect(response['type']).to be == 'MessageNotAck'
+        expect(response['oMId']).to be == '8db00f0a-4124-406f-b3f9-ceb0dbe4aeb6'
+        expect(protocol.read_line).to be_nil
       end
     end
 

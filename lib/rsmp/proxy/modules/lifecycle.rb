@@ -33,6 +33,7 @@ module RSMP
 
           @session_closed = true
           log 'Closing connection', level: :warning
+          log_traffic_stats
           close_stream
           close_socket
           stop_reader
@@ -63,8 +64,10 @@ module RSMP
         end
 
         def close_stream
+          @protocol&.close if @protocol.respond_to?(:close)
           @stream&.close
         ensure
+          @protocol = nil
           @stream = nil
         end
 

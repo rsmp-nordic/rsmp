@@ -73,7 +73,7 @@ module RSMP
 
         def build_proxy_settings(socket, info)
           stream = IO::Stream::Buffered.new(socket)
-          protocol = RSMP::Protocol.new stream
+          protocol = build_accepted_protocol(stream, rate_limit_key: info[:ip])
           site_id = retrieve_site_id(protocol)
           site_settings = site_id_to_site_setting site_id
 
@@ -93,7 +93,7 @@ module RSMP
             site_settings: site_settings
           }
         rescue HandshakeError => e
-          reject_initial_version(protocol, e)
+          reject_initial_version(protocol, e) if protocol
           raise
         end
 
@@ -104,6 +104,29 @@ module RSMP
             protocol.write_lines(JSON.generate('mType' => 'rSMsg', 'type' => 'MessageNotAck',
                                                'oMId' => id, 'rea' => error.message))
           end
+        end
+
+        def build_accepted_protocol(stream, rate_limit_key:)
+          secure_settings = inbound_secure_settings
+          return RSMP::Protocol.new(stream) unless RSMP::Secure.required?(secure_settings)
+
+          secure_settings = RSMP::Secure.with_runtime_policy(
+            secure_settings,
+            revocation_list: secure_revocation_list,
+            rate_limiter: secure_connection_rate_limiter,
+            rate_limit_key: rate_limit_key
+          )
+          RSMP::Secure.build_protocol(
+            stream,
+            role: :responder,
+            settings: secure_settings,
+            task: @task,
+            log: ->(message, options = {}) { log(message, options.merge(timestamp: @clock.now)) }
+          )
+        end
+
+        def inbound_secure_settings
+          RSMP::Secure.supervisor_inbound_settings(@supervisor_settings)
         end
 
         def retrieve_site_id(protocol)
@@ -129,8 +152,14 @@ module RSMP
           proxy
         end
 
-        def validate_and_start_proxy(proxy, _protocol)
+        def validate_and_start_proxy(proxy, protocol)
           proxy.setup_site_settings
+          if protocol.respond_to?(:authorize!)
+            version = peek_version_message(protocol)
+            proxy.check_core_version(version)
+            proxy.validate_version!(version, step: 'Request')
+            protocol.authorize!(rsmp_id: proxy.site_id, core_version: proxy.core_version)
+          end
 
           proxy.start
           proxy.wait

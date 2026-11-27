@@ -44,6 +44,7 @@ module RSMP
     def connect
       log "Connecting to site #{@site_id} at #{@ip}:#{@port}", level: :info
       begin_session
+      log_secure_transport secure_settings
       self.state = :connecting
       opened = open_socket
       return opened if opened.failure?
@@ -59,7 +60,7 @@ module RSMP
       timeout = @site_settings.dig('timeouts', 'connect') || 1.1
       task.with_timeout(timeout) { @socket = endpoint.connect }
       @stream = IO::Stream::Buffered.new(@socket)
-      @protocol = RSMP::Protocol.new(@stream)
+      @protocol = build_transport_protocol(@stream, role: :initiator, secure_settings: secure_settings)
       Result.success(self)
     rescue SystemCallError, SocketError, IOError, Async::TimeoutError => e
       Result.failure(
@@ -69,6 +70,10 @@ module RSMP
         context: { ip: @ip, port: @port, session_id: @session_id },
         cause: e
       )
+    end
+
+    def secure_settings
+      RSMP::Secure.supervisor_site_settings(@settings, @site_settings, site_id: @site_id)
     end
 
     def reconnect_delay?

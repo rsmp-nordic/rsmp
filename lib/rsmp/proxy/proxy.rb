@@ -44,32 +44,22 @@ module RSMP
       node.now
     end
 
-    # State management methods
+    def build_transport_protocol(stream, role:, secure_settings:)
+      return RSMP::Protocol.new(stream) unless RSMP::Secure.enabled?(secure_settings)
 
-    def ready?
-      @state == :ready
+      secure_settings = secure_runtime_settings(secure_settings)
+      RSMP::Secure.build_protocol(
+        stream,
+        role: role,
+        settings: secure_settings,
+        task: task,
+        log: ->(message, options = {}) { log(message, options) }
+      )
     end
 
-    def connected?
-      @state == :connected || @state == :ready
-    end
-
-    def disconnected?
-      @state == :disconnected
-    end
-
-    # change our state
-    def state=(state)
-      return if state == @state
-
-      @state = state
-      state_changed
-    end
-
-    # the state changed
-    # override to to things like notifications
-    def state_changed
-      @state_condition.signal @state
+    def log_secure_transport(secure_settings)
+      summary = RSMP::Secure.log_summary(secure_settings)
+      log summary, level: :info if summary
     end
 
     def clear
@@ -103,6 +93,7 @@ module RSMP
       @socket = options[:socket]
       @stream = options[:stream]
       @protocol = options[:protocol]
+      @traffic_stats_logged = false
       @ip = options[:ip]
       @port = options[:port]
       @connection_info = options[:info]
@@ -129,6 +120,16 @@ module RSMP
 
     def log(str, options = {})
       super(str, options.merge(ip: @ip, port: @port, site_id: @site_id))
+    end
+
+    def log_traffic_stats
+      return if @traffic_stats_logged || !@protocol.respond_to?(:traffic_stats)
+
+      stats = @protocol.traffic_stats
+      return unless stats && !stats.empty?
+
+      log stats.summary, level: :info
+      @traffic_stats_logged = true
     end
 
     def schemas

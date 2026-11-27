@@ -20,10 +20,10 @@ module RSMP
 
           str = [prefix, reason].join(' ')
           log str, message: original, level: :warning if reason
-          message = MessageNotAck.new({
-                                        'oMId' => original.m_id,
-                                        'rea' => reason || 'Unknown reason'
-                                      })
+          message = MessageNotAck.new(
+            'oMId' => original.m_id,
+            'rea' => reason || 'Unknown reason'
+          )
           message.original = original.clone
           send_generated_message message, "for #{original.type} #{original.m_id_short}", force: force
         end

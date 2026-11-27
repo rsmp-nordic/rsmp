@@ -1,0 +1,186 @@
+; Secure RSMP v1 CDDL schema.
+;
+; This file describes the normative CBOR structures for rsmp-secure-v1.
+; It is a conformance artifact, not a runtime validator.
+;
+; CDDL captures the structural shape. Implementations still need semantic checks:
+; deterministic CBOR encoding, unique map keys, EDHOC transcript validation,
+; credential authorization, replay rejection, and derived-KID verification.
+
+secure-message = edhoc-frame / edhoc-error-frame / data-frame / rekey-frame
+
+profile = "rsmp-secure-v1"
+secure-version = 1
+exporter-label = 32768
+connection-id = "single-rsmp-connection"
+direction = "i2r" / "r2i"
+epoch = 0..18446744073709551615
+frame-index = 1..4294967295
+
+; ---------------------------------------------------------------------------
+; Secure frames
+; ---------------------------------------------------------------------------
+
+edhoc-frame = {
+  "v": secure-version,
+  "type": "edhoc",
+  "profile": profile,
+  "msg": 1 / 2 / 3 / 4,
+  "edhoc": bstr
+}
+
+edhoc-error-frame = {
+  "v": secure-version,
+  "type": "edhoc_error",
+  "profile": profile,
+  "edhoc": bstr
+}
+
+data-frame = {
+  "v": secure-version,
+  "type": "data",
+  "epoch": epoch,
+  "enc": cose-encrypt0
+}
+
+rekey-frame = {
+  "v": secure-version,
+  "type": "rekey",
+  "epoch": epoch,
+  "enc": cose-encrypt0
+}
+
+; Untagged RFC 9052 COSE_Encrypt0. The containing "enc" field identifies the
+; COSE message type. The protected algorithm is ChaCha20/Poly1305 (24), and the
+; unprotected Partial IV carries the minimal big-endian 32-bit frame index.
+; The decoded value is frame-index and never wraps within an epoch.
+cose-encrypt0 = [
+  protected: bstr .cbor cose-encrypt0-protected,
+  unprotected: {
+    6: bstr .size (1..4)
+  },
+  ciphertext: bstr
+]
+
+cose-encrypt0-protected = {
+  1: 24
+}
+
+; Plaintext inside a decrypted rekey-frame.
+rekey-plaintext =
+  rekey-edhoc-plaintext /
+  rekey-simple-plaintext /
+  rekey-error-plaintext
+
+rekey-edhoc-plaintext = {
+  "kind": "rekey_msg1" / "rekey_msg2" / "rekey_msg3",
+  "next_epoch": epoch,
+  "edhoc": bstr
+}
+
+rekey-simple-plaintext = {
+  "kind": "rekey_ack" / "rekey_request",
+  "next_epoch": epoch
+}
+
+rekey-error-plaintext = {
+  "kind": "rekey_error",
+  "next_epoch": epoch,
+  "code": "failed"
+}
+
+; ---------------------------------------------------------------------------
+; Pinned CCS credentials
+; ---------------------------------------------------------------------------
+
+kid = bstr .size 16
+public-key-ed25519 = bstr .size 32
+
+; COSE_Key labels:
+;   1  kty
+;   2  kid
+;  -1  crv
+;  -2  x
+;
+; Values:
+;   kty OKP     = 1
+;   crv Ed25519 = 6
+;
+; The alg key parameter is omitted because RFC 9528 EDHOC suite 4 fixes the
+; signature algorithm to EdDSA (-8).
+cose-key-ed25519 = {
+  1: 1,
+  2: kid,
+  -1: 6,
+  -2: public-key-ed25519
+}
+
+; The .cred file is exactly this deterministic-CBOR CCS/CWT-style credential.
+; CWT claim labels:
+;   2  sub
+;   8  cnf
+;   1  COSE_Key inside cnf
+ccs-credential = {
+  2: tstr,
+  8: {
+    1: cose-key-ed25519
+  }
+}
+
+; ---------------------------------------------------------------------------
+; Exporter context and HKDF info
+; Each derivation uses full HKDF-SHA-256 (Extract then Expand) with an empty
+; salt. The deterministic-CBOR map is used as the exact HKDF info byte string.
+; The session id is derived during the initial handshake and remains stable
+; across traffic-key renewal on the same Secure RSMP connection.
+; ---------------------------------------------------------------------------
+
+rsmp-context = {
+  "context": "rsmp-secure-v1",
+  "profile": profile,
+  "initiator": tstr,
+  "responder": tstr,
+  "connection": {
+    "socket": connection-id
+  }
+}
+
+hkdf-info = hkdf-context-info / hkdf-label-info
+
+hkdf-context-info = {
+  "context": "rsmp-secure-v1 hkdf",
+  "label": "traffic secret",
+  "rsmp_context": bstr .cbor rsmp-context
+}
+
+hkdf-label-info = {
+  "context": "rsmp-secure-v1 hkdf",
+  "label": hkdf-label
+}
+
+hkdf-label =
+  "session id" /
+  "i2r key" /
+  "r2i key" /
+  "i2r nonce" /
+  "r2i nonce"
+
+; ---------------------------------------------------------------------------
+; COSE external AAD and the RFC 9052 Enc_structure used as AEAD AAD
+; ---------------------------------------------------------------------------
+
+secure-aad = {
+  "context": "rsmp-secure-data-v1",
+  "connection": connection-id,
+  "epoch": epoch,
+  "idx": frame-index,
+  "sender": direction,
+  "session": bstr .size 16,
+  "type": "data" / "rekey"
+}
+
+cose-enc-structure = [
+  context: "Encrypt0",
+  protected: bstr .cbor cose-encrypt0-protected,
+  external_aad: bstr .cbor secure-aad
+]
